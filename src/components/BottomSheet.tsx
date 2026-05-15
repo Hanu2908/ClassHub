@@ -1,0 +1,59 @@
+import { useState, useEffect, useRef } from 'react';
+
+interface BottomSheetProps {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+}
+
+export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
+  const startY = useRef(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [offsetY, setOffsetY] = useState(0);
+
+  useEffect(() => {
+    if (open) { setOffsetY(0); document.body.style.overflow = 'hidden'; }
+    else { document.body.style.overflow = ''; }
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startY.current = e.touches[0].clientY;
+    setDragging(true);
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const delta = e.touches[0].clientY - startY.current;
+    if (delta > 0) setOffsetY(delta);
+  };
+  const handleTouchEnd = () => {
+    setDragging(false);
+    if (offsetY > 80) { setOffsetY(0); onClose(); }
+    else setOffsetY(0);
+  };
+
+  return (
+    <>
+      <div className="sheet-backdrop" onClick={onClose} />
+      <div
+        ref={panelRef}
+        className="sheet-panel"
+        style={{ transform: `translateX(-50%) translateY(${offsetY}px)`, transition: dragging ? 'none' : undefined }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="sheet-handle" />
+        {title && (
+          <div style={{ padding: '0 20px 16px', borderBottom: '1px solid var(--border-default)' }}>
+            <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
+          </div>
+        )}
+        <div style={{ padding: '20px' }}>{children}</div>
+      </div>
+    </>
+  );
+}
