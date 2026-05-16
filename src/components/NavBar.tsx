@@ -1,20 +1,32 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
-import { Home, Calendar, BarChart2, User } from 'lucide-react';
+import { Home, Calendar, BarChart2, User, ShieldCheck } from 'lucide-react';
 
-const TABS = [
-  { id: 'home', label: 'Home', icon: Home, path: '/app/home' },
-  { id: 'schedule', label: 'Schedule', icon: Calendar, path: '/app/schedule' },
-  { id: 'polls', label: 'Polls', icon: BarChart2, path: '/app/polls' },
-  { id: 'profile', label: 'Profile', icon: User, path: '/app/profile' },
+// When role=cr: replace Polls tab with CR Command tab
+const STUDENT_TABS = [
+  { id: 'home',     label: 'Home',     icon: Home,         path: '/app/home' },
+  { id: 'schedule', label: 'Schedule', icon: Calendar,     path: '/app/schedule' },
+  { id: 'polls',    label: 'Polls',    icon: BarChart2,    path: '/app/polls' },
+  { id: 'profile',  label: 'Profile',  icon: User,         path: '/app/profile' },
 ] as const;
+
+const CR_TABS = [
+  { id: 'home',       label: 'Home',     icon: Home,         path: '/app/home' },
+  { id: 'schedule',   label: 'Schedule', icon: Calendar,     path: '/app/schedule' },
+  { id: 'cr-command', label: 'Command',  icon: ShieldCheck,  path: '/app/cr-command' },
+  { id: 'profile',    label: 'Profile',  icon: User,         path: '/app/profile' },
+] as const;
+
+type TabId = typeof STUDENT_TABS[number]['id'] | typeof CR_TABS[number]['id'];
 
 export function NavBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setActiveTab } = useAppStore();
+  const { setActiveTab, role } = useAppStore();
 
-  const active = TABS.find(t => location.pathname.startsWith(t.path))?.id ?? 'home';
+  const TABS = role === 'cr' ? CR_TABS : STUDENT_TABS;
+
+  const active: TabId = (TABS.find(t => location.pathname.startsWith(t.path))?.id ?? 'home') as TabId;
 
   return (
     <nav className="navbar" role="navigation" aria-label="Main navigation">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, ShieldOff } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -76,11 +76,15 @@ function parseERPAttendance(rawText: string) {
   return subjects;
 }
 
-const STATUS_COLOR = (pct: number) =>
-  pct >= 85 ? 'var(--status-safe)' : pct >= 75 ? 'var(--status-warning)' : 'var(--status-critical)';
+const STATUS_COLOR = (pct: number) => {
+  const rounded = Math.round(pct);
+  return rounded >= 85 ? 'var(--status-safe)' : rounded >= 75 ? 'var(--status-warning)' : 'var(--status-critical)';
+};
 
-const STATUS_BG = (pct: number) =>
-  pct >= 85 ? 'var(--status-safe-bg)' : pct >= 75 ? 'var(--status-warning-bg)' : 'var(--status-critical-bg)';
+const STATUS_BG = (pct: number) => {
+  const rounded = Math.round(pct);
+  return rounded >= 85 ? 'var(--status-safe-bg)' : rounded >= 75 ? 'var(--status-warning-bg)' : 'var(--status-critical-bg)';
+};
 
 function SubjectCard({ sub }: { sub: AttendanceSubject }) {
   const color = STATUS_COLOR(sub.percentage);
@@ -90,15 +94,16 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
   return (
     <div className="card" style={{ borderLeft: `3px solid ${color}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <DonutRing percentage={pct} size={52} />
+        <DonutRing percentage={pct} size={52}>
+          <span style={{ font: '700 12px var(--font-mono)', color }}>
+            {pct.toFixed(0)}%
+          </span>
+        </DonutRing>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <p className="truncate" style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>
               {sub.name}
             </p>
-            <span style={{ font: '700 15px var(--font-mono)', color, flexShrink: 0 }}>
-              {pct.toFixed(2)}%
-            </span>
           </div>
           <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 8 }}>
             {sub.code} · {sub.type} · {sub.present}/{sub.total} present
@@ -113,17 +118,17 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
       <div style={{ marginTop: 12, padding: '8px 12px', background: bg, borderRadius: 'var(--radius-sm)' }}>
         {pct >= 75 ? (
           sub.canSkip > 0 ? (
-            <p style={{ font: '400 12px var(--font-body)', color }}>
-              ✓ Can skip <strong>{sub.canSkip}</strong> more class{sub.canSkip > 1 ? 'es' : ''}
+            <p style={{ font: '400 12px var(--font-body)', color, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <CheckCircle2 size={13} /> Can skip <strong>{sub.canSkip}</strong> more class{sub.canSkip > 1 ? 'es' : ''}
             </p>
           ) : (
-            <p style={{ font: '400 12px var(--font-body)', color }}>
-              ⚠ At threshold — don't skip any more
+            <p style={{ font: '400 12px var(--font-body)', color, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <AlertTriangle size={13} /> At threshold — don't skip any more
             </p>
           )
         ) : (
-          <p style={{ font: '400 12px var(--font-body)', color }}>
-            ⚠ Attend next <strong>{sub.needToAttend}</strong> consecutively to recover
+          <p style={{ font: '400 12px var(--font-body)', color, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <AlertTriangle size={13} /> Attend next <strong>{sub.needToAttend}</strong> consecutively to recover
           </p>
         )}
       </div>
@@ -188,13 +193,19 @@ export default function AttendancePage() {
         {/* Overall donut */}
         <div className="card" style={{ textAlign: 'center', padding: '28px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <DonutRing percentage={safeOverall} size={100} strokeWidth={8} />
+            <DonutRing percentage={safeOverall} size={100} strokeWidth={8}>
+              <span style={{ font: '700 24px var(--font-mono)', color: overallColor }}>
+                {safeOverall.toFixed(1)}%
+              </span>
+            </DonutRing>
           </div>
-          <p style={{ font: '700 32px var(--font-mono)', color: overallColor, marginBottom: 6 }}>
-            {safeOverall.toFixed(1)}%
-          </p>
-          <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>
-            {safeOverall >= 85 ? '✓ Safe — great attendance!' : safeOverall >= 75 ? '⚠ Caution — stay regular' : '⛔ Danger — attend all classes'}
+          <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            {safeOverall >= 85
+              ? <><CheckCircle2 size={14} color="var(--status-safe)" /> Safe — great attendance!</>
+              : safeOverall >= 75
+              ? <><AlertTriangle size={14} color="var(--status-warning)" /> Caution — stay regular</>
+              : <><ShieldOff size={14} color="var(--status-critical)" /> Danger — attend all classes</>
+            }
           </p>
           <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: 8 }}>
             {subjects.filter(s => s.percentage < 75).length} subject{subjects.filter(s => s.percentage < 75).length !== 1 ? 's' : ''} below 75%

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, BarChart2, Trash2 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
-import { useAppStore } from '../../store/appStore';
-import { mockPolls } from '../../data/mockData';
+import { useAppStore, isExpired } from '../../store/appStore';
+import type { Poll } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 
 type PollTab = 'active' | 'closed';
@@ -17,9 +17,9 @@ function timeLeft(iso: string): string {
   return days > 0 ? `Closes in ${days}d ${hrs}h` : `Closes in ${hrs}h`;
 }
 
-function PollCard({ poll }: { poll: typeof mockPolls[0] }) {
-  const { vote: storeVote, pollVotes } = useAppStore();
-  const userVote = pollVotes[poll.id] ?? poll.userVote;
+function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => void }) {
+  const { vote: storeVote, pollVotes, role } = useAppStore();
+  const userVote = pollVotes[poll.id] ?? (poll as any).userVote;
   const [showWarning, setShowWarning] = useState(poll.type === 'actionable' && !userVote);
   const [warningAccepted, setWarningAccepted] = useState(poll.type !== 'actionable' || !!userVote);
 
@@ -35,7 +35,7 @@ function PollCard({ poll }: { poll: typeof mockPolls[0] }) {
   return (
     <div className="card" style={{ marginBottom: 0 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
           {poll.type === 'actionable' && (
             <span className="badge badge-warning">
               <AlertTriangle size={10} /> CR-Visible
@@ -45,9 +45,27 @@ function PollCard({ poll }: { poll: typeof mockPolls[0] }) {
             {poll.type === 'anonymous' ? 'Anonymous' : 'Actionable'}
           </span>
         </div>
-        <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-          {isClosed ? 'Closed' : timeLeft(poll.closesAt)}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            {isClosed ? 'Closed' : timeLeft(poll.closesAt)}
+          </span>
+          {/* CR delete */}
+          {role === 'cr' && (
+            <button
+              id={`del-poll-${poll.id}`}
+              onClick={() => onDelete(poll.id)}
+              style={{
+                background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
+                borderRadius: 8, padding: '5px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s',
+              }}
+              title="Delete poll"
+            >
+              <Trash2 size={13} color="var(--status-critical)" />
+            </button>
+          )}
+        </div>
       </div>
 
       <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 14 }}>
@@ -57,8 +75,8 @@ function PollCard({ poll }: { poll: typeof mockPolls[0] }) {
       {/* Actionable warning */}
       {poll.type === 'actionable' && showWarning && !warningAccepted && (
         <div style={{ background: 'var(--status-warning-bg)', border: '1px solid rgba(255,181,71,0.3)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 14 }}>
-          <p style={{ font: '500 13px var(--font-body)', color: 'var(--status-warning)', marginBottom: 10 }}>
-            ⚠ The CR can see your individual response for this poll.
+          <p style={{ font: '500 13px var(--font-body)', color: 'var(--status-warning)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <AlertTriangle size={13} /> The CR can see your individual response for this poll.
           </p>
           <button
             id={`accept-warning-${poll.id}`}
@@ -118,13 +136,23 @@ function PollCard({ poll }: { poll: typeof mockPolls[0] }) {
 export default function PollsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<PollTab>('active');
-  const filtered = mockPolls.filter(p => p.status === tab);
+  const { polls, deletePoll } = useAppStore();
+
+  // Auto-expiry: hide polls gone past closesAt + 2 days
+  const visible = polls.filter(p => !isExpired(p.closesAt));
+
+  const filtered = visible.filter(p => p.status === tab);
+
+  const handleDelete = (id: string) => {
+    deletePoll(id);
+    showToast('Poll deleted', 'info');
+  };
 
   return (
     <div className="page-shell">
       <header style={{
         position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(12px)',
+        background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--border-default)', padding: '16px 20px 12px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -133,7 +161,10 @@ export default function PollsPage() {
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>Polls</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+            <BarChart2 size={18} color="var(--accent-primary)" />
+            <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>Polls</h1>
+          </div>
         </div>
         <div className="filter-tabs">
           {(['active', 'closed'] as PollTab[]).map(t => (
@@ -147,8 +178,8 @@ export default function PollsPage() {
 
       <main className="page-content">
         {filtered.length === 0
-          ? <EmptyState emoji="📊" title="No polls here" subtitle="Check back later" />
-          : filtered.map(p => <PollCard key={p.id} poll={p} />)
+          ? <EmptyState icon={<BarChart2 size={36} color="var(--text-muted)" />} title="No polls here" subtitle="Check back later" />
+          : filtered.map(p => <PollCard key={p.id} poll={p} onDelete={handleDelete} />)
         }
       </main>
 

@@ -15,23 +15,27 @@ interface DonutRingProps {
   color?: string;
 }
 
-export function DonutRing({ percentage, size = 56, strokeWidth = 5, color }: DonutRingProps) {
+export function DonutRing({ percentage, size = 56, strokeWidth = 5, color, children }: DonutRingProps & { children?: React.ReactNode }) {
   const r = (size - strokeWidth) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - Math.min(percentage, 100) / 100);
-  const c = color ?? (percentage >= 85 ? 'var(--status-safe)' : percentage >= 75 ? 'var(--status-warning)' : 'var(--status-critical)');
+  const rounded = Math.round(percentage);
+  const c = color ?? (rounded >= 85 ? 'var(--status-safe)' : rounded >= 75 ? 'var(--status-warning)' : 'var(--status-critical)');
   return (
-    <svg width={size} height={size} className="donut-ring" style={{ flexShrink: 0 }}>
-      <circle className="donut-track" cx={size/2} cy={size/2} r={r} strokeWidth={strokeWidth} />
-      <circle
-        className="donut-progress"
-        cx={size/2} cy={size/2} r={r}
-        strokeWidth={strokeWidth}
-        stroke={c}
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-      />
-    </svg>
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width={size} height={size} className="donut-ring" style={{ position: 'absolute', top: 0, left: 0 }}>
+        <circle className="donut-track" cx={size/2} cy={size/2} r={r} strokeWidth={strokeWidth} />
+        <circle
+          className="donut-progress"
+          cx={size/2} cy={size/2} r={r}
+          strokeWidth={strokeWidth}
+          stroke={c}
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      {children && <div style={{ zIndex: 1, position: 'relative' }}>{children}</div>}
+    </div>
   );
 }
 
@@ -42,11 +46,11 @@ export function Skeleton({ width = '100%', height = 16, style }: SkeletonProps) 
 }
 
 // Empty state
-interface EmptyStateProps { emoji: string; title: string; subtitle?: string; }
-export function EmptyState({ emoji, title, subtitle }: EmptyStateProps) {
+interface EmptyStateProps { emoji?: string; icon?: React.ReactNode; title: string; subtitle?: string; }
+export function EmptyState({ emoji, icon, title, subtitle }: EmptyStateProps) {
   return (
     <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>{emoji}</div>
+      <div style={{ fontSize: 40, marginBottom: 12, display: 'flex', justifyContent: 'center' }}>{icon ?? emoji}</div>
       <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-secondary)', marginBottom: 6 }}>{title}</p>
       {subtitle && <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>{subtitle}</p>}
     </div>

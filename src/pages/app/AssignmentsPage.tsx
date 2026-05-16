@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, ExternalLink, CheckCircle2, Wand2, Trash2, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, ExternalLink, CheckCircle2, Wand2, Trash2, FileText, Upload, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore, isExpired } from '../../store/appStore';
 import type { Assignment, AssignmentSet } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
-const SUBJECT_EMOJIS: Record<string, string> = {
-  DBMS: '📘', 'Operating Systems': '📗', 'AI Fundamentals': '📕',
-};
+function getSubjectIcon(subject: string) {
+  if (subject.includes('DBMS')) return <BookOpen size={22} color="var(--accent-primary)" />;
+  if (subject.includes('OS') || subject.includes('Operating')) return <Cpu size={22} color="var(--status-safe)" />;
+  return <BookMarked size={22} color="var(--status-warning)" />;
+}
 
 function getUserSet(classRoll: string, sets: AssignmentSet[]) {
   if (!sets || sets.length === 0) return null;
@@ -51,7 +53,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const [subjectCode, setSubjectCode] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
-  const [pdfUrl, setPdfUrl] = useState('');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [hasSets, setHasSets] = useState(false);
 
   // Step 2 fields
@@ -61,7 +63,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
 
   const reset = () => {
     setStep(1); setTitle(''); setSubject(''); setSubjectCode('');
-    setDueDate(''); setDescription(''); setPdfUrl(''); setHasSets(false);
+    setDueDate(''); setDescription(''); setPdfFile(null); setHasSets(false);
     setTotalStudents(''); setGroupSize(''); setSets([]);
   };
 
@@ -117,7 +119,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
       dueDate: new Date(dueDate).toISOString(),
       description: description.trim(),
       status: 'pending',
-      pdfUrl: pdfUrl.trim() || null,
+      pdfUrl: pdfFile ? URL.createObjectURL(pdfFile) : null,
       hasSets,
       sets: hasSets ? sets : [],
       submittedLink: null,
@@ -165,8 +167,28 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
             <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} placeholder="Instructions for students…" value={description} onChange={e => setDescription(e.target.value)} />
           </div>
           <div>
-            <label style={labelStyle}>Master PDF URL</label>
-            <input style={inputStyle} type="url" placeholder="https://drive.google.com/…" value={pdfUrl} onChange={e => setPdfUrl(e.target.value)} />
+            <label style={labelStyle}>Master PDF</label>
+            <label
+              htmlFor="pdf-upload"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 14px', background: pdfFile ? 'rgba(52,201,123,0.10)' : 'var(--bg-elevated)',
+                border: `1px solid ${pdfFile ? 'rgba(52,201,123,0.4)' : 'var(--border-default)'}`,
+                borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                font: '500 13px var(--font-body)', color: pdfFile ? 'var(--status-safe)' : 'var(--text-secondary)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {pdfFile ? <CheckCircle2 size={15} color="var(--status-safe)" /> : <Upload size={15} />}
+              {pdfFile ? pdfFile.name : 'Upload PDF file'}
+            </label>
+            <input
+              id="pdf-upload"
+              type="file"
+              accept="application/pdf"
+              style={{ display: 'none' }}
+              onChange={e => setPdfFile(e.target.files?.[0] ?? null)}
+            />
           </div>
 
           {/* Toggle */}
@@ -291,7 +313,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AssignmentsPage() {
   const navigate = useNavigate();
-  const { submissions, submit, hub, assignments } = useAppStore();
+  const { submissions, submit, hub, assignments, deleteAssignment, role } = useAppStore();
   const classRoll = hub?.classRoll ?? '17';
 
   const [filter, setFilter] = useState<Filter>('all');
@@ -302,7 +324,8 @@ export default function AssignmentsPage() {
     showToast('Marked as submitted ✓', 'success');
   };
 
-  const enriched = assignments.map(a => {
+  // 2-day post-deadline expiry
+  const enriched = assignments.filter(a => !isExpired(a.dueDate)).map(a => {
     const isSubmitted = !!submissions[a.id] || a.status === 'submitted';
     const diff = new Date(a.dueDate).getTime() - Date.now();
     const isOverdue = diff < 0 && !isSubmitted;
@@ -335,7 +358,7 @@ export default function AssignmentsPage() {
 
       <main className="page-content">
         {filtered.length === 0
-          ? <EmptyState emoji="🎉" title="All clear!" subtitle="No assignments in this category" />
+          ? <EmptyState icon={<PartyPopper size={36} color="var(--text-muted)" />} title="All clear!" subtitle="No assignments in this category" />
           : filtered.map(a => {
             const userSet = getUserSet(classRoll, a.sets ?? []);
             const isSubmitted = a.isSubmitted;
@@ -345,9 +368,27 @@ export default function AssignmentsPage() {
             return (
               <article key={a.id} className="card" style={{ animation: 'fadeSlideUp 0.35s ease both' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-                  <span style={{ fontSize: 28 }}>{SUBJECT_EMOJIS[a.subject] ?? '📄'}</span>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {getSubjectIcon(a.subject)}
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>{a.title}</h2>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      <h2 style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>{a.title}</h2>
+                      {role === 'cr' && (
+                        <button
+                          id={`del-assign-${a.id}`}
+                          onClick={() => { deleteAssignment(a.id); showToast('Assignment deleted', 'info'); }}
+                          style={{
+                            background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
+                            borderRadius: 8, padding: '5px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          }}
+                          title="Delete assignment"
+                        >
+                          <Trash2 size={13} color="var(--status-critical)" />
+                        </button>
+                      )}
+                    </div>
                     <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8 }}>{a.subject} · {a.subjectCode}</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span className={`badge ${bdg}`}>{lbl}</span>
@@ -367,7 +408,9 @@ export default function AssignmentsPage() {
                 {/* ── Student set banner ── */}
                 {a.hasSets && userSet && (
                   <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,171,64,0.35)', background: 'rgba(255,171,64,0.07)', padding: '14px 14px 12px', marginBottom: 12 }}>
-                    <p style={{ font: '600 10px var(--font-mono)', color: 'rgba(255,171,64,0.9)', letterSpacing: '0.08em', marginBottom: 6 }}>⚠ YOUR ASSIGNMENT</p>
+                    <p style={{ font: '600 10px var(--font-mono)', color: 'rgba(255,171,64,0.9)', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <AlertTriangle size={10} color="rgba(255,171,64,0.9)" /> YOUR ASSIGNMENT
+                    </p>
                     <p style={{ font: '700 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>
                       Based on Roll #{classRoll}, you are in{' '}
                       <span style={{ color: 'var(--accent-primary)' }}>{userSet.label}</span>

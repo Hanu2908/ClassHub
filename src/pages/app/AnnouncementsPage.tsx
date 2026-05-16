@@ -1,33 +1,148 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Paperclip } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
+import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
-import { useAppStore } from '../../store/appStore';
-import { mockAnnouncements } from '../../data/mockData';
+import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 
 type Filter = 'all' | 'critical' | 'general';
 
+function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
+  const { addAnnouncement } = useAppStore();
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [priority, setPriority] = useState<'general' | 'critical'>('general');
+  const [hasDeadline, setHasDeadline] = useState(false);
+  const [deadlineDate, setDeadlineDate] = useState('');
+  const [hasAttachment, setHasAttachment] = useState(false);
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', boxSizing: 'border-box',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+    font: '400 14px var(--font-body)', outline: 'none',
+  };
+
+  const handlePost = () => {
+    if (!title.trim() || !body.trim()) { showToast('Title and body required', 'error'); return; }
+    
+    addAnnouncement({
+      id: `ann-${Date.now()}`,
+      title: title.trim(),
+      body: body.trim(),
+      priority,
+      postedAt: new Date().toISOString(),
+      deadline: hasDeadline && deadlineDate ? new Date(deadlineDate).toISOString() : null,
+      attachmentUrl: hasAttachment && attachmentUrl.trim() ? attachmentUrl.trim() : null,
+    });
+    
+    showToast('Announcement posted', 'success');
+    onClose();
+  };
+
+  return (
+    <BottomSheet onClose={onClose} title="Post Announcement">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 20 }}>
+        <div>
+          <label style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
+          <input style={inputStyle} placeholder="e.g. End Semester Exam Schedule" value={title} onChange={e => setTitle(e.target.value)} />
+        </div>
+        <div>
+          <label style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
+          <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder="Details of the announcement…" value={body} onChange={e => setBody(e.target.value)} />
+        </div>
+        
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Priority</label>
+            <select style={inputStyle} value={priority} onChange={e => setPriority(e.target.value as 'general' | 'critical')}>
+              <option value="general">General</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: hasDeadline ? 8 : 0 }}>
+            <input type="checkbox" checked={hasDeadline} onChange={e => setHasDeadline(e.target.checked)} />
+            <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Set a deadline</span>
+          </label>
+          {hasDeadline && (
+            <input type="datetime-local" style={inputStyle} value={deadlineDate} onChange={e => setDeadlineDate(e.target.value)} />
+          )}
+        </div>
+
+        <div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: hasAttachment ? 8 : 0 }}>
+            <input type="checkbox" checked={hasAttachment} onChange={e => setHasAttachment(e.target.checked)} />
+            <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Add Attachment (PDF/Picture)</span>
+          </label>
+          {hasAttachment && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <label style={{
+                flex: 1, padding: '10px 12px', background: 'var(--bg-elevated)',
+                border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-md)',
+                color: 'var(--text-muted)', font: '400 13px var(--font-body)',
+                textAlign: 'center', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              }}>
+                <Paperclip size={14} />
+                {attachmentUrl ? 'File Selected' : 'Click to Upload'}
+                <input type="file" style={{ display: 'none' }} accept="application/pdf,image/*" onChange={e => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setAttachmentUrl(URL.createObjectURL(e.target.files[0]));
+                  }
+                }} />
+              </label>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={handlePost}
+          style={{
+            width: '100%', padding: '12px', background: 'var(--accent-primary)',
+            border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+            font: '600 14px var(--font-body)', color: '#fff', marginTop: 8
+          }}
+        >
+          Post Announcement
+        </button>
+      </div>
+    </BottomSheet>
+  );
+}
+
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [filter, setFilter] = useState<Filter>('all');
-  const { acknowledgedIds, acknowledge } = useAppStore();
+  const [showCreate, setShowCreate] = useState(location.state?.openCreate || false);
+  const { announcements, acknowledgedIds, acknowledge, deleteAnnouncement, role } = useAppStore();
 
-  const filtered = mockAnnouncements.filter(a =>
+  // Auto-expiry: hide items past deadline + 2 days
+  const visible = announcements.filter(a => !isExpired(a.deadline));
+
+  const filtered = visible.filter(a =>
     filter === 'all' ? true : a.priority === filter
   ).sort((a, b) => {
-    // Critical always first
     if (a.priority === 'critical' && b.priority !== 'critical') return -1;
     if (b.priority === 'critical' && a.priority !== 'critical') return 1;
     return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
   });
 
+  const handleDelete = (id: string) => {
+    deleteAnnouncement(id);
+    showToast('Announcement deleted', 'info');
+  };
+
   return (
     <div className="page-shell">
       <header style={{
         position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(12px)',
+        background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--border-default)', padding: '16px 20px 12px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -38,7 +153,7 @@ export default function AnnouncementsPage() {
           </button>
           <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>Announcements</h1>
           <CROnly>
-            <button id="post-ann-btn" style={{ font: '600 13px var(--font-body)', color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px' }}>
+            <button id="post-ann-btn" onClick={() => setShowCreate(true)} style={{ font: '600 13px var(--font-body)', color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px' }}>
               + Post
             </button>
           </CROnly>
@@ -55,7 +170,7 @@ export default function AnnouncementsPage() {
 
       <main className="page-content">
         {filtered.length === 0
-          ? <EmptyState emoji="📭" title="Nothing here" subtitle="No announcements in this category" />
+          ? <EmptyState icon={<Inbox size={36} color="var(--text-muted)" />} title="Nothing here" subtitle="No announcements in this category" />
           : filtered.map(ann => {
             const isCritical = ann.priority === 'critical';
             const isAcked = acknowledgedIds.includes(ann.id);
@@ -85,11 +200,42 @@ export default function AnnouncementsPage() {
                       Posted {timeAgo(ann.postedAt)}
                     </p>
                   </div>
+                  {/* CR delete button */}
+                  {role === 'cr' && (
+                    <button
+                      id={`del-ann-${ann.id}`}
+                      onClick={() => handleDelete(ann.id)}
+                      style={{
+                        background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
+                        borderRadius: 8, padding: '6px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.2s', flexShrink: 0,
+                      }}
+                      title="Delete announcement"
+                    >
+                      <Trash2 size={14} color="var(--status-critical)" />
+                    </button>
+                  )}
                 </div>
 
                 <p style={{ font: '400 14px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14 }}>
                   {ann.body}
                 </p>
+
+                {ann.attachmentUrl && (
+                  <button
+                    onClick={() => window.open(ann.attachmentUrl, '_blank')}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', marginBottom: 14,
+                      background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                      font: '500 13px var(--font-body)', color: 'var(--accent-primary)',
+                      transition: 'all 0.2s', width: 'fit-content'
+                    }}
+                  >
+                    <Paperclip size={14} /> View Attachment
+                  </button>
+                )}
 
                 {!isAcked ? (
                   <button
@@ -118,10 +264,12 @@ export default function AnnouncementsPage() {
       </main>
 
       <CROnly>
-        <button id="post-ann-fab" className="fab" aria-label="Post announcement">
+        <button id="post-ann-fab" onClick={() => setShowCreate(true)} className="fab" aria-label="Post announcement">
           <Plus size={22} />
         </button>
       </CROnly>
+
+      {showCreate && <CreateAnnouncementSheet onClose={() => setShowCreate(false)} />}
 
       <NavBar />
     </div>

@@ -139,30 +139,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* CR Tools */}
-        <CROnly>
-          <div>
-            <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>CR COMMAND CENTER</p>
-            <div className="card" style={{ padding: 0 }}>
-              {CRTools.map((tool, i) => {
-                const Icon = tool.icon;
-                return (
-                  <button
-                    key={tool.id}
-                    id={tool.id}
-                    className="list-row"
-                    style={{ borderRadius: 0, borderBottom: i < CRTools.length - 1 ? '1px solid var(--border-default)' : 'none', border: 'none', width: '100%' }}
-                    onClick={() => navigate(tool.path)}
-                  >
-                    <Icon size={16} color="var(--accent-primary)" />
-                    <span style={{ flex: 1, font: '400 14px var(--font-body)', color: 'var(--text-primary)', textAlign: 'left' }}>{tool.label}</span>
-                    <ChevronRight size={14} color="var(--text-muted)" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </CROnly>
+
 
         {/* Danger zone */}
         <div>

@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 
 interface BottomSheetProps {
-  open: boolean;
+  open?: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
 }
 
-export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
+export function BottomSheet({ open = true, onClose, title, children }: BottomSheetProps) {
   const startY = useRef(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
