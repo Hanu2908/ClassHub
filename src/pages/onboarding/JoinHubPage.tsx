@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, Loader2 } from 'lucide-react';
-import { useAppStore } from '../../store/appStore';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 import { showToast } from '../../components/Toast';
 
 const classRollRegex = /^\d{2}$/;
@@ -21,7 +22,7 @@ function FieldError({ msg }: { msg?: string }) {
 
 export default function JoinHubPage() {
   const navigate = useNavigate();
-  const { setHub, setRole, setFirstTime } = useAppStore();
+  const { refreshProfile } = useAuth();
 
   const [hubCode, setHubCode] = useState('');
   const [classRoll, setClassRoll] = useState('');
@@ -42,21 +43,30 @@ export default function JoinHubPage() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    const section = hubCode.slice(0, 2).toUpperCase();
-    setHub({
-      hubCode: hubCode.toUpperCase(),
-      section,
-      hubName: `Section ${section}`,
-      institution: 'SKIT Jaipur',
-      classRoll,
-      universityRoll: universityRoll.toUpperCase(),
-    });
-    setRole('student');
-    setFirstTime(true);
-    setLoading(false);
-    showToast('Joined hub successfully! Welcome 🎉', 'success');
-    navigate('/app/home');
+
+    try {
+      const { error } = await supabase.rpc('join_section', {
+        invite: hubCode.toUpperCase(),
+        class_roll: classRoll,
+        uni_roll: universityRoll.toUpperCase(),
+      });
+
+      if (error) throw error;
+
+      // Refresh profile so auth hook picks up new section_id
+      await refreshProfile();
+      showToast('Joined hub successfully! Welcome 🎉', 'success');
+      navigate('/app/home');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to join hub';
+      if (message.includes('Invalid invite code')) {
+        setErrors({ hubCode: 'Invalid invite code. Double-check with your CR.' });
+      } else {
+        showToast(message, 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAppStore } from '../store/appStore';
+import { useAuth } from '../hooks/useAuth';
 
 type StateMode = 'idle' | 'loading' | 'error' | 'success';
 
@@ -139,20 +138,13 @@ function GoogleButton({ onClick, disabled, isLoading }: { onClick: () => void; d
 export default function SignIn() {
   const [state, setState] = useState<StateMode>('idle');
   const navigate = useNavigate();
-  const { setUser, hub } = useAppStore();
+  const { signInWithGoogle } = useAuth();
 
   const handleGoogleClick = async () => {
     if (state === 'loading') return;
     setState('loading');
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/app/home',
-          queryParams: { hd: 'skit.ac.in' },
-        },
-      });
-      if (error) throw error;
+      await signInWithGoogle();
       setState('success');
     } catch {
       setState('error');
@@ -160,13 +152,13 @@ export default function SignIn() {
   };
 
   // Demo bypass — tap logo 5× quickly
+  // In dev mode, navigates to onboarding directly
   const clickCount = useRef(0);
   const handleDemoBypass = () => {
     clickCount.current++;
     if (clickCount.current >= 5) {
       clickCount.current = 0;
-      setUser({ id: 'demo', name: 'Priyanshu Sharma', email: 'priyanshu@skit.ac.in', avatarUrl: null });
-      navigate(hub ? '/app/home' : '/onboarding/choice');
+      navigate('/onboarding/choice');
     }
   };
 

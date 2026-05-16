@@ -1,0 +1,28 @@
+project_id = "classhub"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["https://classhub.vercel.app"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
+
+[functions.send-critical-announcement]
+verify_jwt = true
+
+[functions.nudge-unacknowledged]
+verify_jwt = true
+
+[functions.send-assignment-reminders]
+verify_jwt = true

@@ -1,0 +1,944 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      acknowledgments: {
+        Row: {
+          acknowledged_at: string
+          announcement_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          announcement_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          announcement_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acknowledgments_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acknowledgments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          author_id: string
+          created_at: string
+          deadline_at: string | null
+          id: string
+          is_pinned: boolean
+          is_template: boolean
+          message_content: string
+          notification_sent: boolean
+          nudge_sent: boolean
+          priority: Database["public"]["Enums"]["announcement_priority"]
+          section_id: string
+          title: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          deadline_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          is_template?: boolean
+          message_content: string
+          notification_sent?: boolean
+          nudge_sent?: boolean
+          priority?: Database["public"]["Enums"]["announcement_priority"]
+          section_id: string
+          title: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          deadline_at?: string | null
+          id?: string
+          is_pinned?: boolean
+          is_template?: boolean
+          message_content?: string
+          notification_sent?: boolean
+          nudge_sent?: boolean
+          priority?: Database["public"]["Enums"]["announcement_priority"]
+          section_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignment_sets: {
+        Row: {
+          assignment_id: string
+          description: string
+          id: string
+          pdf_url: string | null
+          roll_end: number
+          roll_start: number
+          set_label: string
+        }
+        Insert: {
+          assignment_id: string
+          description: string
+          id?: string
+          pdf_url?: string | null
+          roll_end: number
+          roll_start: number
+          set_label: string
+        }
+        Update: {
+          assignment_id?: string
+          description?: string
+          id?: string
+          pdf_url?: string | null
+          roll_end?: number
+          roll_start?: number
+          set_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_sets_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string
+          id: string
+          nudge_sent: boolean
+          section_id: string
+          subject_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date: string
+          id?: string
+          nudge_sent?: boolean
+          section_id: string
+          subject_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          nudge_sent?: boolean
+          section_id?: string
+          subject_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_records: {
+        Row: {
+          absent: number
+          id: string
+          makeup: number
+          od: number
+          percentage: number | null
+          present: number
+          subject_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          absent?: number
+          id?: string
+          makeup?: number
+          od?: number
+          percentage?: number | null
+          present?: number
+          subject_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          absent?: number
+          id?: string
+          makeup?: number
+          od?: number
+          percentage?: number | null
+          present?: number
+          subject_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          recipient_id: string | null
+          section_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_status"]
+          target_id: string | null
+          target_table: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          recipient_id?: string | null
+          section_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
+          recipient_id?: string | null
+          section_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_options: {
+        Row: {
+          id: string
+          label: string
+          poll_id: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          label: string
+          poll_id: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          poll_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          poll_type: Database["public"]["Enums"]["poll_type"]
+          question_text: string
+          section_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          poll_type?: Database["public"]["Enums"]["poll_type"]
+          question_text: string
+          section_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          poll_type?: Database["public"]["Enums"]["poll_type"]
+          question_text?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "polls_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sections: {
+        Row: {
+          college: string
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          name: string
+        }
+        Insert: {
+          college?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code: string
+          name: string
+        }
+        Update: {
+          college?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          accent: string
+          code: string
+          created_at: string
+          id: string
+          name: string
+          section_id: string
+          semester: number
+        }
+        Insert: {
+          accent?: string
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          section_id: string
+          semester: number
+        }
+        Update: {
+          accent?: string
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          section_id?: string
+          semester?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subjects_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submissions: {
+        Row: {
+          assignment_id: string
+          id: string
+          nudge_sent: boolean
+          status: Database["public"]["Enums"]["submission_status"]
+          student_id: string
+          submission_link: string | null
+          submitted_at: string | null
+        }
+        Insert: {
+          assignment_id: string
+          id?: string
+          nudge_sent?: boolean
+          status?: Database["public"]["Enums"]["submission_status"]
+          student_id: string
+          submission_link?: string | null
+          submitted_at?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          id?: string
+          nudge_sent?: boolean
+          status?: Database["public"]["Enums"]["submission_status"]
+          student_id?: string
+          submission_link?: string | null
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetable_slots: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          room: string | null
+          section_id: string
+          start_time: string
+          subject_id: string | null
+          type: Database["public"]["Enums"]["slot_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          room?: string | null
+          section_id: string
+          start_time: string
+          subject_id?: string | null
+          type?: Database["public"]["Enums"]["slot_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          room?: string | null
+          section_id?: string
+          start_time?: string
+          subject_id?: string | null
+          type?: Database["public"]["Enums"]["slot_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_slots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_slots_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_slots_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          day_scholar: boolean
+          email: string
+          id: string
+          name: string
+          notifications_enabled: boolean
+          role: Database["public"]["Enums"]["user_role"]
+          section_id: string | null
+          section_roll: string | null
+          university_roll: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          day_scholar?: boolean
+          email: string
+          id: string
+          name: string
+          notifications_enabled?: boolean
+          role?: Database["public"]["Enums"]["user_role"]
+          section_id?: string | null
+          section_roll?: string | null
+          university_roll?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          day_scholar?: boolean
+          email?: string
+          id?: string
+          name?: string
+          notifications_enabled?: boolean
+          role?: Database["public"]["Enums"]["user_role"]
+          section_id?: string | null
+          section_roll?: string | null
+          university_roll?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      votes: {
+        Row: {
+          anonymous_token: string | null
+          id: string
+          option_id: string
+          poll_id: string
+          student_id: string | null
+          voted_at: string
+        }
+        Insert: {
+          anonymous_token?: string | null
+          id?: string
+          option_id: string
+          poll_id: string
+          student_id?: string | null
+          voted_at?: string
+        }
+        Update: {
+          anonymous_token?: string | null
+          id?: string
+          option_id?: string
+          poll_id?: string
+          student_id?: string | null
+          voted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      create_section_hub: {
+        Args: {
+          class_roll: string
+          invite: string
+          section_name: string
+          uni_roll: string
+        }
+        Returns: {
+          college: string
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sections"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      current_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      current_user_section_id: { Args: never; Returns: string }
+      is_cr_for_section: { Args: { target_section: string }; Returns: boolean }
+      is_skit_email: { Args: { email: string }; Returns: boolean }
+      join_section: {
+        Args: { class_roll: string; invite: string; uni_roll: string }
+        Returns: {
+          avatar_url: string | null
+          created_at: string
+          day_scholar: boolean
+          email: string
+          id: string
+          name: string
+          notifications_enabled: boolean
+          role: Database["public"]["Enums"]["user_role"]
+          section_id: string | null
+          section_roll: string | null
+          university_roll: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "users"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      poll_results: {
+        Args: { target_poll: string }
+        Returns: {
+          label: string
+          option_id: string
+          percentage: number
+          votes: number
+        }[]
+      }
+    }
+    Enums: {
+      announcement_priority: "general" | "critical"
+      notification_kind:
+        | "critical_announcement"
+        | "ack_nudge"
+        | "assignment_reminder"
+      notification_status: "queued" | "sent" | "failed"
+      poll_type: "general" | "actionable"
+      slot_type: "lecture" | "lab" | "tutorial" | "other"
+      submission_status: "pending" | "submitted"
+      user_role: "student" | "cr"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      announcement_priority: ["general", "critical"],
+      notification_kind: [
+        "critical_announcement",
+        "ack_nudge",
+        "assignment_reminder",
+      ],
+      notification_status: ["queued", "sent", "failed"],
+      poll_type: ["general", "actionable"],
+      slot_type: ["lecture", "lab", "tutorial", "other"],
+      submission_status: ["pending", "submitted"],
+      user_role: ["student", "cr"],
+    },
+  },
+} as const

@@ -2,20 +2,20 @@
 
 export const mockUser = {
   id: 'u001',
-  name: 'Priyanshu Sharma',
-  email: 'priyanshu@skit.ac.in',
+  name: 'Himanshu Sharma',
+  email: 'hiimanshu@skit.ac.in',
   avatarUrl: null as string | null,
   role: 'student' as 'student' | 'cr',
   classRoll: '17',
-  universityRoll: '25ESKCX089',
+  universityRoll: '25ESKIT089',
 };
 
 export const mockHub = {
-  hubCode: 'P2WXYZ',
+  hubCode: 'P2QHIZ',
   section: 'P2',
   hubName: 'Section P2',
   institution: 'SKIT Jaipur',
-  totalStudents: 70,
+  totalStudents: 60,
 };
 
 const now = new Date();

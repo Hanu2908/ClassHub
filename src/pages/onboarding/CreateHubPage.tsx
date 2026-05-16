@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Share2, Loader2, CheckCircle2 } from 'lucide-react';
-import { useAppStore } from '../../store/appStore';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 import { showToast } from '../../components/Toast';
 
 const classRollRegex = /^\d{2}$/;
@@ -18,7 +19,7 @@ function FieldError({ msg }: { msg?: string }) {
 
 export default function CreateHubPage() {
   const navigate = useNavigate();
-  const { setHub, setRole, setFirstTime } = useAppStore();
+  const { refreshProfile } = useAuth();
 
   const [sectionCode, setSectionCode] = useState('');
   const [hubName, setHubName] = useState('');
@@ -42,20 +43,32 @@ export default function CreateHubPage() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    const code = sectionCode.toUpperCase().slice(0, 2) + randomAlpha(4);
-    setGeneratedCode(code);
-    setHub({
-      hubCode: code,
-      section: sectionCode.toUpperCase(),
-      hubName,
-      institution: 'SKIT Jaipur',
-      classRoll,
-      universityRoll: universityRoll.toUpperCase(),
-    });
-    setRole('cr');
-    setFirstTime(true);
-    setLoading(false);
+
+    // Generate invite code matching DB regex: ^[A-Z0-9]{2}[A-Z]{4}$
+    const inviteCode = sectionCode.toUpperCase().slice(0, 2) + randomAlpha(4);
+
+    try {
+      const { data, error } = await supabase.rpc('create_section_hub', {
+        section_name: hubName,
+        invite: inviteCode,
+        class_roll: classRoll,
+        uni_roll: universityRoll.toUpperCase(),
+      });
+
+      if (error) throw error;
+
+      // Use the invite_code from the returned section
+      const returnedCode = data?.invite_code ?? inviteCode;
+      setGeneratedCode(returnedCode);
+
+      // Refresh profile so auth hook picks up new section_id + CR role
+      await refreshProfile();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create hub';
+      showToast(message, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const copyCode = () => {

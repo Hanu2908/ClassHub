@@ -1,155 +1,113 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { mockAttendance, mockAssignments } from '../data/mockData';
+import {
+  mockUser, mockHub, mockSchedule, mockAnnouncements,
+  mockAssignments, mockPolls, mockAttendance,
+} from '../data/mockData';
 
-// ── Exported types ────────────────────────────────────────────────────────────
-
-export interface UserInfo {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl: string | null;
-}
-
-export interface HubInfo {
-  hubCode: string;
-  section: string;
-  hubName: string;
-  institution: string;
-  classRoll: string;
-  universityRoll: string;
-}
-
-export interface AttendanceSubject {
-  code: string;
-  name: string;
-  type: string;
-  present: number;
-  absent: number;
-  total: number;
-  percentage: number;
-  canSkip: number;
-  needToAttend: number;
-}
-
-export interface AssignmentSet {
-  id: string;
-  label: string;       // "Set 1", "Set 2", etc.
-  rollStart: number;
-  rollEnd: number;
-  pageNumbers: string; // free-text, editable — "1-3", "4", "5-7"
-  description: string; // auto-built: "Complete Pages X of the attached PDF."
-  pdfUrl: string | null;
-}
-
-export interface Assignment {
-  id: string;
-  title: string;
-  subject: string;
-  subjectCode: string;
-  dueDate: string;
-  description: string;
-  status: 'pending' | 'submitted';
-  pdfUrl: string | null;  // master PDF URL
-  hasSets: boolean;
-  sets: AssignmentSet[];
-  submittedLink: string | null;
-}
-
-// ── Store interface ───────────────────────────────────────────────────────────
+// ── Client-only UI state (ADR-016: Zustand for client state ONLY) ──
+// All server state will be moved to TanStack Query hooks in Phase 3.
+//
+// TEMPORARY: Some app pages still import old store fields (user, hub, etc.)
+// We keep them here as read-only mock data so those pages don't crash.
+// Phase 3 will remove these and wire pages to hooks directly.
 
 interface AppState {
-  // Auth
-  user: UserInfo | null;
-  session: any | null;
-  role: 'student' | 'cr';
-  isFirstTime: boolean;
-
-  // Hub
-  hub: HubInfo | null;
-
-  // UI
+  // UI — permanent
   activeTab: 'home' | 'schedule' | 'polls' | 'profile';
-
-  // Announcements acknowledged
-  acknowledgedIds: string[];
-
-  // Poll votes  { pollId: optionId }
-  pollVotes: Record<string, string>;
-
-  // Assignment submissions { assignmentId: link }
-  submissions: Record<string, string>;
-
-  // Assignments — CR can add new ones
-  assignments: Assignment[];
-
-  // Attendance — shared between AttendancePage and DashboardPage
-  attendanceSubjects: AttendanceSubject[];
-  attendanceOverall: number;
-
-  // Actions
-  setUser: (user: UserInfo | null) => void;
-  setSession: (session: any | null) => void;
-  setRole: (role: 'student' | 'cr') => void;
-  setHub: (hub: HubInfo | null) => void;
   setActiveTab: (tab: AppState['activeTab']) => void;
-  setFirstTime: (v: boolean) => void;
+
+  // ── TEMPORARY mock data (remove in Phase 3) ──
+  user: typeof mockUser | null;
+  hub: typeof mockHub | null;
+  role: 'student' | 'cr';
+
+  // Announcements
+  acknowledgedIds: Set<string>;
   acknowledge: (id: string) => void;
+
+  // Attendance (mock)
+  attendanceSubjects: typeof mockAttendance.subjects;
+  attendanceOverall: number;
+  setAttendance: (code: string, field: string, delta: number) => void;
+
+  // Polls (mock)
+  pollVotes: Record<string, string>;
   vote: (pollId: string, optionId: string) => void;
+
+  // Assignments (mock)
+  assignments: typeof mockAssignments;
+  submissions: Record<string, string>;
   submit: (assignmentId: string, link: string) => void;
-  addAssignment: (a: Assignment) => void;
-  setAttendance: (subjects: AttendanceSubject[]) => void;
+  addAssignment: (a: (typeof mockAssignments)[0]) => void;
+
+  // Sign out / reset
   signOut: () => void;
+  reset: () => void;
 }
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+export const useAppStore = create<AppState>()((set, get) => ({
+  // UI
+  activeTab: 'home',
+  setActiveTab: (activeTab) => set({ activeTab }),
 
-export const useAppStore = create<AppState>()(
-  persist(
-    (set) => ({
-      user: null,
-      session: null,
-      role: 'student',
-      isFirstTime: false,
-      hub: null,
-      activeTab: 'home',
-      acknowledgedIds: [],
-      pollVotes: {},
-      submissions: {},
-      assignments: mockAssignments as Assignment[],
-      attendanceSubjects: mockAttendance.subjects as AttendanceSubject[],
-      attendanceOverall: mockAttendance.overallPercentage,
+  // TEMPORARY mock data
+  user: mockUser,
+  hub: mockHub,
+  role: 'student',
 
-      setUser: (user) => set({ user }),
-      setSession: (session) => set({ session }),
-      setRole: (role) => set({ role }),
-      setHub: (hub) => set({ hub }),
-      setActiveTab: (activeTab) => set({ activeTab }),
-      setFirstTime: (isFirstTime) => set({ isFirstTime }),
-      acknowledge: (id) =>
-        set((s) => ({ acknowledgedIds: [...s.acknowledgedIds, id] })),
-      vote: (pollId, optionId) =>
-        set((s) => ({ pollVotes: { ...s.pollVotes, [pollId]: optionId } })),
-      submit: (assignmentId, link) =>
-        set((s) => ({ submissions: { ...s.submissions, [assignmentId]: link } })),
-      addAssignment: (a) =>
-        set((s) => ({ assignments: [a, ...s.assignments] })),
-      setAttendance: (subjects) => {
-        const overall = subjects.length > 0
-          ? subjects.reduce((acc, s) => acc + s.percentage, 0) / subjects.length
-          : 0;
-        set({ attendanceSubjects: subjects, attendanceOverall: overall });
-      },
-      signOut: () =>
-        set({
-          user: null, session: null, role: 'student',
-          hub: null, isFirstTime: false,
-          acknowledgedIds: [], pollVotes: {}, submissions: {},
-          assignments: mockAssignments as Assignment[],
-          attendanceSubjects: mockAttendance.subjects as AttendanceSubject[],
-          attendanceOverall: mockAttendance.overallPercentage,
-        }),
-    }),
-    { name: 'classhub-store' }
-  )
-);
+  // Announcements
+  acknowledgedIds: new Set<string>(),
+  acknowledge: (id) => set((s) => {
+    const next = new Set(s.acknowledgedIds);
+    next.add(id);
+    return { acknowledgedIds: next };
+  }),
+
+  // Attendance
+  attendanceSubjects: mockAttendance.subjects,
+  attendanceOverall: mockAttendance.overallPercentage,
+  setAttendance: (code, field, delta) => set((s) => {
+    const subjects = s.attendanceSubjects.map((sub) => {
+      if (sub.code !== code) return sub;
+      const updated = { ...sub, [field]: Math.max(0, (sub as any)[field] + delta) };
+      const total = updated.present + updated.absent;
+      updated.percentage = total > 0 ? Math.round((updated.present / total) * 10000) / 100 : 0;
+      updated.total = total;
+      return updated;
+    });
+    const overallTotal = subjects.reduce((a, s) => a + s.total, 0);
+    const overallPresent = subjects.reduce((a, s) => a + s.present, 0);
+    return {
+      attendanceSubjects: subjects,
+      attendanceOverall: overallTotal > 0 ? Math.round((overallPresent / overallTotal) * 10000) / 100 : 0,
+    };
+  }),
+
+  // Polls
+  pollVotes: {},
+  vote: (pollId, optionId) => set((s) => ({
+    pollVotes: { ...s.pollVotes, [pollId]: optionId },
+  })),
+
+  // Assignments
+  assignments: mockAssignments,
+  submissions: {},
+  submit: (assignmentId, link) => set((s) => ({
+    submissions: { ...s.submissions, [assignmentId]: link },
+  })),
+  addAssignment: (a) => set((s) => ({
+    assignments: [a, ...s.assignments],
+  })),
+
+  // Reset
+  signOut: () => set({ user: null, hub: null }),
+  reset: () => set({
+    activeTab: 'home',
+    user: mockUser,
+    hub: mockHub,
+    role: 'student',
+    acknowledgedIds: new Set(),
+    pollVotes: {},
+    submissions: {},
+  }),
+}));

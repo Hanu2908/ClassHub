@@ -1,0 +1,10 @@
+﻿{
+    "publishes":  {
+                      "onyx-jungle-my7p":  {
+                                               "claimUrl":  "https://here.now/claim?slug=onyx-jungle-my7p\u0026token=c38563f71b4bb027e8e17e318796ad44cdd4a23dbe1851af335471eb81934f41",
+                                               "claimToken":  "c38563f71b4bb027e8e17e318796ad44cdd4a23dbe1851af335471eb81934f41",
+                                               "expiresAt":  "2026-05-16T10:23:12.175Z",
+                                               "siteUrl":  "https://onyx-jungle-my7p.here.now/"
+                                           }
+                  }
+}
