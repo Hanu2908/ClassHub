@@ -1,10 +1,10 @@
-import { useAuth } from '../hooks/useAuth';
+import { useAppStore } from '../store/appStore';
 
 interface CROnlyProps { children: React.ReactNode; }
 
 export function CROnly({ children }: CROnlyProps) {
-  const { user } = useAuth();
-  return user?.role === 'cr' ? <>{children}</> : null;
+  const role = useAppStore(s => s.role);
+  return role === 'cr' ? <>{children}</> : null;
 }
 
 // Donut ring SVG for attendance

@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, LogOut, Settings, ChevronRight, Megaphone, ClipboardList, BarChart2, Calendar, Eye, TrendingUp, Bell, Trash2 } from 'lucide-react';
+import { Copy, LogOut, Settings, ChevronRight, TrendingUp, Bell, Trash2 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
-import { CROnly } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import { mockUser, mockHub } from '../../data/mockData';
 import { showToast } from '../../components/Toast';
-import { supabase } from '../../lib/supabase';
+import { signOutGlobal } from '../../components/AuthProvider';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -27,9 +26,7 @@ export default function ProfilePage() {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut().catch(() => { });
-    signOut();
-    navigate('/');
+    await signOutGlobal(navigate);
   };
 
   const handleLeaveHub = () => {
@@ -37,14 +34,7 @@ export default function ProfilePage() {
     navigate('/onboarding/choice');
   };
 
-  const CRTools = [
-    { id: 'cr-announcement', icon: Megaphone, label: 'Post Announcement', path: '/app/announcements' },
-    { id: 'cr-assignments', icon: ClipboardList, label: 'Manage Assignments', path: '/app/assignments' },
-    { id: 'cr-polls', icon: BarChart2, label: 'Create Poll', path: '/app/polls' },
-    { id: 'cr-timetable', icon: Calendar, label: 'Edit Timetable', path: '/app/schedule' },
-    { id: 'cr-acks', icon: Eye, label: 'View Acknowledgments', path: '/app/announcements' },
-    { id: 'cr-attendance', icon: TrendingUp, label: 'Attendance Overview', path: '/app/attendance' },
-  ];
+
 
   return (
     <div className="page-shell">

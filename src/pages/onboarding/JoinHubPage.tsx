@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/useAuth';
+import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 
 const classRollRegex = /^\d{2}$/;
@@ -22,7 +22,8 @@ function FieldError({ msg }: { msg?: string }) {
 
 export default function JoinHubPage() {
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { setRole, setHub, refreshProfile, authUser } = useAppStore();
+  const setAuthUser = useAppStore(s => s.setAuthUser);
 
   const [hubCode, setHubCode] = useState('');
   const [classRoll, setClassRoll] = useState('');
@@ -46,7 +47,19 @@ export default function JoinHubPage() {
 
     if (localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
-      await refreshProfile();
+      // Join = student role
+      setRole('student');
+      if (authUser) {
+        setAuthUser({ ...authUser, role: 'student', sectionId: 'demo-section' });
+      }
+      setHub({
+        hubCode: hubCode,
+        section: 'Demo Section',
+        hubName: 'Demo Hub',
+        institution: 'SKIT',
+        classRoll: classRoll,
+        universityRoll: universityRoll.toUpperCase(),
+      });
       showToast('Joined hub successfully! Welcome 🎉', 'success');
       navigate('/app/home');
       return;
@@ -61,7 +74,7 @@ export default function JoinHubPage() {
 
       if (error) throw error;
 
-      // Refresh profile so auth hook picks up new section_id
+      // Refresh profile from backend so route guard sees new sectionId
       await refreshProfile();
       showToast('Joined hub successfully! Welcome 🎉', 'success');
       navigate('/app/home');

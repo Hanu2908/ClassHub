@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Share2, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/useAuth';
+import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 
 const classRollRegex = /^\d{2}$/;
@@ -19,7 +19,8 @@ function FieldError({ msg }: { msg?: string }) {
 
 export default function CreateHubPage() {
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { setRole, setHub, refreshProfile, authUser } = useAppStore();
+  const setAuthUser = useAppStore(s => s.setAuthUser);
 
   const [sectionCode, setSectionCode] = useState('');
   const [hubName, setHubName] = useState('');
@@ -49,8 +50,20 @@ export default function CreateHubPage() {
 
     if (localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
+      // Creator = CR role
+      setRole('cr');
+      if (authUser) {
+        setAuthUser({ ...authUser, role: 'cr', sectionId: 'demo-section' });
+      }
+      setHub({
+        hubCode: inviteCode,
+        section: sectionCode.toUpperCase(),
+        hubName: hubName,
+        institution: 'SKIT',
+        classRoll: classRoll,
+        universityRoll: universityRoll.toUpperCase(),
+      });
       setGeneratedCode(inviteCode);
-      await refreshProfile();
       setLoading(false);
       return;
     }
@@ -69,7 +82,7 @@ export default function CreateHubPage() {
       const returnedCode = data?.invite_code ?? inviteCode;
       setGeneratedCode(returnedCode);
 
-      // Refresh profile so auth hook picks up new section_id + CR role
+      // Refresh profile from backend so route guard sees new sectionId + CR role
       await refreshProfile();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create hub';

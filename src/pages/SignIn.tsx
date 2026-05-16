@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 import { AlertCircle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { signInWithGoogle } from '../components/AuthProvider';
 
 type StateMode = 'idle' | 'loading' | 'error' | 'success';
 
@@ -137,7 +137,6 @@ function GoogleButton({ onClick, disabled, isLoading }: { onClick: () => void; d
 /* ── Page ── */
 export default function SignIn() {
   const [state, setState] = useState<StateMode>('idle');
-  const { signInWithGoogle } = useAuth();
 
   const handleGoogleClick = async () => {
     if (state === 'loading') return;

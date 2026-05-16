@@ -117,6 +117,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
       subject: subject.trim(),
       subjectCode: subjectCode.trim(),
       dueDate: new Date(dueDate).toISOString(),
+      createdAt: new Date().toISOString(),
       description: description.trim(),
       status: 'pending',
       pdfUrl: pdfFile ? URL.createObjectURL(pdfFile) : null,

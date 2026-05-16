@@ -4,6 +4,7 @@ import {
   mockAttendance, mockAssignments, mockAnnouncements,
   mockPolls, mockSchedule,
 } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 
 // ── Exported types — backend-ready interfaces ─────────────────────────────────
 // All interfaces are shaped to match what a REST/Supabase backend would return.
@@ -14,6 +15,19 @@ export interface UserInfo {
   name: string;
   email: string;
   avatarUrl: string | null;
+}
+
+// Full auth user profile — superset of UserInfo used by auth system
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  role: 'student' | 'cr';
+  sectionId: string | null;
+  sectionRoll: string | null;
+  universityRoll: string | null;
+  dayScholar: boolean;
 }
 
 export interface HubInfo {
@@ -126,11 +140,15 @@ export function isExpired(isoDeadline: string | null | undefined): boolean {
 // ── Store interface ───────────────────────────────────────────────────────────
 
 interface AppState {
-  // Auth
-  user: UserInfo | null;
+  // Auth (centralized — single source of truth)
+  authUser: AuthUser | null;    // Full auth profile
   session: any | null;
+  isAuthLoading: boolean;       // True while bootstrapping auth
   role: 'student' | 'cr';
   isFirstTime: boolean;
+
+  // Legacy alias (kept for backward compat with pages that read `user`)
+  user: UserInfo | null;
 
   // Hub
   hub: HubInfo | null;
@@ -165,11 +183,14 @@ interface AppState {
 
   // ── Actions ──
   setUser: (user: UserInfo | null) => void;
+  setAuthUser: (authUser: AuthUser | null) => void;
   setSession: (session: any | null) => void;
+  setAuthLoading: (loading: boolean) => void;
   setRole: (role: 'student' | 'cr') => void;
   setHub: (hub: HubInfo | null) => void;
   setActiveTab: (tab: AppState['activeTab']) => void;
   setFirstTime: (v: boolean) => void;
+  refreshProfile: () => Promise<void>;
 
   acknowledge: (id: string) => void;
   vote: (pollId: string, optionId: string) => void;
@@ -232,9 +253,12 @@ function buildInitialPolls(): Poll[] {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      // Auth
+      authUser: null,
       user: null,
       session: null,
+      isAuthLoading: true,
       role: 'student',
       isFirstTime: false,
       hub: null,
@@ -257,11 +281,61 @@ export const useAppStore = create<AppState>()(
 
       // ── Setters ──
       setUser: (user) => set({ user }),
+      setAuthUser: (authUser) => {
+        if (authUser) {
+          set({
+            authUser,
+            user: { id: authUser.id, name: authUser.name, email: authUser.email, avatarUrl: authUser.avatarUrl },
+            role: authUser.role,
+          });
+        } else {
+          set({ authUser: null, user: null });
+        }
+      },
       setSession: (session) => set({ session }),
+      setAuthLoading: (isAuthLoading) => set({ isAuthLoading }),
       setRole: (role) => set({ role }),
       setHub: (hub) => set({ hub }),
       setActiveTab: (activeTab) => set({ activeTab }),
       setFirstTime: (isFirstTime) => set({ isFirstTime }),
+
+      // Refresh profile from Supabase (live mode) or localStorage (demo mode)
+      refreshProfile: async () => {
+        if (localStorage.getItem('demo_mode') === 'true') {
+          const currentAuth = get().authUser;
+          if (currentAuth) {
+            set({
+              authUser: { ...currentAuth, sectionId: localStorage.getItem('demo_section_id') || null },
+            });
+          }
+          return;
+        }
+        // Live mode: fetch from Supabase
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!currentSession?.user) return;
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, email, avatar_url, role, section_id, section_roll, university_roll, day_scholar')
+          .eq('id', currentSession.user.id)
+          .single();
+        if (error || !data) return;
+        const profile: AuthUser = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          avatarUrl: data.avatar_url ?? null,
+          role: data.role as 'student' | 'cr',
+          sectionId: data.section_id,
+          sectionRoll: data.section_roll,
+          universityRoll: data.university_roll,
+          dayScholar: data.day_scholar,
+        };
+        set({
+          authUser: profile,
+          user: { id: profile.id, name: profile.name, email: profile.email, avatarUrl: profile.avatarUrl },
+          role: profile.role,
+        });
+      },
 
       acknowledge: (id) =>
         set((s) => ({ acknowledgedIds: [...s.acknowledgedIds, id] })),
@@ -358,7 +432,8 @@ export const useAppStore = create<AppState>()(
       // ── Sign out ──
       signOut: () =>
         set({
-          user: null, session: null, role: 'student',
+          authUser: null, user: null, session: null, role: 'student',
+          isAuthLoading: false,
           hub: null, isFirstTime: false,
           acknowledgedIds: [], pollVotes: {}, submissions: {}, studentSubmissions: {},
           assignments: buildInitialAssignments(),

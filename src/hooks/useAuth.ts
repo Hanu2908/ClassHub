@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
-
+import { useAppStore } from '../store/appStore';
 // ── Types ───────────────────────────────────────────────────
 export interface UserProfile {
   id: string;
@@ -67,13 +67,15 @@ export function useAuth(): AuthState & {
 } {
   const isDemoMode = localStorage.getItem('demo_mode') === 'true';
   const demoSession = isDemoMode ? ({ user: { id: 'demo' } } as unknown as Session) : null;
+  // Role is set by onboarding flow (Join=student, Create=cr) and persisted in appStore
+  const persistedRole = isDemoMode ? useAppStore.getState().role : 'student';
   const demoProfile = isDemoMode ? ({
     id: 'demo-user',
     name: 'Demo Student',
     email: 'demo@skit.ac.in',
     avatarUrl: null,
-    role: 'cr', // Set role to CR for demo purposes
-    sectionId: localStorage.getItem('demo_section_id') || null, // Keep null to test onboarding
+    role: persistedRole,
+    sectionId: localStorage.getItem('demo_section_id') || null,
     sectionRoll: null,
     universityRoll: null,
     dayScholar: true,
@@ -216,13 +218,23 @@ export function useAuth(): AuthState & {
   const signOut = useCallback(async () => {
     if (localStorage.getItem('demo_mode') === 'true') {
       localStorage.removeItem('demo_mode');
+      localStorage.removeItem('demo_section_id');
     } else {
       await supabase.auth.signOut();
     }
+    // Clear persisted zustand store so stale user/role data doesn't survive
+    useAppStore.getState().signOut();
     setSession(null);
     setUser(null);
     navigate('/');
   }, [navigate]);
+
+  // Sync role to appStore whenever auth user changes (live mode)
+  useEffect(() => {
+    if (user?.role) {
+      useAppStore.getState().setRole(user.role);
+    }
+  }, [user?.role]);
 
   return {
     session,
