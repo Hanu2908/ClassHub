@@ -65,13 +65,31 @@ export function useAuth(): AuthState & {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 } {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const isDemoMode = localStorage.getItem('demo_mode') === 'true';
+  const demoSession = isDemoMode ? ({ user: { id: 'demo' } } as unknown as Session) : null;
+  const demoProfile = isDemoMode ? ({
+    id: 'demo-user',
+    name: 'Demo Student',
+    email: 'demo@skit.ac.in',
+    avatarUrl: null,
+    role: 'cr', // Set role to CR for demo purposes
+    sectionId: localStorage.getItem('demo_section_id') || null, // Keep null to test onboarding
+    sectionRoll: null,
+    universityRoll: null,
+    dayScholar: true,
+  } as UserProfile) : null;
+
+  const [session, setSession] = useState<Session | null>(demoSession);
+  const [user, setUser] = useState<UserProfile | null>(demoProfile);
+  const [isLoading, setIsLoading] = useState(!isDemoMode);
   const navigate = useNavigate();
 
   // Fetch or refresh user profile from DB
   const refreshProfile = useCallback(async () => {
+    if (localStorage.getItem('demo_mode') === 'true') {
+      setUser(prev => prev ? { ...prev, sectionId: localStorage.getItem('demo_section_id') || null } : null);
+      return;
+    }
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     if (!currentSession?.user) {
       setUser(null);
@@ -102,6 +120,10 @@ export function useAuth(): AuthState & {
     let mounted = true;
 
     const bootstrap = async () => {
+      if (localStorage.getItem('demo_mode') === 'true') {
+        setIsLoading(false);
+        return;
+      }
       const { data: { session: initialSession } } = await supabase.auth.getSession();
 
       if (!mounted) return;
@@ -192,7 +214,11 @@ export function useAuth(): AuthState & {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (localStorage.getItem('demo_mode') === 'true') {
+      localStorage.removeItem('demo_mode');
+    } else {
+      await supabase.auth.signOut();
+    }
     setSession(null);
     setUser(null);
     navigate('/');

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { AlertCircle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -137,7 +137,6 @@ function GoogleButton({ onClick, disabled, isLoading }: { onClick: () => void; d
 /* ── Page ── */
 export default function SignIn() {
   const [state, setState] = useState<StateMode>('idle');
-  const navigate = useNavigate();
   const { signInWithGoogle } = useAuth();
 
   const handleGoogleClick = async () => {
@@ -158,7 +157,8 @@ export default function SignIn() {
     clickCount.current++;
     if (clickCount.current >= 5) {
       clickCount.current = 0;
-      navigate('/onboarding/choice');
+      localStorage.setItem('demo_mode', 'true');
+      window.location.href = '/onboarding/choice'; // Force reload to initialize demo session
     }
   };
 

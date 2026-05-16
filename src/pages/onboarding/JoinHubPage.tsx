@@ -44,6 +44,14 @@ export default function JoinHubPage() {
     if (!validate()) return;
     setLoading(true);
 
+    if (localStorage.getItem('demo_mode') === 'true') {
+      localStorage.setItem('demo_section_id', 'demo-section');
+      await refreshProfile();
+      showToast('Joined hub successfully! Welcome 🎉', 'success');
+      navigate('/app/home');
+      return;
+    }
+
     try {
       const { error } = await supabase.rpc('join_section', {
         invite: hubCode.toUpperCase(),

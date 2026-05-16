@@ -47,6 +47,14 @@ export default function CreateHubPage() {
     // Generate invite code matching DB regex: ^[A-Z0-9]{2}[A-Z]{4}$
     const inviteCode = sectionCode.toUpperCase().slice(0, 2) + randomAlpha(4);
 
+    if (localStorage.getItem('demo_mode') === 'true') {
+      localStorage.setItem('demo_section_id', 'demo-section');
+      setGeneratedCode(inviteCode);
+      await refreshProfile();
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase.rpc('create_section_hub', {
         section_name: hubName,
