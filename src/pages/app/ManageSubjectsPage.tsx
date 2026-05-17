@@ -1,0 +1,325 @@
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  ArrowLeft, Plus, BookOpen, Trash2, Edit3, Check, AlertTriangle 
+} from 'lucide-react';
+import { useSubjects, useMutateSubjects } from '../../hooks/useSupabaseQuery';
+import { BottomSheet } from '../../components/BottomSheet';
+import { showToast } from '../../components/Toast';
+
+// ── Gradient Generator ────────────────────────────────────────────────────────
+// Generates a deterministic, vibrant CSS gradient from a string (e.g. subject code)
+function generateGradient(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
+  const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
+  return `linear-gradient(135deg, ${c1}, ${c2})`;
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+type SubjectFormState = { id?: string; code: string; name: string; semester: string };
+
+// ── Page Component ────────────────────────────────────────────────────────────
+export default function ManageSubjectsPage() {
+  const navigate = useNavigate();
+  const { data: subjects = [], isLoading } = useSubjects();
+  const mutateSubjects = useMutateSubjects();
+
+  // State
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<SubjectFormState>({ code: '', name: '', semester: '' });
+  
+  // Deletion Modal
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Auto-detect max semester
+  const maxSemester = useMemo(() => {
+    if (subjects.length === 0) return 1;
+    return Math.max(...subjects.map(s => s.semester));
+  }, [subjects]);
+
+  const openForm = (subject?: typeof subjects[0]) => {
+    if (subject) {
+      setEditingId(subject.id);
+      setFormData({ 
+        code: subject.code, 
+        name: subject.name, 
+        semester: subject.semester.toString() 
+      });
+    } else {
+      setEditingId(null);
+      setFormData({ code: '', name: '', semester: maxSemester.toString() });
+    }
+    setFormOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.code.trim() || !formData.name.trim() || !formData.semester.trim()) {
+      showToast('Please fill all fields', 'error');
+      return;
+    }
+    const sem = parseInt(formData.semester, 10);
+    if (isNaN(sem) || sem < 1) {
+      showToast('Semester must be a valid number', 'error');
+      return;
+    }
+
+    const payload = {
+      code: formData.code.toUpperCase(),
+      name: formData.name,
+      semester: sem,
+    };
+
+    if (editingId) {
+      mutateSubjects.mutate({ action: 'update', subject: { ...payload, id: editingId } }, {
+        onSuccess: () => {
+          showToast('Subject updated', 'success');
+          setFormOpen(false);
+        }
+      });
+    } else {
+      mutateSubjects.mutate({ action: 'create', subject: payload }, {
+        onSuccess: () => {
+          showToast('Subject created', 'success');
+          setFormOpen(false);
+        }
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (!deleteConfirmId) return;
+    mutateSubjects.mutate({ action: 'delete', subject: { id: deleteConfirmId } }, {
+      onSuccess: () => {
+        showToast('Subject deleted', 'success');
+        setDeleteConfirmId(null);
+      }
+    });
+  };
+
+  return (
+    <div className="page-shell" style={{ backgroundColor: '#09090b', minHeight: '100vh', paddingBottom: 40 }}>
+      {/* Editorial Sticky Header */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 40,
+        background: 'rgba(9, 9, 11, 0.75)', backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => navigate(-1)} style={{ 
+            background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 4 
+          }}>
+            <ArrowLeft size={22} />
+          </button>
+          <div>
+            <h1 style={{ font: '600 18px var(--font-display)', color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
+              Curriculum
+            </h1>
+            <p style={{ font: '400 12px var(--font-mono)', color: '#71717a', margin: 0 }}>
+              {subjects.length} Subjects Total
+            </p>
+          </div>
+        </div>
+        <button 
+          onClick={() => openForm()}
+          style={{
+            background: '#fff', color: '#000', border: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 36, height: 36, borderRadius: '50%', cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(255,255,255,0.1)'
+          }}
+        >
+          <Plus size={20} />
+        </button>
+      </header>
+
+      {/* Main Content */}
+      <main style={{ padding: '24px 20px' }}>
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#71717a' }}>Loading subjects...</div>
+        ) : subjects.length === 0 ? (
+          <div style={{ 
+            textAlign: 'center', padding: '60px 20px', 
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)',
+            border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 24, marginTop: 20 
+          }}>
+            <BookOpen size={32} color="#52525b" style={{ marginBottom: 16 }} />
+            <h2 style={{ font: '500 16px var(--font-display)', color: '#fff', marginBottom: 8 }}>No Subjects Yet</h2>
+            <p style={{ font: '400 14px var(--font-body)', color: '#a1a1aa', marginBottom: 24 }}>
+              Add your section's first subject to start tracking attendance and assignments.
+            </p>
+            <button 
+              onClick={() => openForm()}
+              style={{
+                background: 'var(--accent-primary)', color: '#fff', border: 'none',
+                padding: '10px 20px', borderRadius: 100, font: '500 14px var(--font-body)', cursor: 'pointer'
+              }}
+            >
+              Add First Subject
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {subjects.map(subject => (
+              <div key={subject.id} style={{
+                position: 'relative', overflow: 'hidden',
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+                borderRadius: 20, padding: 16, display: 'flex', alignItems: 'center', gap: 16,
+                transition: 'transform 0.2s, background 0.2s'
+              }}>
+                {/* Visual Avatar */}
+                <div style={{
+                  width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+                  background: generateGradient(subject.code),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)'
+                }}>
+                  <span style={{ font: '700 16px var(--font-display)', color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                    {subject.code.slice(0, 2)}
+                  </span>
+                </div>
+
+                {/* Details */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ font: '600 15px var(--font-display)', color: '#fff', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {subject.name}
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ font: '500 12px var(--font-mono)', color: '#a1a1aa' }}>{subject.code}</span>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#3f3f46' }} />
+                    <span style={{ font: '500 12px var(--font-mono)', color: 'var(--accent-primary)' }}>Sem {subject.semester}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => openForm(subject)} style={{
+                    background: 'rgba(255,255,255,0.05)', border: 'none', color: '#e4e4e7',
+                    width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}>
+                    <Edit3 size={16} />
+                  </button>
+                  <button onClick={() => setDeleteConfirmId(subject.id)} style={{
+                    background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444',
+                    width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Add/Edit Form BottomSheet */}
+      {formOpen && (
+        <BottomSheet onClose={() => setFormOpen(false)} title={editingId ? 'Edit Subject' : 'Add Subject'}>
+          <div style={{ paddingBottom: 24 }}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', font: '500 12px var(--font-mono)', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Subject Code
+              </label>
+              <input 
+                type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                placeholder="e.g. CSUL201"
+                style={{
+                  width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+                  font: '500 16px var(--font-mono)', color: '#fff', outline: 'none'
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', font: '500 12px var(--font-mono)', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Subject Name
+              </label>
+              <input 
+                type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g. Problem Solving Using OOP"
+                style={{
+                  width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+                  font: '400 15px var(--font-body)', color: '#fff', outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', font: '500 12px var(--font-mono)', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Semester (Auto-detected: {maxSemester})
+              </label>
+              <input 
+                type="number" min="1" max="10" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}
+                style={{
+                  width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+                  font: '500 16px var(--font-mono)', color: 'var(--accent-primary)', outline: 'none'
+                }}
+              />
+            </div>
+
+            <button 
+              onClick={handleSave}
+              disabled={mutateSubjects.isPending}
+              style={{
+                width: '100%', padding: '16px', background: '#fff', color: '#000',
+                border: 'none', borderRadius: 12, font: '600 15px var(--font-display)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              }}
+            >
+              <Check size={18} />
+              {mutateSubjects.isPending ? 'Saving...' : 'Save Curriculum'}
+            </button>
+          </div>
+        </BottomSheet>
+      )}
+
+      {/* Destructive Deletion Modal overlay */}
+      {deleteConfirmId && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div style={{
+            background: '#18181b', border: '1px solid #ef4444', borderRadius: 24, padding: 24, width: '100%', maxWidth: 360,
+            boxShadow: '0 20px 40px rgba(239,68,68,0.15)'
+          }}>
+            <div style={{ 
+              width: 48, height: 48, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16
+            }}>
+              <AlertTriangle size={24} />
+            </div>
+            <h3 style={{ font: '600 18px var(--font-display)', color: '#fff', marginBottom: 8 }}>Delete Subject?</h3>
+            <p style={{ font: '400 14px var(--font-body)', color: '#a1a1aa', marginBottom: 24, lineHeight: 1.5 }}>
+              This action is <strong style={{ color: '#ef4444' }}>irreversible</strong>. Deleting this subject will also permanently wipe all associated attendance records and assignments.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setDeleteConfirmId(null)}
+                style={{ flex: 1, padding: 12, background: 'rgba(255,255,255,0.05)', color: '#fff', border: 'none', borderRadius: 10, font: '500 14px var(--font-body)', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDelete}
+                disabled={mutateSubjects.isPending}
+                style={{ flex: 1, padding: 12, background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, font: '600 14px var(--font-body)', cursor: 'pointer' }}
+              >
+                {mutateSubjects.isPending ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

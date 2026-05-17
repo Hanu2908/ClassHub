@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
-  CheckCircle2, XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, Loader,
+  XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, BookOpen,
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -61,7 +61,6 @@ function SubmissionTracker() {
   // For now, submitted status comes from the assignment query enrichment
   const submittedCount = 0; // Will be enriched when submission tracking is built
   const filtered = members;
-  const isNotSubmitted = subFilter === 'not_submitted';
 
   return (
     <div className="card">
@@ -375,6 +374,10 @@ export default function CRCommandPage() {
             <button className="card" onClick={() => navigate('/app/assignments', { state: { openCreate: true } })} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <ClipboardList size={16} color="var(--status-safe)" />
               <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Add Assignment</span>
+            </button>
+            <button className="card" onClick={() => navigate('/app/cr/subjects')} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
+              <BookOpen size={16} color="#c084fc" />
+              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Subjects</span>
             </button>
           </div>
         </section>

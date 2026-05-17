@@ -41,7 +41,6 @@ revoke execute on function public.current_user_section_id() from anon;
 revoke execute on function public.is_cr_for_section(uuid) from anon;
 revoke execute on function public.poll_results(uuid) from anon;
 revoke execute on function public.is_skit_email(text) from anon;
-revoke execute on function public.rls_auto_enable() from anon;
 
 -- ── sections ──────────────────────────────────────────────────────────────────
 create policy "Users read their own section"
@@ -72,9 +71,13 @@ using (id = (select auth.uid()))
 with check (id = (select auth.uid()) and role = (select role from public.users where id = (select auth.uid())));
 
 -- ── subjects ──────────────────────────────────────────────────────────────────
-create policy "CR reads and manages section subjects"
+create policy "Users read section subjects"
+on public.subjects for select to authenticated
+using (section_id = (select public.current_user_section_id()));
+
+create policy "CR manages section subjects"
 on public.subjects for all to authenticated
-using (section_id = (select public.current_user_section_id()))
+using (public.is_cr_for_section(section_id))
 with check (public.is_cr_for_section(section_id));
 
 -- ── timetable_slots ───────────────────────────────────────────────────────────
@@ -96,16 +99,22 @@ on public.timetable_slots for delete to authenticated
 using (public.is_cr_for_section(section_id));
 
 -- ── attendance_records ────────────────────────────────────────────────────────
+create policy "Section members read attendance"
+on public.attendance_records for select to authenticated
+using (
+  user_id = (select auth.uid()) or exists (
+    select 1
+    from public.users u
+    join public.subjects s on s.section_id = u.section_id
+    where u.id = attendance_records.user_id
+      and s.id = attendance_records.subject_id
+      and public.is_cr_for_section(u.section_id)
+  )
+);
+
 create policy "Students manage own attendance"
 on public.attendance_records for all to authenticated
-using (user_id = (select auth.uid()) or exists (
-  select 1
-  from public.users u
-  join public.subjects s on s.section_id = u.section_id
-  where u.id = attendance_records.user_id
-    and s.id = attendance_records.subject_id
-    and public.is_cr_for_section(u.section_id)
-))
+using (user_id = (select auth.uid()))
 with check (user_id = (select auth.uid()));
 
 -- ── announcements ─────────────────────────────────────────────────────────────
