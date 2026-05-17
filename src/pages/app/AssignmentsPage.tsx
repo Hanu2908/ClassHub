@@ -382,7 +382,7 @@ export default function AssignmentsPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                       <h2 style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>{a.title}</h2>
-                      {role === 'cr' && (
+                      {role === 'cr' ? (
                         <button
                           id={`del-assign-${a.id}`}
                           onClick={async () => { try { await deleteAssignmentMutation.mutateAsync(a.id); showToast('Assignment deleted', 'info'); } catch { showToast('Failed to delete', 'error'); } }}
@@ -395,26 +395,26 @@ export default function AssignmentsPage() {
                         >
                           <Trash2 size={13} color="var(--status-critical)" />
                         </button>
-                      )}
+                      ) : null}
                     </div>
                     <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8 }}>{a.subject} · {a.subjectCode}</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span className={`badge ${bdg}`}>{lbl}</span>
-                      {!isSubmitted && (
+                      {!isSubmitted ? (
                         <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>
                           Due {new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
 
-                {a.description && (
+                {a.description ? (
                   <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{a.description}</p>
-                )}
+                ) : null}
 
                 {/* ── Student set banner ── */}
-                {a.hasSets && userSet && (
+                {a.hasSets && userSet ? (
                   <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,171,64,0.35)', background: 'rgba(255,171,64,0.07)', padding: '14px 14px 12px', marginBottom: 12 }}>
                     <p style={{ font: '600 10px var(--font-mono)', color: 'rgba(255,171,64,0.9)', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <AlertTriangle size={10} color="rgba(255,171,64,0.9)" /> YOUR ASSIGNMENT
@@ -431,26 +431,26 @@ export default function AssignmentsPage() {
                       of the attached PDF.
                     </p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {userSet.pdfUrl && (
+                      {userSet.pdfUrl ? (
                         <a href={userSet.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', font: '500 12px var(--font-body)', color: 'var(--accent-primary)', textDecoration: 'none' }}>
                           <ExternalLink size={11} /> Open Set PDF
                         </a>
-                      )}
-                      {a.pdfUrl && !userSet.pdfUrl && (
+                      ) : null}
+                      {a.pdfUrl && !userSet.pdfUrl ? (
                         <a href={a.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', font: '500 12px var(--font-body)', color: 'var(--accent-primary)', textDecoration: 'none' }}>
                           <FileText size={11} /> Open Master PDF
                         </a>
-                      )}
+                      ) : null}
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Non-set PDF link */}
-                {!a.hasSets && a.pdfUrl && (
+                {!a.hasSets && a.pdfUrl ? (
                   <a href={a.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', font: '500 12px var(--font-body)', color: 'var(--text-secondary)', textDecoration: 'none', marginBottom: 12 }}>
                     <FileText size={11} /> View PDF
                   </a>
-                )}
+                ) : null}
 
                 {/* Submit area */}
                 {isSubmitted ? (

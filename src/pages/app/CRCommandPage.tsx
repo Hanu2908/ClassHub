@@ -22,7 +22,7 @@ function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: str
         {icon}
       </div>
       <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>{title}</p>
-      {count !== undefined && (
+      {count !== undefined ? (
         <span style={{
           font: '600 12px var(--font-mono)', color: 'var(--accent-primary)',
           background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)',
@@ -30,7 +30,7 @@ function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: str
         }}>
           {count}
         </span>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -65,7 +65,7 @@ function SubmissionTracker() {
         {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
       </div>
 
-      {expanded && (
+      {expanded ? (
         <>
           {/* Assignment picker */}
           {visible.length > 0 ? (
@@ -133,7 +133,7 @@ function SubmissionTracker() {
                 ))}
               </div>
 
-              {subFilter === 'not_submitted' && filtered.length > 0 && (
+              {subFilter === 'not_submitted' && filtered.length > 0 ? (
                 <button
                   onClick={() => {
                     addNotification({
@@ -152,7 +152,7 @@ function SubmissionTracker() {
                 >
                   <Bell size={14} /> Notify Pending Students
                 </button>
-              )}
+              ) : null}
 
               {/* Student list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
@@ -189,7 +189,7 @@ function SubmissionTracker() {
             </p>
           )}
         </>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -208,7 +208,7 @@ function ClassAttendance() {
           {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
         </div>
 
-        {expanded && (
+        {expanded ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
             {members.length === 0 ? (
               <p style={{ textAlign: 'center', padding: '20px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>No members in section</p>
@@ -238,7 +238,7 @@ function ClassAttendance() {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </>
   );
@@ -369,7 +369,7 @@ export default function CRCommandPage() {
         <div style={{ height: 8 }} />
       </main>
 
-      {showNotifSheet && <SendNotificationSheet onClose={() => setShowNotifSheet(false)} />}
+      {showNotifSheet ? <SendNotificationSheet onClose={() => setShowNotifSheet(false)} /> : null}
 
       <NavBar />
     </div>

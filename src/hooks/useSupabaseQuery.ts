@@ -32,6 +32,7 @@ export function useSection() {
   return useQuery<SectionInfo | null>({
     queryKey: ['section', sectionId],
     enabled: !!sectionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sections')
@@ -66,6 +67,7 @@ export function useSubjects() {
   return useQuery<SubjectInfo[]>({
     queryKey: ['subjects', sectionId],
     enabled: !!sectionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subjects')
@@ -140,6 +142,7 @@ export function useAnnouncements() {
   return useQuery<(Announcement & { isAcknowledged: boolean })[]>({
     queryKey: ['announcements', sectionId],
     enabled: !!sectionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       // Fetch announcements
       const { data: anns, error: annErr } = await supabase
@@ -180,6 +183,7 @@ export function useAssignments() {
   return useQuery<Assignment[]>({
     queryKey: ['assignments', sectionId],
     enabled: !!sectionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       // Fetch assignments with subject info
       const { data: assigns, error } = await supabase
@@ -244,6 +248,7 @@ export function usePolls() {
   return useQuery<(Poll & { userVote: string | null })[]>({
     queryKey: ['polls', sectionId],
     enabled: !!sectionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data: polls, error } = await supabase
         .from('polls')
@@ -271,7 +276,7 @@ export function usePolls() {
       const results: Record<string, Record<string, number>> = {};
       const pollIds = (polls ?? []).map(p => p.id);
       if (pollIds.length > 0) {
-        const { data: batchRes, error: batchErr } = await (supabase.rpc as any)('batch_poll_results', { target_polls: pollIds });
+        const { data: batchRes, error: batchErr } = await supabase.rpc('batch_poll_results', { target_polls: pollIds });
         if (batchErr) throw batchErr;
         const resArray = Array.isArray(batchRes) ? batchRes : [];
         for (const r of resArray) {
@@ -315,6 +320,7 @@ export function useSchedule() {
   return useQuery<ScheduleMap>({
     queryKey: ['schedule', sectionId],
     enabled: !!sectionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
         .from('timetable_slots')
@@ -356,6 +362,7 @@ export function useAttendance() {
   return useQuery<{ subjects: AttendanceSubject[]; overall: number }>({
     queryKey: ['attendance', userId],
     enabled: !!userId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance_records')
@@ -414,6 +421,7 @@ export function useSectionMembers() {
   return useQuery<SectionMember[]>({
     queryKey: ['members', sectionId],
     enabled: !!sectionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')

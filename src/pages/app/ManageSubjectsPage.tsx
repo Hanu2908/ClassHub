@@ -218,7 +218,7 @@ export default function ManageSubjectsPage() {
       </main>
 
       {/* Add/Edit Form BottomSheet */}
-      {formOpen && (
+      {formOpen ? (
         <BottomSheet onClose={() => setFormOpen(false)} title={editingId ? 'Edit Subject' : 'Add Subject'}>
           <div style={{ paddingBottom: 24 }}>
             <div style={{ marginBottom: 16 }}>
@@ -279,10 +279,10 @@ export default function ManageSubjectsPage() {
             </button>
           </div>
         </BottomSheet>
-      )}
+      ) : null}
 
       {/* Destructive Deletion Modal overlay */}
-      {deleteConfirmId && (
+      {deleteConfirmId ? (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 100,
           background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
@@ -319,7 +319,7 @@ export default function ManageSubjectsPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

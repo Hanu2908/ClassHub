@@ -81,9 +81,9 @@ function NotificationSheet({ onClose }: { onClose: () => void }) {
                   border: `1px solid ${n.read ? 'var(--border-default)' : 'rgba(74,158,255,0.2)'}`,
                   borderRadius: 'var(--radius-md)',
                 }}>
-                  {!n.read && (
+                  {!n.read ? (
                     <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent-primary)', flexShrink: 0, marginTop: 4 }} />
-                  )}
+                  ) : null}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>{n.title}</p>
                     <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{n.body}</p>
@@ -444,7 +444,7 @@ export default function DashboardPage() {
       </header>
 
       <main className="page-content">
-        {critical && <CriticalBanner ann={critical} />}
+        {critical ? <CriticalBanner ann={critical} /> : null}
         <ScheduleWidget />
         <AttendancePills />
         <AnnouncementsScroll />
@@ -452,7 +452,7 @@ export default function DashboardPage() {
         <AssignmentsScroll />
       </main>
 
-      {showNotifs && <NotificationSheet onClose={() => setShowNotifs(false)} />}
+      {showNotifs ? <NotificationSheet onClose={() => setShowNotifs(false)} /> : null}
 
       <NavBar />
     </div>

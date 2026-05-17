@@ -789,6 +789,14 @@ export type Database = {
           votes: number
         }[]
       }
+      batch_poll_results: {
+        Args: { target_polls: string[] }
+        Returns: {
+          poll_id: string
+          option_id: string
+          votes: number
+        }[]
+      }
     }
     Enums: {
       announcement_priority: "general" | "critical"
