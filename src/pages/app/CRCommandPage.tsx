@@ -8,16 +8,7 @@ import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { DonutRing } from '../../components/Shared';
 import { useAssignments, useSectionMembers } from '../../hooks/useSupabaseQuery';
-
-// ── Attendance color helper ───────────────────────────────────────────────────
-function attendColor(pct: number) {
-  const r = Math.round(pct);
-  if (r >= 85) return 'var(--status-safe)';
-  if (r >= 75) return 'var(--status-warning)';
-  return 'var(--status-critical)';
-}
 
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
@@ -258,8 +249,6 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
-  const [target, setTarget] = useState<'all' | 'selected'>('all');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -271,21 +260,13 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   const handleSend = () => {
     if (!title.trim()) { showToast('Title is required', 'error'); return; }
     if (!body.trim())  { showToast('Message body is required', 'error'); return; }
-    if (target === 'selected' && selectedIds.size === 0) { showToast('Select at least one student', 'error'); return; }
     setSending(true);
     setTimeout(() => {
       addNotification({ title: title.trim(), body: body.trim(), type: 'cr_broadcast' });
-      showToast(target === 'all' ? 'Notification sent to all students' : `Notification sent to ${selectedIds.size} students`, 'success');
+      showToast('Notification sent to all students', 'success');
       setSending(false);
       onClose();
     }, 600);
-  };
-
-  const toggleStudent = (id: string) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedIds(next);
   };
 
   return (

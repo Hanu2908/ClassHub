@@ -271,9 +271,10 @@ export function usePolls() {
       const results: Record<string, Record<string, number>> = {};
       const pollIds = (polls ?? []).map(p => p.id);
       if (pollIds.length > 0) {
-        const { data: batchRes, error: batchErr } = await supabase.rpc('batch_poll_results', { target_polls: pollIds });
+        const { data: batchRes, error: batchErr } = await (supabase.rpc as any)('batch_poll_results', { target_polls: pollIds });
         if (batchErr) throw batchErr;
-        for (const r of (batchRes ?? [])) {
+        const resArray = Array.isArray(batchRes) ? batchRes : [];
+        for (const r of resArray) {
           if (!results[r.poll_id]) results[r.poll_id] = {};
           results[r.poll_id][r.option_id] = r.votes;
         }

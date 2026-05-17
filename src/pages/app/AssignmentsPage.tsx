@@ -5,7 +5,7 @@ import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
-import type { Assignment, AssignmentSet } from '../../store/appStore';
+import type { AssignmentSet } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { useAssignments, useSubjects } from '../../hooks/useSupabaseQuery';
 import { useCreateAssignment, useDeleteAssignment, useSubmitAssignment } from '../../hooks/useSupabaseMutations';
