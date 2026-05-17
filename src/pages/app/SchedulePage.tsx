@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, X, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
 import { useAppStore, type ScheduleSlot } from '../../store/appStore';
@@ -165,7 +165,7 @@ function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
 
 // ── Legend chip ───────────────────────────────────────────────────────────────
 function LegendChip({ cat }: { cat: SubjectCategory }) {
-  const { color, bg, border } = CATEGORY_COLORS[cat];
+  const { color } = CATEGORY_COLORS[cat];
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />

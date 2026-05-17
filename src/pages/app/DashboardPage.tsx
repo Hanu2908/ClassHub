@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Trash2 } from 'lucide-react';
+import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';

@@ -21,7 +21,11 @@ import CRCommandPage from './pages/app/CRCommandPage';
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const session = useAppStore(s => s.session);
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
-  if (isAuthLoading) return null; // or a full-page skeleton
+  if (isAuthLoading) return (
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
+      <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+    </div>
+  );
   if (!session) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -38,7 +42,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const session = useAppStore(s => s.session);
   const authUser = useAppStore(s => s.authUser);
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
-  if (isAuthLoading) return null;
+  // While auth is loading, show the sign-in page — don't block with blank screen
+  if (isAuthLoading) return <>{children}</>;
   if (session && authUser?.sectionId) return <Navigate to="/app/home" replace />;
   if (session && !authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
   return <>{children}</>;

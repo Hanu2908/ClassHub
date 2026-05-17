@@ -445,6 +445,13 @@ export const useAppStore = create<AppState>()(
           notifications: [],
         }),
     }),
-    { name: 'classhub-store' }
+    { 
+      name: 'classhub-store',
+      partialize: (state) => {
+        // Don't persist volatile auth state — must be resolved fresh each load
+        const { session: _s, isAuthLoading: _l, ...rest } = state;
+        return rest;
+      },
+    }
   )
 );

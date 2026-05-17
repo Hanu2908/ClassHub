@@ -85,30 +85,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const bootstrap = async () => {
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      if (initialSession?.user) {
-        // Domain check
-        if (!initialSession.user.email?.endsWith(SKIT_DOMAIN)) {
-          await supabase.auth.signOut();
-          store.setAuthUser(null);
-          store.setSession(null);
-          store.setAuthLoading(false);
-          navigate('/?error=domain');
-          return;
+        if (initialSession?.user) {
+          // Domain check
+          if (!initialSession.user.email?.endsWith(SKIT_DOMAIN)) {
+            await supabase.auth.signOut();
+            store.setAuthUser(null);
+            store.setSession(null);
+            store.setAuthLoading(false);
+            navigate('/?error=domain');
+            return;
+          }
+
+          store.setSession(initialSession);
+          const profile = await fetchProfile(initialSession.user.id);
+          if (profile) {
+            store.setAuthUser(profile);
+          } else {
+            store.setAuthUser(authUserToBasicProfile(initialSession.user));
+          }
         }
-
-        store.setSession(initialSession);
-        const profile = await fetchProfile(initialSession.user.id);
-        if (profile) {
-          store.setAuthUser(profile);
-        } else {
-          store.setAuthUser(authUserToBasicProfile(initialSession.user));
-        }
+      } catch (err) {
+        console.warn('Auth bootstrap failed:', err);
       }
-      store.setAuthLoading(false);
+      if (mounted) store.setAuthLoading(false);
     };
 
     bootstrap();
