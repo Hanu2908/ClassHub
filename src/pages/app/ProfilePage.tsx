@@ -3,25 +3,31 @@ import { useNavigate } from 'react-router-dom';
 import { Copy, LogOut, Settings, ChevronRight, TrendingUp, Bell, Trash2 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
-import { mockUser, mockHub } from '../../data/mockData';
 import { showToast } from '../../components/Toast';
 import { signOutGlobal } from '../../components/AuthProvider';
+import { useSection } from '../../hooks/useSupabaseQuery';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, role, hub, signOut } = useAppStore();
+  const { authUser, role, hub, signOut } = useAppStore();
+  const { data: section } = useSection();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  const displayName = user?.name ?? mockUser.name;
-  const displayEmail = user?.email ?? mockUser.email;
-  const displayAvatar = user?.avatarUrl;
-  const displayHub = hub ?? mockHub;
+  const displayName = authUser?.name ?? 'Student';
+  const displayEmail = authUser?.email ?? '';
+  const displayAvatar = authUser?.avatarUrl;
   const displayRole = role;
+
+  const hubCode = section?.inviteCode ?? hub?.hubCode ?? '—';
+  const sectionName = section?.name ?? hub?.section ?? '—';
+  const institution = section?.college ?? hub?.institution ?? 'SKIT, Jaipur';
+  const classRoll = authUser?.sectionRoll ?? hub?.classRoll ?? '—';
+  const universityRoll = authUser?.universityRoll ?? hub?.universityRoll ?? '—';
 
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(displayHub.hubCode);
+    navigator.clipboard.writeText(hubCode);
     showToast('Hub code copied!', 'success');
   };
 
@@ -33,8 +39,6 @@ export default function ProfilePage() {
     signOut();
     navigate('/onboarding/choice');
   };
-
-
 
   return (
     <div className="page-shell">
@@ -65,9 +69,9 @@ export default function ProfilePage() {
             <span className={`badge ${displayRole === 'cr' ? 'badge-warning' : 'badge-info'}`}>
               {displayRole === 'cr' ? '⭐ Class Rep' : 'Student'}
             </span>
-            <span className="badge badge-info">{displayHub.section}</span>
+            <span className="badge badge-info">{sectionName}</span>
             <span style={{ font: '400 12px var(--font-mono)', color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
-              Roll {hub?.classRoll ?? mockUser.classRoll}
+              Roll {classRoll}
             </span>
           </div>
         </div>
@@ -77,10 +81,10 @@ export default function ProfilePage() {
           <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>HUB INFO</p>
           <div className="card" style={{ padding: 0 }}>
             {[
-              { label: 'Hub Code', value: displayHub.hubCode, action: <button id="copy-hub-code" onClick={handleCopy} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', font: '500 12px var(--font-body)', display: 'flex', alignItems: 'center', gap: 4 }}><Copy size={13} /> Copy</button> },
-              { label: 'Section', value: displayHub.section },
-              { label: 'Institution', value: displayHub.institution },
-              { label: 'University Roll', value: hub?.universityRoll ?? mockUser.universityRoll },
+              { label: 'Hub Code', value: hubCode, action: <button id="copy-hub-code" onClick={handleCopy} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', font: '500 12px var(--font-body)', display: 'flex', alignItems: 'center', gap: 4 }}><Copy size={13} /> Copy</button> },
+              { label: 'Section', value: sectionName },
+              { label: 'Institution', value: institution },
+              { label: 'University Roll', value: universityRoll },
             ].map((row, i, arr) => (
               <div key={row.label} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -128,8 +132,6 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-
-
 
         {/* Danger zone */}
         <div>

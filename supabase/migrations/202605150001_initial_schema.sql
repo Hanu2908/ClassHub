@@ -33,9 +33,12 @@ create table if not exists public.users (
   updated_at timestamptz not null default now()
 );
 
-alter table if exists public.sections
-  add constraint sections_created_by_fkey
-  foreign key (created_by) references public.users(id) on delete set null;
+do $$ begin
+  alter table if exists public.sections
+    add constraint sections_created_by_fkey
+    foreign key (created_by) references public.users(id) on delete set null;
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.subjects (
   id uuid primary key default gen_random_uuid(),
@@ -333,10 +336,12 @@ begin
     raise exception 'Only @skit.ac.in accounts can create a ClassHub section';
   end if;
 
-  insert into public.sections (name, invite_code, created_by)
-  values (upper(section_name), upper(invite), auth.uid())
+  -- 1. Create section WITHOUT created_by (avoids FK violation since user row doesn't exist yet)
+  insert into public.sections (name, invite_code)
+  values (upper(section_name), upper(invite))
   returning * into created_section;
 
+  -- 2. Create user row (or update if exists) with CR role
   insert into public.users (id, name, email, role, section_id, section_roll, university_roll)
   values (auth.uid(), current_name, current_email, 'cr', created_section.id, class_roll, upper(uni_roll))
   on conflict (id) do update
@@ -346,9 +351,13 @@ begin
         university_roll = excluded.university_roll,
         updated_at = now();
 
+  -- 3. NOW set created_by (user row exists, FK is satisfied)
   update public.sections
   set created_by = auth.uid()
   where id = created_section.id;
+
+  -- Re-fetch to return the updated row with created_by set
+  select * into created_section from public.sections where id = created_section.id;
 
   return created_section;
 end;

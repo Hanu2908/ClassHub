@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, ExternalLink, CheckCircle2, Wand2, Trash2, FileText, Upload, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, ExternalLink, CheckCircle2, Wand2, Trash2, FileText, Upload, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, Loader } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
 import type { Assignment, AssignmentSet } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
+import { useAssignments, useSubjects } from '../../hooks/useSupabaseQuery';
+import { useCreateAssignment, useDeleteAssignment, useSubmitAssignment } from '../../hooks/useSupabaseMutations';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
@@ -44,13 +46,13 @@ function autoGenerate(totalStudents: number, groupSize: number): AssignmentSet[]
 
 // ── CR Wizard ─────────────────────────────────────────────────────────────────
 function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const addAssignment = useAppStore(s => s.addAssignment);
+  const createAssignment = useCreateAssignment();
+  const { data: subjectsList = [] } = useSubjects();
   const [step, setStep] = useState(1);
 
   // Step 1 fields
   const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState('');
-  const [subjectCode, setSubjectCode] = useState('');
+  const [subjectId, setSubjectId] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -62,7 +64,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const [sets, setSets] = useState<AssignmentSet[]>([]);
 
   const reset = () => {
-    setStep(1); setTitle(''); setSubject(''); setSubjectCode('');
+    setStep(1); setTitle(''); setSubjectId('');
     setDueDate(''); setDescription(''); setPdfFile(null); setHasSets(false);
     setTotalStudents(''); setGroupSize(''); setSets([]);
   };
@@ -104,30 +106,30 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
     }]);
   };
 
-  const handlePublish = () => {
-    if (!title.trim() || !subject.trim() || !dueDate) {
+  const handlePublish = async () => {
+    if (!title.trim() || !subjectId || !dueDate) {
       showToast('Fill in all required fields', 'error'); return;
     }
     if (hasSets && sets.length === 0) {
       showToast('Generate or add at least one set', 'error'); return;
     }
-    const newAssignment: Assignment = {
-      id: `as-${Date.now()}`,
-      title: title.trim(),
-      subject: subject.trim(),
-      subjectCode: subjectCode.trim(),
-      dueDate: new Date(dueDate).toISOString(),
-      createdAt: new Date().toISOString(),
-      description: description.trim(),
-      status: 'pending',
-      pdfUrl: pdfFile ? URL.createObjectURL(pdfFile) : null,
-      hasSets,
-      sets: hasSets ? sets : [],
-      submittedLink: null,
-    };
-    addAssignment(newAssignment);
-    showToast('Assignment published! ✓', 'success');
-    handleClose();
+    try {
+      await createAssignment.mutateAsync({
+        title: title.trim(),
+        subjectId,
+        dueDate: new Date(dueDate).toISOString(),
+        description: description.trim() || undefined,
+        sets: hasSets ? sets.map(s => ({
+          label: s.label, description: s.description,
+          rollStart: s.rollStart, rollEnd: s.rollEnd,
+          pdfUrl: s.pdfUrl,
+        })) : undefined,
+      });
+      showToast('Assignment published! ✓', 'success');
+      handleClose();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to publish', 'error');
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -149,15 +151,12 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
             <label style={labelStyle}>Title <span style={{ color: 'var(--status-critical)' }}>*</span></label>
             <input style={inputStyle} placeholder="e.g. DBMS Unit 3 Assignment" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <label style={labelStyle}>Subject <span style={{ color: 'var(--status-critical)' }}>*</span></label>
-              <input style={inputStyle} placeholder="DBMS" value={subject} onChange={e => setSubject(e.target.value)} />
-            </div>
-            <div>
-              <label style={labelStyle}>Code</label>
-              <input style={inputStyle} placeholder="CS-304" value={subjectCode} onChange={e => setSubjectCode(e.target.value)} />
-            </div>
+          <div>
+            <label style={labelStyle}>Subject <span style={{ color: 'var(--status-critical)' }}>*</span></label>
+            <select style={inputStyle} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
+              <option value="">Select subject…</option>
+              {subjectsList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+            </select>
           </div>
           <div>
             <label style={labelStyle}>Due Date & Time <span style={{ color: 'var(--status-critical)' }}>*</span></label>
@@ -209,8 +208,8 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn-secondary" style={{ flex: 1 }} onClick={handleClose}>Cancel</button>
             {hasSets
-              ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subject.trim() || !dueDate) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
-              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish}>Publish</button>
+              ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
+              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={createAssignment.isPending}>{createAssignment.isPending ? 'Publishing…' : 'Publish'}</button>
             }
           </div>
         </div>
@@ -314,20 +313,26 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AssignmentsPage() {
   const navigate = useNavigate();
-  const { submissions, submit, hub, assignments, deleteAssignment, role } = useAppStore();
-  const classRoll = hub?.classRoll ?? '17';
+  const role = useAppStore(s => s.role);
+  const authUser = useAppStore(s => s.authUser);
+  const classRoll = authUser?.sectionRoll ?? '17';
+  const { data: assignments = [], isLoading } = useAssignments();
+  const deleteAssignmentMutation = useDeleteAssignment();
+  const submitMutation = useSubmitAssignment();
 
   const [filter, setFilter] = useState<Filter>('all');
   const [createOpen, setCreateOpen] = useState(false);
 
-  const handleMarkSubmitted = (id: string) => {
-    submit(id, 'marked-submitted');
-    showToast('Marked as submitted ✓', 'success');
+  const handleMarkSubmitted = async (id: string) => {
+    try {
+      await submitMutation.mutateAsync({ assignmentId: id, link: 'marked-submitted' });
+      showToast('Marked as submitted ✓', 'success');
+    } catch { showToast('Failed to submit', 'error'); }
   };
 
   // 2-day post-deadline expiry
   const enriched = assignments.filter(a => !isExpired(a.dueDate)).map(a => {
-    const isSubmitted = !!submissions[a.id] || a.status === 'submitted';
+    const isSubmitted = a.status === 'submitted';
     const diff = new Date(a.dueDate).getTime() - Date.now();
     const isOverdue = diff < 0 && !isSubmitted;
     return { ...a, isSubmitted, isOverdue };
@@ -358,7 +363,9 @@ export default function AssignmentsPage() {
       </header>
 
       <main className="page-content">
-        {filtered.length === 0
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}><Loader size={24} color="var(--accent-primary)" className="spin" /></div>
+        ) : filtered.length === 0
           ? <EmptyState icon={<PartyPopper size={36} color="var(--text-muted)" />} title="All clear!" subtitle="No assignments in this category" />
           : filtered.map(a => {
             const userSet = getUserSet(classRoll, a.sets ?? []);
@@ -378,7 +385,7 @@ export default function AssignmentsPage() {
                       {role === 'cr' && (
                         <button
                           id={`del-assign-${a.id}`}
-                          onClick={() => { deleteAssignment(a.id); showToast('Assignment deleted', 'info'); }}
+                          onClick={async () => { try { await deleteAssignmentMutation.mutateAsync(a.id); showToast('Assignment deleted', 'info'); } catch { showToast('Failed to delete', 'error'); } }}
                           style={{
                             background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
                             borderRadius: 8, padding: '5px', cursor: 'pointer',

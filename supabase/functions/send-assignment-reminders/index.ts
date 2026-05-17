@@ -1,9 +1,10 @@
-import { corsHeaders } from "../_shared/cors.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 import { getFunctionContext, requireCr } from "../_shared/auth.ts";
 import { sendWebPush } from "../_shared/push.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const headers = getCorsHeaders(req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers });
 
   try {
     const { assignmentId } = await req.json();
@@ -59,10 +60,10 @@ Deno.serve(async (req) => {
 
     await serviceClient.from("assignments").update({ nudge_sent: true }).eq("id", assignment.id);
 
-    return Response.json({ pending: pendingIds.length, sent: subscriptions?.length ?? 0 }, { headers: corsHeaders });
+    return Response.json({ pending: pendingIds.length, sent: subscriptions?.length ?? 0 }, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message.includes("CR role required") ? 403 : 400;
-    return Response.json({ error: message }, { status, headers: corsHeaders });
+    return Response.json({ error: message }, { status, headers });
   }
 });
