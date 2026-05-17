@@ -1,14 +1,14 @@
 create extension if not exists pgcrypto;
 
-create type public.user_role as enum ('student', 'cr');
-create type public.announcement_priority as enum ('general', 'critical');
-create type public.submission_status as enum ('pending', 'submitted');
-create type public.poll_type as enum ('general', 'actionable');
-create type public.slot_type as enum ('lecture', 'lab', 'tutorial', 'other');
-create type public.notification_kind as enum ('critical_announcement', 'ack_nudge', 'assignment_reminder');
-create type public.notification_status as enum ('queued', 'sent', 'failed');
+do $$ begin create type public.user_role as enum ('student', 'cr'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.announcement_priority as enum ('general', 'critical'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.submission_status as enum ('pending', 'submitted'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.poll_type as enum ('general', 'actionable'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.slot_type as enum ('lecture', 'lab', 'tutorial', 'other'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.notification_kind as enum ('critical_announcement', 'ack_nudge', 'assignment_reminder'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.notification_status as enum ('queued', 'sent', 'failed'); exception when duplicate_object then null; end $$;
 
-create table public.sections (
+create table if not exists public.sections (
   id uuid primary key default gen_random_uuid(),
   college text not null default 'SKIT Jaipur',
   name text not null,
@@ -18,7 +18,7 @@ create table public.sections (
   unique (college, name)
 );
 
-create table public.users (
+create table if not exists public.users (
   id uuid primary key references auth.users(id) on delete cascade,
   name text not null,
   email text not null unique check (email ~* '^[^@]+@skit\.ac\.in$'),
@@ -33,11 +33,11 @@ create table public.users (
   updated_at timestamptz not null default now()
 );
 
-alter table public.sections
+alter table if exists public.sections
   add constraint sections_created_by_fkey
   foreign key (created_by) references public.users(id) on delete set null;
 
-create table public.subjects (
+create table if not exists public.subjects (
   id uuid primary key default gen_random_uuid(),
   section_id uuid not null references public.sections(id) on delete cascade,
   code text not null,
@@ -48,7 +48,7 @@ create table public.subjects (
   unique (section_id, code)
 );
 
-create table public.timetable_slots (
+create table if not exists public.timetable_slots (
   id uuid primary key default gen_random_uuid(),
   section_id uuid not null references public.sections(id) on delete cascade,
   subject_id uuid references public.subjects(id) on delete set null,
@@ -63,7 +63,7 @@ create table public.timetable_slots (
   check (end_time > start_time)
 );
 
-create table public.attendance_records (
+create table if not exists public.attendance_records (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
   subject_id uuid not null references public.subjects(id) on delete cascade,
@@ -80,7 +80,7 @@ create table public.attendance_records (
   unique (user_id, subject_id)
 );
 
-create table public.announcements (
+create table if not exists public.announcements (
   id uuid primary key default gen_random_uuid(),
   section_id uuid not null references public.sections(id) on delete cascade,
   author_id uuid not null references public.users(id) on delete restrict,
@@ -95,7 +95,7 @@ create table public.announcements (
   created_at timestamptz not null default now()
 );
 
-create table public.acknowledgments (
+create table if not exists public.acknowledgments (
   id uuid primary key default gen_random_uuid(),
   announcement_id uuid not null references public.announcements(id) on delete cascade,
   user_id uuid not null references public.users(id) on delete cascade,
@@ -103,7 +103,7 @@ create table public.acknowledgments (
   unique (announcement_id, user_id)
 );
 
-create table public.assignments (
+create table if not exists public.assignments (
   id uuid primary key default gen_random_uuid(),
   section_id uuid not null references public.sections(id) on delete cascade,
   subject_id uuid not null references public.subjects(id) on delete restrict,
@@ -115,7 +115,7 @@ create table public.assignments (
   created_at timestamptz not null default now()
 );
 
-create table public.assignment_sets (
+create table if not exists public.assignment_sets (
   id uuid primary key default gen_random_uuid(),
   assignment_id uuid not null references public.assignments(id) on delete cascade,
   set_label text not null,
@@ -127,7 +127,7 @@ create table public.assignment_sets (
   unique (assignment_id, set_label)
 );
 
-create table public.submissions (
+create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
   assignment_id uuid not null references public.assignments(id) on delete cascade,
   student_id uuid not null references public.users(id) on delete cascade,
@@ -139,7 +139,7 @@ create table public.submissions (
   check ((status = 'pending' and submission_link is null) or (status = 'submitted' and submission_link is not null))
 );
 
-create table public.polls (
+create table if not exists public.polls (
   id uuid primary key default gen_random_uuid(),
   section_id uuid not null references public.sections(id) on delete cascade,
   created_by uuid not null references public.users(id) on delete restrict,
@@ -150,7 +150,7 @@ create table public.polls (
   created_at timestamptz not null default now()
 );
 
-create table public.poll_options (
+create table if not exists public.poll_options (
   id uuid primary key default gen_random_uuid(),
   poll_id uuid not null references public.polls(id) on delete cascade,
   label text not null,
@@ -158,7 +158,7 @@ create table public.poll_options (
   unique (poll_id, label)
 );
 
-create table public.votes (
+create table if not exists public.votes (
   id uuid primary key default gen_random_uuid(),
   poll_id uuid not null references public.polls(id) on delete cascade,
   option_id uuid not null references public.poll_options(id) on delete cascade,
@@ -170,7 +170,7 @@ create table public.votes (
   check (student_id is not null or anonymous_token is not null)
 );
 
-create table public.push_subscriptions (
+create table if not exists public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
   endpoint text not null unique,
@@ -181,7 +181,7 @@ create table public.push_subscriptions (
   updated_at timestamptz not null default now()
 );
 
-create table public.notification_events (
+create table if not exists public.notification_events (
   id uuid primary key default gen_random_uuid(),
   section_id uuid references public.sections(id) on delete cascade,
   recipient_id uuid references public.users(id) on delete cascade,
@@ -195,15 +195,15 @@ create table public.notification_events (
   created_at timestamptz not null default now()
 );
 
-create index users_section_role_idx on public.users(section_id, role);
-create index subjects_section_idx on public.subjects(section_id);
-create index timetable_section_day_idx on public.timetable_slots(section_id, day_of_week, start_time);
-create index announcements_section_created_idx on public.announcements(section_id, priority, created_at desc);
-create index assignments_section_due_idx on public.assignments(section_id, due_date);
-create index submissions_assignment_status_idx on public.submissions(assignment_id, status);
-create index polls_section_active_idx on public.polls(section_id, is_active, expires_at);
-create index votes_poll_option_idx on public.votes(poll_id, option_id);
-create index notification_target_idx on public.notification_events(target_table, target_id);
+create index if not exists users_section_role_idx on public.users(section_id, role);
+create index if not exists subjects_section_idx on public.subjects(section_id);
+create index if not exists timetable_section_day_idx on public.timetable_slots(section_id, day_of_week, start_time);
+create index if not exists announcements_section_created_idx on public.announcements(section_id, priority, created_at desc);
+create index if not exists assignments_section_due_idx on public.assignments(section_id, due_date);
+create index if not exists submissions_assignment_status_idx on public.submissions(assignment_id, status);
+create index if not exists polls_section_active_idx on public.polls(section_id, is_active, expires_at);
+create index if not exists votes_poll_option_idx on public.votes(poll_id, option_id);
+create index if not exists notification_target_idx on public.notification_events(target_table, target_id);
 
 create or replace function public.touch_updated_at()
 returns trigger
@@ -215,12 +215,15 @@ begin
 end;
 $$;
 
+drop trigger if exists users_touch_updated_at on public.users;
 create trigger users_touch_updated_at before update on public.users
 for each row execute function public.touch_updated_at();
 
+drop trigger if exists timetable_touch_updated_at on public.timetable_slots;
 create trigger timetable_touch_updated_at before update on public.timetable_slots
 for each row execute function public.touch_updated_at();
 
+drop trigger if exists push_subscriptions_touch_updated_at on public.push_subscriptions;
 create trigger push_subscriptions_touch_updated_at before update on public.push_subscriptions
 for each row execute function public.touch_updated_at();
 
@@ -379,10 +382,14 @@ as $$
   from counts, total;
 $$;
 
-alter publication supabase_realtime add table public.announcements;
-alter publication supabase_realtime add table public.acknowledgments;
-alter publication supabase_realtime add table public.assignments;
-alter publication supabase_realtime add table public.submissions;
-alter publication supabase_realtime add table public.polls;
-alter publication supabase_realtime add table public.votes;
-alter publication supabase_realtime add table public.timetable_slots;
+do $$ 
+begin 
+  alter publication supabase_realtime add table public.announcements;
+  alter publication supabase_realtime add table public.acknowledgments;
+  alter publication supabase_realtime add table public.assignments;
+  alter publication supabase_realtime add table public.submissions;
+  alter publication supabase_realtime add table public.polls;
+  alter publication supabase_realtime add table public.votes;
+  alter publication supabase_realtime add table public.timetable_slots;
+exception when duplicate_object then null; 
+end $$;

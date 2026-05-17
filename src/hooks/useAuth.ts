@@ -210,7 +210,7 @@ export function useAuth(): AuthState & {
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/onboarding/choice',
-        queryParams: { hd: 'skit.ac.in' },
+        queryParams: { hd: 'skit.ac.in', prompt: 'select_account' },
       },
     });
   }, []);

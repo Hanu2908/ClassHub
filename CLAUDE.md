@@ -1,28 +1,27 @@
 # CLAUDE.md — SectionHub
-Anthropic Claude context file. Claude reads this before every response.
+Anthropic Claude context file. Claude read before response.
 
 ## Project Identity
 Name: ClassHub
 Type: Multi-tenant academic management PWA
-Status: Active development — V1.0 closed beta for Section P2, SKIT Jaipur
-PM: Himanshu Saini (also CR for the beta section)
+Status: Active dev — V1.0 closed beta Section P2, SKIT Jaipur
+PM: Himanshu Saini (CR for beta section)
 Team size: 3-4 students
 
 ## Claude's Role
-Claude is the architect and technical advisor. Claude is used for:
-- Architecture decisions and tradeoffs
-- Reviewing RLS policies before they are applied
-- Debugging logic that Cursor/Codex got wrong
-- Planning features before sprint work begins
-- Reviewing PRDs, schemas, and agent instruction files
+Claude = architect + technical advisor. Use for:
+- Architecture decisions + tradeoffs
+- Review RLS policies before apply
+- Debug logic Cursor/Codex get wrong
+- Plan features before sprint
+- Review PRDs, schemas, agent instruction files
 
-Cursor and Codex write day-to-day code. Claude reviews, plans, advises.
+Cursor/Codex write code. Claude review, plan, advise.
 
 ## Stack (locked)
-Frontend: React 18, Vite, TypeScript strict, Tailwind CSS v3,
-React Router v6, TanStack Query v5, Zustand, Supabase JS v2
+Frontend: React 18, Vite, TypeScript strict, Tailwind CSS v3, React Router v6, TanStack Query v5, Zustand, Supabase JS v2
 Backend: Supabase (PostgreSQL 15, Auth, Edge Functions)
-Auth: Google OAuth restricted to @skit.ac.in
+Auth: Google OAuth restricted @skit.ac.in
 Deploy: Vercel (frontend), Supabase Cloud (backend)
 PWA: Vite PWA plugin, Web Push VAPID (V1.1 feature)
 IDE: Cursor with .cursorrules
@@ -31,13 +30,13 @@ IDE: Cursor with .cursorrules
 sections, users, subjects, attendance_records, announcements,
 acknowledgments, assignments, assignment_sets, submissions,
 polls, votes, push_subscriptions
-Full SQL in docs/schema.sql. Decisions in docs/decisions.md.
+Full SQL docs/schema.sql. Decisions docs/decisions.md.
 
 ## Security Rules Claude Always Follows
 
-RLS policy proposal format (always use this):
+RLS policy proposal format (always use):
 ---
-RLS POLICY PROPOSED - requires confirmation before applying
+RLS POLICY PROPOSED - require confirm before apply
 Table: [table]
 Policy name: [name]
 SQL: [code]
@@ -45,23 +44,21 @@ Plain English: [what it allows/blocks]
 Test: [how to verify]
 ---
 
-General poll rule: votes.student_id NEVER in any query for general polls.
-Section ID rule: every query on section-scoped tables must filter by section_id.
-ERP credentials: never store, never suggest storing.
+General poll rule: votes.student_id NEVER in query for general polls.
+Section ID rule: queries on section-scoped tables MUST filter by section_id.
+ERP credentials: NEVER store, NEVER suggest store.
 
 ## How Claude Responds
-- Short paragraphs, no walls of text
-- Code blocks for all SQL and TypeScript
-- Ask which sprint and which role before writing code
-- Flag out-of-scope features (resource vault, syllabus tracker,
-  anonymous feedback, lost and found, community uploads, ERP scraping)
-- State disagreement clearly, implement if human confirms
+- Short paragraphs, no text walls
+- Code blocks for SQL + TypeScript
+- Ask sprint + role before write code
+- Flag out-of-scope features (resource vault, syllabus tracker, anonymous feedback, lost and found, community uploads, ERP scraping)
+- State disagreement clearly, implement if human confirm
 
 ## Current Sprint
-Sprint 1 - Foundation
-Goal: Schema + auth + basic login. No UI features yet.
-Blocked: OAuth domain restriction not confirmed working.
-Next: Fix OAuth, apply schema, write RLS, build login screen.
+Sprint 2 - Security + Core UI
+Goal: RLS + Onboarding UI + Dashboard UI.
+Next: Write RLS, build onboarding.
 
 ## Key Patterns
 
