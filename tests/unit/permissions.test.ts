@@ -5,6 +5,7 @@ describe("permission helpers", () => {
   it("allows only CR users to manage section data", () => {
     expect(isCR("cr")).toBe(true);
     expect(canManageSection("student")).toBe(false);
+    expect(canManageSection("cr")).toBe(true);
     expect(canSeeActionableVotes("cr")).toBe(true);
   });
 });

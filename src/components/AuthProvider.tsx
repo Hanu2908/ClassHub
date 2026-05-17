@@ -93,7 +93,12 @@ function initAuth() {
   // Supabase fires INITIAL_SESSION immediately when onAuthStateChange is called,
   // so we do NOT need a separate getSession() bootstrap call.
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log('[Auth]', event, session?.user?.email ?? 'no-user');
+    // Only log auth events during development
+    // Keeps production consoles quiet and avoids leaking emails
+    // eslint-disable-next-line no-console
+    if (import.meta.env.DEV) {
+      console.log('[Auth]', event, session?.user?.email ?? 'no-user');
+    }
 
     if (
       (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
@@ -147,7 +152,10 @@ export async function signInWithGoogle() {
     provider: 'google',
     options: {
       redirectTo: window.location.origin + '/onboarding/choice',
-      queryParams: { hd: 'skit.ac.in' },
+      queryParams: { 
+        hd: 'skit.ac.in',
+        prompt: 'select_account' 
+      },
     },
   });
 }

@@ -48,7 +48,7 @@ export default function CreateHubPage() {
     // Generate invite code matching DB regex: ^[A-Z0-9]{2}[A-Z]{4}$
     const inviteCode = sectionCode.toUpperCase().slice(0, 2) + randomAlpha(4);
 
-    if (localStorage.getItem('demo_mode') === 'true') {
+    if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
       // Creator = CR role
       setRole('cr');

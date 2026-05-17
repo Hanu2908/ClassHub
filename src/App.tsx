@@ -16,6 +16,7 @@ import AnnouncementsPage from './pages/app/AnnouncementsPage';
 import AssignmentsPage from './pages/app/AssignmentsPage';
 import AttendancePage from './pages/app/AttendancePage';
 import CRCommandPage from './pages/app/CRCommandPage';
+import ManageSubjectsPage from './pages/app/ManageSubjectsPage';
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -72,6 +73,7 @@ export default function App() {
           <Route path="/app/assignments" element={<RequireAuth><RequireHub><AssignmentsPage /></RequireHub></RequireAuth>} />
           <Route path="/app/attendance" element={<RequireAuth><RequireHub><AttendancePage /></RequireHub></RequireAuth>} />
           <Route path="/app/cr-command" element={<RequireAuth><RequireHub><CRCommandPage /></RequireHub></RequireAuth>} />
+          <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><ManageSubjectsPage /></RequireHub></RequireAuth>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

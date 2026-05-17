@@ -153,6 +153,7 @@ export default function SignIn() {
   // In dev mode, navigates to onboarding directly
   const clickCount = useRef(0);
   const handleDemoBypass = () => {
+    if (!import.meta.env.DEV) return; // Demo bypass only allowed in development
     clickCount.current++;
     if (clickCount.current >= 5) {
       clickCount.current = 0;

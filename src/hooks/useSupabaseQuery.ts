@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
 import type {
@@ -81,6 +81,54 @@ export function useSubjects() {
         accent: s.accent,
         sectionId: s.section_id,
       }));
+    },
+  });
+}
+
+export function useMutateSubjects() {
+  const queryClient = useQueryClient();
+  const { sectionId } = useAuthContext();
+
+  return useMutation({
+    mutationFn: async (payload: { action: 'create' | 'update' | 'delete'; subject: Partial<SubjectInfo> }) => {
+      if (!sectionId) throw new Error('No section ID');
+      const { action, subject } = payload;
+
+      if (action === 'create') {
+        const { error } = await supabase
+          .from('subjects')
+          .insert({
+            section_id: sectionId,
+            code: subject.code!,
+            name: subject.name!,
+            semester: subject.semester!,
+            accent: subject.accent || '#4A9EFF',
+          });
+        if (error) throw error;
+      } else if (action === 'update') {
+        const { error } = await supabase
+          .from('subjects')
+          .update({
+            code: subject.code,
+            name: subject.name,
+            semester: subject.semester,
+            accent: subject.accent,
+          })
+          .eq('id', subject.id!)
+          .eq('section_id', sectionId);
+        if (error) throw error;
+      } else if (action === 'delete') {
+        const { error } = await supabase
+          .from('subjects')
+          .delete()
+          .eq('id', subject.id!)
+          .eq('section_id', sectionId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects', sectionId] });
+      queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] });
     },
   });
 }
@@ -219,15 +267,15 @@ export function usePolls() {
         }
       }
 
-      // Get vote counts via poll_results RPC
+      // Get vote counts via a batched RPC to avoid N+1 calls
       const results: Record<string, Record<string, number>> = {};
-      for (const poll of polls ?? []) {
-        const { data: res } = await supabase.rpc('poll_results', { target_poll: poll.id });
-        if (res) {
-          results[poll.id] = {};
-          for (const r of res) {
-            results[poll.id][r.option_id] = r.votes;
-          }
+      const pollIds = (polls ?? []).map(p => p.id);
+      if (pollIds.length > 0) {
+        const { data: batchRes, error: batchErr } = await supabase.rpc('batch_poll_results', { target_polls: pollIds });
+        if (batchErr) throw batchErr;
+        for (const r of (batchRes ?? [])) {
+          if (!results[r.poll_id]) results[r.poll_id] = {};
+          results[r.poll_id][r.option_id] = r.votes;
         }
       }
 

@@ -45,7 +45,7 @@ export default function JoinHubPage() {
     if (!validate()) return;
     setLoading(true);
 
-    if (localStorage.getItem('demo_mode') === 'true') {
+    if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
       // Join = student role
       setRole('student');

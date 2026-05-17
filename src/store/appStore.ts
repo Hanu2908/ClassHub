@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 
 // ── Exported types — backend-ready interfaces ─────────────────────────────────
 
@@ -135,7 +136,7 @@ export function isExpired(isoDeadline: string | null | undefined): boolean {
 interface AppState {
   // Auth (centralized — single source of truth)
   authUser: AuthUser | null;
-  session: any | null;
+  session: Session | null;
   isAuthLoading: boolean;
   role: 'student' | 'cr';
   isFirstTime: boolean;
@@ -210,12 +211,13 @@ export const useAppStore = create<AppState>()(
 
       // Refresh profile from Supabase
       refreshProfile: async () => {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (!currentSession?.user) return;
+        // Use getUser() instead of getSession() to avoid reading potentially tampered localStorage
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
         const { data, error } = await supabase
           .from('users')
           .select('id, name, email, avatar_url, role, section_id, section_roll, university_roll, day_scholar')
-          .eq('id', currentSession.user.id)
+          .eq('id', user.id)
           .single();
         if (error || !data) return;
         const profile: AuthUser = {
@@ -268,8 +270,8 @@ export const useAppStore = create<AppState>()(
     {
       name: 'classhub-store',
       partialize: (state) => {
-        // Don't persist volatile auth state
-        const { session: _s, isAuthLoading: _l, ...rest } = state;
+        // Don't persist volatile auth state or role (avoid client-side role tampering)
+        const { session: _s, isAuthLoading: _l, role: _r, ...rest } = state;
         return rest;
       },
     }

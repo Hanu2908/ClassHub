@@ -37,3 +37,6 @@ next-env.d.ts
 
 # PRD
 PRD_V3_ClassHub.md
+
+# Supabase
+supabase/.temp
