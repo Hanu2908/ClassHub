@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
-  CheckCircle2, XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone,
+  CheckCircle2, XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, Loader,
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
-import { mockStudents, mockClassAttendance, mockSubmissions } from '../../data/mockData';
 import { showToast } from '../../components/Toast';
 import { DonutRing } from '../../components/Shared';
+import { useAssignments, useSectionMembers } from '../../hooks/useSupabaseQuery';
 
 // ── Attendance color helper ───────────────────────────────────────────────────
 function attendColor(pct: number) {
@@ -48,31 +48,20 @@ function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: str
 type SubFilter = 'submitted' | 'not_submitted';
 
 function SubmissionTracker() {
-  const assignments = useAppStore(s => s.assignments);
+  const { data: assignments = [] } = useAssignments();
+  const { data: members = [] } = useSectionMembers();
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>('not_submitted');
   const [expanded, setExpanded] = useState(true);
-
-  const studentSubmissions = useAppStore(s => s.studentSubmissions);
-  const toggleStudentSubmission = useAppStore(s => s.toggleStudentSubmission);
   const addNotification = useAppStore(s => s.addNotification);
 
   const visible = assignments.filter(a => !isExpired(a.dueDate));
   const selected = visible.find(a => a.id === selectedAssignmentId) ?? visible[0];
 
-  const submittedIds = new Set<string>(
-    selectedAssignmentId
-      ? (studentSubmissions[selectedAssignmentId] ?? mockSubmissions[selectedAssignmentId] ?? [])
-      : (studentSubmissions[selected?.id ?? ''] ?? mockSubmissions[selected?.id ?? ''] ?? [])
-  );
-
-  const filtered = mockStudents.filter(s =>
-    subFilter === 'submitted'
-      ? submittedIds.has(s.id)
-      : !submittedIds.has(s.id)
-  );
-
-  const submittedCount = mockStudents.filter(s => submittedIds.has(s.id)).length;
+  // For now, submitted status comes from the assignment query enrichment
+  const submittedCount = 0; // Will be enriched when submission tracking is built
+  const filtered = members;
+  const isNotSubmitted = subFilter === 'not_submitted';
 
   return (
     <div className="card">
@@ -122,7 +111,7 @@ function SubmissionTracker() {
                   background: 'rgba(255,68,68,0.07)', border: '1px solid rgba(255,68,68,0.2)',
                   textAlign: 'center',
                 }}>
-                  <p style={{ font: '700 18px var(--font-display)', color: 'var(--status-critical)' }}>{mockStudents.length - submittedCount}</p>
+                  <p style={{ font: '700 18px var(--font-display)', color: 'var(--status-critical)' }}>{members.length - submittedCount}</p>
                   <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Pending</p>
                 </div>
               </div>
@@ -149,7 +138,7 @@ function SubmissionTracker() {
                       transition: 'all 0.2s',
                     }}
                   >
-                    {f === 'submitted' ? `✓ Submitted (${submittedCount})` : `✗ Pending (${mockStudents.length - submittedCount})`}
+                    {f === 'submitted' ? `✓ Submitted (${submittedCount})` : `✗ Pending (${members.length - submittedCount})`}
                   </button>
                 ))}
               </div>
@@ -177,42 +166,31 @@ function SubmissionTracker() {
 
               {/* Student list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
-                {filtered.length === 0 ? (
+                {members.length === 0 ? (
                   <p style={{ textAlign: 'center', padding: '16px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>
-                    No students in this category
+                    No students in this section
                   </p>
-                ) : filtered.map(st => {
-                  const submitted = submittedIds.has(st.id);
-                  return (
+                ) : members.map(st => (
                     <div key={st.id} style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '9px 12px', borderRadius: 8,
-                      background: submitted ? 'rgba(52,201,123,0.05)' : 'rgba(255,68,68,0.04)',
-                      border: `1px solid ${submitted ? 'rgba(52,201,123,0.15)' : 'rgba(255,68,68,0.12)'}`,
+                      background: 'rgba(255,68,68,0.04)',
+                      border: '1px solid rgba(255,68,68,0.12)',
                     }}>
                       <div style={{
                         width: 28, height: 28, borderRadius: '50%',
                         background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                       }}>
-                        <span style={{ font: '600 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.classRoll}</span>
+                        <span style={{ font: '600 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>{st.name}</p>
-                        <p style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.universityRoll}</p>
+                        <p style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.universityRoll ?? ''}</p>
                       </div>
-                      {submitted ? (
-                        <button onClick={() => selected && toggleStudentSubmission(selected.id, st.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-                          <CheckCircle2 size={16} color="var(--status-safe)" />
-                        </button>
-                      ) : (
-                        <button onClick={() => selected && toggleStudentSubmission(selected.id, st.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-                          <XCircle size={16} color="var(--status-critical)" />
-                        </button>
-                      )}
+                      <XCircle size={16} color="var(--status-critical)" />
                     </div>
-                  );
-                })}
+                  ))}
               </div>
             </>
           ) : (
@@ -228,130 +206,50 @@ function SubmissionTracker() {
 
 // ── 2. Class Attendance Overview ──────────────────────────────────────────────
 function ClassAttendance() {
+  const { data: members = [] } = useSectionMembers();
   const [expanded, setExpanded] = useState(true);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [sortAsc, setSortAsc] = useState<boolean | null>(null);
-
-  const selectedRecord = selectedStudentId
-    ? mockClassAttendance.find(r => r.studentId === selectedStudentId) ?? null
-    : null;
-  const selectedStudent = selectedStudentId
-    ? mockStudents.find(s => s.id === selectedStudentId) ?? null
-    : null;
 
   return (
     <>
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
           onClick={() => setExpanded(e => !e)}>
-          <SectionHead icon={<Users size={16} color="var(--accent-primary)" />} title="Class Attendance" count={mockStudents.length} />
+          <SectionHead icon={<Users size={16} color="var(--accent-primary)" />} title="Section Members" count={members.length} />
           {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
         </div>
 
         {expanded && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 4 }}>
-              <button 
-                onClick={() => setSortAsc(prev => prev === null ? true : prev ? false : null)}
-                style={{ 
-                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)',
-                  cursor: 'pointer', padding: '4px 10px',
-                  font: '500 11px var(--font-body)', color: 'var(--text-secondary)',
-                  display: 'flex', alignItems: 'center', gap: 4
+            {members.length === 0 ? (
+              <p style={{ textAlign: 'center', padding: '20px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>No members in section</p>
+            ) : members.map(st => (
+              <div
+                key={st.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 12px', borderRadius: 10,
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
                 }}
               >
-                Sort: {sortAsc === null ? 'Default' : sortAsc ? 'Lowest %' : 'Highest %'}
-              </button>
-            </div>
-            {[...mockStudents].sort((a, b) => {
-              if (sortAsc === null) return 0;
-              const aPct = mockClassAttendance.find(r => r.studentId === a.id)?.overall ?? 0;
-              const bPct = mockClassAttendance.find(r => r.studentId === b.id)?.overall ?? 0;
-              return sortAsc ? aPct - bPct : bPct - aPct;
-            }).map(st => {
-              const rec = mockClassAttendance.find(r => r.studentId === st.id);
-              const pct = rec?.overall ?? 0;
-              const color = attendColor(pct);
-              return (
-                <div
-                  key={st.id}
-                  onClick={() => setSelectedStudentId(st.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 12px', borderRadius: 10,
-                    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                    cursor: 'pointer', transition: 'border-color 0.2s',
-                  }}
-                >
-                  <div style={{
-                    width: 32, height: 32, borderRadius: '50%',
-                    background: 'var(--bg-base)', border: '1px solid var(--border-default)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
-                    <span style={{ font: '600 11px var(--font-mono)', color: 'var(--text-muted)' }}>{st.classRoll}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>{st.name}</p>
-                    <p style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.universityRoll}</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    <span style={{ font: '700 14px var(--font-mono)', color }}>{pct.toFixed(0)}%</span>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                  </div>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'var(--bg-base)', border: '1px solid var(--border-default)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <span style={{ font: '600 11px var(--font-mono)', color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
                 </div>
-              );
-            })}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>{st.name}</p>
+                  <p style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.email}</p>
+                </div>
+                <span className={`badge ${st.role === 'cr' ? 'badge-warning' : 'badge-info'}`} style={{ fontSize: 10 }}>
+                  {st.role === 'cr' ? 'CR' : 'Student'}
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </div>
-
-      {/* Subject-wise sheet */}
-      {selectedStudent && selectedRecord && (
-        <BottomSheet
-          onClose={() => setSelectedStudentId(null)}
-          title={`${selectedStudent.name} — Attendance`}
-        >
-          <div style={{ paddingBottom: 20 }}>
-            {/* Overall donut */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 4px 20px', borderBottom: '1px solid var(--border-default)', marginBottom: 16 }}>
-              <DonutRing percentage={selectedRecord.overall} size={64}>
-                <span style={{ font: '700 13px var(--font-mono)', color: attendColor(selectedRecord.overall) }}>
-                  {selectedRecord.overall.toFixed(0)}%
-                </span>
-              </DonutRing>
-              <div>
-                <p style={{ font: '600 16px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>{selectedStudent.name}</p>
-                <p style={{ font: '400 12px var(--font-mono)', color: 'var(--text-muted)' }}>Roll #{selectedStudent.classRoll} · {selectedStudent.universityRoll}</p>
-                <p style={{ font: '500 12px var(--font-body)', color: attendColor(selectedRecord.overall), marginTop: 4 }}>
-                  {selectedRecord.overall >= 85 ? 'Safe attendance' : selectedRecord.overall >= 75 ? 'Caution zone' : 'Danger — below 75%'}
-                </p>
-              </div>
-            </div>
-
-            {/* Per-subject list */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {selectedRecord.subjects.map(sub => {
-                const color = attendColor(sub.percentage);
-                const barW = `${Math.round(sub.percentage)}%`;
-                return (
-                  <div key={sub.code} style={{ padding: '10px 12px', background: 'var(--bg-elevated)', borderRadius: 10, border: '1px solid var(--border-default)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <div>
-                        <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>{sub.name}</p>
-                        <p style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>{sub.code} · {sub.type}</p>
-                      </div>
-                      <span style={{ font: '700 14px var(--font-mono)', color }}>{sub.percentage.toFixed(0)}%</span>
-                    </div>
-                    <div style={{ height: 4, background: 'var(--bg-base)', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: barW, background: color, borderRadius: 2, transition: 'width 0.6s ease' }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </BottomSheet>
-      )}
     </>
   );
 }
@@ -396,62 +294,12 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 20 }}>
         <div>
           <label style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
-          <input
-            id="notif-title"
-            style={inputStyle}
-            placeholder="e.g. Important update"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-          />
+          <input id="notif-title" style={inputStyle} placeholder="e.g. Important update" value={title} onChange={e => setTitle(e.target.value)} />
         </div>
         <div>
           <label style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
-          <textarea
-            id="notif-body"
-            style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
-            placeholder="Write your message to the class…"
-            value={body}
-            onChange={e => setBody(e.target.value)}
-          />
+          <textarea id="notif-body" style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder="Write your message to the class…" value={body} onChange={e => setBody(e.target.value)} />
         </div>
-
-        <div>
-          <label style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Recipients</label>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <button
-              onClick={() => setTarget('all')}
-              style={{
-                flex: 1, padding: '8px', borderRadius: 'var(--radius-md)',
-                background: target === 'all' ? 'rgba(74,158,255,0.1)' : 'var(--bg-elevated)',
-                border: `1px solid ${target === 'all' ? 'var(--accent-primary)' : 'var(--border-default)'}`,
-                color: target === 'all' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                font: '500 13px var(--font-body)'
-              }}
-            >All Students</button>
-            <button
-              onClick={() => setTarget('selected')}
-              style={{
-                flex: 1, padding: '8px', borderRadius: 'var(--radius-md)',
-                background: target === 'selected' ? 'rgba(74,158,255,0.1)' : 'var(--bg-elevated)',
-                border: `1px solid ${target === 'selected' ? 'var(--accent-primary)' : 'var(--border-default)'}`,
-                color: target === 'selected' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                font: '500 13px var(--font-body)'
-              }}
-            >Select Specific</button>
-          </div>
-
-          {target === 'selected' && (
-            <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: 8 }}>
-              {mockStudents.map(st => (
-                <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedIds.has(st.id)} onChange={() => toggleStudent(st.id)} />
-                  <span style={{ font: '400 13px var(--font-body)', color: 'var(--text-primary)' }}>{st.name} ({st.classRoll})</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-
         <button
           id="send-notif-btn"
           onClick={handleSend}

@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Paperclip } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Paperclip, Loader } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
+import { useAnnouncements } from '../../hooks/useSupabaseQuery';
+import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useSupabaseMutations';
 
 type Filter = 'all' | 'critical' | 'general';
 
 function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
-  const { addAnnouncement } = useAppStore();
+  const createAnn = useCreateAnnouncement();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [priority, setPriority] = useState<'general' | 'critical'>('general');
@@ -26,21 +28,21 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
     font: '400 14px var(--font-body)', outline: 'none',
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!title.trim() || !body.trim()) { showToast('Title and body required', 'error'); return; }
     
-    addAnnouncement({
-      id: `ann-${Date.now()}`,
-      title: title.trim(),
-      body: body.trim(),
-      priority,
-      postedAt: new Date().toISOString(),
-      deadline: hasDeadline && deadlineDate ? new Date(deadlineDate).toISOString() : null,
-      attachmentUrl: hasAttachment && attachmentUrl.trim() ? attachmentUrl.trim() : null,
-    });
-    
-    showToast('Announcement posted', 'success');
-    onClose();
+    try {
+      await createAnn.mutateAsync({
+        title: title.trim(),
+        message: body.trim(),
+        priority,
+        deadline: hasDeadline && deadlineDate ? new Date(deadlineDate).toISOString() : null,
+      });
+      showToast('Announcement posted', 'success');
+      onClose();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to post', 'error');
+    }
   };
 
   return (
@@ -102,13 +104,16 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
 
         <button
           onClick={handlePost}
+          disabled={createAnn.isPending}
           style={{
-            width: '100%', padding: '12px', background: 'var(--accent-primary)',
-            border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
-            font: '600 14px var(--font-body)', color: '#fff', marginTop: 8
+            width: '100%', padding: '12px', background: createAnn.isPending ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+            border: 'none', borderRadius: 'var(--radius-md)', cursor: createAnn.isPending ? 'not-allowed' : 'pointer',
+            font: '600 14px var(--font-body)', color: createAnn.isPending ? 'var(--text-muted)' : '#fff', marginTop: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          Post Announcement
+          {createAnn.isPending && <Loader size={14} className="spin" />}
+          {createAnn.isPending ? 'Posting…' : 'Post Announcement'}
         </button>
       </div>
     </BottomSheet>
@@ -120,7 +125,10 @@ export default function AnnouncementsPage() {
   const location = useLocation();
   const [filter, setFilter] = useState<Filter>('all');
   const [showCreate, setShowCreate] = useState(location.state?.openCreate || false);
-  const { announcements, acknowledgedIds, acknowledge, deleteAnnouncement, role } = useAppStore();
+  const role = useAppStore(s => s.role);
+  const { data: announcements = [], isLoading } = useAnnouncements();
+  const deleteAnn = useDeleteAnnouncement();
+  const ackMutation = useAcknowledge();
 
   // Auto-expiry: hide items past deadline + 2 days
   const visible = announcements.filter(a => !isExpired(a.deadline));
@@ -133,9 +141,18 @@ export default function AnnouncementsPage() {
     return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
   });
 
-  const handleDelete = (id: string) => {
-    deleteAnnouncement(id);
-    showToast('Announcement deleted', 'info');
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteAnn.mutateAsync(id);
+      showToast('Announcement deleted', 'info');
+    } catch { showToast('Failed to delete', 'error'); }
+  };
+
+  const handleAcknowledge = async (id: string) => {
+    try {
+      await ackMutation.mutateAsync(id);
+      showToast('Acknowledged ✓', 'success');
+    } catch { showToast('Failed to acknowledge', 'error'); }
   };
 
   return (
@@ -169,11 +186,15 @@ export default function AnnouncementsPage() {
       </header>
 
       <main className="page-content">
-        {filtered.length === 0
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <Loader size={24} color="var(--accent-primary)" className="spin" />
+          </div>
+        ) : filtered.length === 0
           ? <EmptyState icon={<Inbox size={36} color="var(--text-muted)" />} title="Nothing here" subtitle="No announcements in this category" />
           : filtered.map(ann => {
             const isCritical = ann.priority === 'critical';
-            const isAcked = acknowledgedIds.includes(ann.id);
+            const isAcked = ann.isAcknowledged;
             const bdg = deadlineBadgeClass(ann.deadline);
             const lbl = deadlineLabel(ann.deadline);
 
@@ -200,7 +221,6 @@ export default function AnnouncementsPage() {
                       Posted {timeAgo(ann.postedAt)}
                     </p>
                   </div>
-                  {/* CR delete button */}
                   {role === 'cr' && (
                     <button
                       id={`del-ann-${ann.id}`}
@@ -224,7 +244,7 @@ export default function AnnouncementsPage() {
 
                 {ann.attachmentUrl && (
                   <button
-                    onClick={() => window.open(ann.attachmentUrl, '_blank')}
+                    onClick={() => window.open(ann.attachmentUrl!, '_blank')}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', marginBottom: 14,
                       background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)',
@@ -240,7 +260,7 @@ export default function AnnouncementsPage() {
                 {!isAcked ? (
                   <button
                     id={`ack-btn-${ann.id}`}
-                    onClick={() => { acknowledge(ann.id); showToast('Acknowledged ✓', 'success'); }}
+                    onClick={() => handleAcknowledge(ann.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
                       background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',

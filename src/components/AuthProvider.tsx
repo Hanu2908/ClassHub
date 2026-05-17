@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppStore, type AuthUser } from '../store/appStore';
+import { queryClient } from '../lib/queryClient';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 const SKIT_DOMAIN = '@skit.ac.in';
@@ -45,111 +46,93 @@ function authUserToBasicProfile(authUser: SupabaseUser): AuthUser {
   };
 }
 
+// ── Shared helper: handle a valid session ──
+async function handleSession(
+  user: SupabaseUser,
+  session: any,
+  navigateFn?: (path: string) => void,
+): Promise<void> {
+  const store = useAppStore.getState();
+
+  // Domain check
+  if (!user.email?.endsWith(SKIT_DOMAIN)) {
+    await supabase.auth.signOut();
+    store.setAuthUser(null);
+    store.setSession(null);
+    store.setAuthLoading(false);
+    navigateFn?.('/?error=domain');
+    return;
+  }
+
+  store.setSession(session);
+  const profile = await fetchProfile(user.id);
+  if (profile) {
+    store.setAuthUser(profile);
+  } else {
+    store.setAuthUser(authUserToBasicProfile(user));
+  }
+  store.setAuthLoading(false);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Module-level auth listener — runs ONCE regardless of React StrictMode.
+// This avoids the double-mount problem where the SIGNED_IN event gets consumed
+// during Mount 1's subscription (which is cleaned up) and never reaches Mount 2.
+// ──────────────────────────────────────────────────────────────────────────────
+
+let _navigateFn: ((path: string) => void) | null = null;
+let _authInitialized = false;
+
+function initAuth() {
+  if (_authInitialized) return;
+  _authInitialized = true;
+
+  const store = useAppStore.getState();
+
+  // Single auth listener — handles ALL auth events including the initial session.
+  // Supabase fires INITIAL_SESSION immediately when onAuthStateChange is called,
+  // so we do NOT need a separate getSession() bootstrap call.
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('[Auth]', event, session?.user?.email ?? 'no-user');
+
+    if (
+      (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
+      session?.user
+    ) {
+      await handleSession(session.user, session, _navigateFn ?? undefined);
+    } else if (event === 'INITIAL_SESSION' && !session) {
+      // No existing session — user needs to sign in
+      store.setAuthLoading(false);
+    } else if (event === 'SIGNED_OUT') {
+      store.setSession(null);
+      store.setAuthUser(null);
+      store.setAuthLoading(false);
+      queryClient.clear();
+    } else if (event === 'TOKEN_REFRESHED' && session) {
+      store.setSession(session);
+    }
+  });
+}
+
 /**
- * AuthProvider — mounts exactly ONE Supabase auth listener and pushes
- * all state changes into the global Zustand store. Renders nothing.
+ * AuthProvider — initializes the module-level auth listener on first render
+ * and keeps the navigate function reference up to date.
  *
  * Place this inside <BrowserRouter> but outside <Routes>.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const initialized = useRef(false);
 
+  // Keep navigate reference fresh for the module-level listener
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
-    const store = useAppStore.getState();
-
-    // ── Demo Mode Bootstrap ──
-    if (localStorage.getItem('demo_mode') === 'true') {
-      const persistedRole = store.role; // Preserved from Create/Join hub
-      const demoUser: AuthUser = {
-        id: 'demo-user',
-        name: 'Demo Student',
-        email: 'demo@skit.ac.in',
-        avatarUrl: null,
-        role: persistedRole,
-        sectionId: localStorage.getItem('demo_section_id') || null,
-        sectionRoll: null,
-        universityRoll: null,
-        dayScholar: true,
-      };
-      store.setAuthUser(demoUser);
-      store.setSession({ user: { id: 'demo' } });
-      store.setAuthLoading(false);
-      return; // No Supabase listener needed in demo mode
-    }
-
-    // ── Live Mode Bootstrap ──
-    let mounted = true;
-
-    const bootstrap = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-
-        if (initialSession?.user) {
-          // Domain check
-          if (!initialSession.user.email?.endsWith(SKIT_DOMAIN)) {
-            await supabase.auth.signOut();
-            store.setAuthUser(null);
-            store.setSession(null);
-            store.setAuthLoading(false);
-            navigate('/?error=domain');
-            return;
-          }
-
-          store.setSession(initialSession);
-          const profile = await fetchProfile(initialSession.user.id);
-          if (profile) {
-            store.setAuthUser(profile);
-          } else {
-            store.setAuthUser(authUserToBasicProfile(initialSession.user));
-          }
-        }
-      } catch (err) {
-        console.warn('Auth bootstrap failed:', err);
-      }
-      if (mounted) store.setAuthLoading(false);
-    };
-
-    bootstrap();
-
-    // Auth state listener (single global instance)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!mounted) return;
-
-        if (event === 'SIGNED_IN' && newSession?.user) {
-          if (!newSession.user.email?.endsWith(SKIT_DOMAIN)) {
-            await supabase.auth.signOut();
-            store.setAuthUser(null);
-            store.setSession(null);
-            navigate('/?error=domain');
-            return;
-          }
-
-          store.setSession(newSession);
-          const profile = await fetchProfile(newSession.user.id);
-          if (profile) {
-            store.setAuthUser(profile);
-          } else {
-            store.setAuthUser(authUserToBasicProfile(newSession.user));
-          }
-        } else if (event === 'SIGNED_OUT') {
-          store.setSession(null);
-          store.setAuthUser(null);
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    _navigateFn = navigate;
   }, [navigate]);
+
+  // Initialize auth exactly once
+  useEffect(() => {
+    _navigateFn = navigate;
+    initAuth();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>{children}</>;
 }
@@ -170,15 +153,12 @@ export async function signInWithGoogle() {
 }
 
 /**
- * signOutGlobal — clears demo mode, Supabase session, and zustand store.
+ * signOutGlobal — clears Supabase session and zustand store.
  */
 export async function signOutGlobal(navigate: (path: string) => void) {
-  if (localStorage.getItem('demo_mode') === 'true') {
-    localStorage.removeItem('demo_mode');
-    localStorage.removeItem('demo_section_id');
-  } else {
-    await supabase.auth.signOut().catch(() => {});
-  }
+  await supabase.auth.signOut().catch(() => {});
   useAppStore.getState().signOut();
+  queryClient.clear();
   navigate('/');
 }
+

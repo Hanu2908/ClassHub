@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, ShieldOff } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, ShieldOff, Loader } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
-import { mockAttendance } from '../../data/mockData';
 import { showToast } from '../../components/Toast';
-import { useAppStore } from '../../store/appStore';
 import type { AttendanceSubject } from '../../store/appStore';
+import { useAttendance } from '../../hooks/useSupabaseQuery';
 
 function parseERPAttendance(rawText: string) {
   // Handle both \r\n (Windows) and \n line endings
@@ -141,10 +140,10 @@ export default function AttendancePage() {
   const [erpOpen, setErpOpen] = useState(false);
   const [erpText, setErpText] = useState('');
   const [parsed, setParsed] = useState<AttendanceSubject[] | null>(null);
-  const subjects = useAppStore(s => s.attendanceSubjects);
-  const setAttendance = useAppStore(s => s.setAttendance);
-  const overall = useAppStore(s => s.attendanceOverall);
-  const [lastUpdated] = useState(mockAttendance.lastUpdated);
+  const { data: attendance, isLoading } = useAttendance();
+
+  const subjects = attendance?.subjects ?? [];
+  const overall = attendance?.overall ?? 0;
 
   const handleParse = () => {
     const result = parseERPAttendance(erpText);
@@ -157,7 +156,13 @@ export default function AttendancePage() {
   };
 
   const handleConfirm = () => {
-    if (parsed) { setAttendance(parsed); setParsed(null); setErpOpen(false); setErpText(''); showToast('Attendance updated!', 'success'); }
+    // TODO: bulk upsert attendance_records via mutation
+    if (parsed) {
+      showToast('ERP import will be available after full backend integration', 'info');
+      setParsed(null);
+      setErpOpen(false);
+      setErpText('');
+    }
   };
 
   const safeOverall = isNaN(overall) ? 0 : overall;
@@ -186,34 +191,49 @@ export default function AttendancePage() {
       </header>
 
       <main className="page-content">
-        <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: -8 }}>
-          Last updated: {new Date(lastUpdated).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-        </p>
-
-        {/* Overall donut */}
-        <div className="card" style={{ textAlign: 'center', padding: '28px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <DonutRing percentage={safeOverall} size={100} strokeWidth={8}>
-              <span style={{ font: '700 24px var(--font-mono)', color: overallColor }}>
-                {safeOverall.toFixed(1)}%
-              </span>
-            </DonutRing>
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <Loader size={24} color="var(--accent-primary)" className="spin" />
           </div>
-          <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            {safeOverall >= 85
-              ? <><CheckCircle2 size={14} color="var(--status-safe)" /> Safe — great attendance!</>
-              : safeOverall >= 75
-              ? <><AlertTriangle size={14} color="var(--status-warning)" /> Caution — stay regular</>
-              : <><ShieldOff size={14} color="var(--status-critical)" /> Danger — attend all classes</>
-            }
-          </p>
-          <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: 8 }}>
-            {subjects.filter(s => s.percentage < 75).length} subject{subjects.filter(s => s.percentage < 75).length !== 1 ? 's' : ''} below 75%
-          </p>
-        </div>
+        ) : (
+          <>
+            {/* Overall donut */}
+            <div className="card" style={{ textAlign: 'center', padding: '28px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                <DonutRing percentage={safeOverall} size={100} strokeWidth={8}>
+                  <span style={{ font: '700 24px var(--font-mono)', color: overallColor }}>
+                    {safeOverall.toFixed(1)}%
+                  </span>
+                </DonutRing>
+              </div>
+              <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                {safeOverall >= 85
+                  ? <><CheckCircle2 size={14} color="var(--status-safe)" /> Safe — great attendance!</>
+                  : safeOverall >= 75
+                  ? <><AlertTriangle size={14} color="var(--status-warning)" /> Caution — stay regular</>
+                  : <><ShieldOff size={14} color="var(--status-critical)" /> Danger — attend all classes</>
+                }
+              </p>
+              <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: 8 }}>
+                {subjects.filter(s => s.percentage < 75).length} subject{subjects.filter(s => s.percentage < 75).length !== 1 ? 's' : ''} below 75%
+              </p>
+            </div>
 
-        <p style={{ font: '600 12px var(--font-body)', color: 'var(--text-muted)', paddingLeft: 4 }}>BY SUBJECT</p>
-        {subjects.map(sub => <SubjectCard key={sub.code} sub={sub} />)}
+            {subjects.length > 0 && (
+              <>
+                <p style={{ font: '600 12px var(--font-body)', color: 'var(--text-muted)', paddingLeft: 4 }}>BY SUBJECT</p>
+                {subjects.map(sub => <SubjectCard key={sub.code} sub={sub} />)}
+              </>
+            )}
+
+            {subjects.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                <p style={{ font: '500 14px var(--font-body)', color: 'var(--text-secondary)' }}>No attendance data yet</p>
+                <p style={{ font: '400 12px var(--font-body)', marginTop: 4 }}>Use "Update from ERP" to import your data</p>
+              </div>
+            )}
+          </>
+        )}
       </main>
 
       {/* ERP Paste Sheet */}

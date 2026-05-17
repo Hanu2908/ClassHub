@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, BarChart2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, BarChart2, Trash2, Loader } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
+import { usePolls } from '../../hooks/useSupabaseQuery';
+import { useDeletePoll, useVotePoll } from '../../hooks/useSupabaseMutations';
 
 type PollTab = 'active' | 'closed';
 
@@ -17,19 +19,22 @@ function timeLeft(iso: string): string {
   return days > 0 ? `Closes in ${days}d ${hrs}h` : `Closes in ${hrs}h`;
 }
 
-function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => void }) {
-  const { vote: storeVote, pollVotes, role } = useAppStore();
-  const userVote = pollVotes[poll.id] ?? (poll as any).userVote;
+function PollCard({ poll, onDelete }: { poll: Poll & { userVote: string | null }; onDelete: (id: string) => void }) {
+  const role = useAppStore(s => s.role);
+  const voteMutation = useVotePoll();
+  const userVote = poll.userVote;
   const [showWarning, setShowWarning] = useState(poll.type === 'actionable' && !userVote);
   const [warningAccepted, setWarningAccepted] = useState(poll.type !== 'actionable' || !!userVote);
 
   const total = poll.options.reduce((s, o) => s + o.votes, 0);
   const isClosed = poll.status === 'closed';
 
-  const handleVote = (optId: string) => {
+  const handleVote = async (optId: string) => {
     if (userVote || isClosed) return;
-    storeVote(poll.id, optId);
-    showToast('Vote submitted!', 'success');
+    try {
+      await voteMutation.mutateAsync({ pollId: poll.id, optionId: optId });
+      showToast('Vote submitted!', 'success');
+    } catch { showToast('Failed to vote', 'error'); }
   };
 
   return (
@@ -49,7 +54,6 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
           <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             {isClosed ? 'Closed' : timeLeft(poll.closesAt)}
           </span>
-          {/* CR delete */}
           {role === 'cr' && (
             <button
               id={`del-poll-${poll.id}`}
@@ -136,16 +140,18 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
 export default function PollsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<PollTab>('active');
-  const { polls, deletePoll } = useAppStore();
+  const { data: polls = [], isLoading } = usePolls();
+  const deletePollMutation = useDeletePoll();
 
   // Auto-expiry: hide polls gone past closesAt + 2 days
   const visible = polls.filter(p => !isExpired(p.closesAt));
-
   const filtered = visible.filter(p => p.status === tab);
 
-  const handleDelete = (id: string) => {
-    deletePoll(id);
-    showToast('Poll deleted', 'info');
+  const handleDelete = async (id: string) => {
+    try {
+      await deletePollMutation.mutateAsync(id);
+      showToast('Poll deleted', 'info');
+    } catch { showToast('Failed to delete poll', 'error'); }
   };
 
   return (
@@ -177,7 +183,11 @@ export default function PollsPage() {
       </header>
 
       <main className="page-content">
-        {filtered.length === 0
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <Loader size={24} color="var(--accent-primary)" className="spin" />
+          </div>
+        ) : filtered.length === 0
           ? <EmptyState icon={<BarChart2 size={36} color="var(--text-muted)" />} title="No polls here" subtitle="Check back later" />
           : filtered.map(p => <PollCard key={p.id} poll={p} onDelete={handleDelete} />)
         }

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X } from 'lucide-react';
+import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Loader } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
-import { mockUser, mockHub } from '../../data/mockData';
 import { BottomSheet } from '../../components/BottomSheet';
+import { useSection, useAnnouncements, useAssignments, usePolls, useSchedule, useAttendance } from '../../hooks/useSupabaseQuery';
 
 // ── Schedule helpers ──
 function todayKey(): string {
@@ -29,6 +29,16 @@ function hoursUntil(timeStr: string): string {
   const hrs = Math.floor(diff / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
   return hrs > 0 ? `in ${hrs}h ${mins}m` : `in ${mins}m`;
+}
+
+// ── Loading skeleton ─────────────────────────────────────────────────────────
+function WidgetSkeleton({ height = 80 }: { height?: number }) {
+  return (
+    <div className="card" style={{ padding: 16 }}>
+      <div className="skeleton" style={{ width: '60%', height: 14, marginBottom: 10, borderRadius: 6 }} />
+      <div className="skeleton" style={{ width: '40%', height, borderRadius: 8 }} />
+    </div>
+  );
 }
 
 // ── Notification sheet ──────────────────────────────────────────────────────
@@ -120,10 +130,12 @@ function CriticalBanner({ ann }: { ann: any }) {
 // ── Schedule widget ──────────────────────────────────────────────────────────
 function ScheduleWidget() {
   const navigate = useNavigate();
-  const schedule = useAppStore(s => s.schedule);
+  const { data: schedule, isLoading } = useSchedule();
   const key = todayKey();
-  const classes = schedule[key] ?? [];
+  const classes = schedule?.[key] ?? [];
   const now = new Date();
+
+  if (isLoading) return <WidgetSkeleton height={60} />;
 
   const current = classes.find((c: any) => {
     const start = parseTime(c.startTime);
@@ -189,8 +201,12 @@ function ScheduleWidget() {
 // ── Attendance pills ─────────────────────────────────────────────────────────
 function AttendancePills() {
   const navigate = useNavigate();
-  const subjects = useAppStore(s => s.attendanceSubjects);
-  const overall = useAppStore(s => s.attendanceOverall);
+  const { data: attendance, isLoading } = useAttendance();
+  const subjects = attendance?.subjects ?? [];
+  const overall = attendance?.overall ?? 0;
+
+  if (isLoading) return <WidgetSkeleton height={52} />;
+  if (subjects.length === 0) return null;
 
   return (
     <section>
@@ -236,8 +252,10 @@ function AttendancePills() {
 // ── Announcements scroll ─────────────────────────────────────────────────────
 function AnnouncementsScroll() {
   const navigate = useNavigate();
-  const announcements = useAppStore(s => s.announcements);
+  const { data: announcements = [], isLoading } = useAnnouncements();
   const visible = announcements.filter(a => !isExpired(a.deadline));
+
+  if (isLoading) return <WidgetSkeleton />;
 
   return (
     <section>
@@ -245,29 +263,35 @@ function AnnouncementsScroll() {
         <span className="section-title">Announcements</span>
         <button className="section-link" onClick={() => navigate('/app/announcements')}>View all →</button>
       </div>
-      <div className="carousel">
-        {visible.slice(0, 5).map(ann => {
-          const cls = deadlineBadgeClass(ann.deadline);
-          const label = deadlineLabel(ann.deadline);
-          const borderColor = cls === 'badge-critical' ? 'var(--status-critical)' : cls === 'badge-warning' ? 'var(--status-warning)' : cls === 'badge-safe' ? 'var(--status-safe)' : 'var(--status-info)';
-          return (
-            <div
-              key={ann.id}
-              className="card"
-              style={{ minWidth: 160, maxWidth: 180, borderColor, cursor: 'pointer' }}
-              onClick={() => navigate('/app/announcements')}
-            >
-              <div style={{ marginBottom: 8, width: 32, height: 32, borderRadius: 8, background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Megaphone size={16} color="var(--accent-primary)" />
+      {visible.length === 0 ? (
+        <div className="card" style={{ padding: '20px', textAlign: 'center' }}>
+          <p style={{ font: '400 14px var(--font-body)', color: 'var(--text-muted)' }}>No announcements yet</p>
+        </div>
+      ) : (
+        <div className="carousel">
+          {visible.slice(0, 5).map(ann => {
+            const cls = deadlineBadgeClass(ann.deadline);
+            const label = deadlineLabel(ann.deadline);
+            const borderColor = cls === 'badge-critical' ? 'var(--status-critical)' : cls === 'badge-warning' ? 'var(--status-warning)' : cls === 'badge-safe' ? 'var(--status-safe)' : 'var(--status-info)';
+            return (
+              <div
+                key={ann.id}
+                className="card"
+                style={{ minWidth: 160, maxWidth: 180, borderColor, cursor: 'pointer' }}
+                onClick={() => navigate('/app/announcements')}
+              >
+                <div style={{ marginBottom: 8, width: 32, height: 32, borderRadius: 8, background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Megaphone size={16} color="var(--accent-primary)" />
+                </div>
+                <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {ann.title}
+                </p>
+                <span className={`badge ${cls}`}>{label}</span>
               </div>
-              <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                {ann.title}
-              </p>
-              <span className={`badge ${cls}`}>{label}</span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -275,7 +299,7 @@ function AnnouncementsScroll() {
 // ── Active Poll banner ───────────────────────────────────────────────────────
 function PollBanner() {
   const navigate = useNavigate();
-  const polls = useAppStore(s => s.polls);
+  const { data: polls = [] } = usePolls();
   const poll = polls.find(p => p.status === 'active' && !isExpired(p.closesAt));
   if (!poll) return null;
 
@@ -319,9 +343,10 @@ function PollBanner() {
 // ── Assignments scroll ───────────────────────────────────────────────────────
 function AssignmentsScroll() {
   const navigate = useNavigate();
-  const submissions = useAppStore(s => s.submissions);
-  const assignments = useAppStore(s => s.assignments);
+  const { data: assignments = [], isLoading } = useAssignments();
   const visible = assignments.filter(a => !isExpired(a.dueDate));
+
+  if (isLoading) return <WidgetSkeleton />;
 
   return (
     <section>
@@ -329,43 +354,49 @@ function AssignmentsScroll() {
         <span className="section-title">Assignments</span>
         <button className="section-link" onClick={() => navigate('/app/assignments')}>View all →</button>
       </div>
-      <div className="carousel">
-        {visible.slice(0, 5).map(a => {
-          const isSubmitted = !!submissions[a.id] || a.status === 'submitted';
-          const cls = isSubmitted ? 'badge-safe' : deadlineBadgeClass(a.dueDate);
-          const label = isSubmitted ? 'Submitted' : deadlineLabel(a.dueDate);
-          return (
-            <div
-              key={a.id}
-              className="card"
-              style={{ minWidth: 150, maxWidth: 170, cursor: 'pointer' }}
-              onClick={() => navigate('/app/assignments')}
-            >
-              <div style={{ fontSize: 24, marginBottom: 8, width: 36, height: 36, borderRadius: 10, background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {a.subject.includes('DBMS') ? <BookOpen size={18} color="var(--accent-primary)" /> : a.subject.includes('OS') ? <Cpu size={18} color="var(--status-safe)" /> : <BookMarked size={18} color="var(--status-warning)" />}
+      {visible.length === 0 ? (
+        <div className="card" style={{ padding: '20px', textAlign: 'center' }}>
+          <p style={{ font: '400 14px var(--font-body)', color: 'var(--text-muted)' }}>No assignments yet</p>
+        </div>
+      ) : (
+        <div className="carousel">
+          {visible.slice(0, 5).map(a => {
+            const isSubmitted = a.status === 'submitted';
+            const cls = isSubmitted ? 'badge-safe' : deadlineBadgeClass(a.dueDate);
+            const label = isSubmitted ? 'Submitted' : deadlineLabel(a.dueDate);
+            return (
+              <div
+                key={a.id}
+                className="card"
+                style={{ minWidth: 150, maxWidth: 170, cursor: 'pointer' }}
+                onClick={() => navigate('/app/assignments')}
+              >
+                <div style={{ fontSize: 24, marginBottom: 8, width: 36, height: 36, borderRadius: 10, background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {a.subject.includes('DBMS') ? <BookOpen size={18} color="var(--accent-primary)" /> : a.subject.includes('OS') ? <Cpu size={18} color="var(--status-safe)" /> : <BookMarked size={18} color="var(--status-warning)" />}
+                </div>
+                <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {a.title}
+                </p>
+                <span className={`badge ${cls}`}>{label}</span>
               </div>
-              <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                {a.title}
-              </p>
-              <span className={`badge ${cls}`}>{label}</span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const user = useAppStore(s => s.user);
-  const announcements = useAppStore(s => s.announcements);
+  const authUser = useAppStore(s => s.authUser);
   const notifications = useAppStore(s => s.notifications);
+  const { data: section } = useSection();
+  const { data: announcements = [] } = useAnnouncements();
   const [showNotifs, setShowNotifs] = useState(false);
-  const name = user?.name ?? mockUser.name;
-  const firstName = name.split(' ')[0];
   const navigate = useNavigate();
 
+  const firstName = (authUser?.name ?? 'Student').split(' ')[0];
   const unread = notifications.filter(n => !n.read).length;
   const critical = announcements.find(a => a.priority === 'critical' && !isExpired(a.deadline));
 
@@ -378,13 +409,14 @@ export default function DashboardPage() {
         padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <div>
-          <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)' }}>{mockHub.hubCode} · {mockHub.section}</p>
+          <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)' }}>
+            {section ? `${section.inviteCode} · ${section.name}` : 'ClassHub'}
+          </p>
           <h1 style={{ font: '700 22px var(--font-display)', color: 'var(--text-primary)' }}>
             Hey, {firstName} 👋
           </h1>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          {/* Bell with unread badge */}
           <button
             id="notification-btn"
             aria-label="Notifications"

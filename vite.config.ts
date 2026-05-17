@@ -7,9 +7,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: true,
-    hmr: {
-      clientPort: 443
-    }
   },
   resolve: {
     alias: {

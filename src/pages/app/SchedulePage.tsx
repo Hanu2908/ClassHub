@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Loader } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
-import { useAppStore, type ScheduleSlot } from '../../store/appStore';
+import { useAppStore } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
+import { useSchedule, useSubjects } from '../../hooks/useSupabaseQuery';
+import { useUpsertScheduleSlot, useDeleteScheduleSlot } from '../../hooks/useSupabaseMutations';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
 function currentDayKey(): string {
   return new Date().toLocaleDateString('en-US', { weekday: 'short' });
@@ -35,11 +38,6 @@ function formatTime(t: string): string {
 }
 
 // ── Subject category color system ─────────────────────────────────────────────
-// Technical (CS/AI/DS/EC prefix): blue
-// Lab (type=Lab or code ends with L): amber
-// Audit/Other (ES/EN/HU/MENTOR, type=Other): violet
-// Lecture/Tutorial (fallback): teal
-
 type SubjectCategory = 'technical' | 'lab' | 'audit' | 'general';
 
 function getCategory(code: string, type: string): SubjectCategory {
@@ -78,53 +76,53 @@ const labelStyle: React.CSSProperties = {
 const SUBJECT_TYPES = ['Lecture', 'Lab', 'Tutorial', 'Other'];
 
 function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
-  const { addScheduleSlot } = useAppStore();
-  const [subject, setSubject] = useState('');
-  const [code, setCode] = useState('');
+  const { data: subjects = [] } = useSubjects();
+  const upsertSlot = useUpsertScheduleSlot();
+  const [subjectId, setSubjectId] = useState('');
   const [room, setRoom] = useState('');
-  const [teacher, setTeacher] = useState('');
   const [type, setType] = useState('Lecture');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
 
-  const handleSave = () => {
-    if (!subject.trim() || !code.trim() || !startTime || !endTime) {
-      showToast('Fill in subject, code, and times', 'error');
+  const handleSave = async () => {
+    if (!subjectId || !startTime || !endTime) {
+      showToast('Select a subject and set times', 'error');
       return;
     }
-    const slot: ScheduleSlot = {
-      id: `slot-${Date.now()}`,
-      day,
-      subject: subject.trim(),
-      code: code.trim().toUpperCase(),
-      room: room.trim() || 'TBD',
-      teacher: teacher.trim(),
-      type,
-      startTime,
-      endTime,
-    };
-    addScheduleSlot(slot);
-    showToast('Slot added — visible to all students', 'success');
-    onClose();
+    try {
+      await upsertSlot.mutateAsync({
+        subjectId,
+        dayOfWeek: DAY_MAP[day] ?? 1,
+        startTime,
+        endTime,
+        room: room.trim() || undefined,
+        type,
+      });
+      showToast('Slot added — visible to all students', 'success');
+      onClose();
+    } catch { showToast('Failed to add slot', 'error'); }
   };
 
   return (
     <BottomSheet onClose={onClose} title={`Add Class — ${day}`}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
         <div>
-          <label style={labelStyle}>Subject Name *</label>
-          <input style={inputStyle} placeholder="e.g. DBMS" value={subject} onChange={e => setSubject(e.target.value)} />
+          <label style={labelStyle}>Subject *</label>
+          <select style={inputStyle} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
+            <option value="">Select subject…</option>
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+          </select>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div>
-            <label style={labelStyle}>Code *</label>
-            <input style={inputStyle} placeholder="CS-304" value={code} onChange={e => setCode(e.target.value)} />
-          </div>
           <div>
             <label style={labelStyle}>Type</label>
             <select style={{ ...inputStyle }} value={type} onChange={e => setType(e.target.value)}>
               {SUBJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Room</label>
+            <input style={inputStyle} placeholder="Block B-102" value={room} onChange={e => setRoom(e.target.value)} />
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -137,26 +135,20 @@ function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
             <input style={inputStyle} type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
           </div>
         </div>
-        <div>
-          <label style={labelStyle}>Room</label>
-          <input style={inputStyle} placeholder="Block B-102" value={room} onChange={e => setRoom(e.target.value)} />
-        </div>
-        <div>
-          <label style={labelStyle}>Teacher</label>
-          <input style={inputStyle} placeholder="Dr. Sharma" value={teacher} onChange={e => setTeacher(e.target.value)} />
-        </div>
 
         <button
           id="save-slot-btn"
           onClick={handleSave}
+          disabled={upsertSlot.isPending}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '13px', background: 'var(--accent-primary)', border: 'none',
-            borderRadius: 'var(--radius-md)', cursor: 'pointer',
-            font: '600 14px var(--font-body)', color: '#fff',
+            padding: '13px', background: upsertSlot.isPending ? 'var(--bg-elevated)' : 'var(--accent-primary)', border: 'none',
+            borderRadius: 'var(--radius-md)', cursor: upsertSlot.isPending ? 'not-allowed' : 'pointer',
+            font: '600 14px var(--font-body)', color: upsertSlot.isPending ? 'var(--text-muted)' : '#fff',
           }}
         >
-          <Save size={16} /> Save Slot
+          {upsertSlot.isPending ? <Loader size={14} className="spin" /> : <Save size={16} />}
+          {upsertSlot.isPending ? 'Saving…' : 'Save Slot'}
         </button>
       </div>
     </BottomSheet>
@@ -185,13 +177,17 @@ export default function SchedulePage() {
   );
   const [showAddSheet, setShowAddSheet] = useState(false);
   const now = new Date();
+  const role = useAppStore(s => s.role);
+  const { data: schedule = {}, isLoading } = useSchedule();
+  const deleteSlotMutation = useDeleteScheduleSlot();
 
-  const { schedule, deleteScheduleSlot, role } = useAppStore();
   const classes = (schedule[selectedDay] ?? []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  const handleDelete = (id: string) => {
-    deleteScheduleSlot(id);
-    showToast('Slot removed — updated for all students', 'info');
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteSlotMutation.mutateAsync(id);
+      showToast('Slot removed — updated for all students', 'info');
+    } catch { showToast('Failed to remove slot', 'error'); }
   };
 
   return (
@@ -240,7 +236,11 @@ export default function SchedulePage() {
           {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
 
-        {classes.length === 0 ? (
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <Loader size={24} color="var(--accent-primary)" className="spin" />
+          </div>
+        ) : classes.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
             <p style={{ font: '600 16px var(--font-display)', color: 'var(--text-secondary)', marginBottom: 6 }}>No classes today!</p>
@@ -299,7 +299,6 @@ export default function SchedulePage() {
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                         {isNow && <span className="badge badge-info" style={{ animation: 'nowPulse 2s ease-in-out infinite' }}>NOW</span>}
                         {label && !isNow && <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{label}</span>}
-                        {/* Category badge */}
                         <span style={{
                           font: '400 10px var(--font-body)', color: catStyle.color,
                           background: catStyle.bg, border: `1px solid ${catStyle.border}`,
@@ -307,7 +306,6 @@ export default function SchedulePage() {
                         }}>
                           {cls.type}
                         </span>
-                        {/* CR delete */}
                         {role === 'cr' && (
                           <button
                             id={`del-slot-${cls.id}`}
