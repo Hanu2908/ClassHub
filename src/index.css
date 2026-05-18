@@ -343,59 +343,88 @@ body {
 }
 
 .dashboard-focus-strip {
+  display: block;
+}
+
+.dashboard-focus-card {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.focus-card-header {
+  font: 600 12px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.focus-card-grid {
   display: grid;
   gap: 12px;
 }
+
 @media (min-width: 640px) {
-  .dashboard-focus-strip {
+  .focus-card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-.focus-tile {
+.focus-segment {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 12px;
-  text-align: left;
-  min-height: 138px;
+  min-height: 156px;
   padding: 16px;
   border-radius: var(--radius-lg);
-  background: rgba(20,23,32,0.55);
+  background: rgba(15,18,29,0.8);
   border: 1px solid rgba(255,255,255,0.09);
-  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  text-align: left;
 }
-.focus-tile:hover {
+
+.focus-segment:hover {
   transform: translateY(-1px);
   border-color: rgba(255,255,255,0.16);
 }
-.focus-tile-heading {
+
+.focus-segment-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
-.focus-tile-title {
-  font: 600 11px var(--font-mono);
-  letter-spacing: 0.08em;
+
+.focus-segment-label {
+  display: block;
+  font: 500 12px var(--font-mono);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
+  margin-bottom: 6px;
 }
-.focus-tile-main {
+
+.focus-segment-main {
   font: 600 16px var(--font-display);
   color: var(--text-primary);
-  line-height: 1.2;
+  line-height: 1.25;
 }
-.focus-tile-detail {
+
+.focus-segment-detail {
   font: 400 13px var(--font-body);
   color: var(--text-secondary);
 }
-.focus-tile-footer {
+
+.focus-segment-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
-.focus-tile-icon {
+
+.focus-segment-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -403,7 +432,8 @@ body {
   height: 32px;
   color: var(--text-muted);
 }
-.focus-tile-lead {
+
+.focus-segment-lead {
   font: 500 12px var(--font-body);
   color: var(--accent-primary);
 }

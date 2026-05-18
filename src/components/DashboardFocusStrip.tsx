@@ -29,6 +29,13 @@ function attendanceBadge(overall: number | null) {
   return 'badge-safe';
 }
 
+function badgeLabel(badge: string) {
+  if (badge === 'badge-critical') return 'Urgent';
+  if (badge === 'badge-warning') return 'Soon';
+  if (badge === 'badge-safe') return 'Good';
+  return 'Info';
+}
+
 export default function DashboardFocusStrip() {
   const navigate = useNavigate();
   const { data: schedule, isLoading: scheduleLoading } = useSchedule();
@@ -71,7 +78,8 @@ export default function DashboardFocusStrip() {
       return {
         title: 'Campus poll',
         detail: activePoll.question,
-        badge: 'badge-info',
+        badgeClass: 'badge-info',
+        badgeText: 'Now',
         secondary: `Closes ${timeUntil(activePoll.closesAt)}`,
         action: () => navigate('/app/polls'),
         icon: <Sparkles size={18} />,
@@ -79,11 +87,12 @@ export default function DashboardFocusStrip() {
     }
 
     if (nextAssignment) {
-      const badge = deadlineBadgeClass(nextAssignment.dueDate);
+      const badgeClass = deadlineBadgeClass(nextAssignment.dueDate);
       return {
         title: 'Next assignment',
         detail: nextAssignment.title,
-        badge,
+        badgeClass,
+        badgeText: badgeLabel(badgeClass),
         secondary: deadlineLabel(nextAssignment.dueDate),
         action: () => navigate('/app/assignments'),
         icon: <Sparkles size={18} />,
@@ -93,30 +102,13 @@ export default function DashboardFocusStrip() {
     return {
       title: 'All clear',
       detail: 'No active deadlines or polls right now.',
-      badge: 'badge-safe',
+      badgeClass: 'badge-safe',
+      badgeText: 'Good',
       secondary: 'Check assignments for more details',
       action: () => navigate('/app/assignments'),
       icon: <Sparkles size={18} />,
     };
   }, [activePoll, nextAssignment, navigate]);
-
-  if (loading) {
-    return (
-      <div className="dashboard-focus-strip">
-        {[1, 2, 3].map(key => (
-          <div key={key} className="card focus-tile" style={{ minHeight: 138 }}>
-            <Skeleton width="45%" height={12} />
-            <Skeleton width="70%" height={26} />
-            <Skeleton width="80%" height={14} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-              <Skeleton width="35%" height={22} />
-              <Skeleton width="20%" height={22} />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
 
   const attendanceOverall = attendance?.overall ?? null;
   const attendanceTitle = attendanceOverall !== null ? `${Math.round(attendanceOverall)}% overall` : 'Update attendance';
@@ -128,7 +120,8 @@ export default function DashboardFocusStrip() {
   const classTile = {
     title: nextClass?.status === 'now' ? 'In session now' : nextClass?.status === 'next' ? 'Next class' : 'Today’s schedule',
     detail: nextClass?.item ? nextClass.item.subject : 'No classes scheduled today',
-    badge: nextClass?.status === 'now' ? 'badge-safe' : nextClass?.status === 'next' ? 'badge-info' : 'badge-info',
+    badgeClass: nextClass?.status === 'now' ? 'badge-safe' : nextClass?.status === 'next' ? 'badge-info' : 'badge-info',
+    badgeText: nextClass?.status === 'now' ? 'Now' : nextClass?.status === 'next' ? 'Upcoming' : 'Free',
     secondary: nextClass?.item
       ? nextClass.status === 'now'
         ? `Ends ${nextClass.item.endTime}`
@@ -138,46 +131,76 @@ export default function DashboardFocusStrip() {
     icon: <CalendarDays size={18} />,
   };
 
+  if (loading) {
+    return (
+      <div className="dashboard-focus-strip">
+        <div className="card dashboard-focus-card">
+          <div className="focus-card-header">What’s next</div>
+          <div className="focus-card-grid">
+            {[1, 2, 3].map(key => (
+              <div key={key} className="focus-segment">
+                <Skeleton width="40%" height={12} />
+                <Skeleton width="65%" height={24} style={{ marginTop: 10 }} />
+                <Skeleton width="85%" height={14} style={{ marginTop: 12 }} />
+                <div className="focus-card-footer">
+                  <Skeleton width="35%" height={20} />
+                  <Skeleton width="20%" height={20} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-focus-strip">
-      <button type="button" className="card focus-tile" onClick={classTile.action}>
-        <div className="focus-tile-heading">
-          <span className="focus-tile-title">{classTile.title}</span>
-          <span className="badge focus-tile-flag">{classTile.badge}</span>
-        </div>
-        <div className="focus-tile-main">{classTile.detail}</div>
-        <div className="focus-tile-detail">{classTile.secondary}</div>
-        <div className="focus-tile-footer">
-          <span className="focus-tile-icon">{classTile.icon}</span>
-          <span className="focus-tile-lead">View schedule</span>
-        </div>
-      </button>
+      <div className="card dashboard-focus-card">
+        <div className="focus-card-header">What’s next</div>
+        <div className="focus-card-grid">
+          <button type="button" className="focus-segment" onClick={classTile.action}>
+            <div className="focus-segment-top">
+              <div>
+                <span className="focus-segment-label">{classTile.title}</span>
+                <div className="focus-segment-main">{classTile.detail}</div>
+              </div>
+              <span className={`badge ${classTile.badgeClass}`}>{classTile.badgeText}</span>
+            </div>
+            <div className="focus-segment-detail">{classTile.secondary}</div>
+          </button>
 
-      <button type="button" className="card focus-tile" onClick={() => navigate('/app/attendance')}>
-        <div className="focus-tile-heading">
-          <span className="focus-tile-title">Attendance</span>
-          <span className={`badge ${attendanceBadgeClass}`}>{attendanceOverall !== null ? `${Math.round(attendanceOverall)}%` : 'Track'}</span>
-        </div>
-        <div className="focus-tile-main">{attendanceTitle}</div>
-        <div className="focus-tile-detail">{attendanceMeta}</div>
-        <div className="focus-tile-footer">
-          <span className="focus-tile-icon"><DonutRing percentage={attendanceOverall ?? 0} size={32} strokeWidth={4} /></span>
-          <span className="focus-tile-lead">Update attendance</span>
-        </div>
-      </button>
+          <button type="button" className="focus-segment" onClick={() => navigate('/app/attendance')}>
+            <div className="focus-segment-top">
+              <div>
+                <span className="focus-segment-label">Attendance</span>
+                <div className="focus-segment-main">{attendanceTitle}</div>
+              </div>
+              <span className={`badge ${attendanceBadgeClass}`}>{attendanceOverall !== null ? `${Math.round(attendanceOverall)}%` : 'Track'}</span>
+            </div>
+            <div className="focus-segment-detail">{attendanceMeta}</div>
+            <div className="focus-segment-footer">
+              <DonutRing percentage={attendanceOverall ?? 0} size={32} strokeWidth={4} />
+              <span className="focus-segment-lead">Update attendance</span>
+            </div>
+          </button>
 
-      <button type="button" className="card focus-tile" onClick={taskTile.action}>
-        <div className="focus-tile-heading">
-          <span className="focus-tile-title">{taskTile.title}</span>
-          <span className={`badge ${taskTile.badge}`}>{taskTile.badge === 'badge-info' ? 'Now' : taskTile.badge === 'badge-warning' ? 'Soon' : taskTile.badge === 'badge-safe' ? 'Good' : 'Update'}</span>
+          <button type="button" className="focus-segment" onClick={taskTile.action}>
+            <div className="focus-segment-top">
+              <div>
+                <span className="focus-segment-label">{taskTile.title}</span>
+                <div className="focus-segment-main">{taskTile.detail}</div>
+              </div>
+              <span className={`badge ${taskTile.badgeClass}`}>{taskTile.badgeText}</span>
+            </div>
+            <div className="focus-segment-detail">{taskTile.secondary}</div>
+            <div className="focus-segment-footer">
+              <span className="focus-segment-icon">{taskTile.icon}</span>
+              <span className="focus-segment-lead">View details</span>
+            </div>
+          </button>
         </div>
-        <div className="focus-tile-main">{taskTile.detail}</div>
-        <div className="focus-tile-detail">{taskTile.secondary}</div>
-        <div className="focus-tile-footer">
-          <span className="focus-tile-icon">{taskTile.icon}</span>
-          <span className="focus-tile-lead">View details</span>
-        </div>
-      </button>
+      </div>
     </div>
   );
 }
