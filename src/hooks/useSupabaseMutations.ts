@@ -214,8 +214,8 @@ export function useVotePoll() {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
   return useMutation({
-    mutationFn: async (input: { pollId: string; optionId: string; pollType: 'general' | 'actionable' }) => {
-      const isAnonymous = input.pollType === 'general';
+    mutationFn: async (input: { pollId: string; optionId: string; pollType: 'general' | 'anonymous' | 'actionable' }) => {
+      const isAnonymous = input.pollType === 'general' || input.pollType === 'anonymous';
       const token = isAnonymous ? generateAnonymousToken(userId!, input.pollId) : null;
 
       const { error } = await supabase.from('votes').insert({
