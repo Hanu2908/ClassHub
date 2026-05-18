@@ -38,7 +38,7 @@ export function NavBar() {
             key={tab.id}
             id={`nav-${tab.id}`}
             className={`navbar-tab${isActive ? ' active' : ''}`}
-            onClick={() => { setActiveTab(tab.id as any); navigate(tab.path); }}
+            onClick={() => { setActiveTab(tab.id); navigate(tab.path); }}
             aria-label={tab.label}
             aria-current={isActive ? 'page' : undefined}
           >

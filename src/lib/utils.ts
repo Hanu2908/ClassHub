@@ -6,17 +6,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 function md5(str: string): string {
-  var k = [], i = 0;
+  const k = [];
+  let i = 0;
   for (; i < 64;) {
     k[i] = 0 | (Math.abs(Math.sin(++i)) * 4294967296);
   }
-  var s = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
-  var a = 1732584193, b = -271733879, c = -1732584194, d = 271733878;
-  var strLen = str.length;
+  const s = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+  let a = 1732584193, b = -271733879, c = -1732584194, d = 271733878;
+  const strLen = str.length;
   // Convert string to array of bytes
-  var bytes = [];
-  for (var j = 0; j < strLen; j++) {
-    var code = str.charCodeAt(j);
+  const bytes = [];
+  for (let j = 0; j < strLen; j++) {
+    const code = str.charCodeAt(j);
     if (code < 128) bytes.push(code);
     else if (code < 2048) {
       bytes.push((code >> 6) | 192);
@@ -27,11 +28,11 @@ function md5(str: string): string {
       bytes.push((code & 63) | 128);
     }
   }
-  var msgLen = bytes.length;
+  const msgLen = bytes.length;
   bytes.push(128);
   while ((bytes.length % 64) !== 56) bytes.push(0);
   // append length in bits (low-order 32-bit first)
-  var bits = msgLen * 8;
+  const bits = msgLen * 8;
   bytes.push(bits & 0xff);
   bytes.push((bits >> 8) & 0xff);
   bytes.push((bits >> 16) & 0xff);
@@ -39,13 +40,14 @@ function md5(str: string): string {
   bytes.push(0); bytes.push(0); bytes.push(0); bytes.push(0);
 
   for (i = 0; i < bytes.length; i += 64) {
-    var w = [];
-    for (var n = 0; n < 16; n++) {
+    const w = [];
+    for (let n = 0; n < 16; n++) {
       w[n] = bytes[i + n * 4] | (bytes[i + n * 4 + 1] << 8) | (bytes[i + n * 4 + 2] << 16) | (bytes[i + n * 4 + 3] << 24);
     }
-    var aa = a, bb = b, cc = c, dd = d;
-    for (var r = 0; r < 64; r++) {
-      var f, g;
+    const aa = a, bb = b, cc = c, dd = d;
+    for (let r = 0; r < 64; r++) {
+      let f: number;
+      let g: number;
       if (r < 16) {
         f = (b & c) | (~b & d);
         g = r;
@@ -59,11 +61,11 @@ function md5(str: string): string {
         f = c ^ (b | ~d);
         g = (7 * r) % 16;
       }
-      var temp = d;
+      const temp = d;
       d = c;
       c = b;
-      var rot = s[(r >> 4) * 4 + (r % 4)];
-      var sum = a + f + k[r] + w[g];
+      const rot = s[(r >> 4) * 4 + (r % 4)];
+      const sum = a + f + k[r] + w[g];
       b = b + ((sum << rot) | (sum >>> (32 - rot)));
       a = temp;
     }
@@ -72,10 +74,10 @@ function md5(str: string): string {
     c = (c + cc) | 0;
     d = (d + dd) | 0;
   }
-  var hex = function(x: number) {
-    var s = "", j = 0;
+  const hex = function(x: number) {
+    let s = "", j = 0;
     for (; j < 4; j++) {
-      var byte = (x >> (j * 8)) & 0xff;
+      const byte = (x >> (j * 8)) & 0xff;
       s += ("0" + byte.toString(16)).slice(-2);
     }
     return s;

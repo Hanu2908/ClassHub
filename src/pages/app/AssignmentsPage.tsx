@@ -128,8 +128,8 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
       });
       showToast('Assignment published! ✓', 'success');
       handleClose();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to publish', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to publish', 'error');
     }
   };
 
@@ -323,6 +323,7 @@ export default function AssignmentsPage() {
 
   const [filter, setFilter] = useState<Filter>('all');
   const [createOpen, setCreateOpen] = useState(false);
+  const [now] = useState(() => Date.now());
 
   const handleMarkSubmitted = async (id: string) => {
     try {
@@ -334,7 +335,7 @@ export default function AssignmentsPage() {
   // 2-day post-deadline expiry
   const enriched = assignments.filter(a => !isExpired(a.dueDate)).map(a => {
     const isSubmitted = a.status === 'submitted';
-    const diff = new Date(a.dueDate).getTime() - Date.now();
+    const diff = new Date(a.dueDate).getTime() - now;
     const isOverdue = diff < 0 && !isSubmitted;
     return { ...a, isSubmitted, isOverdue };
   });

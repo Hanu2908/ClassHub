@@ -9,10 +9,25 @@ import type { AttendanceSubject } from '../../store/appStore';
 import { useAttendance } from '../../hooks/useSupabaseQuery';
 import { useBulkUpsertAttendance, useEnsureSubjects, useUpdateSubject } from '../../hooks/useSupabaseMutations';
 
-function parseERPAttendance(rawText: string) {
+interface ParsedERPSubject {
+  code: string;
+  name: string;
+  type: string;
+  present: number;
+  absent: number;
+  total: number;
+  percentage: number;
+  canSkip: number;
+  needToAttend: number;
+  subjectId: string | null;
+}
+
+type ParsedERPSourceSubject = Omit<ParsedERPSubject, 'subjectId'>;
+
+function parseERPAttendance(rawText: string): ParsedERPSourceSubject[] {
   // Handle both \r\n (Windows) and \n line endings
   const lines = rawText.trim().split(/\r?\n/);
-  const subjects = [];
+  const subjects: ParsedERPSourceSubject[] = [];
   const TYPES = new Set(['Lecture', 'Tutorial', 'Lab', 'Practical', 'Laboratory', 'Tut']);
 
   for (const line of lines) {
@@ -136,19 +151,6 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
   );
 }
 
-interface ParsedERPSubject {
-  code: string;
-  name: string;
-  type: string;
-  present: number;
-  absent: number;
-  total: number;
-  percentage: number;
-  canSkip: number;
-  needToAttend: number;
-  subjectId: string | null;
-}
-
 export default function AttendancePage() {
   const navigate = useNavigate();
   const [erpOpen, setErpOpen] = useState(false);
@@ -176,9 +178,9 @@ export default function AttendancePage() {
       const enriched = result.map(r => ({ ...r, subjectId: mapping[r.code] ?? null }));
       setParsed(enriched);
       showToast(`Parsed ${result.length} subjects. Review and confirm.`, 'info');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error ensuring subjects', err);
-      showToast(err?.message ?? 'Failed to prepare subjects', 'error');
+      showToast(err instanceof Error ? err.message : 'Failed to prepare subjects', 'error');
       // fallback to showing parsed without subject ids
       setParsed(result.map(r => ({ ...r, subjectId: null })));
     }
@@ -187,16 +189,16 @@ export default function AttendancePage() {
   const handleConfirm = () => {
     if (!parsed) return;
     // perform bulk upsert via mutation
-    bulkUpsert.mutate(parsed.map(p => ({ code: p.code, present: p.present, absent: p.absent, od: (p as any).od ?? 0, makeup: (p as any).makeup ?? 0 })), {
+    bulkUpsert.mutate(parsed.map(p => ({ code: p.code, present: p.present, absent: p.absent })), {
       onSuccess: () => {
         showToast('ERP attendance imported successfully', 'success');
         setParsed(null);
         setErpOpen(false);
         setErpText('');
       },
-      onError: (err: any) => {
+      onError: (err: Error) => {
         console.error('ERP import error', err);
-        showToast(err?.message ?? 'Failed to import attendance', 'error');
+        showToast(err.message ?? 'Failed to import attendance', 'error');
       }
     });
   };
@@ -319,13 +321,14 @@ export default function AttendancePage() {
                           if (!newName || newName.trim() === '' || newName === s.name) return;
                           try {
                             await updateSubjectMut.mutateAsync({ id: s.subjectId!, name: newName });
-                            const copy = parsed.slice();
-                            (copy as any)[idx].name = newName;
-                            setParsed(copy as any);
+                            const copy = parsed.map((item, itemIdx) =>
+                              itemIdx === idx ? { ...item, name: newName } : item
+                            );
+                            setParsed(copy);
                             showToast('Subject name updated', 'success');
-                          } catch (err: any) {
+                          } catch (err: unknown) {
                             console.error('Failed to update subject', err);
-                            showToast(err?.message ?? 'Failed to update subject', 'error');
+                            showToast(err instanceof Error ? err.message : 'Failed to update subject', 'error');
                           }
                         }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} aria-label="Edit subject name">
                           <Edit3 size={14} />

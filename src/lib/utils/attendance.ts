@@ -55,11 +55,11 @@ export function parseERPAttendance(rawText: string): ParsedSubject[] {
     // We'll preserve the raw "present" and "makeup" columns as reported by ERP
     // while using an internal `attendedTotal` (present + od + makeup) for recovery
     // calculations.
-    let present = 0;
-    let makeup = 0;
-    let absent = 0;
-    let total = 0;
-    let attendedTotal = 0;
+    let present: number;
+    let makeup: number;
+    let absent: number;
+    let total: number;
+    let attendedTotal: number;
 
     if (counts.length >= 4) {
       const [pres, od, mk, ab] = counts;

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useAppStore } from '../store/appStore';
 
 interface CROnlyProps { children: React.ReactNode; }
@@ -56,18 +57,24 @@ export function MultiDonut({ segments, size = 72, strokeWidth = 8 }: MultiDonutP
   const r = (size - strokeWidth) / 2;
   const circ = 2 * Math.PI * r;
   const total = Math.max(0.0001, segments.reduce((s, seg) => s + Math.max(0, seg.percentage), 0));
-  let offset = 0;
+  const arcs = segments.map((seg, i) => {
+    const prior = segments
+      .slice(0, i)
+      .reduce((sum, priorSeg) => sum + ((priorSeg.percentage / total) * circ), 0);
+    const pct = (seg.percentage / total) * 100;
+    const dash = (pct / 100) * circ;
+    return {
+      ...seg,
+      dashArray: `${dash} ${circ}`,
+      dashOffset: -prior,
+      stroke: seg.color ?? (i === 0 ? 'var(--status-safe)' : i === 1 ? 'var(--status-warning)' : 'var(--status-info)'),
+    };
+  });
 
   return (
     <div style={{ width: size, height: size, display: 'inline-block', position: 'relative' }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        {segments.map((seg, i) => {
-          const pct = (seg.percentage / total) * 100;
-          const dash = (pct / 100) * circ;
-          const dashArray = `${dash} ${circ}`;
-          const stroke = seg.color ?? (i === 0 ? 'var(--status-safe)' : i === 1 ? 'var(--status-warning)' : 'var(--status-info)');
-          const dashOffset = -offset;
-          offset += dash;
+        {arcs.map((seg, i) => {
           return (
             <circle
               key={seg.label + i}
@@ -75,10 +82,10 @@ export function MultiDonut({ segments, size = 72, strokeWidth = 8 }: MultiDonutP
               cy={size / 2}
               r={r}
               fill="transparent"
-              stroke={stroke}
+              stroke={seg.stroke}
               strokeWidth={strokeWidth}
-              strokeDasharray={dashArray}
-              strokeDashoffset={dashOffset}
+              strokeDasharray={seg.dashArray}
+              strokeDashoffset={seg.dashOffset}
               strokeLinecap="round"
             />
           );

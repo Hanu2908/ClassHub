@@ -50,7 +50,7 @@ function TiltCard({ children, className }: { children: React.ReactNode; classNam
   const target = useRef({ rx: 0, ry: 0, gx: 50, gy: 50 });
   const current = useRef({ rx: 0, ry: 0, gx: 50, gy: 50 });
 
-  const animate = useCallback(() => {
+  const animate = useCallback(function animateFrame() {
     const el = ref.current; if (!el) return;
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     current.current.rx = lerp(current.current.rx, target.current.rx, 0.1);
@@ -60,7 +60,7 @@ function TiltCard({ children, className }: { children: React.ReactNode; classNam
     el.style.transform = `perspective(900px) rotateX(${current.current.rx}deg) rotateY(${current.current.ry}deg)`;
     el.style.setProperty('--gx', `${current.current.gx}%`);
     el.style.setProperty('--gy', `${current.current.gy}%`);
-    animRef.current = requestAnimationFrame(animate);
+    animRef.current = requestAnimationFrame(animateFrame);
   }, []);
 
   const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {

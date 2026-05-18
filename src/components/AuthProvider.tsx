@@ -1,10 +1,11 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppStore, type AuthUser } from '../store/appStore';
 import { queryClient } from '../lib/queryClient';
 import { showToast } from '../components/Toast';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 const SKIT_DOMAIN = '@skit.ac.in';
 
@@ -50,7 +51,7 @@ function authUserToBasicProfile(authUser: SupabaseUser): AuthUser {
 // ── Shared helper: handle a valid session ──
 async function handleSession(
   user: SupabaseUser,
-  session: any,
+  session: Session,
   navigateFn?: (path: string) => void,
 ): Promise<void> {
   const store = useAppStore.getState();
@@ -72,9 +73,9 @@ async function handleSession(
     // Retry with a short backoff — helpful when account row was just created elsewhere
     for (let attempt = 0; attempt < 3 && !profile; attempt++) {
       // 200ms, 400ms, 600ms
-      // eslint-disable-next-line no-await-in-loop
+       
       await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
-      // eslint-disable-next-line no-await-in-loop
+       
       profile = await fetchProfile(user.id);
     }
   }
@@ -83,12 +84,12 @@ async function handleSession(
     store.setAuthUser(profile);
   } else {
     // Log a warning so debugging on mobile/other devices is easier
-    // eslint-disable-next-line no-console
+     
     console.warn('[Auth] no backend profile found for user', user.id);
     // Surface a lightweight diagnostic to the user so mobile issues are visible
     try {
       showToast('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.', 'warning');
-    } catch (e) {
+    } catch {
       // ignore if toast system is not yet mounted
     }
     store.setAuthUser(authUserToBasicProfile(user));
@@ -118,7 +119,7 @@ function initAuth() {
   supabase.auth.onAuthStateChange(async (event, session) => {
     // Only log auth events during development
     // Keeps production consoles quiet and avoids leaking emails
-    // eslint-disable-next-line no-console
+     
     if (import.meta.env.DEV) {
       console.log('[Auth]', event, session?.user?.email ?? 'no-user');
     }
@@ -185,7 +186,7 @@ export async function signInWithGoogle() {
     // Supabase may return an error object when the OAuth request fails.
     // Log it so users/developers can see the server response in the console.
     if (result.error) {
-      // eslint-disable-next-line no-console
+       
       console.error('[Auth] signInWithOAuth error:', result.error);
       // Re-throw to allow callers (UI) to surface the error if needed
       throw result.error;
@@ -193,7 +194,7 @@ export async function signInWithGoogle() {
 
     return result;
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error('[Auth] signInWithGoogle failed', err);
     throw err;
   }

@@ -195,8 +195,8 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
 
       showToast('Poll created successfully!', 'success');
       onClose();
-    } catch (err: any) {
-      showToast(err?.message || 'Failed to create poll', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to create poll', 'error');
     } finally {
       setLoading(false);
     }
@@ -369,13 +369,12 @@ export default function PollsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [tab, setTab] = useState<PollTab>('active');
-  const [showCreateSheet, setShowCreateSheet] = useState(false);
+  const [showCreateSheet, setShowCreateSheet] = useState(() => Boolean(location.state?.openCreate));
   const { data: polls = [], isLoading } = usePolls();
   const deletePollMutation = useDeletePoll();
 
   useEffect(() => {
     if (location.state?.openCreate) {
-      setShowCreateSheet(true);
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore, type AuthUser } from '../store/appStore';
 import { signInWithGoogle as authSignInWithGoogle, signOutGlobal } from '../components/AuthProvider';
+import type { Session } from '@supabase/supabase-js';
 
 // Thin compatibility wrapper around centralized app store + AuthProvider
 // Keeps existing callsites working while removing duplicate listeners.
@@ -9,8 +10,24 @@ export function useAuth() {
 
   const isDemoMode = import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true';
 
-  const session = store.session ?? (isDemoMode ? ({ user: { id: 'demo' } } as unknown) : null);
-  const user = store.authUser ?? (isDemoMode ? ({ id: 'demo-user', name: 'Demo Student', email: 'demo@skit.ac.in', avatarUrl: null, role: store.role, sectionId: localStorage.getItem('demo_section_id') || null, sectionRoll: null, universityRoll: null, dayScholar: true } as any) : null);
+  const session = useMemo(
+    () => store.session ?? (isDemoMode ? ({ user: { id: 'demo' } } as Session) : null),
+    [isDemoMode, store.session]
+  );
+  const user = useMemo(
+    () => store.authUser ?? (isDemoMode ? ({
+      id: 'demo-user',
+      name: 'Demo Student',
+      email: 'demo@skit.ac.in',
+      avatarUrl: null,
+      role: store.role,
+      sectionId: localStorage.getItem('demo_section_id') || null,
+      sectionRoll: null,
+      universityRoll: null,
+      dayScholar: true,
+    } satisfies AuthUser) : null),
+    [isDemoMode, store.authUser, store.role]
+  );
 
   const api = useMemo(() => ({
     session,
@@ -28,7 +45,7 @@ export function useAuth() {
       await signOutGlobal((path) => { window.location.href = path; });
     },
     refreshProfile: () => useAppStore.getState().refreshProfile(),
-  }), [session, user, store.isAuthLoading, store.role]);
+  }), [isDemoMode, session, user, store.isAuthLoading]);
 
   return api;
 }

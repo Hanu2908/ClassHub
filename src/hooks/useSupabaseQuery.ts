@@ -7,6 +7,18 @@ import type {
   ScheduleSlot, ScheduleMap, AttendanceSubject,
 } from '../store/appStore';
 
+type SubjectRelation = { code: string; name: string } | null;
+type AssignmentSetRelation = {
+  id: string;
+  set_label: string;
+  description: string;
+  pdf_url: string | null;
+  roll_start: number;
+  roll_end: number;
+  page_numbers: string | null;
+};
+type PollOptionRelation = { id: string; label: string; sort_order: number };
+
 // ── Helper: current user context ─────────────────────────────────────────────
 
 function useAuthContext() {
@@ -229,8 +241,8 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
 
       return (assigns ?? []).map(a => {
         const sub = userSubs[a.id];
-        const subjectData = a.subjects as any;
-        const sets: AssignmentSet[] = ((a.assignment_sets ?? []) as any[]).map(s => ({
+        const subjectData = a.subjects as SubjectRelation;
+        const sets: AssignmentSet[] = ((a.assignment_sets ?? []) as AssignmentSetRelation[]).map(s => ({
           id: s.id,
           label: s.set_label,
           rollStart: s.roll_start,
@@ -317,10 +329,10 @@ export function usePolls() {
       }
 
       return pollArray.map(p => {
-        const opts = ((p.poll_options ?? []) as any[]).sort((a: any, b: any) => a.sort_order - b.sort_order);
+        const opts = ((p.poll_options ?? []) as PollOptionRelation[]).sort((a, b) => a.sort_order - b.sort_order);
         const isActive = p.is_active && (!p.expires_at || new Date(p.expires_at) > new Date());
 
-        const options: PollOption[] = opts.map((o: any) => ({
+        const options: PollOption[] = opts.map((o) => ({
           id: o.id,
           text: o.label,
           votes: results[p.id]?.[o.id] ?? 0,
@@ -379,7 +391,7 @@ export function useSchedule(opts?: { day?: string; limit?: number }) {
       const map: ScheduleMap = {};
       for (const slot of data ?? []) {
         const dayName = DAY_NAMES[slot.day_of_week] ?? 'Mon';
-        const subjectData = slot.subjects as any;
+        const subjectData = slot.subjects as SubjectRelation;
         const entry: ScheduleSlot = {
           id: slot.id,
           day: dayName,
@@ -418,7 +430,7 @@ export function useAttendance() {
       if (error) throw error;
 
       const subjects: AttendanceSubject[] = (data ?? []).map(r => {
-        const subj = r.subjects as any;
+        const subj = r.subjects as SubjectRelation;
         const total = r.present + r.od + r.makeup + r.absent;
         const attended = r.present + r.od + r.makeup;
         const pct = r.percentage ?? (total > 0 ? (attended / total) * 100 : 0);

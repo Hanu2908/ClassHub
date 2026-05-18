@@ -1,6 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
+import type { Database } from '../types/database.types';
+
+type SlotType = Database['public']['Enums']['slot_type'];
+type SubjectIdCode = { id: string; code: string };
+type AttendanceUpsertRow = Database['public']['Tables']['attendance_records']['Insert'];
 
 // ── Helper ───────────────────────────────────────────────────────────────────
 
@@ -253,7 +258,7 @@ export function useUpsertScheduleSlot() {
         start_time: input.startTime,
         end_time: input.endTime,
         room: input.room ?? null,
-        type: (input.type?.toLowerCase() ?? 'lecture') as any,
+        type: (input.type?.toLowerCase() ?? 'lecture') as SlotType,
         created_by: userId!,
       };
       const { error } = await supabase.from('timetable_slots').upsert(row);
@@ -315,13 +320,13 @@ export function useEnsureSubjects() {
       if (existingErr) throw existingErr;
 
       const existingMap = new Map<string, string>();
-      (existing ?? []).forEach((s: any) => existingMap.set(s.code, s.id));
+      (existing ?? []).forEach((s: SubjectIdCode) => existingMap.set(s.code, s.id));
 
       const missing = items
         .filter(i => i.code && !existingMap.has(i.code))
         .map(i => ({ section_id: sectionId!, code: i.code, name: i.name ?? i.code, semester: i.semester ?? 1, accent: i.accent ?? '#4A9EFF' }));
 
-      let inserted: any[] = [];
+      let inserted: SubjectIdCode[] = [];
       if (missing.length > 0) {
         const { data: ins, error: insErr } = await supabase.from('subjects').insert(missing).select('id,code');
         if (insErr) throw insErr;
@@ -329,7 +334,7 @@ export function useEnsureSubjects() {
       }
 
       const mapping: Record<string, string> = {};
-      (existing ?? []).forEach((s: any) => mapping[s.code] = s.id);
+      (existing ?? []).forEach((s: SubjectIdCode) => mapping[s.code] = s.id);
       inserted.forEach(s => mapping[s.code] = s.id);
       return mapping;
     },
@@ -347,7 +352,7 @@ export function useBulkUpsertAttendance() {
       if (!sectionId) throw new Error('Missing section context');
 
       // For items that already include subjectId, use them; otherwise resolve codes
-      const rows: any[] = [];
+      const rows: AttendanceUpsertRow[] = [];
       const itemsNeedingCode = items.filter(i => !i.subjectId && i.code).map(i => i as { code: string; present: number; absent: number; od?: number; makeup?: number });
 
       if (itemsNeedingCode.length > 0) {
@@ -355,7 +360,7 @@ export function useBulkUpsertAttendance() {
         const { data: subjects, error: subjErr } = await supabase.from('subjects').select('id,code').in('code', codes).eq('section_id', sectionId);
         if (subjErr) throw subjErr;
         const codeToId = new Map<string, string>();
-        (subjects ?? []).forEach((s: any) => codeToId.set(s.code, s.id));
+        (subjects ?? []).forEach((s: SubjectIdCode) => codeToId.set(s.code, s.id));
 
         itemsNeedingCode.forEach(i => {
           const sid = codeToId.get(i.code) ?? null;
@@ -364,7 +369,10 @@ export function useBulkUpsertAttendance() {
       }
 
       // Items that already had subjectId
-      items.filter(i => i.subjectId).forEach(i => rows.push({ user_id: userId, subject_id: i.subjectId, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0 }));
+      items.forEach(i => {
+        if (!i.subjectId) return;
+        rows.push({ user_id: userId, subject_id: i.subjectId, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0 });
+      });
 
       if (rows.length === 0) throw new Error('No matching subjects found for import');
 

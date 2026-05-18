@@ -148,7 +148,7 @@ interface AppState {
   hub: HubInfo | null;
 
   // UI
-  activeTab: 'home' | 'schedule' | 'polls' | 'profile';
+  activeTab: 'home' | 'schedule' | 'polls' | 'profile' | 'cr-command';
 
   // In-app notifications (client-only)
   notifications: AppNotification[];
@@ -156,7 +156,7 @@ interface AppState {
   // ── Actions ──
   setUser: (user: UserInfo | null) => void;
   setAuthUser: (authUser: AuthUser | null) => void;
-  setSession: (session: any | null) => void;
+  setSession: (session: Session | null) => void;
   setAuthLoading: (loading: boolean) => void;
   setRole: (role: 'student' | 'cr') => void;
   setHub: (hub: HubInfo | null) => void;
@@ -269,11 +269,15 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'classhub-store',
-      partialize: (state) => {
-        // Don't persist volatile auth state or role (avoid client-side role tampering)
-        const { session: _s, isAuthLoading: _l, role: _r, ...rest } = state;
-        return rest;
-      },
+      // Don't persist volatile auth state or role (avoid client-side role tampering)
+      partialize: (state) => ({
+        authUser: state.authUser,
+        user: state.user,
+        isFirstTime: state.isFirstTime,
+        hub: state.hub,
+        activeTab: state.activeTab,
+        notifications: state.notifications,
+      }),
     }
   )
 );

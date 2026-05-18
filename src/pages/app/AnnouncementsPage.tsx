@@ -40,8 +40,8 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
       });
       showToast('Announcement posted', 'success');
       onClose();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to post', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to post', 'error');
     }
   };
 

@@ -14,9 +14,17 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   const [offsetY, setOffsetY] = useState(0);
 
   useEffect(() => {
-    if (open) { setOffsetY(0); document.body.style.overflow = 'hidden'; }
-    else { document.body.style.overflow = ''; }
-    return () => { document.body.style.overflow = ''; };
+    let frame = 0;
+    if (open) {
+      frame = requestAnimationFrame(() => setOffsetY(0));
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      document.body.style.overflow = '';
+    };
   }, [open]);
 
   if (!open) return null;

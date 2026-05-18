@@ -21,7 +21,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
     componentDidCatch(error: unknown, info: unknown) {
         // You can send this to a logging service
         if (import.meta.env.DEV) {
-            // eslint-disable-next-line no-console
+             
             console.error('Unhandled error in React tree:', error, info);
         }
     }
