@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X } from 'lucide-react';
+import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useSection, useAnnouncements, useAssignments, usePolls, useSchedule, useAttendance } from '../../hooks/useSupabaseQuery';
+import DashboardFocusStrip from '../../components/DashboardFocusStrip';
 
 // ── Schedule helpers ──
 function todayKey(): string {
@@ -157,9 +158,15 @@ function ScheduleWidget() {
       </div>
       <div className="card" style={{ padding: '4px 0' }}>
         {display.length === 0 ? (
-          <p style={{ padding: '20px', textAlign: 'center', font: '400 14px var(--font-body)', color: 'var(--text-muted)' }}>
-            No classes scheduled today 🎉
-          </p>
+          <div style={{ padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Coffee size={24} color="var(--text-secondary)" />
+            </div>
+            <div>
+              <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>You're all clear!</p>
+              <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>No classes scheduled for today.</p>
+            </div>
+          </div>
         ) : display.map((cls: any, i: number) => {
           const isNow = current?.id === cls.id;
           return (
@@ -264,8 +271,14 @@ function AnnouncementsScroll() {
         <button className="section-link" onClick={() => navigate('/app/announcements')}>View all →</button>
       </div>
       {visible.length === 0 ? (
-        <div className="card" style={{ padding: '20px', textAlign: 'center' }}>
-          <p style={{ font: '400 14px var(--font-body)', color: 'var(--text-muted)' }}>No announcements yet</p>
+        <div className="card" style={{ padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Megaphone size={24} color="var(--text-secondary)" />
+          </div>
+          <div>
+            <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>No news is good news</p>
+            <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>You're caught up on announcements.</p>
+          </div>
         </div>
       ) : (
         <div className="carousel">
@@ -355,8 +368,14 @@ function AssignmentsScroll() {
         <button className="section-link" onClick={() => navigate('/app/assignments')}>View all →</button>
       </div>
       {visible.length === 0 ? (
-        <div className="card" style={{ padding: '20px', textAlign: 'center' }}>
-          <p style={{ font: '400 14px var(--font-body)', color: 'var(--text-muted)' }}>No assignments yet</p>
+        <div className="card" style={{ padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--status-safe-bg)', border: '1px solid rgba(52,201,123,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <PartyPopper size={24} color="var(--status-safe)" />
+          </div>
+          <div>
+            <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>All caught up!</p>
+            <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>No active assignments right now.</p>
+          </div>
         </div>
       ) : (
         <div className="carousel">
@@ -409,10 +428,10 @@ export default function DashboardPage() {
         padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <div>
-          <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)' }}>
+          <p style={{ font: '500 12px var(--font-mono)', color: 'var(--accent-primary)', marginBottom: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             {section ? `${section.inviteCode} · ${section.name}` : 'ClassHub'}
           </p>
-          <h1 style={{ font: '700 22px var(--font-display)', color: 'var(--text-primary)' }}>
+          <h1 style={{ font: '700 24px var(--font-display)', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             Hey, {firstName} 👋
           </h1>
         </div>
@@ -445,6 +464,7 @@ export default function DashboardPage() {
 
       <main className="page-content">
         {critical ? <CriticalBanner ann={critical} /> : null}
+        <DashboardFocusStrip />
         <ScheduleWidget />
         <AttendancePills />
         <AnnouncementsScroll />
