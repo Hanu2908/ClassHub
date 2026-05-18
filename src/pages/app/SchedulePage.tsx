@@ -10,10 +10,15 @@ import { useSchedule, useSubjects } from '../../hooks/useSupabaseQuery';
 import { useUpsertScheduleSlot, useDeleteScheduleSlot } from '../../hooks/useSupabaseMutations';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+type ScheduleDay = typeof DAYS[number];
 const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
 function currentDayKey(): string {
   return new Date().toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+function isScheduleDay(day: string): day is ScheduleDay {
+  return DAYS.some((scheduleDay) => scheduleDay === day);
 }
 
 function toDate(timeStr: string): Date {
@@ -61,7 +66,7 @@ const CATEGORY_LABELS: Record<SubjectCategory, string> = {
   general:   'General',
 };
 
-const scheduleHeaderStyle = {
+const scheduleHeaderStyle: React.CSSProperties = {
   position: 'sticky',
   top: 0,
   zIndex: 50,
@@ -70,13 +75,13 @@ const scheduleHeaderStyle = {
   borderBottom: '1px solid var(--border-default)',
   padding: '16px 20px',
 };
-const headerRowStyle = {
+const headerRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 10,
   marginBottom: 14,
 };
-const backButtonStyle = {
+const backButtonStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
   cursor: 'pointer',
@@ -85,21 +90,21 @@ const backButtonStyle = {
   display: 'flex',
   marginLeft: -4,
 };
-const dayTabsRowStyle = {
+const dayTabsRowStyle: React.CSSProperties = {
   display: 'flex',
   gap: 8,
   flexWrap: 'wrap',
 };
-const pageMetaTextStyle = {
+const pageMetaTextStyle: React.CSSProperties = {
   font: '500 13px var(--font-body)',
   color: 'var(--text-secondary)',
   marginBottom: -4,
 };
-const loadingPhaseStyle = {
+const loadingPhaseStyle: React.CSSProperties = {
   textAlign: 'center',
   padding: '40px 20px',
 };
-const emptyStateStyle = {
+const emptyStateStyle: React.CSSProperties = {
   textAlign: 'center',
   padding: '60px 20px',
   color: 'var(--text-muted)',
@@ -216,8 +221,8 @@ function LegendChip({ cat }: { cat: SubjectCategory }) {
 export default function SchedulePage() {
   const navigate = useNavigate();
   const todayKey = currentDayKey();
-  const [selectedDay, setSelectedDay] = useState(
-    DAYS.includes(todayKey as any) ? todayKey : 'Mon'
+  const [selectedDay, setSelectedDay] = useState<ScheduleDay>(
+    isScheduleDay(todayKey) ? todayKey : 'Mon'
   );
   const [showAddSheet, setShowAddSheet] = useState(false);
   const now = new Date();
@@ -271,7 +276,7 @@ export default function SchedulePage() {
       </header>
 
       <main className="page-content">
-        <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', marginBottom: -4 }}>
+        <p style={pageMetaTextStyle}>
           {selectedDay === todayKey ? `Today — ` : ''}
           {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>

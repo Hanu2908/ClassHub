@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo, MultiDonut } from '../../components/Shared';
-import { useAppStore, isExpired } from '../../store/appStore';
+import { useAppStore, isExpired, type Announcement, type ScheduleSlot } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useSection, useAnnouncements, useAssignments, usePolls, useSchedule, useAttendance } from '../../hooks/useSupabaseQuery';
 import StatusCard from '../../components/StatusCard';
@@ -34,38 +34,20 @@ function hoursUntil(timeStr: string): string {
 }
 
 // ── Loading skeleton ─────────────────────────────────────────────────────────
-const skeletonCardStyle = {
+const skeletonCardStyle: CSSProperties = {
   padding: 16,
 };
-const skeletonLineStyle = {
+const skeletonLineStyle: CSSProperties = {
   width: '60%',
   height: 14,
   marginBottom: 10,
   borderRadius: 6,
 };
-const skeletonBlockStyle = {
+const skeletonBlockStyle: CSSProperties = {
   width: '40%',
   borderRadius: 8,
 };
-const emptyStateCardStyle = {
-  padding: '32px 16px',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 12,
-  textAlign: 'center',
-};
-const emptyStateIconStyle = {
-  width: 48,
-  height: 48,
-  borderRadius: '50%',
-  background: 'var(--bg-elevated)',
-  border: '1px solid var(--border-default)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-};
-const pageHeaderStyle = {
+const pageHeaderStyle: CSSProperties = {
   position: 'sticky',
   top: 0,
   zIndex: 50,
@@ -77,7 +59,7 @@ const pageHeaderStyle = {
   alignItems: 'center',
   justifyContent: 'space-between',
 };
-const iconButtonStyle = {
+const iconButtonStyle: CSSProperties = {
   width: 40,
   height: 40,
   background: 'none',
@@ -90,7 +72,7 @@ const iconButtonStyle = {
   borderRadius: 'var(--radius-sm)',
   position: 'relative',
 };
-const notificationBadgeStyle = {
+const notificationBadgeStyle: CSSProperties = {
   position: 'absolute',
   top: 6,
   right: 6,
@@ -105,7 +87,7 @@ const notificationBadgeStyle = {
   justifyContent: 'center',
   border: '1.5px solid var(--bg-base)',
 };
-const sectionCardStyle = {
+const sectionCardStyle: CSSProperties = {
   padding: '32px 16px',
   display: 'flex',
   flexDirection: 'column',
@@ -113,7 +95,7 @@ const sectionCardStyle = {
   gap: 12,
   textAlign: 'center',
 };
-const sectionIconStyle = {
+const sectionIconStyle: CSSProperties = {
   width: 48,
   height: 48,
   borderRadius: '50%',
@@ -137,7 +119,7 @@ function WidgetSkeleton({ height = 80 }: { height?: number }) {
 function NotificationSheet({ onClose }: { onClose: () => void }) {
   const { notifications, markAllNotificationsRead, clearNotification } = useAppStore();
 
-  const now = useMemo(() => Date.now(), []);
+  const [now] = useState(() => Date.now());
   const visibleNotifications = useMemo(() => notifications.filter(n => {
     if (!n.read || !n.readAt) return true;
     const readTime = new Date(n.readAt).getTime();
@@ -202,7 +184,7 @@ function NotificationSheet({ onClose }: { onClose: () => void }) {
 }
 
 // ── Critical banner ──────────────────────────────────────────────────────────
-function CriticalBanner({ ann }: { ann: any }) {
+function CriticalBanner({ ann }: { ann: Announcement }) {
   const navigate = useNavigate();
   return (
     <div className="critical-banner" onClick={() => navigate('/app/announcements')}>
@@ -226,25 +208,26 @@ function CriticalBanner({ ann }: { ann: any }) {
 // ── Schedule widget ──────────────────────────────────────────────────────────
 function ScheduleWidget() {
   const navigate = useNavigate();
-  const navigate = useNavigate();
   const key = todayKey();
   const { data: schedule, isLoading } = useSchedule({ day: key });
   const classes = useMemo(() => schedule?.[key] ?? [], [schedule, key]);
   const now = useMemo(() => new Date(), []);
-
-  if (isLoading) return <WidgetSkeleton height={60} />;
-
-  const current = useMemo(() => classes.find((c: any) => {
+  const current = useMemo(() => classes.find((c) => {
     const start = parseTime(c.startTime);
     const end = parseTime(c.endTime);
     return start <= now && now <= end;
   }), [classes, now]);
 
   const upcoming = useMemo(() => classes
-    .filter((c: any) => parseTime(c.startTime) > now)
-    .sort((a: any, b: any) => a.startTime.localeCompare(b.startTime)), [classes, now]);
+    .filter((c) => parseTime(c.startTime) > now)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime)), [classes, now]);
 
-  const display: any[] = useMemo(() => (current ? [current, upcoming[0]].filter(Boolean) : upcoming.slice(0, 2)), [current, upcoming]);
+  const display = useMemo<ScheduleSlot[]>(() => {
+    if (!current) return upcoming.slice(0, 2);
+    return upcoming[0] ? [current, upcoming[0]] : [current];
+  }, [current, upcoming]);
+
+  if (isLoading) return <WidgetSkeleton height={60} />;
 
   return (
     <section>
@@ -263,7 +246,7 @@ function ScheduleWidget() {
               <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>No classes scheduled for today.</p>
             </div>
           </div>
-        ) : display.map((cls: any, i: number) => {
+        ) : display.map((cls, i) => {
           const isNow = current?.id === cls.id;
           return (
             <div key={cls.id} style={{
@@ -323,12 +306,12 @@ function AttendancePills() {
           style={{ minWidth: 160, maxWidth: 200, padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}
           onClick={() => navigate('/app/attendance')}
         >
-          <MultiDonut segments={subjects.slice(0, 4).map((s: any) => ({ label: s.name, percentage: s.percentage, color: undefined }))} size={80} strokeWidth={8} />
+          <MultiDonut segments={subjects.slice(0, 4).map((s) => ({ label: s.name, percentage: s.percentage, color: undefined }))} size={80} strokeWidth={8} />
           <div style={{ marginTop: 6, textAlign: 'center' }}>
             <div style={{ font: '700 13px var(--font-display)', color: 'var(--text-primary)' }}>{Math.round(overall)}%</div>
             <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Overall</div>
           </div>
-          <MultiSegmentLegend segments={subjects.slice(0, 3).map((s: any) => ({ label: s.name, color: undefined }))} />
+          <MultiSegmentLegend segments={subjects.slice(0, 3).map((s) => ({ label: s.name, color: undefined }))} />
         </div>
         {subjects.map(sub => (
           <div
@@ -409,11 +392,12 @@ function AnnouncementsScroll() {
 function PollBanner() {
   const navigate = useNavigate();
   const { data: polls = [] } = usePolls();
+  const [now] = useState(() => Date.now());
   const poll = polls.find(p => p.status === 'active' && !isExpired(p.closesAt));
   if (!poll) return null;
 
   const total = poll.options.reduce((s, o) => s + o.votes, 0);
-  const closes = new Date(poll.closesAt).getTime() - Date.now();
+  const closes = new Date(poll.closesAt).getTime() - now;
   const closesD = Math.floor(closes / 86400000);
   const closesH = Math.floor((closes % 86400000) / 3600000);
 
@@ -561,7 +545,7 @@ export default function DashboardPage() {
               title="Attendance"
               onClick={() => navigate('/app/attendance')}
               value={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <MultiDonut segments={(attendance?.subjects ?? []).slice(0, 4).map((s: any) => ({ label: s.name, percentage: s.percentage, color: undefined }))} size={56} strokeWidth={8} />
+                <MultiDonut segments={(attendance?.subjects ?? []).slice(0, 4).map((s) => ({ label: s.name, percentage: s.percentage, color: undefined }))} size={56} strokeWidth={8} />
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <div style={{ font: '700 15px var(--font-display)', color: 'var(--text-primary)' }}>{Math.round(attendance?.overall ?? 0)}%</div>
                   <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Overall</div>
@@ -574,7 +558,7 @@ export default function DashboardPage() {
               title="Next assignment"
               onClick={() => navigate('/app/assignments')}
               value={(() => {
-                const a = (assignments ?? []).filter((as: any) => !isExpired(as.dueDate))[0];
+                const a = (assignments ?? []).filter((assignment) => !isExpired(assignment.dueDate))[0];
                 return a ? `${a.subject}: ${a.title}` : 'No upcoming';
               })()}
             />
