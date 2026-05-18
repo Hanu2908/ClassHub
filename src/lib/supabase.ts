@@ -39,4 +39,3 @@ export const supabase = createClient<Database>(
   supabaseAnonKey ?? 'placeholder-key',
   clientOptions
 );
-
