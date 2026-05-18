@@ -138,28 +138,34 @@ export function useMutateSubjects() {
 
 // ── 3. Announcements ─────────────────────────────────────────────────────────
 
-export function useAnnouncements() {
+export function useAnnouncements(opts?: { page?: number; limit?: number }) {
   const { sectionId, userId } = useAuthContext();
+  const page = opts?.page ?? 0;
+  const limit = opts?.limit ?? 100; // default cap to avoid unbounded fetches
   return useQuery<(Announcement & { isAcknowledged: boolean })[]>({
-    queryKey: ['announcements', sectionId],
+    queryKey: ['announcements', sectionId, userId, page, limit],
     enabled: !!sectionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      // Fetch announcements
+      const from = page * limit;
+      const to = (page + 1) * limit - 1;
       const { data: anns, error: annErr } = await supabase
         .from('announcements')
-        .select('*')
+        .select('id, title, message_content, priority, deadline_at, created_at')
         .eq('section_id', sectionId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
       if (annErr) throw annErr;
 
-      // Fetch current user's acknowledgments
       let ackIds: string[] = [];
-      if (userId) {
-        const { data: acks } = await supabase
+      if (userId && Array.isArray(anns) && anns.length > 0) {
+        const announcementIds = anns.map(a => a.id);
+        const { data: acks, error: ackErr } = await supabase
           .from('acknowledgments')
           .select('announcement_id')
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .in('announcement_id', announcementIds);
+        if (ackErr) throw ackErr;
         ackIds = (acks ?? []).map(a => a.announcement_id);
       }
 
@@ -179,34 +185,46 @@ export function useAnnouncements() {
 
 // ── 4. Assignments ───────────────────────────────────────────────────────────
 
-export function useAssignments() {
+export function useAssignments(opts?: { page?: number; limit?: number }) {
   const { sectionId, userId } = useAuthContext();
+  const page = opts?.page ?? 0;
+  const limit = opts?.limit ?? 100;
   return useQuery<Assignment[]>({
-    queryKey: ['assignments', sectionId],
+    queryKey: ['assignments', sectionId, userId, page, limit],
     enabled: !!sectionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      const { data: assigns, error } = await supabase
+      const from = page * limit;
+      const to = (page + 1) * limit - 1;
+      const assignmentsQuery = supabase
         .from('assignments')
         .select(`
-          *,
+          id, title, due_date, description, created_at,
           subjects:subject_id (code, name),
           assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers)
         `)
         .eq('section_id', sectionId!)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-      // Fetch current user's submissions
-      let userSubs: Record<string, { link: string | null; status: string }> = {};
-      if (userId) {
-        const { data: subs } = await supabase
-          .from('submissions')
-          .select('assignment_id, submission_link, status')
-          .eq('student_id', userId);
-        for (const s of subs ?? []) {
-          userSubs[s.assignment_id] = { link: s.submission_link, status: s.status };
-        }
+      const submissionQuery = userId
+        ? supabase
+            .from('submissions')
+            .select('assignment_id, submission_link, status')
+            .eq('student_id', userId)
+        : Promise.resolve({ data: [], error: null });
+
+      const [{ data: assigns, error }, { data: subs, error: subErr }] = await Promise.all([
+        assignmentsQuery,
+        submissionQuery,
+      ] as const);
+
+      if (error) throw error;
+      if (subErr) throw subErr;
+
+      const userSubs: Record<string, { link: string | null; status: string }> = {};
+      for (const s of subs ?? []) {
+        userSubs[s.assignment_id] = { link: s.submission_link, status: s.status };
       }
 
       return (assigns ?? []).map(a => {
@@ -246,49 +264,60 @@ export function useAssignments() {
 export function usePolls() {
   const { sectionId, userId } = useAuthContext();
   return useQuery<(Poll & { userVote: string | null })[]>({
-    queryKey: ['polls', sectionId],
+    queryKey: ['polls', sectionId, userId],
     enabled: !!sectionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data: polls, error } = await supabase
         .from('polls')
         .select(`
-          *,
+          id, question_text, poll_type, is_active, expires_at, created_at,
           poll_options (id, label, sort_order)
         `)
         .eq('section_id', sectionId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      // Get user's votes
-      let userVotes: Record<string, string> = {};
-      if (userId && (polls ?? []).length > 0) {
-        const anonymousTokens = (polls ?? []).map(p => generateAnonymousToken(userId, p.id));
-        const { data: votes } = await supabase
-          .from('votes')
-          .select('poll_id, option_id, anonymous_token')
-          .or(`student_id.eq.${userId},anonymous_token.in.(${anonymousTokens.join(',')})`);
-        for (const v of votes ?? []) {
-          userVotes[v.poll_id] = v.option_id;
-        }
-      }
-
-      // Get vote counts via a batched RPC to avoid N+1 calls
+      const pollArray = polls ?? [];
+      const pollIds = pollArray.map(p => p.id);
       const results: Record<string, Record<string, number>> = {};
-      const pollIds = (polls ?? []).map(p => p.id);
+      const userVotes: Record<string, string> = {};
+
       if (pollIds.length > 0) {
-        const { data: batchRes, error: batchErr } = await supabase.rpc('batch_poll_results', { target_polls: pollIds });
+        const rpcPromise = supabase.rpc('batch_poll_results', { target_polls: pollIds });
+
+        const votePromise = userId
+          ? supabase
+              .from('votes')
+              .select('poll_id, option_id, anonymous_token')
+              .or(
+                `student_id.eq.${userId},anonymous_token.in.(${pollIds
+                  .map((pollId) => generateAnonymousToken(userId, pollId))
+                  .join(',')})`
+              )
+          : Promise.resolve({ data: [], error: null });
+
+        const [{ data: batchRes, error: batchErr }, { data: votes, error: voteErr }] = await Promise.all([
+          rpcPromise,
+          votePromise,
+        ] as const);
+
         if (batchErr) throw batchErr;
+        if (voteErr) throw voteErr;
+
         const resArray = Array.isArray(batchRes) ? batchRes : [];
         for (const r of resArray) {
           if (!results[r.poll_id]) results[r.poll_id] = {};
           results[r.poll_id][r.option_id] = r.votes;
         }
+
+        for (const v of votes ?? []) {
+          userVotes[v.poll_id] = v.option_id;
+        }
       }
 
-      return (polls ?? []).map(p => {
-        const opts = ((p.poll_options ?? []) as any[])
-          .sort((a: any, b: any) => a.sort_order - b.sort_order);
+      return pollArray.map(p => {
+        const opts = ((p.poll_options ?? []) as any[]).sort((a: any, b: any) => a.sort_order - b.sort_order);
         const isActive = p.is_active && (!p.expires_at || new Date(p.expires_at) > new Date());
 
         const options: PollOption[] = opts.map((o: any) => ({
@@ -316,14 +345,18 @@ export function usePolls() {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function useSchedule() {
+export function useSchedule(opts?: { day?: string; limit?: number }) {
   const { sectionId } = useAuthContext();
+  const day = opts?.day ?? undefined; // day as 'Mon'..'Sun'
+  const limit = opts?.limit ?? 500;
+
   return useQuery<ScheduleMap>({
-    queryKey: ['schedule', sectionId],
+    queryKey: ['schedule', sectionId, day, limit],
     enabled: !!sectionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      const { data, error } = await supabase
+      // If a specific day is requested, fetch only that day's slots to reduce payload.
+      let query = supabase
         .from('timetable_slots')
         .select(`
           id, day_of_week, start_time, end_time, room, type, created_by,
@@ -331,15 +364,25 @@ export function useSchedule() {
         `)
         .eq('section_id', sectionId!)
         .order('start_time');
+
+      if (typeof day === 'string') {
+        const idx = DAY_NAMES.indexOf(day);
+        if (idx >= 0) query = query.eq('day_of_week', idx);
+      } else {
+        // global fetch: cap results to avoid accidental huge payloads
+        query = query.limit(limit);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       const map: ScheduleMap = {};
       for (const slot of data ?? []) {
-        const day = DAY_NAMES[slot.day_of_week] ?? 'Mon';
+        const dayName = DAY_NAMES[slot.day_of_week] ?? 'Mon';
         const subjectData = slot.subjects as any;
         const entry: ScheduleSlot = {
           id: slot.id,
-          day,
+          day: dayName,
           subject: subjectData?.name ?? 'Free Period',
           code: subjectData?.code ?? '',
           room: slot.room ?? '',
@@ -348,8 +391,8 @@ export function useSchedule() {
           startTime: slot.start_time.slice(0, 5), // HH:MM
           endTime: slot.end_time.slice(0, 5),
         };
-        if (!map[day]) map[day] = [];
-        map[day].push(entry);
+        if (!map[dayName]) map[dayName] = [];
+        map[dayName].push(entry);
       }
       return map;
     },
@@ -428,7 +471,8 @@ export function useSectionMembers() {
         .from('users')
         .select('id, name, email, section_roll, university_roll, role, avatar_url')
         .eq('section_id', sectionId!)
-        .order('section_roll');
+        .order('section_roll')
+        .limit(200); // safeguard: avoid extremely large member lists on the dashboard
       if (error) throw error;
       return (data ?? []).map(u => ({
         id: u.id,

@@ -61,6 +61,50 @@ const CATEGORY_LABELS: Record<SubjectCategory, string> = {
   general:   'General',
 };
 
+const scheduleHeaderStyle = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 50,
+  background: 'rgba(13,15,20,0.95)',
+  backdropFilter: 'blur(16px)',
+  borderBottom: '1px solid var(--border-default)',
+  padding: '16px 20px',
+};
+const headerRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  marginBottom: 14,
+};
+const backButtonStyle = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  color: 'var(--text-secondary)',
+  padding: 4,
+  display: 'flex',
+  marginLeft: -4,
+};
+const dayTabsRowStyle = {
+  display: 'flex',
+  gap: 8,
+  flexWrap: 'wrap',
+};
+const pageMetaTextStyle = {
+  font: '500 13px var(--font-body)',
+  color: 'var(--text-secondary)',
+  marginBottom: -4,
+};
+const loadingPhaseStyle = {
+  textAlign: 'center',
+  padding: '40px 20px',
+};
+const emptyStateStyle = {
+  textAlign: 'center',
+  padding: '60px 20px',
+  color: 'var(--text-muted)',
+};
+
 // ── Add slot form ─────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -178,7 +222,7 @@ export default function SchedulePage() {
   const [showAddSheet, setShowAddSheet] = useState(false);
   const now = new Date();
   const role = useAppStore(s => s.role);
-  const { data: schedule = {}, isLoading } = useSchedule();
+  const { data: schedule = {}, isLoading } = useSchedule({ day: selectedDay });
   const deleteSlotMutation = useDeleteScheduleSlot();
 
   const classes = (schedule[selectedDay] ?? []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -192,14 +236,10 @@ export default function SchedulePage() {
 
   return (
     <div className="page-shell">
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid var(--border-default)', padding: '16px 20px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <header style={scheduleHeaderStyle}>
+        <div style={headerRowStyle}>
           <button id="schedule-back-btn" onClick={() => navigate('/app/home')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }}
+            style={backButtonStyle}
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
@@ -211,7 +251,7 @@ export default function SchedulePage() {
             ))}
           </div>
         </div>
-        <div className="day-tabs">
+        <div className="day-tabs" style={dayTabsRowStyle}>
           {DAYS.map(day => {
             const isToday = day === todayKey;
             const isActive = day === selectedDay;
@@ -237,11 +277,11 @@ export default function SchedulePage() {
         </p>
 
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div style={loadingPhaseStyle}>
             <Loader size={24} color="var(--accent-primary)" className="spin" />
           </div>
         ) : classes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+          <div style={emptyStateStyle}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
             <p style={{ font: '600 16px var(--font-display)', color: 'var(--text-secondary)', marginBottom: 6 }}>No classes today!</p>
             <p style={{ font: '400 13px var(--font-body)' }}>Enjoy your free day.</p>

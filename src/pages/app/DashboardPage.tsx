@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
@@ -34,11 +34,101 @@ function hoursUntil(timeStr: string): string {
 }
 
 // ── Loading skeleton ─────────────────────────────────────────────────────────
+const skeletonCardStyle = {
+  padding: 16,
+};
+const skeletonLineStyle = {
+  width: '60%',
+  height: 14,
+  marginBottom: 10,
+  borderRadius: 6,
+};
+const skeletonBlockStyle = {
+  width: '40%',
+  borderRadius: 8,
+};
+const emptyStateCardStyle = {
+  padding: '32px 16px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 12,
+  textAlign: 'center',
+};
+const emptyStateIconStyle = {
+  width: 48,
+  height: 48,
+  borderRadius: '50%',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-default)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+const pageHeaderStyle = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 50,
+  background: 'rgba(13,15,20,0.95)',
+  backdropFilter: 'blur(16px)',
+  borderBottom: '1px solid var(--border-default)',
+  padding: '16px 20px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+};
+const iconButtonStyle = {
+  width: 40,
+  height: 40,
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  color: 'var(--text-secondary)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 'var(--radius-sm)',
+  position: 'relative',
+};
+const notificationBadgeStyle = {
+  position: 'absolute',
+  top: 6,
+  right: 6,
+  width: 16,
+  height: 16,
+  borderRadius: '50%',
+  background: 'var(--status-critical)',
+  font: '600 9px var(--font-mono)',
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: '1.5px solid var(--bg-base)',
+};
+const sectionCardStyle = {
+  padding: '32px 16px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 12,
+  textAlign: 'center',
+};
+const sectionIconStyle = {
+  width: 48,
+  height: 48,
+  borderRadius: '50%',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-default)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
 function WidgetSkeleton({ height = 80 }: { height?: number }) {
   return (
-    <div className="card" style={{ padding: 16 }}>
-      <div className="skeleton" style={{ width: '60%', height: 14, marginBottom: 10, borderRadius: 6 }} />
-      <div className="skeleton" style={{ width: '40%', height, borderRadius: 8 }} />
+    <div className="card" style={skeletonCardStyle}>
+      <div className="skeleton" style={skeletonLineStyle} />
+      <div className="skeleton" style={{ ...skeletonBlockStyle, height }} />
     </div>
   );
 }
@@ -47,12 +137,12 @@ function WidgetSkeleton({ height = 80 }: { height?: number }) {
 function NotificationSheet({ onClose }: { onClose: () => void }) {
   const { notifications, markAllNotificationsRead, clearNotification } = useAppStore();
 
-  const now = Date.now();
-  const visibleNotifications = notifications.filter(n => {
+  const now = useMemo(() => Date.now(), []);
+  const visibleNotifications = useMemo(() => notifications.filter(n => {
     if (!n.read || !n.readAt) return true;
     const readTime = new Date(n.readAt).getTime();
     return now - readTime < 48 * 60 * 60 * 1000;
-  });
+  }), [notifications, now]);
 
   return (
     <BottomSheet onClose={onClose} title="Notifications">
@@ -67,9 +157,13 @@ function NotificationSheet({ onClose }: { onClose: () => void }) {
             <button
               onClick={markAllNotificationsRead}
               style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                font: '500 12px var(--font-body)', color: 'var(--accent-primary)',
-                padding: '0 0 12px', display: 'block',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                font: '500 12px var(--font-body)',
+                color: 'var(--accent-primary)',
+                padding: '0 0 12px',
+                display: 'block',
               }}
             >
               Mark all as read
@@ -132,24 +226,25 @@ function CriticalBanner({ ann }: { ann: any }) {
 // ── Schedule widget ──────────────────────────────────────────────────────────
 function ScheduleWidget() {
   const navigate = useNavigate();
-  const { data: schedule, isLoading } = useSchedule();
+  const navigate = useNavigate();
   const key = todayKey();
-  const classes = schedule?.[key] ?? [];
-  const now = new Date();
+  const { data: schedule, isLoading } = useSchedule({ day: key });
+  const classes = useMemo(() => schedule?.[key] ?? [], [schedule, key]);
+  const now = useMemo(() => new Date(), []);
 
   if (isLoading) return <WidgetSkeleton height={60} />;
 
-  const current = classes.find((c: any) => {
+  const current = useMemo(() => classes.find((c: any) => {
     const start = parseTime(c.startTime);
     const end = parseTime(c.endTime);
     return start <= now && now <= end;
-  });
+  }), [classes, now]);
 
-  const upcoming = classes
+  const upcoming = useMemo(() => classes
     .filter((c: any) => parseTime(c.startTime) > now)
-    .sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
+    .sort((a: any, b: any) => a.startTime.localeCompare(b.startTime)), [classes, now]);
 
-  const display: any[] = current ? [current, upcoming[0]].filter(Boolean) : upcoming.slice(0, 2);
+  const display: any[] = useMemo(() => (current ? [current, upcoming[0]].filter(Boolean) : upcoming.slice(0, 2)), [current, upcoming]);
 
   return (
     <section>
@@ -159,8 +254,8 @@ function ScheduleWidget() {
       </div>
       <div className="card" style={{ padding: '4px 0' }}>
         {display.length === 0 ? (
-          <div style={{ padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={sectionCardStyle}>
+            <div style={sectionIconStyle}>
               <Coffee size={24} color="var(--text-secondary)" />
             </div>
             <div>
@@ -210,8 +305,8 @@ function ScheduleWidget() {
 function AttendancePills() {
   const navigate = useNavigate();
   const { data: attendance, isLoading } = useAttendance();
-  const subjects = attendance?.subjects ?? [];
-  const overall = attendance?.overall ?? 0;
+  const subjects = useMemo(() => attendance?.subjects ?? [], [attendance]);
+  const overall = useMemo(() => attendance?.overall ?? 0, [attendance]);
 
   if (isLoading) return <WidgetSkeleton height={52} />;
   if (subjects.length === 0) return null;
@@ -260,7 +355,7 @@ function AttendancePills() {
 // ── Announcements scroll ─────────────────────────────────────────────────────
 function AnnouncementsScroll() {
   const navigate = useNavigate();
-  const { data: announcements = [], isLoading } = useAnnouncements();
+  const { data: announcements = [], isLoading } = useAnnouncements({ limit: 12 });
   const visible = announcements.filter(a => !isExpired(a.deadline));
 
   if (isLoading) return <WidgetSkeleton />;
@@ -357,7 +452,7 @@ function PollBanner() {
 // ── Assignments scroll ───────────────────────────────────────────────────────
 function AssignmentsScroll() {
   const navigate = useNavigate();
-  const { data: assignments = [], isLoading } = useAssignments();
+  const { data: assignments = [], isLoading } = useAssignments({ limit: 8 });
   const visible = assignments.filter(a => !isExpired(a.dueDate));
 
   if (isLoading) return <WidgetSkeleton />;
@@ -415,7 +510,7 @@ export default function DashboardPage() {
   const authUser = useAppStore(s => s.authUser);
   const notifications = useAppStore(s => s.notifications);
   const { data: section } = useSection();
-  const { data: announcements = [] } = useAnnouncements();
+  const { data: announcements = [] } = useAnnouncements({ limit: 50 });
   const { data: assignments = [] } = useAssignments();
   const { data: attendance = { subjects: [], overall: 0 } } = useAttendance();
   const [showNotifs, setShowNotifs] = useState(false);
@@ -428,11 +523,7 @@ export default function DashboardPage() {
   return (
     <div className="page-shell">
       {/* Header */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 50, background: 'rgba(13,15,20,0.95)',
-        backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--border-default)',
-        padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
+      <header style={pageHeaderStyle}>
         <div>
           <p style={{ font: '500 12px var(--font-mono)', color: 'var(--accent-primary)', marginBottom: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             {section ? `${section.inviteCode} · ${section.name}` : 'ClassHub'}
@@ -446,23 +537,16 @@ export default function DashboardPage() {
             id="notification-btn"
             aria-label="Notifications"
             onClick={() => setShowNotifs(true)}
-            style={{ width: 40, height: 40, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', position: 'relative' }}
+            style={iconButtonStyle}
           >
             <Bell size={20} />
             {unread > 0 && (
-              <span style={{
-                position: 'absolute', top: 6, right: 6,
-                width: 16, height: 16, borderRadius: '50%',
-                background: 'var(--status-critical)',
-                font: '600 9px var(--font-mono)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: '1.5px solid var(--bg-base)',
-              }}>
+              <span style={notificationBadgeStyle}>
                 {unread > 9 ? '9+' : unread}
               </span>
             )}
           </button>
-          <button id="announcements-btn" aria-label="Announcements" onClick={() => navigate('/app/announcements')} style={{ width: 40, height: 40, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)' }}>
+          <button id="announcements-btn" aria-label="Announcements" onClick={() => navigate('/app/announcements')} style={iconButtonStyle}>
             <MessageSquare size={20} />
           </button>
         </div>

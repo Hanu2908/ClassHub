@@ -40,7 +40,7 @@ function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: str
 type SubFilter = 'submitted' | 'not_submitted';
 
 function SubmissionTracker() {
-  const { data: assignments = [] } = useAssignments();
+  const { data: assignments = [] } = useAssignments({ limit: 200 });
   const { data: members = [] } = useSectionMembers();
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>('not_submitted');

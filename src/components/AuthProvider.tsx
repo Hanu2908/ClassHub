@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppStore, type AuthUser } from '../store/appStore';
 import { queryClient } from '../lib/queryClient';
+import { showToast } from '../components/Toast';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 const SKIT_DOMAIN = '@skit.ac.in';
@@ -65,12 +66,34 @@ async function handleSession(
   }
 
   store.setSession(session);
-  const profile = await fetchProfile(user.id);
+  // Try to fetch the backend profile; retry a few times in case of eventual consistency
+  let profile = await fetchProfile(user.id);
+  if (!profile) {
+    // Retry with a short backoff — helpful when account row was just created elsewhere
+    for (let attempt = 0; attempt < 3 && !profile; attempt++) {
+      // 200ms, 400ms, 600ms
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+      // eslint-disable-next-line no-await-in-loop
+      profile = await fetchProfile(user.id);
+    }
+  }
+
   if (profile) {
     store.setAuthUser(profile);
   } else {
+    // Log a warning so debugging on mobile/other devices is easier
+    // eslint-disable-next-line no-console
+    console.warn('[Auth] no backend profile found for user', user.id);
+    // Surface a lightweight diagnostic to the user so mobile issues are visible
+    try {
+      showToast('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.', 'warning');
+    } catch (e) {
+      // ignore if toast system is not yet mounted
+    }
     store.setAuthUser(authUserToBasicProfile(user));
   }
+
   store.setAuthLoading(false);
 }
 

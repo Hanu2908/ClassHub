@@ -317,7 +317,7 @@ export default function AssignmentsPage() {
   const role = useAppStore(s => s.role);
   const authUser = useAppStore(s => s.authUser);
   const classRoll = authUser?.sectionRoll ?? '17';
-  const { data: assignments = [], isLoading } = useAssignments();
+  const { data: assignments = [], isLoading } = useAssignments({ limit: 100 });
   const deleteAssignmentMutation = useDeleteAssignment();
   const submitMutation = useSubmitAssignment();
 

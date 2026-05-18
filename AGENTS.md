@@ -8,6 +8,21 @@ Status: Active dev — V1.0 closed beta Section P2, SKIT Jaipur
 PM: Himanshu Saini (CR for beta section)
 Team size: 3-4 students
 
+## Workspace Instruction Summary
+This file is the primary workspace instruction source for AI copilots working in ClassHub.
+
+- **Primary stack:** React 18 + Vite + TypeScript strict + Tailwind CSS v3 + Supabase JS v2
+- **Backend:** Supabase PostgreSQL 15, Auth, Edge Functions, migrations under `supabase/migrations`
+- **Security focus:** RLS is mandatory; enforce section scoping, avoid client trust for auth/authorization, and never store ERP credentials.
+- **Build/test commands:**
+  - `npm run dev` — start Vite dev server
+  - `npm test` — run Vitest unit tests
+  - `npm run build` — compile TypeScript and build Vite app
+  - `npm run lint` — run ESLint over the repo
+- **Key docs:** `docs/architecture.md`, `docs/backend.md`, `docs/frontend.md`, `docs/decisions.md`, `docs/schema.sql`, `docs/rls-test-plan.md`, `docs/security-remediation.md`
+- **Agent guidance:** use this file and `CLAUDE.md` as context; prefer workspace-specific conventions over generic patterns.
+- **Do not implement:** resource vault, syllabus tracker, anonymous feedback, lost & found, community uploads, ERP scraping.
+
 ## Codex's Role
 Codex = architect + technical advisor. Use for:
 - Architecture decisions + tradeoffs
