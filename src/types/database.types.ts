@@ -119,6 +119,7 @@ export type Database = {
           roll_end: number
           roll_start: number
           set_label: string
+          page_numbers: string | null
         }
         Insert: {
           assignment_id: string
@@ -128,6 +129,7 @@ export type Database = {
           roll_end: number
           roll_start: number
           set_label: string
+          page_numbers?: string | null
         }
         Update: {
           assignment_id?: string
@@ -137,6 +139,7 @@ export type Database = {
           roll_end?: number
           roll_start?: number
           set_label?: string
+          page_numbers?: string | null
         }
         Relationships: [
           {

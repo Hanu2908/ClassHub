@@ -266,10 +266,11 @@ with check (exists (
 ));
 
 -- ── votes ─────────────────────────────────────────────────────────────────────
-create policy "Students read own actionable votes and CR reads actionable section votes"
+create policy "Students read own actionable and anonymous votes and CR reads actionable section votes"
 on public.votes for select to authenticated
 using (
   student_id = (select auth.uid())
+  or anonymous_token = public.calculate_anonymous_token((select auth.uid()), poll_id)
   or exists (
     select 1 from public.polls p
     where p.id = votes.poll_id

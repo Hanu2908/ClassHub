@@ -123,6 +123,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           label: s.label, description: s.description,
           rollStart: s.rollStart, rollEnd: s.rollEnd,
           pdfUrl: s.pdfUrl,
+          pageNumbers: s.pageNumbers,
         })) : undefined,
       });
       showToast('Assignment published! ✓', 'success');

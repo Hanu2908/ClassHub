@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
+import { generateAnonymousToken } from '../lib/utils';
 import type {
   Announcement, Assignment, AssignmentSet, Poll, PollOption,
   ScheduleSlot, ScheduleMap, AttendanceSubject,
@@ -185,13 +186,12 @@ export function useAssignments() {
     enabled: !!sectionId,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      // Fetch assignments with subject info
       const { data: assigns, error } = await supabase
         .from('assignments')
         .select(`
           *,
           subjects:subject_id (code, name),
-          assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end)
+          assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers)
         `)
         .eq('section_id', sectionId!)
         .order('created_at', { ascending: false });
@@ -217,7 +217,7 @@ export function useAssignments() {
           label: s.set_label,
           rollStart: s.roll_start,
           rollEnd: s.roll_end,
-          pageNumbers: '',
+          pageNumbers: s.page_numbers ?? '',
           description: s.description,
           pdfUrl: s.pdf_url,
         }));
@@ -262,11 +262,12 @@ export function usePolls() {
 
       // Get user's votes
       let userVotes: Record<string, string> = {};
-      if (userId) {
+      if (userId && (polls ?? []).length > 0) {
+        const anonymousTokens = (polls ?? []).map(p => generateAnonymousToken(userId, p.id));
         const { data: votes } = await supabase
           .from('votes')
-          .select('poll_id, option_id')
-          .eq('student_id', userId);
+          .select('poll_id, option_id, anonymous_token')
+          .or(`student_id.eq.${userId},anonymous_token.in.(${anonymousTokens.join(',')})`);
         for (const v of votes ?? []) {
           userVotes[v.poll_id] = v.option_id;
         }
@@ -437,6 +438,44 @@ export function useSectionMembers() {
         universityRoll: u.university_roll,
         role: u.role as 'student' | 'cr',
         avatarUrl: u.avatar_url,
+      }));
+    },
+  });
+}
+
+export interface AssignmentSubmission {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  submissionLink: string | null;
+  status: 'pending' | 'submitted';
+  submittedAt: string | null;
+  nudgeSent: boolean;
+}
+
+export function useAssignmentSubmissions(assignmentId: string | null) {
+  const { role } = useAuthContext();
+  const isCR = role === 'cr';
+  
+  return useQuery<AssignmentSubmission[]>({
+    queryKey: ['assignment_submissions', assignmentId],
+    enabled: !!assignmentId && isCR,
+    staleTime: 1000 * 30, // 30 seconds for quick updates in command center
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('id, assignment_id, student_id, submission_link, status, submitted_at, nudge_sent')
+        .eq('assignment_id', assignmentId!);
+      if (error) throw error;
+      
+      return (data ?? []).map(s => ({
+        id: s.id,
+        assignmentId: s.assignment_id,
+        studentId: s.student_id,
+        submissionLink: s.submission_link,
+        status: s.status as 'pending' | 'submitted',
+        submittedAt: s.submitted_at,
+        nudgeSent: s.nudge_sent,
       }));
     },
   });

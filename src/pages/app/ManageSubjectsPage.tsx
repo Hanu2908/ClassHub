@@ -79,6 +79,10 @@ export default function ManageSubjectsPage() {
         onSuccess: () => {
           showToast('Subject updated', 'success');
           setFormOpen(false);
+        },
+        onError: (error: any) => {
+          console.error("Update subject error:", error);
+          showToast(error.message || 'Failed to update subject', 'error');
         }
       });
     } else {
@@ -86,6 +90,10 @@ export default function ManageSubjectsPage() {
         onSuccess: () => {
           showToast('Subject created', 'success');
           setFormOpen(false);
+        },
+        onError: (error: any) => {
+          console.error("Create subject error:", error);
+          showToast(error.message || 'Failed to create subject', 'error');
         }
       });
     }

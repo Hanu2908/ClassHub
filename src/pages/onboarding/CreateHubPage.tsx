@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Share2, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Copy, Share2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
@@ -14,7 +14,12 @@ function randomAlpha(n: number) {
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
-  return <p style={{ font: '400 11px var(--font-mono)', color: 'var(--status-critical)', marginTop: 6 }}>{msg}</p>;
+  return (
+    <p style={{ display: 'flex', alignItems: 'center', gap: 6, font: '500 12px var(--font-body)', color: 'var(--status-critical)', marginTop: 8 }}>
+      <AlertCircle size={14} />
+      {msg}
+    </p>
+  );
 }
 
 export default function CreateHubPage() {
@@ -171,7 +176,7 @@ export default function CreateHubPage() {
 
       <form onSubmit={handleCreate} style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div>
-          <label style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Section Code <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="section-code-input" className={`input mono${errors.sectionCode ? ' input-error' : ''}`} placeholder="P2" maxLength={3}
@@ -181,7 +186,7 @@ export default function CreateHubPage() {
         </div>
 
         <div>
-          <label style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Hub Name <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="hub-name-input" className={`input${errors.hubName ? ' input-error' : ''}`} placeholder="Section P2 — SKIT"
@@ -190,7 +195,7 @@ export default function CreateHubPage() {
         </div>
 
         <div>
-          <label style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Class Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="cr-class-roll-input" className={`input${errors.classRoll ? ' input-error' : ''}`} placeholder="01" maxLength={2} inputMode="numeric"
@@ -199,7 +204,7 @@ export default function CreateHubPage() {
         </div>
 
         <div>
-          <label style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             University Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="cr-uni-roll-input" className={`input mono${errors.universityRoll ? ' input-error' : ''}`} placeholder="25ESKCX089" maxLength={12}

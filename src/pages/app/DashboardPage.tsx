@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
-import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo } from '../../components/Shared';
+import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo, MultiDonut } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useSection, useAnnouncements, useAssignments, usePolls, useSchedule, useAttendance } from '../../hooks/useSupabaseQuery';
-import DashboardFocusStrip from '../../components/DashboardFocusStrip';
+import StatusCard from '../../components/StatusCard';
+import MultiSegmentLegend from '../../components/MultiSegmentLegend';
 
 // ── Schedule helpers ──
 function todayKey(): string {
@@ -224,15 +225,15 @@ function AttendancePills() {
       <div className="carousel" style={{ paddingBottom: 8 }}>
         <div
           className="card"
-          style={{ minWidth: 90, padding: '12px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+          style={{ minWidth: 160, maxWidth: 200, padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}
           onClick={() => navigate('/app/attendance')}
         >
-          <DonutRing percentage={overall} size={52}>
-            <span style={{ font: '600 11px var(--font-mono)', color: 'var(--text-primary)' }}>
-              {overall.toFixed(0)}%
-            </span>
-          </DonutRing>
-          <p style={{ font: '400 10px var(--font-body)', color: 'var(--text-muted)', textAlign: 'center' }}>Overall</p>
+          <MultiDonut segments={subjects.slice(0, 4).map((s: any) => ({ label: s.name, percentage: s.percentage, color: undefined }))} size={80} strokeWidth={8} />
+          <div style={{ marginTop: 6, textAlign: 'center' }}>
+            <div style={{ font: '700 13px var(--font-display)', color: 'var(--text-primary)' }}>{Math.round(overall)}%</div>
+            <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Overall</div>
+          </div>
+          <MultiSegmentLegend segments={subjects.slice(0, 3).map((s: any) => ({ label: s.name, color: undefined }))} />
         </div>
         {subjects.map(sub => (
           <div
@@ -378,29 +379,32 @@ function AssignmentsScroll() {
           </div>
         </div>
       ) : (
-        <div className="carousel">
-          {visible.slice(0, 5).map(a => {
-            const isSubmitted = a.status === 'submitted';
-            const cls = isSubmitted ? 'badge-safe' : deadlineBadgeClass(a.dueDate);
-            const label = isSubmitted ? 'Submitted' : deadlineLabel(a.dueDate);
-            return (
-              <div
-                key={a.id}
-                className="card"
-                style={{ minWidth: 150, maxWidth: 170, cursor: 'pointer' }}
-                onClick={() => navigate('/app/assignments')}
-              >
-                <div style={{ fontSize: 24, marginBottom: 8, width: 36, height: 36, borderRadius: 10, background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {a.subject.includes('DBMS') ? <BookOpen size={18} color="var(--accent-primary)" /> : a.subject.includes('OS') ? <Cpu size={18} color="var(--status-safe)" /> : <BookMarked size={18} color="var(--status-warning)" />}
+          <div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {visible.slice(0, 8).map(a => {
+                const isSubmitted = a.status === 'submitted';
+                const cls = isSubmitted ? 'badge-safe' : deadlineBadgeClass(a.dueDate);
+                const label = isSubmitted ? 'Submitted' : deadlineLabel(a.dueDate);
+                return (
+                <div key={a.id} className="list-row" onClick={() => navigate('/app/assignments')} style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--accent-primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {a.subject.includes('DBMS') ? <BookOpen size={18} color="var(--accent-primary)" /> : a.subject.includes('OS') ? <Cpu size={18} color="var(--status-safe)" /> : <BookMarked size={18} color="var(--status-warning)" />}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: '600 14px var(--font-body)', color: 'var(--text-primary)', marginBottom: 4, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
+                      <div style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)' }}>{a.subject}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                    <span className={`badge ${cls}`}>{label}</span>
+                    {a.dueDate && <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>{new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</span>}
+                  </div>
                 </div>
-                <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {a.title}
-                </p>
-                <span className={`badge ${cls}`}>{label}</span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+            </div>
+          </div>
       )}
     </section>
   );
@@ -412,6 +416,8 @@ export default function DashboardPage() {
   const notifications = useAppStore(s => s.notifications);
   const { data: section } = useSection();
   const { data: announcements = [] } = useAnnouncements();
+  const { data: assignments = [] } = useAssignments();
+  const { data: attendance = { subjects: [], overall: 0 } } = useAttendance();
   const [showNotifs, setShowNotifs] = useState(false);
   const navigate = useNavigate();
 
@@ -464,7 +470,32 @@ export default function DashboardPage() {
 
       <main className="page-content">
         {critical ? <CriticalBanner ann={critical} /> : null}
-        <DashboardFocusStrip />
+        {/* Top status row: Attendance + Next assignment */}
+        <div className="top-status-row" style={{ display: 'flex', gap: 10, padding: '12px 16px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <StatusCard
+              title="Attendance"
+              onClick={() => navigate('/app/attendance')}
+              value={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <MultiDonut segments={(attendance?.subjects ?? []).slice(0, 4).map((s: any) => ({ label: s.name, percentage: s.percentage, color: undefined }))} size={56} strokeWidth={8} />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ font: '700 15px var(--font-display)', color: 'var(--text-primary)' }}>{Math.round(attendance?.overall ?? 0)}%</div>
+                  <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Overall</div>
+                </div>
+              </div>}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <StatusCard
+              title="Next assignment"
+              onClick={() => navigate('/app/assignments')}
+              value={(() => {
+                const a = (assignments ?? []).filter((as: any) => !isExpired(as.dueDate))[0];
+                return a ? `${a.subject}: ${a.title}` : 'No upcoming';
+              })()}
+            />
+          </div>
+        </div>
         <ScheduleWidget />
         <AttendancePills />
         <AnnouncementsScroll />

@@ -346,6 +346,12 @@ body {
   display: block;
 }
 
+.top-status-row { display: flex; gap: 10px; }
+
+.status-card { padding: 12px; display: flex; align-items: center; gap: 12px; }
+.status-card .value { font: 700 16px var(--font-display); color: var(--text-primary); }
+
+
 .dashboard-focus-card {
   padding: 18px;
   display: flex;

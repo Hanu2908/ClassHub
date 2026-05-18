@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, BarChart2, Trash2, Loader } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, BarChart2, Trash2, Loader, X } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { usePolls } from '../../hooks/useSupabaseQuery';
-import { useDeletePoll, useVotePoll } from '../../hooks/useSupabaseMutations';
+import { useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/useSupabaseMutations';
+import { BottomSheet } from '../../components/BottomSheet';
 
 type PollTab = 'active' | 'closed';
 
@@ -32,7 +33,7 @@ function PollCard({ poll, onDelete }: { poll: Poll & { userVote: string | null }
   const handleVote = async (optId: string) => {
     if (userVote || isClosed) return;
     try {
-      await voteMutation.mutateAsync({ pollId: poll.id, optionId: optId });
+      await voteMutation.mutateAsync({ pollId: poll.id, optionId: optId, pollType: poll.type });
       showToast('Vote submitted!', 'success');
     } catch { showToast('Failed to vote', 'error'); }
   };
@@ -137,11 +138,247 @@ function PollCard({ poll, onDelete }: { poll: Poll & { userVote: string | null }
   );
 }
 
+export function CreatePollSheet({ onClose }: { onClose: () => void }) {
+  const createPoll = useCreatePoll();
+  const [question, setQuestion] = useState('');
+  const [pollType, setPollType] = useState<'general' | 'actionable'>('general');
+  const [options, setOptions] = useState<string[]>(['', '']);
+  const [expiryHours, setExpiryHours] = useState('24');
+  const [loading, setLoading] = useState(false);
+
+  const handleAddOption = () => {
+    if (options.length >= 6) {
+      showToast('Maximum 6 options allowed', 'warning');
+      return;
+    }
+    setOptions([...options, '']);
+  };
+
+  const handleRemoveOption = (index: number) => {
+    if (options.length <= 2) {
+      showToast('Minimum 2 options required', 'warning');
+      return;
+    }
+    setOptions(options.filter((_, i) => i !== index));
+  };
+
+  const handleOptionChange = (index: number, val: string) => {
+    const updated = [...options];
+    updated[index] = val;
+    setOptions(updated);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim()) {
+      showToast('Question is required', 'error');
+      return;
+    }
+    const filteredOptions = options.map(o => o.trim()).filter(Boolean);
+    if (filteredOptions.length < 2) {
+      showToast('At least 2 valid options are required', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const expiresAt = expiryHours
+        ? new Date(Date.now() + parseFloat(expiryHours) * 3600000).toISOString()
+        : null;
+
+      await createPoll.mutateAsync({
+        question: question.trim(),
+        pollType,
+        expiresAt,
+        options: filteredOptions,
+      });
+
+      showToast('Poll created successfully!', 'success');
+      onClose();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to create poll', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '10px 12px',
+    boxSizing: 'border-box',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-md)',
+    color: 'var(--text-primary)',
+    font: '400 14px var(--font-body)',
+    outline: 'none',
+  };
+
+  return (
+    <BottomSheet onClose={onClose} title="Create Poll">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 24 }}>
+        {/* Question */}
+        <div>
+          <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+            Question <span style={{ color: 'var(--status-critical)' }}>*</span>
+          </label>
+          <input
+            id="poll-question-input"
+            required
+            style={inputStyle}
+            placeholder="e.g. Should we reschedule tomorrow's extra class?"
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+          />
+        </div>
+
+        {/* Poll Type Toggle */}
+        <div>
+          <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+            Poll Type
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              id="poll-type-general-btn"
+              type="button"
+              onClick={() => setPollType('general')}
+              style={{
+                flex: 1, padding: '10px', borderRadius: 'var(--radius-md)',
+                background: pollType === 'general' ? 'var(--accent-primary-glow)' : 'var(--bg-elevated)',
+                border: `1px solid ${pollType === 'general' ? 'var(--accent-primary)' : 'var(--border-default)'}`,
+                color: pollType === 'general' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                font: '600 13px var(--font-body)', cursor: 'pointer', transition: 'all 0.2s',
+              }}
+            >
+              Anonymous (General)
+            </button>
+            <button
+              id="poll-type-actionable-btn"
+              type="button"
+              onClick={() => setPollType('actionable')}
+              style={{
+                flex: 1, padding: '10px', borderRadius: 'var(--radius-md)',
+                background: pollType === 'actionable' ? 'rgba(255,181,71,0.08)' : 'var(--bg-elevated)',
+                border: `1px solid ${pollType === 'actionable' ? 'var(--status-warning)' : 'var(--border-default)'}`,
+                color: pollType === 'actionable' ? 'var(--status-warning)' : 'var(--text-secondary)',
+                font: '600 13px var(--font-body)', cursor: 'pointer', transition: 'all 0.2s',
+              }}
+            >
+              Actionable (CR Visible)
+            </button>
+          </div>
+          <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 6 }}>
+            {pollType === 'general'
+              ? 'Votes are completely secure and anonymous. CR cannot trace individual responses.'
+              : 'CR will be able to see who voted for which option.'}
+          </p>
+        </div>
+
+        {/* Dynamic Options */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)' }}>
+              Options <span style={{ color: 'var(--status-critical)' }}>*</span>
+            </label>
+            {options.length < 6 && (
+              <button
+                id="add-poll-option-btn"
+                type="button"
+                onClick={handleAddOption}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--accent-primary)', font: '600 12px var(--font-body)',
+                  display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px',
+                }}
+              >
+                <Plus size={14} /> Add Option
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {options.map((opt, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  id={`poll-option-input-${idx}`}
+                  required
+                  style={{ ...inputStyle, flex: 1 }}
+                  placeholder={`Option ${idx + 1}`}
+                  value={opt}
+                  onChange={e => handleOptionChange(idx, e.target.value)}
+                />
+                {options.length > 2 && (
+                  <button
+                    id={`remove-poll-option-btn-${idx}`}
+                    type="button"
+                    onClick={() => handleRemoveOption(idx)}
+                    style={{
+                      background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
+                      borderRadius: 'var(--radius-md)', padding: 10, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <X size={14} color="var(--status-critical)" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Expiry */}
+        <div>
+          <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+            Poll Duration
+          </label>
+          <select
+            id="poll-duration-select"
+            style={inputStyle}
+            value={expiryHours}
+            onChange={e => setExpiryHours(e.target.value)}
+          >
+            <option value="1">1 Hour</option>
+            <option value="4">4 Hours</option>
+            <option value="12">12 Hours</option>
+            <option value="24">1 Day</option>
+            <option value="48">2 Days</option>
+            <option value="168">1 Week</option>
+          </select>
+        </div>
+
+        {/* Submit */}
+        <button
+          id="create-poll-submit-btn"
+          type="submit"
+          disabled={loading}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '13px', background: loading ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+            border: 'none', borderRadius: 'var(--radius-md)', cursor: loading ? 'not-allowed' : 'pointer',
+            font: '600 14px var(--font-body)', color: loading ? 'var(--text-muted)' : '#fff',
+            transition: 'all 0.2s', marginTop: 8,
+          }}
+        >
+          {loading ? 'Creating...' : 'Create Poll'}
+        </button>
+      </form>
+    </BottomSheet>
+  );
+}
+
 export default function PollsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [tab, setTab] = useState<PollTab>('active');
+  const [showCreateSheet, setShowCreateSheet] = useState(false);
   const { data: polls = [], isLoading } = usePolls();
   const deletePollMutation = useDeletePoll();
+
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setShowCreateSheet(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Auto-expiry: hide polls gone past closesAt + 2 days
   const visible = polls.filter(p => !isExpired(p.closesAt));
@@ -194,10 +431,12 @@ export default function PollsPage() {
       </main>
 
       <CROnly>
-        <button id="create-poll-fab" className="fab" aria-label="Create poll">
+        <button id="create-poll-fab" className="fab" aria-label="Create poll" onClick={() => setShowCreateSheet(true)}>
           <Plus size={22} />
         </button>
       </CROnly>
+
+      {showCreateSheet && <CreatePollSheet onClose={() => setShowCreateSheet(false)} />}
 
       <NavBar />
     </div>

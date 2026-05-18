@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock, Loader2 } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
@@ -17,7 +17,12 @@ interface FormErrors {
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
-  return <p style={{ font: '400 11px var(--font-mono)', color: 'var(--status-critical)', marginTop: 6 }}>{msg}</p>;
+  return (
+    <p style={{ display: 'flex', alignItems: 'center', gap: 6, font: '500 12px var(--font-body)', color: 'var(--status-critical)', marginTop: 8 }}>
+      <AlertCircle size={14} />
+      {msg}
+    </p>
+  );
 }
 
 export default function JoinHubPage() {
@@ -125,7 +130,7 @@ export default function JoinHubPage() {
       <form onSubmit={handleSubmit} style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Hub Code */}
         <div>
-          <label style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Hub Code <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input
@@ -150,7 +155,7 @@ export default function JoinHubPage() {
 
         {/* Class Roll */}
         <div>
-          <label style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Class Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input
@@ -175,7 +180,7 @@ export default function JoinHubPage() {
 
         {/* University Roll */}
         <div>
-          <label style={{ font: '500 13px var(--font-body)', color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             University Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input

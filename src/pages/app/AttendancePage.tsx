@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, ShieldOff, Loader } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, ShieldOff, Loader, Edit3 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import type { AttendanceSubject } from '../../store/appStore';
 import { useAttendance } from '../../hooks/useSupabaseQuery';
+import { useBulkUpsertAttendance, useEnsureSubjects, useUpdateSubject } from '../../hooks/useSupabaseMutations';
 
 function parseERPAttendance(rawText: string) {
   // Handle both \r\n (Windows) and \n line endings
@@ -135,35 +136,72 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
   );
 }
 
+interface ParsedERPSubject {
+  code: string;
+  name: string;
+  type: string;
+  present: number;
+  absent: number;
+  total: number;
+  percentage: number;
+  canSkip: number;
+  needToAttend: number;
+  subjectId: string | null;
+}
+
 export default function AttendancePage() {
   const navigate = useNavigate();
   const [erpOpen, setErpOpen] = useState(false);
   const [erpText, setErpText] = useState('');
-  const [parsed, setParsed] = useState<AttendanceSubject[] | null>(null);
+  const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
   const { data: attendance, isLoading } = useAttendance();
 
   const subjects = attendance?.subjects ?? [];
   const overall = attendance?.overall ?? 0;
 
-  const handleParse = () => {
+  const ensureSubjects = useEnsureSubjects();
+  const updateSubjectMut = useUpdateSubject();
+
+  const handleParse = async () => {
     const result = parseERPAttendance(erpText);
     if (result.length === 0) {
       showToast('Could not parse attendance. Check format.', 'error');
       return;
     }
-    setParsed(result);
-    showToast(`Parsed ${result.length} subjects. Review and confirm.`, 'info');
+
+    try {
+      // Ensure subjects exist in DB; auto-create missing ones
+      const mapping = await ensureSubjects.mutateAsync(result.map(r => ({ code: r.code, name: r.name })));
+      // enrich parsed items with subjectId when available
+      const enriched = result.map(r => ({ ...r, subjectId: mapping[r.code] ?? null }));
+      setParsed(enriched);
+      showToast(`Parsed ${result.length} subjects. Review and confirm.`, 'info');
+    } catch (err: any) {
+      console.error('Error ensuring subjects', err);
+      showToast(err?.message ?? 'Failed to prepare subjects', 'error');
+      // fallback to showing parsed without subject ids
+      setParsed(result.map(r => ({ ...r, subjectId: null })));
+    }
   };
 
   const handleConfirm = () => {
-    // TODO: bulk upsert attendance_records via mutation
-    if (parsed) {
-      showToast('ERP import will be available after full backend integration', 'info');
-      setParsed(null);
-      setErpOpen(false);
-      setErpText('');
-    }
+    if (!parsed) return;
+    // perform bulk upsert via mutation
+    bulkUpsert.mutate(parsed.map(p => ({ code: p.code, present: p.present, absent: p.absent, od: (p as any).od ?? 0, makeup: (p as any).makeup ?? 0 })), {
+      onSuccess: () => {
+        showToast('ERP attendance imported successfully', 'success');
+        setParsed(null);
+        setErpOpen(false);
+        setErpText('');
+      },
+      onError: (err: any) => {
+        console.error('ERP import error', err);
+        showToast(err?.message ?? 'Failed to import attendance', 'error');
+      }
+    });
   };
+
+  const bulkUpsert = useBulkUpsertAttendance();
 
   const safeOverall = isNaN(overall) ? 0 : overall;
   const overallColor = STATUS_COLOR(safeOverall);
@@ -271,10 +309,33 @@ export default function AttendancePage() {
                 </p>
               </div>
               <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {parsed.map(s => (
-                  <div key={s.code} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-base)', borderRadius: 'var(--radius-sm)' }}>
-                    <span style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)' }}>{s.name}</span>
-                    <span style={{ font: '600 12px var(--font-mono)', color: STATUS_COLOR(s.percentage) }}>{s.percentage.toFixed(1)}%</span>
+                  {parsed.map((s, idx) => (
+                    <div key={s.code + idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-base)', borderRadius: 'var(--radius-sm)', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)' }}>{s.name}</span>
+                      {s.subjectId ? (
+                        <button onClick={async () => {
+                          const newName = prompt('Edit subject name', s.name);
+                          if (!newName || newName.trim() === '' || newName === s.name) return;
+                          try {
+                            await updateSubjectMut.mutateAsync({ id: s.subjectId!, name: newName });
+                            const copy = parsed.slice();
+                            (copy as any)[idx].name = newName;
+                            setParsed(copy as any);
+                            showToast('Subject name updated', 'success');
+                          } catch (err: any) {
+                            console.error('Failed to update subject', err);
+                            showToast(err?.message ?? 'Failed to update subject', 'error');
+                          }
+                        }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} aria-label="Edit subject name">
+                          <Edit3 size={14} />
+                        </button>
+                      ) : null}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ font: '600 12px var(--font-mono)', color: STATUS_COLOR(s.percentage) }}>{s.percentage.toFixed(1)}%</span>
+                      {s.subjectId ? <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>Mapped</span> : <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>New</span>}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -64,7 +64,7 @@ export default function ChoicePage() {
                 Enter the code from your Class Rep
               </p>
             </div>
-            <ChevronRight size={18} color="var(--text-muted)" />
+            <ChevronRight size={18} color="var(--text-muted)" className="chevron-icon" style={{ transition: 'transform var(--transition-fast), color var(--transition-fast)' }} />
           </button>
 
           <button
@@ -88,7 +88,7 @@ export default function ChoicePage() {
                 For Class Reps — set up your section
               </p>
             </div>
-            <ChevronRight size={18} color="var(--text-muted)" />
+            <ChevronRight size={18} color="var(--text-muted)" className="chevron-icon" style={{ transition: 'transform var(--transition-fast), color var(--transition-fast)' }} />
           </button>
         </div>
 

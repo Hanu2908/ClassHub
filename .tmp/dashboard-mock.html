@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dashboard Visual Companion</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Inter, system-ui, sans-serif;
+        background: #0b0c13;
+        color: #f0f0ff;
+      }
+      .shell {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 24px 16px;
+      }
+      .header {
+        position: sticky;
+        top: 0;
+        background: rgba(13, 15, 20, 0.95);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid #2a2a40;
+        padding: 20px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .header-left {
+        flex: 1;
+      }
+      .header .meta {
+        color: #8b5cf6;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        font-size: 11px;
+        margin-bottom: 8px;
+      }
+      .header h1 {
+        font-size: 28px;
+        margin: 0;
+      }
+      .icon-row {
+        display: flex;
+        gap: 8px;
+      }
+      .icon-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        border: 1px solid #2a2a40;
+        display: grid;
+        place-items: center;
+        background: #13131c;
+      }
+      .card {
+        background: #13131c;
+        border: 1px solid #2a2a40;
+        border-radius: 24px;
+        padding: 16px;
+        margin-top: 16px;
+      }
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .carousel {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+      .tile {
+        min-width: 150px;
+        background: #181a25;
+        border: 1px solid #25283c;
+        border-radius: 20px;
+        padding: 14px;
+      }
+      .badge {
+        display: inline-flex;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .status-safe {
+        background: rgba(74, 222, 128, 0.18);
+        color: #4ade80;
+      }
+      .status-warning {
+        background: rgba(251, 146, 60, 0.16);
+        color: #fb923c;
+      }
+      .status-critical {
+        background: rgba(244, 63, 94, 0.16);
+        color: #f43f5e;
+      }
+      .status-info {
+        background: rgba(139, 92, 246, 0.16);
+        color: #a78bfa;
+      }
+      .pill-row {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+      }
+      .pill {
+        min-width: 90px;
+        border: 1px solid #2a2a40;
+        border-radius: 18px;
+        background: #0f111a;
+        padding: 12px 10px;
+        text-align: center;
+      }
+      .donut {
+        width: 52px;
+        height: 52px;
+        border-radius: 999px;
+        border: 4px solid #2a2a40;
+        display: grid;
+        place-items: center;
+        margin: 0 auto 8px;
+      }
+      .no-data {
+        text-align: center;
+        color: #9090b8;
+      }
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: #10121d;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: #8b5cf6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="header">
+        <div class="header-left">
+          <div class="meta">CS101 · Section A</div>
+          <h1>Hey, Student 👋</h1>
+        </div>
+        <div class="icon-row">
+          <div class="icon-btn">🔔</div>
+          <div class="icon-btn">💬</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Today's Schedule <span>View all →</span></h2>
+        <div class="tile">
+          <div style="font-size: 13px; color: #9090b8; margin-bottom: 6px">
+            Now
+          </div>
+          <div style="font-weight: 700; margin-bottom: 6px">DBMS</div>
+          <div style="font-size: 12px; color: #b9b9ea">E-204 · 10:00</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>
+          Attendance
+          <button
+            style="
+              background: none;
+              border: none;
+              color: #8b5cf6;
+              cursor: pointer;
+            "
+          >
+            Update →
+          </button>
+        </h2>
+        <div class="pill-row">
+          <div class="pill">
+            <div class="donut">82%</div>
+            <div>Overall</div>
+          </div>
+          <div class="pill">
+            <div class="donut">74%</div>
+            <div>Maths</div>
+          </div>
+          <div class="pill">
+            <div class="donut">88%</div>
+            <div>Physics</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Announcements <span>View all →</span></h2>
+        <div class="carousel">
+          <div class="tile">
+            <strong>Exam schedule released</strong>
+            <div class="badge status-warning">Due soon</div>
+          </div>
+          <div class="tile">
+            <strong>Lab submissions open</strong>
+            <div class="badge status-safe">Info</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Campus Poll</h2>
+        <p style="margin: 0 0 10px; color: #c8c8ff">
+          Which lunch canteen menu should be added?
+        </p>
+        <div>
+          <strong>Veg Combo</strong>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 62%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Assignments <span>View all →</span></h2>
+        <div class="carousel">
+          <div class="tile">
+            <strong>OS Mini Project</strong>
+            <div class="badge status-warning">2d left</div>
+          </div>
+          <div class="tile">
+            <strong>Maths Quiz</strong>
+            <div class="badge status-safe">Submitted</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

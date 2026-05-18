@@ -40,3 +40,10 @@ PRD_V3_ClassHub.md
 
 # Supabase
 supabase/.temp
+
+.memory/index/
+.memory/context/
+.memory/exports/
+.memory/recovery/
+.memory/.backup/
+.memory/.lock

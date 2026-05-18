@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
   XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, BookOpen,
+  CheckCircle2, ExternalLink
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useAssignments, useSectionMembers } from '../../hooks/useSupabaseQuery';
+import { useAssignments, useSectionMembers, useAssignmentSubmissions } from '../../hooks/useSupabaseQuery';
 
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
@@ -49,9 +50,33 @@ function SubmissionTracker() {
   const visible = assignments.filter(a => !isExpired(a.dueDate));
   const selected = visible.find(a => a.id === selectedAssignmentId) ?? visible[0];
 
-  // For now, submitted status comes from the assignment query enrichment
-  const submittedCount = 0; // Will be enriched when submission tracking is built
-  const filtered = members;
+  const { data: submissions = [], isLoading } = useAssignmentSubmissions(selected?.id ?? null);
+
+  const submittedMembers = members.filter(m =>
+    submissions.some(s => s.studentId === m.id && s.status === 'submitted')
+  );
+  const pendingMembers = members.filter(m =>
+    !submissions.some(s => s.studentId === m.id && s.status === 'submitted')
+  );
+
+  const submittedCount = submittedMembers.length;
+  const filtered = subFilter === 'submitted' ? submittedMembers : pendingMembers;
+
+  const handleBulkNotify = () => {
+    if (pendingMembers.length === 0) {
+      showToast('All students have submitted!', 'info');
+      return;
+    }
+    // Bulk notify
+    pendingMembers.forEach(st => {
+      addNotification({
+        title: `Pending: ${selected?.title}`,
+        body: `Hi ${st.name}, please complete and submit your assignment for ${selected?.subject} before the deadline.`,
+        type: 'assignment'
+      });
+    });
+    showToast(`Reminders sent to ${pendingMembers.length} pending students!`, 'success');
+  };
 
   return (
     <div className="card">
@@ -60,7 +85,7 @@ function SubmissionTracker() {
         <SectionHead
           icon={<ClipboardList size={16} color="var(--accent-primary)" />}
           title="Submission Tracker"
-          count={submittedCount}
+          count={visible.length > 0 ? pendingMembers.length : undefined}
         />
         {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
       </div>
@@ -101,7 +126,7 @@ function SubmissionTracker() {
                   background: 'rgba(255,68,68,0.07)', border: '1px solid rgba(255,68,68,0.2)',
                   textAlign: 'center',
                 }}>
-                  <p style={{ font: '700 18px var(--font-display)', color: 'var(--status-critical)' }}>{members.length - submittedCount}</p>
+                  <p style={{ font: '700 18px var(--font-display)', color: 'var(--status-critical)' }}>{pendingMembers.length}</p>
                   <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Pending</p>
                 </div>
               </div>
@@ -128,21 +153,14 @@ function SubmissionTracker() {
                       transition: 'all 0.2s',
                     }}
                   >
-                    {f === 'submitted' ? `✓ Submitted (${submittedCount})` : `✗ Pending (${members.length - submittedCount})`}
+                    {f === 'submitted' ? `✓ Submitted (${submittedCount})` : `✗ Pending (${pendingMembers.length})`}
                   </button>
                 ))}
               </div>
 
-              {subFilter === 'not_submitted' && filtered.length > 0 ? (
+              {subFilter === 'not_submitted' && pendingMembers.length > 0 ? (
                 <button
-                  onClick={() => {
-                    addNotification({
-                      title: `Incomplete: ${selected?.title}`,
-                      body: `Please complete and submit the assignment for ${selected?.subject} before the deadline.`,
-                      type: 'assignment'
-                    });
-                    showToast('Notification sent to pending students', 'success');
-                  }}
+                  onClick={handleBulkNotify}
                   style={{
                     width: '100%', padding: '10px', marginBottom: 10,
                     background: 'rgba(74,158,255,0.1)', border: '1px solid rgba(74,158,255,0.2)',
@@ -156,16 +174,22 @@ function SubmissionTracker() {
 
               {/* Student list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
-                {members.length === 0 ? (
+                {isLoading ? (
                   <p style={{ textAlign: 'center', padding: '16px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>
-                    No students in this section
+                    Loading submissions...
                   </p>
-                ) : members.map(st => (
+                ) : filtered.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '16px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>
+                    No students in this list
+                  </p>
+                ) : filtered.map(st => {
+                  const subRecord = submissions.find(s => s.studentId === st.id);
+                  return (
                     <div key={st.id} style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '9px 12px', borderRadius: 8,
-                      background: 'rgba(255,68,68,0.04)',
-                      border: '1px solid rgba(255,68,68,0.12)',
+                      background: subFilter === 'submitted' ? 'rgba(52,201,123,0.04)' : 'rgba(255,68,68,0.04)',
+                      border: subFilter === 'submitted' ? '1px solid rgba(52,201,123,0.12)' : '1px solid rgba(255,68,68,0.12)',
                     }}>
                       <div style={{
                         width: 28, height: 28, borderRadius: '50%',
@@ -178,9 +202,47 @@ function SubmissionTracker() {
                         <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>{st.name}</p>
                         <p style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.universityRoll ?? ''}</p>
                       </div>
-                      <XCircle size={16} color="var(--status-critical)" />
+                      
+                      {subFilter === 'submitted' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {subRecord?.submissionLink && (
+                            <a
+                              href={subRecord.submissionLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
+                              title="View Submission Link"
+                            >
+                              <ExternalLink size={14} color="var(--accent-primary)" />
+                            </a>
+                          )}
+                          <CheckCircle2 size={16} color="var(--status-safe)" />
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button
+                            onClick={() => {
+                              addNotification({
+                                title: `Reminder: ${selected?.title}`,
+                                body: `Hi ${st.name}, please complete and submit the assignment for ${selected?.subject} as soon as possible.`,
+                                type: 'assignment'
+                              });
+                              showToast(`Nudged ${st.name}!`, 'success');
+                            }}
+                            style={{
+                              background: 'none', border: 'none', cursor: 'pointer',
+                              padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}
+                            title={`Nudge ${st.name}`}
+                          >
+                            <Bell size={14} color="var(--accent-primary)" />
+                          </button>
+                          <XCircle size={16} color="var(--status-critical)" />
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             </>
           ) : (
@@ -365,8 +427,38 @@ export default function CRCommandPage() {
 
         <SubmissionTracker />
         <ClassAttendance />
+
+        {/* Danger Zone */}
+        <section style={{ marginTop: 16 }}>
+          <p style={{ font: '600 13px var(--font-mono)', color: 'var(--status-critical)', marginBottom: 8, letterSpacing: '0.04em' }}>DANGER ZONE</p>
+          <div style={{
+            padding: 16, borderRadius: 'var(--radius-lg)',
+            background: 'rgba(255,68,68,0.04)',
+            border: '1px dashed rgba(255,68,68,0.3)',
+            display: 'flex', flexDirection: 'column', gap: 12
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <p style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>Delete Section Hub</p>
+                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)' }}>Permanently remove this hub, all students, and data.</p>
+              </div>
+              <button
+                onClick={() => showToast('Section deletion coming soon', 'info')}
+                style={{
+                  background: 'rgba(255,68,68,0.1)', color: 'var(--status-critical)',
+                  border: '1px solid rgba(255,68,68,0.25)', padding: '8px 12px',
+                  borderRadius: 'var(--radius-md)', font: '600 13px var(--font-body)',
+                  cursor: 'pointer', flexShrink: 0, transition: 'background var(--transition-fast)'
+                }}
+              >
+                Delete Hub
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* Bottom padding for navbar */}
-        <div style={{ height: 8 }} />
+        <div style={{ height: 24 }} />
       </main>
 
       {showNotifSheet ? <SendNotificationSheet onClose={() => setShowNotifSheet(false)} /> : null}

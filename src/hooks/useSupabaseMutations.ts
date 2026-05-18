@@ -25,15 +25,33 @@ export function useCreateAnnouncement() {
       priority: 'general' | 'critical';
       deadline?: string | null;
     }) => {
-      const { error } = await supabase.from('announcements').insert({
-        section_id: sectionId!,
-        author_id: userId!,
-        title: input.title,
-        message_content: input.message,
-        priority: input.priority,
-        deadline_at: input.deadline ?? null,
-      });
+      const { data, error } = await supabase
+        .from('announcements')
+        .insert({
+          section_id: sectionId!,
+          author_id: userId!,
+          title: input.title,
+          message_content: input.message,
+          priority: input.priority,
+          deadline_at: input.deadline ?? null,
+        })
+        .select('id')
+        .single();
+
       if (error) throw error;
+
+      if (input.priority === 'critical' && data?.id) {
+        try {
+          const { error: funcError } = await supabase.functions.invoke('send-critical-announcement', {
+            body: { announcementId: data.id },
+          });
+          if (funcError) {
+            console.warn('Failed to broadcast critical announcement notification:', funcError);
+          }
+        } catch (err) {
+          console.warn('Error invoking send-critical-announcement function:', err);
+        }
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
   });
@@ -76,7 +94,7 @@ export function useCreateAssignment() {
       description?: string;
       subjectId: string;
       dueDate: string;
-      sets?: { label: string; description: string; rollStart: number; rollEnd: number; pdfUrl?: string | null }[];
+      sets?: { label: string; description: string; rollStart: number; rollEnd: number; pdfUrl?: string | null; pageNumbers?: string | null }[];
     }) => {
       const { data: assignment, error } = await supabase
         .from('assignments')
@@ -102,6 +120,7 @@ export function useCreateAssignment() {
             roll_start: s.rollStart,
             roll_end: s.rollEnd,
             pdf_url: s.pdfUrl ?? null,
+            page_numbers: s.pageNumbers ?? null,
           }))
         );
         if (setErr) throw setErr;
@@ -189,15 +208,21 @@ export function useDeletePoll() {
   });
 }
 
+import { generateAnonymousToken } from '../lib/utils';
+
 export function useVotePoll() {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
   return useMutation({
-    mutationFn: async (input: { pollId: string; optionId: string }) => {
+    mutationFn: async (input: { pollId: string; optionId: string; pollType: 'general' | 'actionable' }) => {
+      const isAnonymous = input.pollType === 'general';
+      const token = isAnonymous ? generateAnonymousToken(userId!, input.pollId) : null;
+
       const { error } = await supabase.from('votes').insert({
         poll_id: input.pollId,
         option_id: input.optionId,
-        student_id: userId!,
+        student_id: isAnonymous ? null : userId!,
+        anonymous_token: token,
       });
       if (error) throw error;
     },
@@ -276,56 +301,90 @@ export function useUpdateAttendance() {
   });
 }
 
-// ── Subjects ─────────────────────────────────────────────────────────────────
-
-export function useCreateSubject() {
+// Ensure subjects exist for the given codes; create missing ones and return a mapping code -> id
+export function useEnsureSubjects() {
   const qc = useQueryClient();
   const { sectionId } = useAuthContext();
   return useMutation({
-    mutationFn: async (input: {
-      code: string;
-      name: string;
-      semester: number;
-      accent?: string;
-    }) => {
-      const { error } = await supabase.from('subjects').insert({
-        section_id: sectionId!,
-        code: input.code,
-        name: input.name,
-        semester: input.semester,
-        accent: input.accent ?? '#4A9EFF',
-      });
-      if (error) throw error;
+    mutationFn: async (items: Array<{ code: string; name?: string; semester?: number; accent?: string }>) => {
+      if (!sectionId) throw new Error('Missing section context');
+      const codes = Array.from(new Set(items.map(i => i.code).filter(Boolean)));
+      if (codes.length === 0) return {} as Record<string, string>;
+
+      const { data: existing, error: existingErr } = await supabase.from('subjects').select('id,code').in('code', codes).eq('section_id', sectionId);
+      if (existingErr) throw existingErr;
+
+      const existingMap = new Map<string, string>();
+      (existing ?? []).forEach((s: any) => existingMap.set(s.code, s.id));
+
+      const missing = items
+        .filter(i => i.code && !existingMap.has(i.code))
+        .map(i => ({ section_id: sectionId!, code: i.code, name: i.name ?? i.code, semester: i.semester ?? 1, accent: i.accent ?? '#4A9EFF' }));
+
+      let inserted: any[] = [];
+      if (missing.length > 0) {
+        const { data: ins, error: insErr } = await supabase.from('subjects').insert(missing).select('id,code');
+        if (insErr) throw insErr;
+        inserted = ins ?? [];
+      }
+
+      const mapping: Record<string, string> = {};
+      (existing ?? []).forEach((s: any) => mapping[s.code] = s.id);
+      inserted.forEach(s => mapping[s.code] = s.id);
+      return mapping;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['subjects'] }),
   });
 }
 
-export function useDeleteSubject() {
+// Bulk import attendance parsed from ERP text. Accepts parsed subjects with `code` or `subjectId`, `present`, `absent`, `od?`, `makeup?`.
+export function useBulkUpsertAttendance() {
   const qc = useQueryClient();
+  const { userId, sectionId } = useAuthContext();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('subjects').delete().eq('id', id);
+    mutationFn: async (items: Array<{ code?: string; subjectId?: string; present: number; absent: number; od?: number; makeup?: number }>) => {
+      if (!userId) throw new Error('Not authenticated');
+      if (!sectionId) throw new Error('Missing section context');
+
+      // For items that already include subjectId, use them; otherwise resolve codes
+      const rows: any[] = [];
+      const itemsNeedingCode = items.filter(i => !i.subjectId && i.code).map(i => i as { code: string; present: number; absent: number; od?: number; makeup?: number });
+
+      if (itemsNeedingCode.length > 0) {
+        const codes = Array.from(new Set(itemsNeedingCode.map(i => i.code)));
+        const { data: subjects, error: subjErr } = await supabase.from('subjects').select('id,code').in('code', codes).eq('section_id', sectionId);
+        if (subjErr) throw subjErr;
+        const codeToId = new Map<string, string>();
+        (subjects ?? []).forEach((s: any) => codeToId.set(s.code, s.id));
+
+        itemsNeedingCode.forEach(i => {
+          const sid = codeToId.get(i.code) ?? null;
+          if (sid) rows.push({ user_id: userId, subject_id: sid, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0 });
+        });
+      }
+
+      // Items that already had subjectId
+      items.filter(i => i.subjectId).forEach(i => rows.push({ user_id: userId, subject_id: i.subjectId, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0 }));
+
+      if (rows.length === 0) throw new Error('No matching subjects found for import');
+
+      const { error } = await supabase.from('attendance_records').upsert(rows, { onConflict: 'user_id,subject_id' });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['subjects'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attendance'] }),
   });
 }
 
 export function useUpdateSubject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
-      id: string;
-      code?: string;
-      name?: string;
-      semester?: number;
-      accent?: string;
-    }) => {
-      const { id, ...updates } = input;
-      const { error } = await supabase.from('subjects').update(updates).eq('id', id);
+    mutationFn: async (input: { id: string; name: string }) => {
+      const { error } = await supabase.from('subjects').update({ name: input.name }).eq('id', input.id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['subjects'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['subjects'] });
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+    },
   });
 }

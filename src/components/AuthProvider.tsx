@@ -148,16 +148,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
  * will handle the rest.
  */
 export async function signInWithGoogle() {
-  await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin + '/onboarding/choice',
-      queryParams: { 
-        hd: 'skit.ac.in',
-        prompt: 'select_account' 
+  try {
+    const result = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/onboarding/choice',
+        queryParams: {
+          hd: 'skit.ac.in',
+        },
       },
-    },
-  });
+    });
+
+    // Supabase may return an error object when the OAuth request fails.
+    // Log it so users/developers can see the server response in the console.
+    if (result.error) {
+      // eslint-disable-next-line no-console
+      console.error('[Auth] signInWithOAuth error:', result.error);
+      // Re-throw to allow callers (UI) to surface the error if needed
+      throw result.error;
+    }
+
+    return result;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[Auth] signInWithGoogle failed', err);
+    throw err;
+  }
 }
 
 /**

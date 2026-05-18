@@ -39,6 +39,64 @@ export function DonutRing({ percentage, size = 56, strokeWidth = 5, color, child
   );
 }
 
+// Multi-segment donut showing multiple percentages as colored arcs
+export interface MultiSegment {
+  label: string;
+  percentage: number; // 0-100
+  color?: string;
+}
+
+interface MultiDonutProps {
+  segments: MultiSegment[];
+  size?: number;
+  strokeWidth?: number;
+}
+
+export function MultiDonut({ segments, size = 72, strokeWidth = 8 }: MultiDonutProps) {
+  const r = (size - strokeWidth) / 2;
+  const circ = 2 * Math.PI * r;
+  const total = Math.max(0.0001, segments.reduce((s, seg) => s + Math.max(0, seg.percentage), 0));
+  let offset = 0;
+
+  return (
+    <div style={{ width: size, height: size, display: 'inline-block', position: 'relative' }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        {segments.map((seg, i) => {
+          const pct = (seg.percentage / total) * 100;
+          const dash = (pct / 100) * circ;
+          const dashArray = `${dash} ${circ}`;
+          const stroke = seg.color ?? (i === 0 ? 'var(--status-safe)' : i === 1 ? 'var(--status-warning)' : 'var(--status-info)');
+          const dashOffset = -offset;
+          offset += dash;
+          return (
+            <circle
+              key={seg.label + i}
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="transparent"
+              stroke={stroke}
+              strokeWidth={strokeWidth}
+              strokeDasharray={dashArray}
+              strokeDashoffset={dashOffset}
+              strokeLinecap="round"
+            />
+          );
+        })}
+        <circle cx={size / 2} cy={size / 2} r={r} strokeWidth={strokeWidth} stroke="transparent" fill="none" />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ font: '700 14px var(--font-display)', color: 'var(--text-primary)' }}>
+            {Math.round(segments.reduce((s, seg) => s + seg.percentage, 0))}%
+          </div>
+          <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Done</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Skeleton shimmer block
 interface SkeletonProps { width?: string; height?: number; style?: React.CSSProperties; }
 export function Skeleton({ width = '100%', height = 16, style }: SkeletonProps) {

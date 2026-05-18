@@ -124,6 +124,7 @@ create table if not exists public.assignment_sets (
   set_label text not null,
   description text not null,
   pdf_url text,
+  page_numbers text,
   roll_start integer not null check (roll_start between 1 and 999),
   roll_end integer not null check (roll_end between 1 and 999),
   check (roll_end >= roll_start),
@@ -245,7 +246,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select section_id from public.users where id = auth.uid();
+  select section_id from public.users where id = (select auth.uid());
 $$;
 
 create or replace function public.current_user_role()
@@ -255,7 +256,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select role from public.users where id = auth.uid();
+  select role from public.users where id = (select auth.uid());
 $$;
 
 create or replace function public.is_cr_for_section(target_section uuid)
@@ -268,10 +269,18 @@ as $$
   select exists (
     select 1
     from public.users
-    where id = auth.uid()
-      and role = 'cr'
+    where id = (select auth.uid())
+      and role = 'cr'::public.user_role
       and section_id = target_section
   );
+$$;
+
+create or replace function public.calculate_anonymous_token(user_id uuid, poll_id uuid)
+returns uuid
+language sql
+immutable
+as $$
+  select md5(user_id::text || '-' || poll_id::text)::uuid;
 $$;
 
 create or replace function public.join_section(invite text, class_roll text, uni_roll text)
