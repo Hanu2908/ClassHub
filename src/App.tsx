@@ -22,13 +22,18 @@ const ManageSubjectsPage = lazy(() => import('./pages/app/ManageSubjectsPage'));
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const session = useAppStore(s => s.session);
+  const authUser = useAppStore(s => s.authUser);
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
+  
+  // While auth is loading, show a loading skeleton
   if (isAuthLoading) return (
     <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
       <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
     </div>
   );
-  if (!session) return <Navigate to="/" replace />;
+  
+  // Allow through if session exists OR authUser is persisted (session may still be rehydrating)
+  if (!session && !authUser) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -52,8 +57,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     </div>
   );
   
-  if (session && authUser?.sectionId) return <Navigate to="/app/home" replace />;
-  if (session && !authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
+  // If user has session OR persisted authUser, redirect to appropriate page
+  const isAuthenticated = session || authUser;
+  if (isAuthenticated && authUser?.sectionId) return <Navigate to="/app/home" replace />;
+  if (isAuthenticated && !authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
   return <>{children}</>;
 }
 

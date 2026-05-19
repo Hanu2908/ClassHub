@@ -133,13 +133,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const store = useAppStore.getState();
     let mounted = true;
 
+    // Safety net: if auth takes too long, stop loading so user isn't stuck on blank screen
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && store.isAuthLoading) {
+        if (import.meta.env.DEV) {
+          console.warn('[Auth] Safety timeout — stopping loading spinner after 5s');
+        }
+        store.setAuthLoading(false);
+      }
+    }, 5000);
+
     async function getInitialSession() {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (mounted) {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (!mounted) return;
         if (error || !session) {
           store.setAuthLoading(false);
         } else {
+          // Set session IMMEDIATELY so route guards don't redirect to login
+          store.setSession(session);
           await handleSession(session.user, session, _navigateFn ?? undefined);
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.error('[Auth] getInitialSession failed:', err);
+        }
+        if (mounted) {
+          store.setAuthLoading(false);
         }
       }
     }
@@ -168,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

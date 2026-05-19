@@ -1,5 +1,5 @@
-const CACHE = "ClassHub-v1"; // bumped again to kill v2 cache
-const STATIC = ["/manifest.json"];
+const CACHE = "ClassHub-v2";
+const STATIC = ["/manifest.json", "/favicon.svg"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(STATIC)));
@@ -15,28 +15,30 @@ self.addEventListener("activate", (e) => {
           keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)),
         ),
       )
-      .then(() => self.clients.claim())
-      .then(() =>
-        self.clients.matchAll({ type: "window", includeUncontrolled: true }),
-      )
-      .then((clients) => {
-        clients.forEach((client) => client.navigate(client.url));
-      }),
+      .then(() => self.clients.claim()),
   );
 });
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // Always network-first for HTML navigation
+  // Skip non-GET and cross-origin requests
+  if (e.request.method !== "GET" || url.origin !== self.location.origin) return;
+
+  // Always network-first for HTML navigation (SPA routes)
   if (
     e.request.mode === "navigate" ||
     url.pathname === "/" ||
     url.pathname.endsWith(".html")
   ) {
-    e.respondWith(fetch(e.request).catch(() => caches.match("/index.html")));
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match("/index.html")),
+    );
     return;
   }
+
+  // Skip Supabase API calls — always go to network
+  if (url.hostname.includes("supabase")) return;
 
   // Cache-first for JS, CSS, fonts, images
   e.respondWith(
@@ -44,8 +46,10 @@ self.addEventListener("fetch", (e) => {
       (cached) =>
         cached ||
         fetch(e.request).then((res) => {
-          const clone = res.clone();
-          caches.open(CACHE).then((c) => c.put(e.request, clone));
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then((c) => c.put(e.request, clone));
+          }
           return res;
         }),
     ),
