@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, BarChart2, Trash2, Loader, X } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
-import { useAppStore, isExpired } from '../../store/appStore';
+import { useAppStore } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { usePolls } from '../../hooks/useSupabaseQuery';

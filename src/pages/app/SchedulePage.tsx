@@ -8,7 +8,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import { useSchedule, useSubjects } from '../../hooks/useSupabaseQuery';
 import { useUpsertScheduleSlot, useDeleteScheduleSlot } from '../../hooks/useSupabaseMutations';
-import { SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS } from '../../lib/scheduleUtils';
+import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS } from '../../lib/scheduleUtils';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 type ScheduleDay = typeof DAYS[number];
