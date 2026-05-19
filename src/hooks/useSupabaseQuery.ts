@@ -104,7 +104,7 @@ export function useSubjects() {
 
 export function useMutateSubjects() {
   const queryClient = useQueryClient();
-  const { sectionId, isAuthLoading } = useAuthContext();
+  const { sectionId } = useAuthContext();
 
   return useMutation({
     mutationFn: async (payload: { action: 'create' | 'update' | 'delete'; subject: Partial<SubjectInfo> }) => {
