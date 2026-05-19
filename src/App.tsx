@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './components/AuthProvider';
-import { useAppStore } from './store/appStore';
+import { useAppStore, type BeforeInstallPromptEvent } from './store/appStore';
 import { ToastContainer } from './components/Toast';
 
 // Pages (Lazy Loaded for Code Splitting)
@@ -25,8 +25,8 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const authUser = useAppStore(s => s.authUser);
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
   
-  // While auth is loading, show a loading skeleton
-  if (isAuthLoading) return (
+  // Cache-first: render children immediately if valid session/user already in store, bypass spinner
+  if (isAuthLoading && !(session && authUser)) return (
     <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
       <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
     </div>
@@ -50,8 +50,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const authUser = useAppStore(s => s.authUser);
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
   
-  // Show loading skeleton while checking auth to prevent flashing SignIn and breaking history
-  if (isAuthLoading) return (
+  // Cache-first: bypass spinner if session and authUser are already cached
+  if (isAuthLoading && !(session && authUser)) return (
     <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
       <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
     </div>
@@ -66,9 +66,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      useAppStore.getState().setDeferredPrompt(e);
+    const handler = (e: Event) => {
+      const promptEvent = e as BeforeInstallPromptEvent;
+      promptEvent.preventDefault();
+      useAppStore.getState().setDeferredPrompt(promptEvent);
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);

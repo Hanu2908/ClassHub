@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ErrorInfo } from 'react';
 
 interface Props {
     children: React.ReactNode;
@@ -18,7 +18,10 @@ export default class ErrorBoundary extends React.Component<Props, State> {
         return { hasError: true };
     }
 
-    componentDidCatch(error: unknown, info: unknown) {
+    componentDidCatch(error: Error, info: ErrorInfo) {
+        console.error('ErrorBoundary caught an error:', error);
+        console.error('Component stack:', info.componentStack);
+
         // You can send this to a logging service
         if (import.meta.env.DEV) {
              

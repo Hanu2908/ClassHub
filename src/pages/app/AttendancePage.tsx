@@ -6,6 +6,7 @@ import { DonutRing } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import type { AttendanceSubject } from '../../store/appStore';
+import { useAppStore } from '../../store/appStore';
 import { useAttendance } from '../../hooks/useSupabaseQuery';
 import { useBulkUpsertAttendance, useEnsureSubjects, useUpdateSubject } from '../../hooks/useSupabaseMutations';
 
@@ -153,16 +154,20 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
 
 export default function AttendancePage() {
   const navigate = useNavigate();
+  const isAuthLoading = useAppStore(s => s.isAuthLoading);
+  const authUser = useAppStore(s => s.authUser);
   const [erpOpen, setErpOpen] = useState(false);
   const [erpText, setErpText] = useState('');
   const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
+
+  // All hooks must be declared before any early returns
+  const bulkUpsert = useBulkUpsertAttendance();
+  const ensureSubjects = useEnsureSubjects();
+  const updateSubjectMut = useUpdateSubject();
   const { data: attendance, isLoading } = useAttendance();
 
   const subjects = attendance?.subjects ?? [];
   const overall = attendance?.overall ?? 0;
-
-  const ensureSubjects = useEnsureSubjects();
-  const updateSubjectMut = useUpdateSubject();
 
   const handleParse = async () => {
     const result = parseERPAttendance(erpText);
@@ -203,7 +208,14 @@ export default function AttendancePage() {
     });
   };
 
-  const bulkUpsert = useBulkUpsertAttendance();
+  // Auth not ready yet — show minimal spinner instead of stuck skeletons
+  if (isAuthLoading && !authUser) {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
+        <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+      </div>
+    );
+  }
 
   const safeOverall = isNaN(overall) ? 0 : overall;
   const overallColor = STATUS_COLOR(safeOverall);

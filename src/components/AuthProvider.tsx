@@ -88,9 +88,11 @@ async function handleSession(
       console.warn('[Auth] no backend profile found for user', user.id);
     }
     
-    // Check if the user was in demo mode from persistence
+    // If the user has a valid cached profile with the same ID, preserve it (prevents network/latency logout loop)
     const existing = store.authUser;
-    if (existing?.sectionId === 'demo-section') {
+    if (existing && existing.id === user.id) {
+      store.setAuthUser(existing);
+    } else if (existing?.sectionId === 'demo-section') {
       store.setAuthUser(existing);
     } else {
       // Surface a lightweight diagnostic to the user so mobile issues are visible
@@ -137,11 +139,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const safetyTimeout = setTimeout(() => {
       if (mounted && store.isAuthLoading) {
         if (import.meta.env.DEV) {
-          console.warn('[Auth] Safety timeout — stopping loading spinner after 5s');
+          console.warn('[Auth] Safety timeout — stopping loading spinner after 2s');
         }
         store.setAuthLoading(false);
       }
-    }, 5000);
+    }, 2000);
 
     async function getInitialSession() {
       try {
@@ -174,15 +176,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth]', event, session?.user?.email ?? 'no-user');
       }
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        await handleSession(session.user, session, _navigateFn ?? undefined);
-      } else if (event === 'SIGNED_OUT') {
-        store.setSession(null);
-        store.setAuthUser(null);
+      try {
+        if (event === 'SIGNED_IN' && session?.user) {
+          await handleSession(session.user, session, _navigateFn ?? undefined);
+        } else if (event === 'SIGNED_OUT') {
+          store.setSession(null);
+          store.setAuthUser(null);
+          store.setAuthLoading(false);
+          queryClient.clear();
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          store.setSession(session);
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.error('[Auth] Error in onAuthStateChange callback:', err);
+        }
         store.setAuthLoading(false);
-        queryClient.clear();
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        store.setSession(session);
       }
     });
 
@@ -191,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return <>{children}</>;
 }

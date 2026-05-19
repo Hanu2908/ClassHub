@@ -3,6 +3,12 @@ import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
+export interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+  prompt(): Promise<void>;
+}
+
 // ── Exported types — backend-ready interfaces ─────────────────────────────────
 
 export interface UserInfo {
@@ -149,7 +155,7 @@ interface AppState {
 
   // UI
   activeTab: 'home' | 'schedule' | 'polls' | 'profile' | 'cr-command' | 'attendance';
-  deferredPrompt: any | null;
+  deferredPrompt: BeforeInstallPromptEvent | null;
 
   // In-app notifications (client-only)
   notifications: AppNotification[];
@@ -162,7 +168,7 @@ interface AppState {
   setRole: (role: 'student' | 'cr') => void;
   setHub: (hub: HubInfo | null) => void;
   setActiveTab: (tab: AppState['activeTab']) => void;
-  setDeferredPrompt: (prompt: any | null) => void;
+  setDeferredPrompt: (prompt: BeforeInstallPromptEvent | null) => void;
   setFirstTime: (v: boolean) => void;
   refreshProfile: () => Promise<void>;
 
@@ -273,7 +279,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'classhub-store',
-      // Don't persist volatile auth state or role (avoid client-side role tampering)
+      // Don't persist volatile auth state (role is persisted to prevent CR-flickering, secured by database RLS)
       partialize: (state) => ({
         authUser: state.authUser,
         user: state.user,
@@ -281,6 +287,7 @@ export const useAppStore = create<AppState>()(
         hub: state.hub,
         activeTab: state.activeTab,
         notifications: state.notifications,
+        role: state.role,
       }),
     }
   )

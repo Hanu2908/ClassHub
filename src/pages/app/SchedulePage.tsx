@@ -230,7 +230,7 @@ export default function SchedulePage() {
           <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>Schedule</h1>
           {/* Color legend */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {(['technical', 'lab', 'non-technical'] as SubjectCategory[]).map(c => (
+            {(['technical', 'lab', 'non-technical', 'other'] as SubjectCategory[]).map(c => (
               <LegendChip key={c} cat={c} />
             ))}
           </div>

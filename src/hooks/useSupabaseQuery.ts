@@ -23,10 +23,12 @@ type PollOptionRelation = { id: string; label: string; sort_order: number };
 
 function useAuthContext() {
   const authUser = useAppStore(s => s.authUser);
+  const isAuthLoading = useAppStore(s => s.isAuthLoading);
   return {
     userId: authUser?.id ?? null,
     sectionId: authUser?.sectionId ?? null,
     role: authUser?.role ?? 'student',
+    isAuthLoading,
   };
 }
 
@@ -41,10 +43,10 @@ export interface SectionInfo {
 }
 
 export function useSection() {
-  const { sectionId } = useAuthContext();
+  const { sectionId, isAuthLoading } = useAuthContext();
   return useQuery<SectionInfo | null>({
     queryKey: ['section', sectionId],
-    enabled: !!sectionId,
+    enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -76,10 +78,10 @@ export interface SubjectInfo {
 }
 
 export function useSubjects() {
-  const { sectionId } = useAuthContext();
+  const { sectionId, isAuthLoading } = useAuthContext();
   return useQuery<SubjectInfo[]>({
     queryKey: ['subjects', sectionId],
-    enabled: !!sectionId,
+    enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -102,7 +104,7 @@ export function useSubjects() {
 
 export function useMutateSubjects() {
   const queryClient = useQueryClient();
-  const { sectionId } = useAuthContext();
+  const { sectionId, isAuthLoading } = useAuthContext();
 
   return useMutation({
     mutationFn: async (payload: { action: 'create' | 'update' | 'delete'; subject: Partial<SubjectInfo> }) => {
@@ -151,12 +153,12 @@ export function useMutateSubjects() {
 // ── 3. Announcements ─────────────────────────────────────────────────────────
 
 export function useAnnouncements(opts?: { page?: number; limit?: number }) {
-  const { sectionId, userId } = useAuthContext();
+  const { sectionId, userId, isAuthLoading } = useAuthContext();
   const page = opts?.page ?? 0;
   const limit = opts?.limit ?? 100; // default cap to avoid unbounded fetches
   return useQuery<(Announcement & { isAcknowledged: boolean })[]>({
     queryKey: ['announcements', sectionId, userId, page, limit],
-    enabled: !!sectionId,
+    enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const from = page * limit;
@@ -198,12 +200,12 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
 // ── 4. Assignments ───────────────────────────────────────────────────────────
 
 export function useAssignments(opts?: { page?: number; limit?: number }) {
-  const { sectionId, userId } = useAuthContext();
+  const { sectionId, userId, isAuthLoading } = useAuthContext();
   const page = opts?.page ?? 0;
   const limit = opts?.limit ?? 100;
   return useQuery<Assignment[]>({
     queryKey: ['assignments', sectionId, userId, page, limit],
-    enabled: !!sectionId,
+    enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const from = page * limit;
@@ -274,10 +276,10 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
 // ── 5. Polls ─────────────────────────────────────────────────────────────────
 
 export function usePolls() {
-  const { sectionId, userId } = useAuthContext();
+  const { sectionId, userId, isAuthLoading } = useAuthContext();
   return useQuery<(Poll & { userVote: string | null })[]>({
     queryKey: ['polls', sectionId, userId],
-    enabled: !!sectionId,
+    enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data: polls, error } = await supabase
@@ -296,35 +298,27 @@ export function usePolls() {
       const userVotes: Record<string, string> = {};
 
       if (pollIds.length > 0) {
-        const rpcPromise = supabase.rpc('batch_poll_results', { target_polls: pollIds });
+        // Fetch all votes for these polls in a single query (no RPC needed)
+        const { data: allVotes, error: votesErr } = await supabase
+          .from('votes')
+          .select('poll_id, option_id, student_id, anonymous_token')
+          .in('poll_id', pollIds);
+        if (votesErr) throw votesErr;
 
-        const votePromise = userId
-          ? supabase
-              .from('votes')
-              .select('poll_id, option_id, anonymous_token')
-              .or(
-                `student_id.eq.${userId},anonymous_token.in.(${pollIds
-                  .map((pollId) => generateAnonymousToken(userId, pollId))
-                  .join(',')})`
-              )
-          : Promise.resolve({ data: [], error: null });
-
-        const [{ data: batchRes, error: batchErr }, { data: votes, error: voteErr }] = await Promise.all([
-          rpcPromise,
-          votePromise,
-        ] as const);
-
-        if (batchErr) throw batchErr;
-        if (voteErr) throw voteErr;
-
-        const resArray = Array.isArray(batchRes) ? batchRes : [];
-        for (const r of resArray) {
-          if (!results[r.poll_id]) results[r.poll_id] = {};
-          results[r.poll_id][r.option_id] = r.votes;
+        // Count votes per option client-side
+        for (const v of allVotes ?? []) {
+          if (!results[v.poll_id]) results[v.poll_id] = {};
+          results[v.poll_id][v.option_id] = (results[v.poll_id][v.option_id] ?? 0) + 1;
         }
 
-        for (const v of votes ?? []) {
-          userVotes[v.poll_id] = v.option_id;
+        // Find this user's votes
+        if (userId) {
+          const myTokens = new Set(pollIds.map(pid => generateAnonymousToken(userId, pid)));
+          for (const v of allVotes ?? []) {
+            if (v.student_id === userId || (v.anonymous_token && myTokens.has(v.anonymous_token))) {
+              userVotes[v.poll_id] = v.option_id;
+            }
+          }
         }
       }
 
@@ -358,13 +352,13 @@ export function usePolls() {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function useSchedule(opts?: { day?: string; limit?: number }) {
-  const { sectionId } = useAuthContext();
+  const { sectionId, isAuthLoading } = useAuthContext();
   const day = opts?.day ?? undefined; // day as 'Mon'..'Sun'
   const limit = opts?.limit ?? 500;
 
   return useQuery<ScheduleMap>({
     queryKey: ['schedule', sectionId, day, limit],
-    enabled: !!sectionId,
+    enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       // If a specific day is requested, fetch only that day's slots to reduce payload.
@@ -414,10 +408,10 @@ export function useSchedule(opts?: { day?: string; limit?: number }) {
 // ── 7. Attendance ────────────────────────────────────────────────────────────
 
 export function useAttendance() {
-  const { userId } = useAuthContext();
+  const { userId, isAuthLoading } = useAuthContext();
   return useQuery<{ subjects: AttendanceSubject[]; overall: number }>({
     queryKey: ['attendance', userId],
-    enabled: !!userId,
+    enabled: !!userId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -473,10 +467,10 @@ export interface SectionMember {
 }
 
 export function useSectionMembers() {
-  const { sectionId } = useAuthContext();
+  const { sectionId, isAuthLoading } = useAuthContext();
   return useQuery<SectionMember[]>({
     queryKey: ['members', sectionId],
-    enabled: !!sectionId,
+    enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -536,3 +530,4 @@ export function useAssignmentSubmissions(assignmentId: string | null) {
     },
   });
 }
+

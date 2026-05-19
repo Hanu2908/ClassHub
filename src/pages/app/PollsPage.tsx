@@ -380,10 +380,11 @@ export default function PollsPage() {
   }, [location.state]);
 
   // Auto-expiry: hide polls gone past closesAt + 2 days
+  const [now] = useState(Date.now);
   const visible = polls.filter(p => {
     const closesAtTime = new Date(p.closesAt).getTime();
     const twoDaysAfter = closesAtTime + 2 * 24 * 3600 * 1000;
-    return Date.now() < twoDaysAfter;
+    return now < twoDaysAfter;
   });
   const filtered = visible.filter(p => p.status === tab);
 
