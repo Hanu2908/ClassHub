@@ -2,15 +2,16 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.types';
 
-// Only import ws dynamically in non-browser environments to prevent compile errors
+// Only import ws dynamically when native WebSocket is missing (e.g. Node < 22 or testing environment)
 let options = {};
-if (typeof window === 'undefined') {
+if (typeof globalThis.WebSocket === 'undefined') {
   try {
     const wsModuleName = 'ws';
     const req = (globalThis as any).require;
     const ws = req ? req(wsModuleName) : null;
     if (ws) {
       options = { realtime: { transport: ws } };
+      globalThis.WebSocket = ws;
     }
   } catch (e) {}
 }
