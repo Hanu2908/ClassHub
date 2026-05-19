@@ -205,6 +205,8 @@ function CriticalBanner({ ann }: { ann: Announcement }) {
   );
 }
 
+import { getCategory, CATEGORY_COLORS } from '../../lib/scheduleUtils';
+
 // ── Schedule widget ──────────────────────────────────────────────────────────
 function ScheduleWidget() {
   const navigate = useNavigate();
@@ -248,15 +250,18 @@ function ScheduleWidget() {
           </div>
         ) : display.map((cls, i) => {
           const isNow = current?.id === cls.id;
+          const cat = getCategory(cls.code, cls.type);
+          const catStyle = CATEGORY_COLORS[cat];
           return (
             <div key={cls.id} style={{
               display: 'flex', alignItems: 'center', gap: 14,
               padding: '14px 16px',
               borderBottom: i < display.length - 1 ? '1px solid var(--border-default)' : 'none',
+              background: isNow ? 'transparent' : catStyle.bg,
             }}>
               <div style={{
                 width: 8, height: 8, flexShrink: 0,
-                background: isNow ? 'var(--status-safe)' : 'var(--accent-primary)',
+                background: isNow ? 'var(--status-safe)' : catStyle.color,
                 boxShadow: isNow ? '0 0 8px var(--status-safe)' : undefined,
                 animation: isNow ? 'nowPulse 2s ease-in-out infinite' : undefined,
                 borderRadius: '50%',
@@ -272,7 +277,7 @@ function ScheduleWidget() {
               {isNow ? (
                 <span className="badge badge-info" style={{ animation: 'nowPulse 2s ease-in-out infinite' }}>NOW</span>
               ) : (
-                <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                <span style={{ font: '400 11px var(--font-mono)', color: catStyle.color, whiteSpace: 'nowrap' }}>
                   {hoursUntil(cls.startTime)}
                 </span>
               )}

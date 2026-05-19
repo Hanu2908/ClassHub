@@ -84,15 +84,23 @@ async function handleSession(
     store.setAuthUser(profile);
   } else {
     // Log a warning so debugging on mobile/other devices is easier
-     
-    console.warn('[Auth] no backend profile found for user', user.id);
-    // Surface a lightweight diagnostic to the user so mobile issues are visible
-    try {
-      showToast('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.', 'warning');
-    } catch {
-      // ignore if toast system is not yet mounted
+    if (import.meta.env.DEV) {
+      console.warn('[Auth] no backend profile found for user', user.id);
     }
-    store.setAuthUser(authUserToBasicProfile(user));
+    
+    // Check if the user was in demo mode from persistence
+    const existing = store.authUser;
+    if (existing?.sectionId === 'demo-section') {
+      store.setAuthUser(existing);
+    } else {
+      // Surface a lightweight diagnostic to the user so mobile issues are visible
+      try {
+        showToast('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.', 'warning');
+      } catch {
+        // ignore if toast system is not yet mounted
+      }
+      store.setAuthUser(authUserToBasicProfile(user));
+    }
   }
 
   store.setAuthLoading(false);
@@ -105,43 +113,6 @@ async function handleSession(
 // ──────────────────────────────────────────────────────────────────────────────
 
 let _navigateFn: ((path: string) => void) | null = null;
-let _authInitialized = false;
-
-function initAuth() {
-  if (_authInitialized) return;
-  _authInitialized = true;
-
-  const store = useAppStore.getState();
-
-  // Single auth listener — handles ALL auth events including the initial session.
-  // Supabase fires INITIAL_SESSION immediately when onAuthStateChange is called,
-  // so we do NOT need a separate getSession() bootstrap call.
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    // Only log auth events during development
-    // Keeps production consoles quiet and avoids leaking emails
-     
-    if (import.meta.env.DEV) {
-      console.log('[Auth]', event, session?.user?.email ?? 'no-user');
-    }
-
-    if (
-      (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
-      session?.user
-    ) {
-      await handleSession(session.user, session, _navigateFn ?? undefined);
-    } else if (event === 'INITIAL_SESSION' && !session) {
-      // No existing session — user needs to sign in
-      store.setAuthLoading(false);
-    } else if (event === 'SIGNED_OUT') {
-      store.setSession(null);
-      store.setAuthUser(null);
-      store.setAuthLoading(false);
-      queryClient.clear();
-    } else if (event === 'TOKEN_REFRESHED' && session) {
-      store.setSession(session);
-    }
-  });
-}
 
 /**
  * AuthProvider — initializes the module-level auth listener on first render
@@ -159,8 +130,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth exactly once
   useEffect(() => {
-    _navigateFn = navigate;
-    initAuth();
+    const store = useAppStore.getState();
+    let mounted = true;
+
+    async function getInitialSession() {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (mounted) {
+        if (error || !session) {
+          store.setAuthLoading(false);
+        } else {
+          await handleSession(session.user, session, _navigateFn ?? undefined);
+        }
+      }
+    }
+
+    getInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Ignore INITIAL_SESSION because we handled it above explicitly to avoid strict-mode bugs
+      if (event === 'INITIAL_SESSION') return;
+      
+      if (import.meta.env.DEV) {
+        console.log('[Auth]', event, session?.user?.email ?? 'no-user');
+      }
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        await handleSession(session.user, session, _navigateFn ?? undefined);
+      } else if (event === 'SIGNED_OUT') {
+        store.setSession(null);
+        store.setAuthUser(null);
+        store.setAuthLoading(false);
+        queryClient.clear();
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        store.setSession(session);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>{children}</>;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, LogOut, Settings, ChevronRight, TrendingUp, Bell, Trash2 } from 'lucide-react';
+import { Copy, LogOut, Settings, ChevronRight, TrendingUp, Bell, Trash2, Download } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
@@ -9,7 +9,7 @@ import { useSection } from '../../hooks/useSupabaseQuery';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { authUser, role, hub, signOut } = useAppStore();
+  const { authUser, role, hub, signOut, deferredPrompt, setDeferredPrompt } = useAppStore();
   const { data: section } = useSection();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
@@ -38,6 +38,15 @@ export default function ProfilePage() {
   const handleLeaveHub = () => {
     signOut();
     navigate('/onboarding/choice');
+  };
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
   };
 
   return (
@@ -109,6 +118,28 @@ export default function ProfilePage() {
             <ChevronRight size={16} color="var(--text-muted)" />
           </button>
         </div>
+
+        {/* PWA Install */}
+        {deferredPrompt && (
+          <div>
+            <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>GET THE APP</p>
+            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(145deg, rgba(74,158,255,0.1) 0%, rgba(74,158,255,0.02) 100%)', border: '1px solid rgba(74,158,255,0.2)' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Download size={20} color="#fff" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>Level up your experience</h3>
+                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)' }}>Install ClassHub for faster access and offline features.</p>
+              </div>
+              <button 
+                onClick={handleInstallApp}
+                style={{ background: 'var(--text-primary)', color: 'var(--bg-base)', border: 'none', borderRadius: 'var(--radius-md)', padding: '8px 14px', font: '600 13px var(--font-body)', cursor: 'pointer', flexShrink: 0 }}
+              >
+                Install
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Settings */}
         <div>

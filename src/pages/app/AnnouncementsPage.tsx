@@ -169,11 +169,6 @@ export default function AnnouncementsPage() {
             <ArrowLeft size={20} />
           </button>
           <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>Announcements</h1>
-          <CROnly>
-            <button id="post-ann-btn" onClick={() => setShowCreate(true)} style={{ font: '600 13px var(--font-body)', color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px' }}>
-              + Post
-            </button>
-          </CROnly>
         </div>
         <div className="filter-tabs">
           {(['all', 'critical', 'general'] as Filter[]).map(f => (

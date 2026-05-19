@@ -149,6 +149,7 @@ interface AppState {
 
   // UI
   activeTab: 'home' | 'schedule' | 'polls' | 'profile' | 'cr-command';
+  deferredPrompt: any | null;
 
   // In-app notifications (client-only)
   notifications: AppNotification[];
@@ -161,6 +162,7 @@ interface AppState {
   setRole: (role: 'student' | 'cr') => void;
   setHub: (hub: HubInfo | null) => void;
   setActiveTab: (tab: AppState['activeTab']) => void;
+  setDeferredPrompt: (prompt: any | null) => void;
   setFirstTime: (v: boolean) => void;
   refreshProfile: () => Promise<void>;
 
@@ -186,6 +188,7 @@ export const useAppStore = create<AppState>()(
       isFirstTime: false,
       hub: null,
       activeTab: 'home',
+      deferredPrompt: null,
 
       notifications: [],
 
@@ -207,6 +210,7 @@ export const useAppStore = create<AppState>()(
       setRole: (role) => set({ role }),
       setHub: (hub) => set({ hub }),
       setActiveTab: (activeTab) => set({ activeTab }),
+      setDeferredPrompt: (deferredPrompt) => set({ deferredPrompt }),
       setFirstTime: (isFirstTime) => set({ isFirstTime }),
 
       // Refresh profile from Supabase

@@ -8,7 +8,7 @@ import { useAppStore, isExpired } from '../../store/appStore';
 import type { AssignmentSet } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { useAssignments, useSubjects } from '../../hooks/useSupabaseQuery';
-import { useCreateAssignment, useDeleteAssignment, useSubmitAssignment } from '../../hooks/useSupabaseMutations';
+import { useCreateAssignment, useDeleteAssignment, useSubmitAssignment, useEnsureSubjects } from '../../hooks/useSupabaseMutations';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
@@ -47,12 +47,14 @@ function autoGenerate(totalStudents: number, groupSize: number): AssignmentSet[]
 // ── CR Wizard ─────────────────────────────────────────────────────────────────
 function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createAssignment = useCreateAssignment();
+  const ensureSubjects = useEnsureSubjects();
   const { data: subjectsList = [] } = useSubjects();
   const [step, setStep] = useState(1);
 
   // Step 1 fields
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState('');
+  const [customSubjectName, setCustomSubjectName] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -64,7 +66,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const [sets, setSets] = useState<AssignmentSet[]>([]);
 
   const reset = () => {
-    setStep(1); setTitle(''); setSubjectId('');
+    setStep(1); setTitle(''); setSubjectId(''); setCustomSubjectName('');
     setDueDate(''); setDescription(''); setPdfFile(null); setHasSets(false);
     setTotalStudents(''); setGroupSize(''); setSets([]);
   };
@@ -110,13 +112,22 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
     if (!title.trim() || !subjectId || !dueDate) {
       showToast('Fill in all required fields', 'error'); return;
     }
+    if (subjectId === 'other' && !customSubjectName.trim()) {
+      showToast('Enter a custom subject name', 'error'); return;
+    }
     if (hasSets && sets.length === 0) {
       showToast('Generate or add at least one set', 'error'); return;
     }
     try {
+      let finalSubjectId = subjectId;
+      if (subjectId === 'other') {
+        const mapping = await ensureSubjects.mutateAsync([{ code: customSubjectName.trim().substring(0, 8).toUpperCase(), name: customSubjectName.trim() }]);
+        finalSubjectId = Object.values(mapping)[0];
+      }
+
       await createAssignment.mutateAsync({
         title: title.trim(),
-        subjectId,
+        subjectId: finalSubjectId,
         dueDate: new Date(dueDate).toISOString(),
         description: description.trim() || undefined,
         sets: hasSets ? sets.map(s => ({
@@ -154,10 +165,19 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           </div>
           <div>
             <label style={labelStyle}>Subject <span style={{ color: 'var(--status-critical)' }}>*</span></label>
-            <select style={inputStyle} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
+            <select style={inputStyle} value={subjectId} onChange={e => { setSubjectId(e.target.value); if (e.target.value !== 'other') setCustomSubjectName(''); }}>
               <option value="">Select subject…</option>
               {subjectsList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+              <option value="other">Other (Custom Subject)</option>
             </select>
+            {subjectId === 'other' && (
+              <input 
+                style={{ ...inputStyle, marginTop: 8 }} 
+                placeholder="Enter custom subject name..." 
+                value={customSubjectName} 
+                onChange={e => setCustomSubjectName(e.target.value)} 
+              />
+            )}
           </div>
           <div>
             <label style={labelStyle}>Due Date & Time <span style={{ color: 'var(--status-critical)' }}>*</span></label>
@@ -209,8 +229,8 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn-secondary" style={{ flex: 1 }} onClick={handleClose}>Cancel</button>
             {hasSets
-              ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
-              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={createAssignment.isPending}>{createAssignment.isPending ? 'Publishing…' : 'Publish'}</button>
+              ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate || (subjectId === 'other' && !customSubjectName.trim())) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
+              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={createAssignment.isPending || ensureSubjects.isPending}>{(createAssignment.isPending || ensureSubjects.isPending) ? 'Publishing…' : 'Publish'}</button>
             }
           </div>
         </div>

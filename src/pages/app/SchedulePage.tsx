@@ -8,6 +8,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import { useSchedule, useSubjects } from '../../hooks/useSupabaseQuery';
 import { useUpsertScheduleSlot, useDeleteScheduleSlot } from '../../hooks/useSupabaseMutations';
+import { SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS } from '../../lib/scheduleUtils';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 type ScheduleDay = typeof DAYS[number];
@@ -42,29 +43,7 @@ function formatTime(t: string): string {
   return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${suffix}`;
 }
 
-// ── Subject category color system ─────────────────────────────────────────────
-type SubjectCategory = 'technical' | 'lab' | 'audit' | 'general';
-
-function getCategory(code: string, type: string): SubjectCategory {
-  if (type === 'Lab' || code.endsWith('L')) return 'lab';
-  if (/^(CS|AI|DS|EC)/.test(code))          return 'technical';
-  if (/^(ES|EN|HU|MENTOR)/.test(code))      return 'audit';
-  return 'general';
-}
-
-const CATEGORY_COLORS: Record<SubjectCategory, { color: string; bg: string; border: string }> = {
-  technical: { color: '#4A9EFF', bg: 'rgba(74,158,255,0.08)',  border: 'rgba(74,158,255,0.25)' },
-  lab:       { color: '#FFB547', bg: 'rgba(255,181,71,0.08)',   border: 'rgba(255,181,71,0.25)' },
-  audit:     { color: '#A78BFA', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)' },
-  general:   { color: '#2DD4BF', bg: 'rgba(45,212,191,0.08)',  border: 'rgba(45,212,191,0.25)' },
-};
-
-const CATEGORY_LABELS: Record<SubjectCategory, string> = {
-  technical: 'Technical',
-  lab:       'Lab',
-  audit:     'Audit / Other',
-  general:   'General',
-};
+// Using shared category system from scheduleUtils
 
 const scheduleHeaderStyle: React.CSSProperties = {
   position: 'sticky',
@@ -251,7 +230,7 @@ export default function SchedulePage() {
           <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>Schedule</h1>
           {/* Color legend */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {(['technical', 'lab', 'audit'] as SubjectCategory[]).map(c => (
+            {(['technical', 'lab', 'non-technical'] as SubjectCategory[]).map(c => (
               <LegendChip key={c} cat={c} />
             ))}
           </div>

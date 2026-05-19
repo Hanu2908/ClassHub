@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './components/AuthProvider';
 import { useAppStore } from './store/appStore';
@@ -44,14 +44,29 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const session = useAppStore(s => s.session);
   const authUser = useAppStore(s => s.authUser);
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
-  // While auth is loading, show the sign-in page — don't block with blank screen
-  if (isAuthLoading) return <>{children}</>;
+  
+  // Show loading skeleton while checking auth to prevent flashing SignIn and breaking history
+  if (isAuthLoading) return (
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
+      <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+    </div>
+  );
+  
   if (session && authUser?.sectionId) return <Navigate to="/app/home" replace />;
   if (session && !authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
   return <>{children}</>;
 }
 
 export default function App() {
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      useAppStore.getState().setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>
