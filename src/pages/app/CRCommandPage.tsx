@@ -49,7 +49,6 @@ function SubmissionTracker() {
   const [subFilter, setSubFilter] = useState<SubFilter>('not_submitted');
   const [hoveredCard, setHoveredCard] = useState<'submitted' | 'pending' | null>(null);
   const [expanded, setExpanded] = useState(true);
-  const addNotification = useAppStore(s => s.addNotification);
 
   const visible = assignments.filter(a => !isExpired(a.dueDate));
   const selected = visible.find(a => a.id === selectedAssignmentId) ?? visible[0];
@@ -66,20 +65,23 @@ function SubmissionTracker() {
   const submittedCount = submittedMembers.length;
   const filtered = subFilter === 'submitted' ? submittedMembers : pendingMembers;
 
-  const handleBulkNotify = () => {
+  const handleBulkNotify = async () => {
     if (pendingMembers.length === 0) {
       showToast('All students have submitted!', 'info');
       return;
     }
-    // Bulk notify
-    pendingMembers.forEach(st => {
-      addNotification({
-        title: `Pending: ${selected?.title}`,
-        body: `Hi ${st.name}, please complete and submit your assignment for ${selected?.subject} before the deadline.`,
-        type: 'assignment'
+    if (!selected) return;
+    showToast('Sending reminders...', 'info');
+    try {
+      const { data, error } = await supabase.functions.invoke('send-assignment-reminders', {
+        body: { assignmentId: selected.id },
       });
-    });
-    showToast(`Reminders sent to ${pendingMembers.length} pending students!`, 'success');
+      if (error) throw error;
+      showToast(`Reminders sent to ${data?.sent ?? 0} students!`, 'success');
+    } catch (err) {
+      console.error('[Notify] Bulk remind failed:', err);
+      showToast('Failed to send reminders', 'error');
+    }
   };
 
   return (
@@ -243,13 +245,18 @@ function SubmissionTracker() {
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <button
-                            onClick={() => {
-                              addNotification({
-                                title: `Reminder: ${selected?.title}`,
-                                body: `Hi ${st.name}, please complete and submit the assignment for ${selected?.subject} as soon as possible.`,
-                                type: 'assignment'
-                              });
-                              showToast(`Nudged ${st.name}!`, 'success');
+                            onClick={async () => {
+                              showToast(`Nudging ${st.name}...`, 'info');
+                              try {
+                                const { error } = await supabase.functions.invoke('send-assignment-reminders', {
+                                  body: { assignmentId: selected?.id },
+                                });
+                                if (error) throw error;
+                                showToast(`Nudged ${st.name}!`, 'success');
+                              } catch (err) {
+                                console.error('[Notify] Nudge failed:', err);
+                                showToast('Failed to nudge', 'error');
+                              }
                             }}
                             style={{
                               background: 'none', border: 'none', cursor: 'pointer',
@@ -329,7 +336,6 @@ function ClassAttendance() {
 }
 
 function SendNotificationSheet({ onClose }: { onClose: () => void }) {
-  const { addNotification } = useAppStore();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -341,16 +347,44 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
     font: '400 14px var(--font-body)', outline: 'none',
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!title.trim()) { showToast('Title is required', 'error'); return; }
     if (!body.trim())  { showToast('Message body is required', 'error'); return; }
     setSending(true);
-    setTimeout(() => {
-      addNotification({ title: title.trim(), body: body.trim(), type: 'cr_broadcast' });
-      showToast('Notification sent to all students', 'success');
-      setSending(false);
+    try {
+      // Create announcement in DB first, then send push
+      const { data: ann, error: annErr } = await supabase
+        .from('announcements')
+        .insert({
+          title: title.trim(),
+          message_content: body.trim(),
+          priority: 'critical',
+          section_id: (await supabase.rpc('current_user_section_id')).data as string,
+          author_id: (await supabase.auth.getUser()).data.user!.id,
+        })
+        .select('id')
+        .single();
+
+      if (annErr) throw annErr;
+
+      // Send push notification via Edge Function
+      const { error: pushErr } = await supabase.functions.invoke('send-critical-announcement', {
+        body: { announcementId: ann.id },
+      });
+
+      if (pushErr) {
+        console.error('[Notify] Push failed but announcement created:', pushErr);
+        showToast('Announcement posted! Push delivery failed.', 'warning');
+      } else {
+        showToast('Notification sent to all students!', 'success');
+      }
       onClose();
-    }, 600);
+    } catch (err) {
+      console.error('[Notify] Send failed:', err);
+      showToast('Failed to send notification', 'error');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

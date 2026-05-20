@@ -335,12 +335,12 @@ body {
 .toast {
   display: flex; align-items: center; gap: 10px; padding: 12px 14px;
   border-radius: var(--radius-md); border: 1px solid;
-  animation: slideDown 0.3s cubic-bezier(0.16,1,0.3,1);
+  animation: toastPop 0.3s cubic-bezier(0.16,1,0.3,1);
   pointer-events: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  background: var(--bg-overlay);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: rgba(20, 24, 40, 0.5);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
 }
 .toast-success { border-color: var(--status-safe);     color: var(--status-safe); }
 .toast-error   { border-color: var(--status-critical); color: var(--status-critical); }
@@ -644,6 +644,7 @@ body {
 @keyframes slideDown    { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
 @keyframes slideUp      { from { transform:translateY(100%); } to { transform:translateY(0); } }
 @keyframes popIn        { from { opacity:0; transform:scale(0.4); } to { opacity:1; transform:scale(1); } }
+@keyframes toastPop     { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
 @keyframes shimmerPulse { 0%,100% { opacity:0.3; } 50% { opacity:1; } }
 @keyframes shimmer      { from { background-position:200% 0; } to { background-position:-200% 0; } }
 @keyframes breathe      { 0%,100% { opacity:0.5; transform:scale(1); } 50% { opacity:1; transform:scale(1.08); } }
