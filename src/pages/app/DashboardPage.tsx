@@ -1,13 +1,12 @@
 import { useState, useMemo, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper } from 'lucide-react';
+import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper, ShieldCheck, BarChart2, ClipboardList, Activity, Percent, Calendar, Clock } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
-import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo, MultiDonut } from '../../components/Shared';
+import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo } from '../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type ScheduleSlot } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useSection, useAnnouncements, useAssignments, usePolls, useSchedule, useAttendance } from '../../hooks/useSupabaseQuery';
-import StatusCard from '../../components/StatusCard';
-import MultiSegmentLegend from '../../components/MultiSegmentLegend';
+
 
 // ── Schedule helpers ──
 function todayKey(): string {
@@ -237,7 +236,7 @@ function ScheduleWidget() {
         <span className="section-title">Today's Schedule</span>
         <button className="section-link" onClick={() => navigate('/app/schedule')}>View all →</button>
       </div>
-      <div className="card" style={{ padding: '4px 0' }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {display.length === 0 ? (
           <div style={sectionCardStyle}>
             <div style={sectionIconStyle}>
@@ -254,33 +253,65 @@ function ScheduleWidget() {
           const catStyle = CATEGORY_COLORS[cat];
           return (
             <div key={cls.id} style={{
-              display: 'flex', alignItems: 'center', gap: 14,
+              display: 'flex',
+              alignItems: 'center',
               padding: '14px 16px',
               borderBottom: i < display.length - 1 ? '1px solid var(--border-default)' : 'none',
-              background: isNow ? 'transparent' : catStyle.bg,
+              background: isNow ? 'rgba(74, 158, 255, 0.05)' : 'transparent',
+              position: 'relative',
+              gap: 12,
             }}>
+              {/* Left Column: Time & Room */}
+              <div style={{ display: 'flex', flexDirection: 'column', width: 62, flexShrink: 0 }}>
+                <span style={{ font: '600 13px var(--font-mono)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Clock size={11} className="text-muted" style={{ opacity: 0.6 }} />
+                  {cls.startTime}
+                </span>
+                <span style={{ font: '500 10px var(--font-mono)', color: 'var(--text-muted)', marginTop: 2, paddingLeft: 15 }}>
+                  {cls.room}
+                </span>
+              </div>
+              
+              {/* Vertical Category Indicator Line */}
               <div style={{
-                width: 8, height: 8, flexShrink: 0,
+                width: 3,
+                alignSelf: 'stretch',
                 background: isNow ? 'var(--status-safe)' : catStyle.color,
-                boxShadow: isNow ? '0 0 8px var(--status-safe)' : undefined,
-                animation: isNow ? 'nowPulse 2s ease-in-out infinite' : undefined,
-                borderRadius: '50%',
+                borderRadius: 1.5,
+                flexShrink: 0,
               }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+
+              {/* Middle Column: Subject Info */}
+              <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
                 <p className="truncate" style={{ font: '600 14px var(--font-body)', color: 'var(--text-primary)', marginBottom: 2 }}>
                   {cls.subject}
                 </p>
-                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)' }}>
-                  {cls.code} · {cls.room} · {cls.startTime}
+                <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>
+                  {cls.code} · {cls.type || 'Lecture'}
                 </p>
               </div>
-              {isNow ? (
-                <span className="badge badge-info" style={{ animation: 'nowPulse 2s ease-in-out infinite' }}>NOW</span>
-              ) : (
-                <span style={{ font: '400 11px var(--font-mono)', color: catStyle.color, whiteSpace: 'nowrap' }}>
-                  {hoursUntil(cls.startTime)}
-                </span>
-              )}
+
+              {/* Right Column: Badge Status */}
+              <div style={{ flexShrink: 0 }}>
+                {isNow ? (
+                  <span className="badge badge-safe" style={{ 
+                    background: 'rgba(52, 211, 153, 0.15)', 
+                    color: 'var(--status-safe)',
+                    borderColor: 'rgba(52, 211, 153, 0.3)',
+                    font: '700 10px var(--font-mono)',
+                    letterSpacing: '0.05em',
+                  }}>● LIVE</span>
+                ) : (
+                  <span className="badge" style={{
+                    background: catStyle.bg,
+                    color: catStyle.color,
+                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    font: '600 10px var(--font-mono)',
+                  }}>
+                    {hoursUntil(cls.startTime)}
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
@@ -289,52 +320,154 @@ function ScheduleWidget() {
   );
 }
 
-// ── Attendance pills ─────────────────────────────────────────────────────────
-function AttendancePills() {
+// ── Attendance Widget (Trial Switcher) ──────────────────────────────────────
+function AttendanceWidget() {
   const navigate = useNavigate();
   const { data: attendance, isLoading } = useAttendance();
+  const [attendanceStyle, setAttendanceStyle] = useState<'ring' | 'bar'>(() => 
+    (localStorage.getItem('classhub_attendance_style') as 'ring' | 'bar') || 'ring'
+  );
+
   const subjects = useMemo(() => attendance?.subjects ?? [], [attendance]);
   const overall = useMemo(() => attendance?.overall ?? 0, [attendance]);
 
-  if (isLoading) return <WidgetSkeleton height={52} />;
+  const totalClasses = useMemo(() => subjects.reduce((sum, sub) => sum + sub.total, 0), [subjects]);
+  const attendedClasses = useMemo(() => subjects.reduce((sum, sub) => sum + sub.present, 0), [subjects]);
+
+  const overallTotal = totalClasses;
+  const overallAttended = attendedClasses;
+  const canSkipOverall = useMemo(() => overallTotal > 0 ? Math.max(0, Math.floor((overallAttended - 0.75 * overallTotal) / 0.75)) : 0, [overallTotal, overallAttended]);
+  const needToAttendOverall = useMemo(() => overallTotal > 0 ? Math.max(0, Math.ceil((0.75 * overallTotal - overallAttended) / 0.25)) : 0, [overallTotal, overallAttended]);
+
+  const handleStyleChange = (style: 'ring' | 'bar') => {
+    setAttendanceStyle(style);
+    localStorage.setItem('classhub_attendance_style', style);
+  };
+
+  const standing = useMemo(() => {
+    const val = Math.round(overall);
+    if (val >= 85) {
+      return {
+        label: 'Safe',
+        color: 'var(--status-safe)',
+        bg: 'rgba(52, 211, 153, 0.06)',
+        desc: `You are safely above the 75% threshold. You can skip up to ${canSkipOverall} classes.`,
+      };
+    } else if (val >= 75) {
+      return {
+        label: 'Warning',
+        color: 'var(--status-warning)',
+        bg: 'rgba(251, 191, 36, 0.06)',
+        desc: `Close to threshold! You can skip up to ${canSkipOverall} classes.`,
+      };
+    } else {
+      return {
+        label: 'Critical',
+        color: 'var(--status-critical)',
+        bg: 'rgba(248, 113, 113, 0.06)',
+        desc: `Below 75%! You must attend at least ${needToAttendOverall} consecutive classes to recover.`,
+      };
+    }
+  }, [overall, canSkipOverall, needToAttendOverall]);
+
+  if (isLoading) return <WidgetSkeleton height={80} />;
   if (subjects.length === 0) return null;
 
   return (
     <section>
-      <div className="section-header">
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span className="section-title">Attendance</span>
-        <button className="section-link" onClick={() => navigate('/app/attendance')}>Update →</button>
-      </div>
-      <div className="carousel" style={{ paddingBottom: 8 }}>
-        <div
-          className="card"
-          style={{ minWidth: 160, maxWidth: 200, padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-          onClick={() => navigate('/app/attendance')}
-        >
-          <MultiDonut segments={subjects.slice(0, 4).map((s) => ({ label: s.name, percentage: s.percentage, color: undefined }))} size={80} strokeWidth={8} />
-          <div style={{ marginTop: 6, textAlign: 'center' }}>
-            <div style={{ font: '700 13px var(--font-display)', color: 'var(--text-primary)' }}>{Math.round(overall)}%</div>
-            <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Overall</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="segment-switcher">
+            <button
+              onClick={() => handleStyleChange('ring')}
+              className={`segment-btn ${attendanceStyle === 'ring' ? 'active' : ''}`}
+            >
+              Ring
+            </button>
+            <button
+              onClick={() => handleStyleChange('bar')}
+              className={`segment-btn ${attendanceStyle === 'bar' ? 'active' : ''}`}
+            >
+              Bar
+            </button>
           </div>
-          <MultiSegmentLegend segments={subjects.slice(0, 3).map((s) => ({ label: s.name, color: undefined }))} />
+          <button className="section-link" onClick={() => navigate('/app/attendance')} style={{ background: 'none', border: 'none', padding: 0 }}>
+            Update →
+          </button>
         </div>
-        {subjects.map(sub => (
-          <div
-            key={sub.code}
-            className="card"
-            style={{ minWidth: 90, padding: '12px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-            onClick={() => navigate('/app/attendance')}
-          >
-            <DonutRing percentage={sub.percentage} size={52}>
-              <span style={{ font: '600 11px var(--font-mono)', color: 'var(--text-primary)' }}>
-                {sub.percentage.toFixed(0)}%
-              </span>
+      </div>
+
+      <div className="card" style={{ padding: '16px 20px', cursor: 'pointer' }} onClick={() => navigate('/app/attendance')}>
+        {attendanceStyle === 'ring' ? (
+          /* Trial A: Circular Progress Ring */
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <DonutRing percentage={overall} size={84}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ font: '700 18px var(--font-display)', color: 'var(--text-primary)' }}>
+                  {Math.round(overall)}%
+                </span>
+                <span style={{ font: '500 9px var(--font-mono)', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 1 }}>
+                  Overall
+                </span>
+              </div>
             </DonutRing>
-            <p className="truncate" style={{ font: '400 10px var(--font-body)', color: 'var(--text-muted)', textAlign: 'center', maxWidth: 76 }}>
-              {sub.name}
-            </p>
+            
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ font: '700 14px var(--font-display)', color: standing.color }}>
+                  {standing.label} Standing
+                </span>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: standing.color }} />
+              </div>
+              <p style={{ font: '600 12px var(--font-mono)', color: 'var(--text-secondary)', marginTop: 4 }}>
+                {attendedClasses} / {totalClasses} classes attended
+              </p>
+              <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
+                {standing.desc}
+              </p>
+            </div>
           </div>
-        ))}
+        ) : (
+          /* Trial B: Horizontal Progress Bar */
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <span style={{ font: '700 16px var(--font-display)', color: 'var(--text-primary)' }}>
+                {Math.round(overall)}% Overall
+              </span>
+              <span style={{ font: '600 12px var(--font-mono)', color: 'var(--text-secondary)' }}>
+                {attendedClasses} / {totalClasses} classes
+              </span>
+            </div>
+
+            <div className="glass-progress-track" style={{ margin: '8px 0 12px 0' }}>
+              <div 
+                className="glass-progress-fill" 
+                style={{ 
+                  width: `${Math.min(100, Math.max(0, overall))}%`,
+                  background: overall >= 75 
+                    ? 'linear-gradient(90deg, var(--accent-primary) 0%, var(--status-safe) 100%)' 
+                    : 'linear-gradient(90deg, var(--status-warning) 0%, var(--status-critical) 100%)'
+                }} 
+              />
+            </div>
+
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              gap: 8, 
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: standing.bg,
+              border: `1px solid rgba(255,255,255,0.02)`,
+            }}>
+              <Activity size={14} color={standing.color} style={{ flexShrink: 0, marginTop: 1 }} />
+              <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                {standing.desc}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -383,7 +516,9 @@ function AnnouncementsScroll() {
                 <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {ann.title}
                 </p>
-                <span className={`badge ${cls}`}>{label}</span>
+                {ann.deadline ? (
+                  <span className={`badge ${cls}`}>{label}</span>
+                ) : null}
               </div>
             );
           })}
@@ -470,20 +605,37 @@ function AssignmentsScroll() {
                 const cls = isSubmitted ? 'badge-safe' : deadlineBadgeClass(a.dueDate);
                 const label = isSubmitted ? 'Submitted' : deadlineLabel(a.dueDate);
                 return (
-                <div key={a.id} className="list-row" onClick={() => navigate('/app/assignments')} style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--accent-primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {a.subject.includes('DBMS') ? <BookOpen size={18} color="var(--accent-primary)" /> : a.subject.includes('OS') ? <Cpu size={18} color="var(--status-safe)" /> : <BookMarked size={18} color="var(--status-warning)" />}
+                <div 
+                  key={a.id} 
+                  className="list-row" 
+                  onClick={() => navigate('/app/assignments')} 
+                  style={{ 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    gap: 12 
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                    <div style={{ 
+                      width: 40, 
+                      height: 40, 
+                      borderRadius: 10, 
+                      background: 'var(--accent-primary-glow)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {a.subject.includes('DBMS') ? <BookOpen size={16} color="var(--accent-primary)" /> : a.subject.includes('OS') ? <Cpu size={16} color="var(--status-safe)" /> : <BookMarked size={16} color="var(--status-warning)" />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ font: '600 14px var(--font-body)', color: 'var(--text-primary)', marginBottom: 4, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
-                      <div style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)' }}>{a.subject}</div>
+                      <div className="truncate" style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 2 }}>{a.title}</div>
+                      <div className="truncate" style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{a.subject}</div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                    <span className={`badge ${cls}`}>{label}</span>
-                    {a.dueDate && <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>{new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</span>}
-                  </div>
+                  <span className={`badge ${cls}`} style={{ flexShrink: 0, font: '600 10px var(--font-mono)' }}>{label}</span>
                 </div>
               );
             })}
@@ -494,11 +646,122 @@ function AssignmentsScroll() {
   );
 }
 
+// ── CR Dashboard Station ──
+function CRDashboardStation() {
+  const navigate = useNavigate();
+  const { data: section } = useSection();
+
+  return (
+    <section style={{ animation: 'fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+      <div className="section-header">
+        <span className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 6, font: '600 11px var(--font-mono)', color: 'var(--accent-primary)', letterSpacing: '0.04em' }}>
+          <ShieldCheck size={13} /> CR COMMAND STATION
+        </span>
+      </div>
+      <div className="card" style={{
+        background: 'linear-gradient(135deg, rgba(74, 158, 255, 0.07) 0%, rgba(20, 23, 32, 0.85) 100%)',
+        border: '1px solid rgba(74, 158, 255, 0.22)',
+        boxShadow: 'var(--shadow-glow-blue)',
+        padding: '16px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ font: '700 16px var(--font-display)', color: 'var(--text-primary)', marginBottom: 0, letterSpacing: '-0.01em' }}>
+              {section?.name || 'Section Hub'}
+            </h3>
+          </div>
+          <button 
+            className="btn-secondary" 
+            onClick={() => navigate('/app/cr-command')}
+            style={{ 
+              padding: '6px 12px', 
+              minHeight: 'fit-content', 
+              fontSize: 12, 
+              borderColor: 'rgba(74, 158, 255, 0.3)',
+              background: 'rgba(74, 158, 255, 0.05)',
+            }}
+          >
+            Command Center →
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <button 
+            onClick={() => navigate('/app/polls', { state: { openCreate: true } })}
+            style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              padding: '10px 8px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            className="cr-station-btn btn-secondary"
+          >
+            <BarChart2 size={16} color="var(--status-info)" />
+            <span style={{ font: '600 11px var(--font-body)', color: 'var(--text-primary)' }}>New Poll</span>
+          </button>
+
+          <button 
+            onClick={() => navigate('/app/cr-command', { state: { openBroadcast: true } })}
+            style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              padding: '10px 8px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            className="cr-station-btn btn-secondary"
+          >
+            <Megaphone size={16} color="var(--status-warning)" />
+            <span style={{ font: '600 11px var(--font-body)', color: 'var(--text-primary)' }}>Broadcast</span>
+          </button>
+
+          <button 
+            onClick={() => navigate('/app/assignments', { state: { openCreate: true } })}
+            style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              padding: '10px 8px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            className="cr-station-btn btn-secondary"
+          >
+            <ClipboardList size={16} color="var(--status-safe)" />
+            <span style={{ font: '600 11px var(--font-body)', color: 'var(--text-primary)' }}>Add Assign</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Dashboard ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const authUser = useAppStore(s => s.authUser);
   const notifications = useAppStore(s => s.notifications);
-  const { data: section } = useSection();
+  const role = useAppStore(s => s.role);
   const { data: announcements = [] } = useAnnouncements({ limit: 50 });
   const { data: assignments = [] } = useAssignments();
   const { data: attendance = { subjects: [], overall: 0 } } = useAttendance();
@@ -515,7 +778,7 @@ export default function DashboardPage() {
       <header style={pageHeaderStyle}>
         <div>
           <p style={{ font: '500 12px var(--font-mono)', color: 'var(--accent-primary)', marginBottom: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            {section ? `${section.inviteCode} · ${section.name}` : 'ClassHub'}
+            ClassHub
           </p>
           <h1 style={{ font: '700 24px var(--font-display)', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             Hey, {firstName} 👋
@@ -543,34 +806,120 @@ export default function DashboardPage() {
 
       <main className="page-content">
         {critical ? <CriticalBanner ann={critical} /> : null}
+        {role === 'cr' && <CRDashboardStation />}
+        
         {/* Top status row: Attendance + Next assignment */}
         <div className="top-status-row" style={{ display: 'flex', gap: 10, padding: '12px 16px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <StatusCard
-              title="Attendance"
-              onClick={() => navigate('/app/attendance')}
-              value={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <MultiDonut segments={(attendance?.subjects ?? []).slice(0, 4).map((s) => ({ label: s.name, percentage: s.percentage, color: undefined }))} size={56} strokeWidth={8} />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ font: '700 15px var(--font-display)', color: 'var(--text-primary)' }}>{Math.round(attendance?.overall ?? 0)}%</div>
-                  <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Overall</div>
-                </div>
-              </div>}
-            />
+          {/* Custom Premium Attendance Status Card */}
+          <div 
+            style={{ 
+              flex: 1, 
+              minWidth: 0,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              padding: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onClick={() => navigate('/app/attendance')}
+          >
+            <div style={{ 
+              width: 36, 
+              height: 36, 
+              borderRadius: '50%', 
+              background: 'rgba(96, 165, 250, 0.1)', 
+              border: '1px solid rgba(96, 165, 250, 0.15)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: 'var(--accent-primary)',
+              flexShrink: 0
+            }}>
+              <Percent size={16} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ font: '600 9px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Attendance</div>
+              <div style={{ font: '700 16px var(--font-display)', color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                {Math.round(attendance?.overall ?? 0)}%
+              </div>
+              <div style={{ 
+                font: '600 10px var(--font-mono)', 
+                color: (attendance?.overall ?? 0) >= 75 ? 'var(--status-safe)' : 'var(--status-critical)',
+                marginTop: 2 
+              }}>
+                {(attendance?.subjects ?? []).reduce((sum, s) => sum + s.present, 0)}/{(attendance?.subjects ?? []).reduce((sum, s) => sum + s.total, 0)} classes
+              </div>
+            </div>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <StatusCard
-              title="Next assignment"
-              onClick={() => navigate('/app/assignments')}
-              value={(() => {
+
+          {/* Custom Premium Next Assignment Card */}
+          <div 
+            style={{ 
+              flex: 1, 
+              minWidth: 0,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              padding: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onClick={() => navigate('/app/assignments')}
+          >
+            <div style={{ 
+              width: 36, 
+              height: 36, 
+              borderRadius: '50%', 
+              background: 'rgba(251, 191, 36, 0.1)', 
+              border: '1px solid rgba(251, 191, 36, 0.15)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: 'var(--status-warning)',
+              flexShrink: 0
+            }}>
+              <Calendar size={16} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ font: '600 9px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Next Deadline</div>
+              {(() => {
                 const a = (assignments ?? []).filter((assignment) => !isExpired(assignment.dueDate))[0];
-                return a ? `${a.subject}: ${a.title}` : 'No upcoming';
+                if (a) {
+                  return (
+                    <>
+                      <div className="truncate" style={{ font: '700 13px var(--font-body)', color: 'var(--text-primary)', lineHeight: 1.2 }} title={a.title}>
+                        {a.title}
+                      </div>
+                      <span className={`badge ${deadlineBadgeClass(a.dueDate)}`} style={{ fontSize: 8, padding: '2px 5px', marginTop: 2, display: 'inline-block', font: '600 8px var(--font-mono)' }}>
+                        {deadlineLabel(a.dueDate)}
+                      </span>
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    <div style={{ font: '700 13px var(--font-body)', color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                      All Clear
+                    </div>
+                    <div style={{ font: '500 9px var(--font-mono)', color: 'var(--text-muted)', marginTop: 2 }}>
+                      No assignments
+                    </div>
+                  </>
+                );
               })()}
-            />
+            </div>
           </div>
         </div>
+
         <ScheduleWidget />
-        <AttendancePills />
+        <AttendanceWidget />
         <AnnouncementsScroll />
         <PollBanner />
         <AssignmentsScroll />

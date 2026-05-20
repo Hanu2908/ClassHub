@@ -32,8 +32,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     </div>
   );
   
-  // Allow through if session exists OR authUser is persisted (session may still be rehydrating)
-  if (!session && !authUser) return <Navigate to="/" replace />;
+  // Allow through if active session exists OR we are in a persisted demo session
+  const isDemo = authUser?.sectionId === 'demo-section';
+  const isAuthenticated = !!session || isDemo;
+
+  if (!isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -57,8 +60,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     </div>
   );
   
-  // If user has session OR persisted authUser, redirect to appropriate page
-  const isAuthenticated = session || authUser;
+  // If user has active session OR we are in a persisted demo session, redirect to appropriate page
+  const isDemo = authUser?.sectionId === 'demo-section';
+  const isAuthenticated = !!session || isDemo;
+
   if (isAuthenticated && authUser?.sectionId) return <Navigate to="/app/home" replace />;
   if (isAuthenticated && !authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
   return <>{children}</>;

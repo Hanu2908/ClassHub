@@ -1,15 +1,18 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
   XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, BookOpen,
-  CheckCircle2, ExternalLink
+  CheckCircle2, ExternalLink, Copy, Share2, RefreshCw, Lock, Unlock, Loader2
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useAssignments, useSectionMembers, useAssignmentSubmissions } from '../../hooks/useSupabaseQuery';
+import { useAssignments, useSectionMembers, useAssignmentSubmissions, useSection } from '../../hooks/useSupabaseQuery';
+import type { SectionInfo } from '../../hooks/useSupabaseQuery';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
 
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
@@ -361,11 +364,222 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+function randomAlpha(n: number) {
+  return Array.from({ length: n }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]).join('');
+}
+
+// ── Invite Code Card ──
+function InviteCodeCard() {
+  const { data: section } = useSection();
+  const queryClient = useQueryClient();
+  const [obscured, setObscured] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rotating, setRotating] = useState(false);
+
+  const inviteCode = section?.inviteCode || '......';
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(inviteCode);
+    showToast('Invite code copied to clipboard!', 'success');
+  };
+
+  const shareCode = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Join ClassHub!',
+          text: `Use this invite code to join Section ${section?.name || ''} on ClassHub: ${inviteCode}`,
+        });
+      } else {
+        throw new Error('Not supported');
+      }
+    } catch {
+      copyCode();
+    }
+  };
+
+  const rotateCode = async () => {
+    if (!section?.id) return;
+    setRotating(true);
+    try {
+      const prefix = inviteCode.slice(0, 2) || 'P2';
+      const newCode = prefix + randomAlpha(4);
+
+      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+        showToast(`[Demo] Invite code rotated to ${newCode}!`, 'success');
+        queryClient.setQueryData(['section', section.id], (prev: SectionInfo | null | undefined) => prev ? { ...prev, inviteCode: newCode } : prev);
+        setConfirmOpen(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('sections')
+        .update({ invite_code: newCode })
+        .eq('id', section.id);
+
+      if (error) throw error;
+
+      showToast(`Invite code rotated to ${newCode}!`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['section', section.id] });
+      setConfirmOpen(false);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to rotate invite code';
+      showToast(message, 'error');
+    } finally {
+      setRotating(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="card" style={{
+        background: 'linear-gradient(135deg, rgba(74, 158, 255, 0.05) 0%, rgba(20, 23, 32, 0.8) 100%)',
+        border: '1px solid var(--border-default)',
+        padding: '16px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        animation: 'fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 10,
+            background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Lock size={16} color="var(--accent-primary)" />
+          </div>
+          <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>
+            Section Invite Code
+          </p>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-md)',
+          padding: '10px 14px',
+          marginTop: 4,
+        }}>
+          <span style={{
+            font: '700 22px var(--font-mono)',
+            letterSpacing: '0.12em',
+            color: obscured ? 'var(--text-muted)' : 'var(--accent-primary)',
+            transition: 'color 0.2s',
+          }}>
+            {obscured ? '••••••' : inviteCode}
+          </span>
+          <button
+            onClick={() => setObscured(!obscured)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-secondary)', padding: 6, display: 'flex',
+            }}
+            title={obscured ? "Show Invite Code" : "Hide Invite Code"}
+          >
+            {obscured ? <Unlock size={16} /> : <Lock size={16} />}
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button 
+            className="btn-secondary" 
+            onClick={copyCode} 
+            style={{ flex: 1, padding: '8px 12px', fontSize: 13, minHeight: 'fit-content' }}
+          >
+            <Copy size={14} /> Copy
+          </button>
+          <button 
+            className="btn-secondary" 
+            onClick={shareCode} 
+            style={{ flex: 1, padding: '8px 12px', fontSize: 13, minHeight: 'fit-content' }}
+          >
+            <Share2 size={14} /> Share
+          </button>
+          <button 
+            className="btn-secondary" 
+            onClick={() => setConfirmOpen(true)}
+            style={{ 
+              padding: '8px 12px', 
+              fontSize: 13, 
+              minHeight: 'fit-content', 
+              borderColor: 'rgba(255, 68, 68, 0.25)', 
+              background: 'rgba(255, 68, 68, 0.02)',
+              color: 'var(--status-critical)' 
+            }}
+          >
+            <RefreshCw size={14} /> Rotate
+          </button>
+        </div>
+      </div>
+
+      {confirmOpen && (
+        <BottomSheet onClose={() => setConfirmOpen(false)} title="Rotate Invite Code?">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>
+            <div style={{
+              background: 'rgba(255, 68, 68, 0.05)',
+              border: '1.5px solid rgba(255, 68, 68, 0.2)',
+              borderRadius: 'var(--radius-md)',
+              padding: '12px 14px',
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start',
+            }}>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
+              <div>
+                <p style={{ font: '600 13px var(--font-display)', color: 'var(--status-critical)', marginBottom: 3 }}>
+                  WARNING: Permanent Invalidation
+                </p>
+                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                  This will immediately invalidate the current code. Existing members will remain unaffected, but new students must use the new code to join.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => setConfirmOpen(false)} 
+                style={{ flex: 1, minHeight: 48 }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={rotateCode} 
+                disabled={rotating}
+                style={{ 
+                  flex: 1, 
+                  background: 'linear-gradient(180deg, #FF6B6B 0%, #E83E3C 100%)', 
+                  boxShadow: '0 4px 16px rgba(255,68,68,0.25)',
+                  minHeight: 48,
+                }}
+              >
+                {rotating ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Rotate Code'}
+              </button>
+            </div>
+          </div>
+        </BottomSheet>
+      )}
+    </>
+  );
+}
+
 // ── Page shell ────────────────────────────────────────────────────────────────
 export default function CRCommandPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const role = useAppStore(s => s.role);
-  const [showNotifSheet, setShowNotifSheet] = useState(false);
+  const [showNotifSheet, setShowNotifSheet] = useState(!!location.state?.openBroadcast);
+
+  useEffect(() => {
+    if (location.state?.openBroadcast) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state?.openBroadcast, navigate, location.pathname]);
 
   // Guard: non-CRs sent home
   if (role !== 'cr') {
@@ -397,6 +611,7 @@ export default function CRCommandPage() {
       </header>
 
       <main className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <InviteCodeCard />
         
         {/* Quick Actions */}
         <section>

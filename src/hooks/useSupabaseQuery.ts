@@ -54,7 +54,16 @@ export function useSection() {
         .select('id, name, college, invite_code, created_by')
         .eq('id', sectionId!)
         .single();
-      if (error || !data) return null;
+      
+      if (error) {
+        console.error('[useSection] query error:', error);
+        return null;
+      }
+      if (!data) {
+        console.warn('[useSection] no section data returned for ID:', sectionId);
+        return null;
+      }
+
       return {
         id: data.id,
         name: data.name,
@@ -445,9 +454,9 @@ export function useAttendance() {
         };
       });
 
-      const overall = subjects.length > 0
-        ? subjects.reduce((s, sub) => s + sub.percentage, 0) / subjects.length
-        : 0;
+      const totalPresent = subjects.reduce((sum, s) => sum + s.present, 0);
+      const totalHeld = subjects.reduce((sum, s) => sum + s.total, 0);
+      const overall = totalHeld > 0 ? (totalPresent / totalHeld) * 100 : 0;
 
       return { subjects, overall };
     },

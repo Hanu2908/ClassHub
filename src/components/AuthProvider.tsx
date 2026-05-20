@@ -17,7 +17,15 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
     .eq('id', userId)
     .single();
 
-  if (error || !data) return null;
+  if (error) {
+    console.error('[Auth] fetchProfile error:', error);
+    return null;
+  }
+
+  if (!data) {
+    console.warn('[Auth] fetchProfile: no profile row returned for user:', userId);
+    return null;
+  }
 
   return {
     id: data.id,
@@ -55,6 +63,14 @@ async function handleSession(
   navigateFn?: (path: string) => void,
 ): Promise<void> {
   const store = useAppStore.getState();
+
+  // Clean the auth hash from the URL if present to prevent parsing deadlock on refresh
+  if (window.location.hash.includes('access_token=')) {
+    if (import.meta.env.DEV) {
+      console.log('[Auth] Cleaning auth access_token hash from URL to prevent refresh deadlocks.');
+    }
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
 
   // Domain check
   if (!user.email?.endsWith(SKIT_DOMAIN)) {
@@ -139,26 +155,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const safetyTimeout = setTimeout(() => {
       if (mounted && store.isAuthLoading) {
         if (import.meta.env.DEV) {
-          console.warn('[Auth] Safety timeout — stopping loading spinner after 2s');
+          console.warn('[Auth] Safety timeout — stopping loading spinner after 15s');
         }
         store.setAuthLoading(false);
       }
-    }, 2000);
+    }, 15000);
 
     async function getInitialSession() {
+      // If there is an auth hash in the URL, let onAuthStateChange handle the event cleanly to avoid Supabase client deadlock
+      const hasAuthHash = window.location.hash.includes('access_token=') || window.location.hash.includes('error=');
+      if (hasAuthHash) {
+        if (import.meta.env.DEV) {
+          console.log('[Auth] Auth hash detected in URL. Skipping getInitialSession to let onAuthStateChange handle token recovery.');
+        }
+        return;
+      }
+
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (!mounted) return;
         if (error || !session) {
+          if (error) {
+            console.error('[Auth] Error fetching initial session:', error);
+          }
+          // If no active session, clear the stale persisted user profile so they aren't stuck with guard-bypassed null session
+          const store = useAppStore.getState();
+          if (store.authUser?.sectionId !== 'demo-section') {
+            if (import.meta.env.DEV) {
+              console.log('[Auth] No active session found. Clearing cached authUser to prevent guard bypass.');
+            }
+            store.setAuthUser(null);
+            store.setSession(null);
+          }
           store.setAuthLoading(false);
         } else {
+          const store = useAppStore.getState();
+          // Prevent duplicate invocation if onAuthStateChange already handled it
+          if (store.session?.user?.id === session.user.id) {
+            if (import.meta.env.DEV) {
+              console.log('[Auth] getInitialSession: Skipping duplicate session handling.');
+            }
+            return;
+          }
           // Set session IMMEDIATELY so route guards don't redirect to login
           store.setSession(session);
-          await handleSession(session.user, session, _navigateFn ?? undefined);
+          setTimeout(() => {
+            handleSession(session.user, session, _navigateFn ?? undefined).catch(err => {
+              console.error('[Auth] Error inside async getInitialSession handleSession background task:', err);
+            });
+          }, 0);
         }
       } catch (err) {
-        if (import.meta.env.DEV) {
-          console.error('[Auth] getInitialSession failed:', err);
+        console.error('[Auth] getInitialSession failed with critical exception:', err);
+        // Clear cached authUser on critical exception to be safe
+        const store = useAppStore.getState();
+        if (store.authUser?.sectionId !== 'demo-section') {
+          store.setAuthUser(null);
+          store.setSession(null);
         }
         if (mounted) {
           store.setAuthLoading(false);
@@ -168,17 +221,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getInitialSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Ignore INITIAL_SESSION because we handled it above explicitly to avoid strict-mode bugs
       if (event === 'INITIAL_SESSION') return;
       
       if (import.meta.env.DEV) {
-        console.log('[Auth]', event, session?.user?.email ?? 'no-user');
+        console.log('[Auth] AuthStateChange Event:', event, session?.user?.email ?? 'no-user');
       }
 
       try {
         if (event === 'SIGNED_IN' && session?.user) {
-          await handleSession(session.user, session, _navigateFn ?? undefined);
+          const currentStore = useAppStore.getState();
+          if (currentStore.session?.user?.id === session.user.id) {
+            if (import.meta.env.DEV) {
+              console.log('[Auth] Skipping duplicate SIGNED_IN event for user:', session.user.id);
+            }
+            return;
+          }
+          
+          // Decouple to avoid deadlocking the Supabase client's auth state listener
+          setTimeout(() => {
+            handleSession(session!.user, session!, _navigateFn ?? undefined).catch(err => {
+              console.error('[Auth] Error inside async handleSession background task:', err);
+            });
+          }, 0);
         } else if (event === 'SIGNED_OUT') {
           store.setSession(null);
           store.setAuthUser(null);
@@ -188,9 +254,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           store.setSession(session);
         }
       } catch (err) {
-        if (import.meta.env.DEV) {
-          console.error('[Auth] Error in onAuthStateChange callback:', err);
-        }
+        console.error('[Auth] Error in onAuthStateChange callback for event:', event, err);
         store.setAuthLoading(false);
       }
     });

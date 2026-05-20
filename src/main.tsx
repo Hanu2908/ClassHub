@@ -6,6 +6,42 @@ import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
 
+// Self-healing: Unregister any active Service Workers on localhost to prevent aggressive browser caching
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      let unregisteredAny = false;
+      const promises = [];
+      for (const registration of registrations) {
+        promises.push(
+          registration.unregister().then((success) => {
+            if (success) {
+              console.log('[PWA] Unregistered active Service Worker in main.tsx');
+              unregisteredAny = true;
+            }
+          })
+        );
+      }
+      if (registrations.length > 0) {
+        Promise.all(promises).then(() => {
+          if (typeof caches !== 'undefined') {
+            caches.keys().then((keys) => {
+              Promise.all(keys.map((k) => caches.delete(k))).then(() => {
+                if (navigator.serviceWorker.controller || unregisteredAny) {
+                  console.log('[PWA] Service Worker controller detected. Reloading for fresh asset delivery...');
+                  window.location.reload();
+                }
+              });
+            });
+          } else if (navigator.serviceWorker.controller || unregisteredAny) {
+            window.location.reload();
+          }
+        });
+      }
+    });
+  }
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>

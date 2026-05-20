@@ -20,6 +20,11 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
+  // Dev mode bypass: do not intercept anything on localhost or 127.0.0.1
+  if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+    return;
+  }
+
   const url = new URL(e.request.url);
 
   // Skip non-GET and cross-origin requests

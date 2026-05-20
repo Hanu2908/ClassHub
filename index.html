@@ -6,19 +6,54 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0A0A0F" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>ClassHub</title>
+    <script>
+      if ('serviceWorker' in navigator) {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          // Dev mode: synchronously unregister service workers to avoid localhost cache and fetch interception conflicts
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            let unregisteredAny = false;
+            const promises = [];
+            for (const registration of registrations) {
+              promises.push(
+                registration.unregister().then((success) => {
+                  if (success) {
+                    console.log('[PWA] Unregistered active Service Worker to prevent localhost cache conflict');
+                    unregisteredAny = true;
+                  }
+                })
+              );
+            }
+            if (registrations.length > 0) {
+              Promise.all(promises).then(() => {
+                if ('caches' in window) {
+                  caches.keys().then((keys) => {
+                    Promise.all(keys.map((k) => caches.delete(k))).then(() => {
+                      if (navigator.serviceWorker.controller || unregisteredAny) {
+                        console.log('[PWA] Service Worker was controlling page. Reloading to clear controller...');
+                        window.location.reload();
+                      }
+                    });
+                  });
+                } else if (navigator.serviceWorker.controller || unregisteredAny) {
+                  window.location.reload();
+                }
+              });
+            }
+          });
+        } else {
+          // Prod mode: register service worker normally
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+          });
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
-      }
-    </script>
   </body>
 </html>
