@@ -100,6 +100,9 @@ export interface Poll {
   status: 'active' | 'closed';
   options: PollOption[];
   createdAt: string;
+  allowMultiple: boolean;
+  userVotes: string[];
+  userVote: string | null;
 }
 
 export interface ScheduleSlot {

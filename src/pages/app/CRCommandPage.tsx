@@ -47,6 +47,7 @@ function SubmissionTracker() {
   const { data: members = [] } = useSectionMembers();
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>('not_submitted');
+  const [hoveredCard, setHoveredCard] = useState<'submitted' | 'pending' | null>(null);
   const [expanded, setExpanded] = useState(true);
   const addNotification = useAppStore(s => s.addNotification);
 
@@ -114,51 +115,69 @@ function SubmissionTracker() {
                 ))}
               </select>
 
-              {/* Summary bar */}
+              {/* Summary bar / Interactive Cards */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <div style={{
-                  flex: 1, padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                  background: 'rgba(52,201,123,0.08)', border: '1px solid rgba(52,201,123,0.2)',
-                  textAlign: 'center',
-                }}>
-                  <p style={{ font: '700 18px var(--font-display)', color: 'var(--status-safe)' }}>{submittedCount}</p>
-                  <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Submitted</p>
+                <div
+                  id="cr-tab-submitted"
+                  onClick={() => setSubFilter('submitted')}
+                  onMouseEnter={() => setHoveredCard('submitted')}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  style={{
+                    flex: 1, padding: '12px 10px', borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    background: subFilter === 'submitted'
+                      ? 'rgba(52,201,123,0.15)'
+                      : (hoveredCard === 'submitted' ? 'rgba(52,201,123,0.08)' : 'rgba(52,201,123,0.03)'),
+                    border: subFilter === 'submitted'
+                      ? '1px solid var(--status-safe)'
+                      : '1px solid rgba(52,201,123,0.15)',
+                    textAlign: 'center',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transform: subFilter === 'submitted' || hoveredCard === 'submitted' ? 'translateY(-2px)' : 'translateY(0)',
+                    boxShadow: subFilter === 'submitted'
+                      ? '0 6px 16px rgba(52,201,123,0.15)'
+                      : (hoveredCard === 'submitted' ? '0 4px 10px rgba(52,201,123,0.06)' : 'none'),
+                    userSelect: 'none',
+                  }}
+                >
+                  <p style={{ font: '700 20px var(--font-display)', color: 'var(--status-safe)', transition: 'transform 0.2s' }}>
+                    {submittedCount}
+                  </p>
+                  <p style={{ font: '600 11px var(--font-body)', color: subFilter === 'submitted' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                    ✓ Submitted
+                  </p>
                 </div>
-                <div style={{
-                  flex: 1, padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                  background: 'rgba(255,68,68,0.07)', border: '1px solid rgba(255,68,68,0.2)',
-                  textAlign: 'center',
-                }}>
-                  <p style={{ font: '700 18px var(--font-display)', color: 'var(--status-critical)' }}>{pendingMembers.length}</p>
-                  <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Pending</p>
-                </div>
-              </div>
 
-              {/* Filter tabs */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                {(['submitted', 'not_submitted'] as SubFilter[]).map(f => (
-                  <button
-                    key={f}
-                    id={`sub-filter-${f}`}
-                    onClick={() => setSubFilter(f)}
-                    style={{
-                      flex: 1, padding: '7px', borderRadius: 8,
-                      background: subFilter === f
-                        ? (f === 'submitted' ? 'rgba(52,201,123,0.15)' : 'rgba(255,68,68,0.12)')
-                        : 'var(--bg-elevated)',
-                      border: `1px solid ${subFilter === f
-                        ? (f === 'submitted' ? 'rgba(52,201,123,0.4)' : 'rgba(255,68,68,0.3)')
-                        : 'var(--border-default)'}`,
-                      color: subFilter === f
-                        ? (f === 'submitted' ? 'var(--status-safe)' : 'var(--status-critical)')
-                        : 'var(--text-muted)',
-                      font: '600 11px var(--font-body)', cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {f === 'submitted' ? `✓ Submitted (${submittedCount})` : `✗ Pending (${pendingMembers.length})`}
-                  </button>
-                ))}
+                <div
+                  id="cr-tab-pending"
+                  onClick={() => setSubFilter('not_submitted')}
+                  onMouseEnter={() => setHoveredCard('pending')}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  style={{
+                    flex: 1, padding: '12px 10px', borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    background: subFilter === 'not_submitted'
+                      ? 'rgba(255,68,68,0.12)'
+                      : (hoveredCard === 'pending' ? 'rgba(255,68,68,0.06)' : 'rgba(255,68,68,0.02)'),
+                    border: subFilter === 'not_submitted'
+                      ? '1px solid var(--status-critical)'
+                      : '1px solid rgba(255,68,68,0.15)',
+                    textAlign: 'center',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transform: subFilter === 'not_submitted' || hoveredCard === 'pending' ? 'translateY(-2px)' : 'translateY(0)',
+                    boxShadow: subFilter === 'not_submitted'
+                      ? '0 6px 16px rgba(255,68,68,0.12)'
+                      : (hoveredCard === 'pending' ? '0 4px 10px rgba(255,68,68,0.04)' : 'none'),
+                    userSelect: 'none',
+                  }}
+                >
+                  <p style={{ font: '700 20px var(--font-display)', color: 'var(--status-critical)', transition: 'transform 0.2s' }}>
+                    {pendingMembers.length}
+                  </p>
+                  <p style={{ font: '600 11px var(--font-body)', color: subFilter === 'not_submitted' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                    ✗ Pending
+                  </p>
+                </div>
               </div>
 
               {subFilter === 'not_submitted' && pendingMembers.length > 0 ? (

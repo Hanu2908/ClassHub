@@ -544,7 +544,7 @@ function PollBanner() {
   return (
     <section>
       <div className="section-header">
-        <span className="section-title">Campus Poll</span>
+        <span className="section-title">Polls</span>
         <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>
           Closes in {closesD}d {closesH}h
         </span>

@@ -266,6 +266,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // ── Supabase Realtime Subscriptions ──
+  const sectionId = useAppStore(s => s.authUser?.sectionId);
+
+  useEffect(() => {
+    if (!sectionId) return;
+
+    if (import.meta.env.DEV) {
+      console.log(`[Realtime] Setting up subscriptions for section: ${sectionId}`);
+    }
+
+    const channel = supabase
+      .channel(`section-realtime-${sectionId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'announcements', filter: `section_id=eq.${sectionId}` },
+        (payload) => {
+          if (import.meta.env.DEV) console.log('[Realtime] announcement change:', payload);
+          queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'assignments', filter: `section_id=eq.${sectionId}` },
+        (payload) => {
+          if (import.meta.env.DEV) console.log('[Realtime] assignment change:', payload);
+          queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'polls', filter: `section_id=eq.${sectionId}` },
+        (payload) => {
+          if (import.meta.env.DEV) console.log('[Realtime] poll change:', payload);
+          queryClient.invalidateQueries({ queryKey: ['polls', sectionId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'votes' },
+        (payload) => {
+          if (import.meta.env.DEV) console.log('[Realtime] vote change:', payload);
+          queryClient.invalidateQueries({ queryKey: ['polls', sectionId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'submissions' },
+        (payload) => {
+          if (import.meta.env.DEV) console.log('[Realtime] submission change:', payload);
+          queryClient.invalidateQueries({ queryKey: ['submissions'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'acknowledgments' },
+        (payload) => {
+          if (import.meta.env.DEV) console.log('[Realtime] acknowledgment change:', payload);
+          queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
+        }
+      )
+      .subscribe((status) => {
+        if (import.meta.env.DEV) {
+          console.log(`[Realtime] Subscription status for section ${sectionId}:`, status);
+        }
+      });
+
+    return () => {
+      if (import.meta.env.DEV) {
+        console.log(`[Realtime] Cleaning up subscriptions for section: ${sectionId}`);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [sectionId]);
+
   return <>{children}</>;
 }
 

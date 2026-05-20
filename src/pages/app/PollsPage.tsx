@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, BarChart2, Trash2, Loader, X } from 'lucide-react';
+import { ArrowLeft, Plus, AlertTriangle, BarChart2, Trash2, Loader, X, Circle, CircleDot, Square, CheckSquare } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
@@ -20,22 +20,30 @@ function timeLeft(iso: string): string {
   return days > 0 ? `Closes in ${days}d ${hrs}h` : `Closes in ${hrs}h`;
 }
 
-function PollCard({ poll, onDelete }: { poll: Poll & { userVote: string | null }; onDelete: (id: string) => void }) {
+function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => void }) {
   const role = useAppStore(s => s.role);
   const voteMutation = useVotePoll();
-  const userVote = poll.userVote;
-  const [showWarning, setShowWarning] = useState(poll.type === 'actionable' && !userVote);
-  const [warningAccepted, setWarningAccepted] = useState(poll.type !== 'actionable' || !!userVote);
+  const userVotes = poll.userVotes ?? (poll.userVote ? [poll.userVote] : []);
+  const [showWarning, setShowWarning] = useState(poll.type === 'actionable' && userVotes.length === 0);
+  const [warningAccepted, setWarningAccepted] = useState(poll.type !== 'actionable' || userVotes.length > 0);
 
   const total = poll.options.reduce((s, o) => s + o.votes, 0);
   const isClosed = poll.status === 'closed';
 
-  const handleVote = async (optId: string) => {
-    if (userVote || isClosed) return;
+  const handleVote = async (optId: string, isSelected: boolean) => {
+    if (isClosed) return;
     try {
-      await voteMutation.mutateAsync({ pollId: poll.id, optionId: optId, pollType: poll.type });
-      showToast('Vote submitted!', 'success');
-    } catch { showToast('Failed to vote', 'error'); }
+      await voteMutation.mutateAsync({
+        pollId: poll.id,
+        optionId: optId,
+        pollType: poll.type,
+        allowMultiple: poll.allowMultiple,
+        isSelected
+      });
+      showToast(isSelected ? 'Vote removed' : 'Vote submitted!', 'success');
+    } catch {
+      showToast('Failed to vote', 'error');
+    }
   };
 
   return (
@@ -50,6 +58,11 @@ function PollCard({ poll, onDelete }: { poll: Poll & { userVote: string | null }
           <span className="badge badge-info">
             {poll.type === 'anonymous' ? 'Anonymous' : 'Actionable'}
           </span>
+          {poll.allowMultiple && (
+            <span className="badge badge-safe" style={{ background: 'rgba(52,201,123,0.1)', border: '1px solid rgba(52,201,123,0.2)', color: 'var(--status-safe)' }}>
+              Multiple Choice
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -95,31 +108,43 @@ function PollCard({ poll, onDelete }: { poll: Poll & { userVote: string | null }
       )}
 
       {/* Options */}
-      {(!showWarning || warningAccepted || isClosed || userVote) && (
+      {(!showWarning || warningAccepted || isClosed || userVotes.length > 0) && (
         <div className="vote-bar-wrap">
           {poll.options.map(opt => {
             const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
-            const isSelected = userVote === opt.id;
-            const hasVoted = !!userVote || isClosed;
+            const isSelected = userVotes.includes(opt.id);
+            const hasVoted = userVotes.length > 0 || isClosed;
+
+            const Icon = poll.allowMultiple
+              ? (isSelected ? CheckSquare : Square)
+              : (isSelected ? CircleDot : Circle);
+
             return (
               <div key={opt.id}>
                 <button
                   id={`vote-opt-${opt.id}`}
                   className={`vote-option${isSelected ? ' selected' : ''}${hasVoted ? ' voted' : ''}`}
-                  style={{ width: '100%', cursor: hasVoted ? 'default' : 'pointer' }}
-                  onClick={() => handleVote(opt.id)}
-                  disabled={hasVoted}
+                  style={{ width: '100%', cursor: isClosed ? 'default' : 'pointer' }}
+                  onClick={() => handleVote(opt.id, isSelected)}
+                  disabled={isClosed}
                 >
                   <div style={{ flex: 1, textAlign: 'left' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: hasVoted ? 6 : 0 }}>
-                      <span style={{ font: '400 13px var(--font-body)', color: 'var(--text-primary)' }}>{opt.text}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {hasVoted && <span style={{ font: '600 12px var(--font-mono)', color: 'var(--accent-primary)' }}>{pct}%</span>}
-                        {isSelected && <CheckCircle2 size={14} color="var(--accent-primary)" />}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: hasVoted ? 6 : 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)', display: 'flex', flexShrink: 0 }}>
+                          <Icon size={15} />
+                        </span>
+                        <span style={{ font: '400 13px var(--font-body)', color: 'var(--text-primary)' }}>{opt.text}</span>
                       </div>
+                      {hasVoted && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ font: '600 12px var(--font-mono)', color: 'var(--accent-primary)' }}>{pct}%</span>
+                          <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>({opt.votes})</span>
+                        </div>
+                      )}
                     </div>
                     {hasVoted && (
-                      <div style={{ height: 4, background: 'var(--bg-base)', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: 4, background: 'var(--bg-base)', borderRadius: 2, overflow: 'hidden', marginLeft: 23 }}>
                         <div className="vote-bar-fill" style={{ width: `${pct}%` }} />
                       </div>
                     )}
@@ -144,6 +169,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
   const [pollType, setPollType] = useState<'general' | 'actionable'>('general');
   const [options, setOptions] = useState<string[]>(['', '']);
   const [expiryHours, setExpiryHours] = useState('24');
+  const [allowMultiple, setAllowMultiple] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleAddOption = () => {
@@ -191,6 +217,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
         pollType,
         expiresAt,
         options: filteredOptions,
+        allowMultiple,
       });
 
       showToast('Poll created successfully!', 'success');
@@ -272,6 +299,49 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
               ? 'Votes are completely secure and anonymous. CR cannot trace individual responses.'
               : 'CR will be able to see who voted for which option.'}
           </p>
+        </div>
+
+        {/* Multi-Select Option */}
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-md)',
+          padding: '12px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          userSelect: 'none',
+          transition: 'all 0.2s',
+        }} onClick={() => setAllowMultiple(!allowMultiple)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)' }}>
+              Multiple Choice Poll
+            </span>
+            <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>
+              Allow students to select more than one option
+            </span>
+          </div>
+          <div style={{
+            width: 36,
+            height: 20,
+            background: allowMultiple ? 'var(--accent-primary)' : 'var(--border-default)',
+            borderRadius: 10,
+            padding: 2,
+            transition: 'background-color 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: allowMultiple ? 'flex-end' : 'flex-start',
+          }}>
+            <div style={{
+              width: 16,
+              height: 16,
+              background: '#fff',
+              borderRadius: '50%',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              transition: 'all 0.2s',
+            }} />
+          </div>
         </div>
 
         {/* Dynamic Options */}

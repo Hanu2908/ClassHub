@@ -1,7 +1,7 @@
 -- Migration: Add batch RPC for poll results to avoid N+1 RPC calls
 
 create or replace function public.batch_poll_results(target_polls uuid[])
-returns table(poll_id uuid, option_id uuid, votes int) as $$
+returns table(poll_id uuid, option_id uuid, votes bigint) as $$
   select p.poll_id, r.option_id, r.votes
   from unnest(target_polls) as p(poll_id)
   cross join lateral (

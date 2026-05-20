@@ -262,12 +262,13 @@ body {
 .navbar {
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   width: 100%;
   max-width: var(--frame-w);
   height: 64px;
-  background: var(--bg-overlay);
+  background: rgba(10, 12, 20, 0.6);
   border-top: 1px solid var(--border-default);
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   display: flex; align-items: stretch;

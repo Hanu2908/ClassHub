@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
-import { generateAnonymousToken } from '../lib/utils';
 import type {
   Announcement, Assignment, AssignmentSet, Poll, PollOption,
   ScheduleSlot, ScheduleMap, AttendanceSubject,
@@ -286,7 +285,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
 
 export function usePolls() {
   const { sectionId, userId, isAuthLoading } = useAuthContext();
-  return useQuery<(Poll & { userVote: string | null })[]>({
+  return useQuery<Poll[]>({
     queryKey: ['polls', sectionId, userId],
     enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -294,7 +293,7 @@ export function usePolls() {
       const { data: polls, error } = await supabase
         .from('polls')
         .select(`
-          id, question_text, poll_type, is_active, expires_at, created_at,
+          id, question_text, poll_type, is_active, expires_at, created_at, allow_multiple,
           poll_options (id, label, sort_order)
         `)
         .eq('section_id', sectionId!)
@@ -304,29 +303,32 @@ export function usePolls() {
       const pollArray = polls ?? [];
       const pollIds = pollArray.map(p => p.id);
       const results: Record<string, Record<string, number>> = {};
-      const userVotes: Record<string, string> = {};
+      const userVotes: Record<string, string[]> = {};
 
       if (pollIds.length > 0) {
-        // Fetch all votes for these polls in a single query (no RPC needed)
-        const { data: allVotes, error: votesErr } = await supabase
-          .from('votes')
-          .select('poll_id, option_id, student_id, anonymous_token')
-          .in('poll_id', pollIds);
-        if (votesErr) throw votesErr;
+        // 1. Fetch aggregate vote counts securely via RPC to bypass RLS select restrictions
+        const { data: voteCounts, error: countsErr } = await supabase
+          .rpc('batch_poll_results', { target_polls: pollIds });
+        if (countsErr) throw countsErr;
 
-        // Count votes per option client-side
-        for (const v of allVotes ?? []) {
-          if (!results[v.poll_id]) results[v.poll_id] = {};
-          results[v.poll_id][v.option_id] = (results[v.poll_id][v.option_id] ?? 0) + 1;
+        for (const r of voteCounts ?? []) {
+          if (!results[r.poll_id]) results[r.poll_id] = {};
+          results[r.poll_id][r.option_id] = r.votes;
         }
 
-        // Find this user's votes
+        // 2. Fetch the current user's votes from the votes table to determine userVotes state (complies with student_id NEVER in query rules)
         if (userId) {
-          const myTokens = new Set(pollIds.map(pid => generateAnonymousToken(userId, pid)));
-          for (const v of allVotes ?? []) {
-            if (v.student_id === userId || (v.anonymous_token && myTokens.has(v.anonymous_token))) {
-              userVotes[v.poll_id] = v.option_id;
+          const { data: myVotes, error: myVotesErr } = await supabase
+            .from('votes')
+            .select('poll_id, option_id')
+            .in('poll_id', pollIds);
+          if (myVotesErr) throw myVotesErr;
+
+          for (const mv of myVotes ?? []) {
+            if (!userVotes[mv.poll_id]) {
+              userVotes[mv.poll_id] = [];
             }
+            userVotes[mv.poll_id].push(mv.option_id);
           }
         }
       }
@@ -341,6 +343,8 @@ export function usePolls() {
           votes: results[p.id]?.[o.id] ?? 0,
         }));
 
+        const myVotesForPoll = userVotes[p.id] ?? [];
+
         return {
           id: p.id,
           question: p.question_text,
@@ -349,7 +353,9 @@ export function usePolls() {
           status: isActive ? 'active' as const : 'closed' as const,
           options,
           createdAt: p.created_at,
-          userVote: userVotes[p.id] ?? null,
+          allowMultiple: p.allow_multiple ?? false,
+          userVotes: myVotesForPoll,
+          userVote: myVotesForPoll[0] ?? null, // Backward compatibility
         };
       });
     },

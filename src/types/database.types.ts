@@ -355,6 +355,7 @@ export type Database = {
       }
       polls: {
         Row: {
+          allow_multiple: boolean
           created_at: string
           created_by: string
           expires_at: string | null
@@ -365,6 +366,7 @@ export type Database = {
           section_id: string
         }
         Insert: {
+          allow_multiple?: boolean
           created_at?: string
           created_by: string
           expires_at?: string | null
@@ -375,6 +377,7 @@ export type Database = {
           section_id: string
         }
         Update: {
+          allow_multiple?: boolean
           created_at?: string
           created_by?: string
           expires_at?: string | null

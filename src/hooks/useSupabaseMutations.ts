@@ -175,6 +175,7 @@ export function useCreatePoll() {
       pollType: 'general' | 'actionable';
       expiresAt?: string | null;
       options: string[];
+      allowMultiple: boolean;
     }) => {
       const { data: poll, error } = await supabase
         .from('polls')
@@ -184,6 +185,7 @@ export function useCreatePoll() {
           question_text: input.question,
           poll_type: input.pollType,
           expires_at: input.expiresAt ?? null,
+          allow_multiple: input.allowMultiple,
         })
         .select('id')
         .single();
@@ -219,17 +221,62 @@ export function useVotePoll() {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
   return useMutation({
-    mutationFn: async (input: { pollId: string; optionId: string; pollType: 'general' | 'anonymous' | 'actionable' }) => {
+    mutationFn: async (input: {
+      pollId: string;
+      optionId: string;
+      pollType: 'general' | 'anonymous' | 'actionable';
+      allowMultiple: boolean;
+      isSelected: boolean;
+    }) => {
       const isAnonymous = input.pollType === 'general' || input.pollType === 'anonymous';
       const token = isAnonymous ? generateAnonymousToken(userId!, input.pollId) : null;
 
-      const { error } = await supabase.from('votes').insert({
-        poll_id: input.pollId,
-        option_id: input.optionId,
-        student_id: isAnonymous ? null : userId!,
-        anonymous_token: token,
-      });
-      if (error) throw error;
+      if (input.allowMultiple) {
+        // Multi-select poll: toggle option
+        if (input.isSelected) {
+          // Toggle OFF: delete the specific vote for this option
+          const deleteQuery = supabase.from('votes').delete().eq('option_id', input.optionId);
+          if (isAnonymous) {
+            deleteQuery.eq('anonymous_token', token!);
+          } else {
+            deleteQuery.eq('student_id', userId!);
+          }
+          const { error } = await deleteQuery;
+          if (error) throw error;
+        } else {
+          // Toggle ON: insert the vote for this option
+          const { error } = await supabase.from('votes').insert({
+            poll_id: input.pollId,
+            option_id: input.optionId,
+            student_id: isAnonymous ? null : userId!,
+            anonymous_token: token,
+          });
+          if (error) throw error;
+        }
+      } else {
+        // Single-select poll: change or cast vote
+        // First delete any existing vote on this poll for this user
+        const deleteQuery = supabase.from('votes').delete().eq('poll_id', input.pollId);
+        if (isAnonymous) {
+          deleteQuery.eq('anonymous_token', token!);
+        } else {
+          deleteQuery.eq('student_id', userId!);
+        }
+        const { error: delErr } = await deleteQuery;
+        if (delErr) throw delErr;
+
+        // If they were toggling OFF the already selected option, we are done.
+        // If they clicked a DIFFERENT option (isSelected was false), we insert the new vote.
+        if (!input.isSelected) {
+          const { error } = await supabase.from('votes').insert({
+            poll_id: input.pollId,
+            option_id: input.optionId,
+            student_id: isAnonymous ? null : userId!,
+            anonymous_token: token,
+          });
+          if (error) throw error;
+        }
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['polls'] }),
   });
