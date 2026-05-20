@@ -1,0 +1,118 @@
+import { supabase } from './supabase';
+
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
+
+/** Check if push is supported in this browser */
+export function isPushSupported(): boolean {
+  return 'serviceWorker' in navigator
+    && 'PushManager' in window
+    && 'Notification' in window;
+}
+
+/** Get current browser permission state */
+export function getPushPermission(): NotificationPermission {
+  return Notification.permission;
+}
+
+/** Check if user has active subscription in DB */
+export async function hasActiveSubscription(): Promise<boolean> {
+  const { count } = await supabase
+    .from('push_subscriptions')
+    .select('id', { count: 'exact', head: true });
+  return (count ?? 0) > 0;
+}
+
+/** Subscribe to push notifications + save to DB */
+export async function subscribeToPush(): Promise<boolean> {
+  try {
+    if (!VAPID_PUBLIC_KEY) {
+      console.error('[Push] VAPID_PUBLIC_KEY not configured');
+      return false;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return false;
+
+    const reg = await navigator.serviceWorker.ready;
+    const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
+    });
+
+    const json = sub.toJSON();
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+      console.error('[Push] Invalid subscription object');
+      return false;
+    }
+
+    // Save subscription to DB (RLS ensures user_id = auth.uid())
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('[Push] No authenticated user');
+      return false;
+    }
+
+    const { error: upsertError } = await supabase
+      .from('push_subscriptions')
+      .upsert({
+        user_id: user.id,
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+      }, { onConflict: 'endpoint' });
+
+    if (upsertError) {
+      console.error('[Push] Failed to save subscription:', upsertError);
+      return false;
+    }
+
+    // Update user preference flag
+    await supabase.from('users')
+      .update({ notifications_enabled: true })
+      .eq('id', user.id);
+
+    return true;
+  } catch (err) {
+    console.error('[Push] Subscribe failed:', err);
+    return false;
+  }
+}
+
+/** Unsubscribe from push + remove from DB */
+export async function unsubscribeFromPush(): Promise<void> {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+
+    if (sub) {
+      const endpoint = sub.endpoint;
+      await sub.unsubscribe();
+      await supabase.from('push_subscriptions')
+        .delete()
+        .eq('endpoint', endpoint);
+    }
+
+    // Update user preference flag
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users')
+        .update({ notifications_enabled: false })
+        .eq('id', user.id);
+    }
+  } catch (err) {
+    console.error('[Push] Unsubscribe failed:', err);
+  }
+}
+
+/** Convert base64-encoded VAPID key to Uint8Array for pushManager */
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}

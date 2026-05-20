@@ -60,3 +60,38 @@ self.addEventListener("fetch", (e) => {
     ),
   );
 });
+
+// ── Push Notification ──
+self.addEventListener("push", (e) => {
+  const data = e.data ? e.data.json() : {};
+  const title = data.title || "ClassHub";
+  const options = {
+    body: data.body || "",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: { url: data.url || "/app/home" },
+    vibrate: [100, 50, 100],
+    tag: data.tag || "classhub-" + Date.now(),
+    renotify: true,
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+// ── Notification Click — navigate to target URL ──
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/app/home";
+  e.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((list) => {
+        for (const client of list) {
+          if (client.url.indexOf(self.location.origin) !== -1 && "focus" in client) {
+            client.navigate(url);
+            return client.focus();
+          }
+        }
+        return clients.openWindow(url);
+      }),
+  );
+});

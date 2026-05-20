@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
@@ -6,6 +6,7 @@ import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { useSection } from '../../hooks/useSupabaseQuery';
 import { supabase } from '../../lib/supabase';
+import { isPushSupported, getPushPermission, hasActiveSubscription, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -15,6 +16,44 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [notificationsOn, setNotificationsOn] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  // Check push subscription state on mount
+  useEffect(() => {
+    if (isPushSupported()) {
+      hasActiveSubscription().then(setNotificationsOn);
+    }
+  }, []);
+
+  const pushSupported = isPushSupported();
+  const pushBlocked = pushSupported && getPushPermission() === 'denied';
+
+  const handleToggleNotifications = async () => {
+    if (!pushSupported || notifLoading) return;
+    setNotifLoading(true);
+    try {
+      if (notificationsOn) {
+        await unsubscribeFromPush();
+        setNotificationsOn(false);
+        showToast('Notifications disabled', 'info');
+      } else {
+        if (pushBlocked) {
+          showToast('Notifications blocked in browser settings. Please enable them manually.', 'error');
+          return;
+        }
+        const ok = await subscribeToPush();
+        if (ok) {
+          setNotificationsOn(true);
+          showToast('Notifications enabled!', 'success');
+        } else {
+          showToast('Could not enable notifications', 'error');
+        }
+      }
+    } finally {
+      setNotifLoading(false);
+    }
+  };
 
   const displayName = authUser?.name ?? 'Student';
   const displayEmail = authUser?.email ?? '';
@@ -163,13 +202,36 @@ export default function ProfilePage() {
         <div>
           <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>SETTINGS</p>
           <div className="card" style={{ padding: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
+            <div
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: pushSupported && !pushBlocked ? 'pointer' : 'default', opacity: pushSupported ? 1 : 0.5 }}
+              onClick={handleToggleNotifications}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Bell size={16} color="var(--text-secondary)" />
-                <span style={{ font: '400 14px var(--font-body)', color: 'var(--text-primary)' }}>Notifications</span>
+                <div>
+                  <span style={{ font: '400 14px var(--font-body)', color: 'var(--text-primary)' }}>Notifications</span>
+                  {pushBlocked && (
+                    <p style={{ font: '400 11px var(--font-body)', color: 'var(--status-critical)', marginTop: 2 }}>Blocked in browser settings</p>
+                  )}
+                  {!pushSupported && (
+                    <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>Not supported in this browser</p>
+                  )}
+                </div>
               </div>
-              <div style={{ width: 44, height: 24, borderRadius: 12, background: 'var(--accent-primary)', position: 'relative', cursor: 'pointer' }}>
-                <div style={{ position: 'absolute', right: 2, top: 2, width: 20, height: 20, borderRadius: '50%', background: '#fff' }} />
+              <div style={{
+                width: 44, height: 24, borderRadius: 12,
+                background: notificationsOn ? 'var(--accent-primary)' : 'var(--bg-elevated)',
+                border: notificationsOn ? 'none' : '1px solid var(--border-default)',
+                position: 'relative', transition: 'background 0.2s ease',
+                opacity: notifLoading ? 0.6 : 1,
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  ...(notificationsOn ? { right: 2 } : { left: 2 }),
+                  top: 2, width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s ease, right 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }} />
               </div>
             </div>
           </div>
