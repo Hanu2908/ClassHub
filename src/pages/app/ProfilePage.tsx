@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, LogOut, Settings, ChevronRight, TrendingUp, Bell, Trash2, Download } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { signOutGlobal } from '../../components/AuthProvider';
 import { useSection } from '../../hooks/useSupabaseQuery';
+import { supabase } from '../../lib/supabase';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { authUser, role, hub, signOut, deferredPrompt, setDeferredPrompt } = useAppStore();
   const { data: section } = useSection();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const displayName = authUser?.name ?? 'Student';
   const displayEmail = authUser?.email ?? '';
@@ -31,8 +34,23 @@ export default function ProfilePage() {
     showToast('Hub code copied!', 'success');
   };
 
-  const handleSignOut = async () => {
-    await signOutGlobal(navigate);
+  const handleDeleteAccount = async () => {
+    if (deleteInput !== 'DELETE') return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.rpc('delete_own_account');
+      if (error) throw error;
+      // Clear all local state and redirect
+      useAppStore.getState().signOut();
+      showToast('Account deleted successfully', 'success');
+      navigate('/');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`Delete failed: ${msg}`, 'error');
+      console.error('[DeleteAccount]', err);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleLeaveHub = () => {
@@ -109,12 +127,12 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Attendance shortcut */}
+        {/* CGPA Calculator */}
         <div>
-          <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>ATTENDANCE</p>
-          <button id="go-attendance-btn" className="list-row" style={{ width: '100%' }} onClick={() => navigate('/app/attendance')}>
-            <TrendingUp size={18} color="var(--accent-primary)" />
-            <span style={{ flex: 1, font: '500 14px var(--font-body)', color: 'var(--text-primary)', textAlign: 'left' }}>Update Attendance</span>
+          <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>TOOLS</p>
+          <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%' }} onClick={() => showToast('CGPA Calculator coming soon!', 'info')}>
+            <Calculator size={18} color="var(--accent-primary)" />
+            <span style={{ flex: 1, font: '500 14px var(--font-body)', color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
             <ChevronRight size={16} color="var(--text-muted)" />
           </button>
         </div>
@@ -145,7 +163,7 @@ export default function ProfilePage() {
         <div>
           <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>SETTINGS</p>
           <div className="card" style={{ padding: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border-default)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Bell size={16} color="var(--text-secondary)" />
                 <span style={{ font: '400 14px var(--font-body)', color: 'var(--text-primary)' }}>Notifications</span>
@@ -153,13 +171,6 @@ export default function ProfilePage() {
               <div style={{ width: 44, height: 24, borderRadius: 12, background: 'var(--accent-primary)', position: 'relative', cursor: 'pointer' }}>
                 <div style={{ position: 'absolute', right: 2, top: 2, width: 20, height: 20, borderRadius: '50%', background: '#fff' }} />
               </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Settings size={16} color="var(--text-secondary)" />
-                <span style={{ font: '400 14px var(--font-body)', color: 'var(--text-primary)' }}>Theme</span>
-              </div>
-              <span style={{ font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>Dark</span>
             </div>
           </div>
         </div>
@@ -185,10 +196,50 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
-            <button id="sign-out-btn" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--status-critical)' }}
-              onClick={handleSignOut}>
-              <LogOut size={15} /> Sign Out
-            </button>
+
+            {/* Delete Account — two-step confirmation */}
+            {!showDeleteConfirm ? (
+              <button id="delete-account-btn" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--status-critical)' }}
+                onClick={() => setShowDeleteConfirm(true)}>
+                <AlertTriangle size={15} /> Delete Account
+              </button>
+            ) : (
+              <div style={{ background: 'var(--status-critical-bg)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 16 }}>
+                <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 4 }}>
+                  This will permanently delete your account and all your data.
+                </p>
+                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 12 }}>
+                  Type <strong style={{ color: 'var(--status-critical)' }}>DELETE</strong> to confirm.
+                </p>
+                <input
+                  id="delete-confirm-input"
+                  className="input"
+                  style={{ marginBottom: 12, textAlign: 'center', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}
+                  placeholder="Type DELETE"
+                  value={deleteInput}
+                  onChange={(e) => setDeleteInput(e.target.value.toUpperCase())}
+                  autoComplete="off"
+                />
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    id="confirm-delete-btn"
+                    disabled={deleteInput !== 'DELETE' || deleting}
+                    style={{
+                      flex: 1, padding: '10px',
+                      background: deleteInput === 'DELETE' ? 'var(--status-critical)' : 'var(--bg-elevated)',
+                      color: deleteInput === 'DELETE' ? '#fff' : 'var(--text-muted)',
+                      border: 'none', borderRadius: 'var(--radius-md)',
+                      font: '600 13px var(--font-body)', cursor: deleteInput === 'DELETE' ? 'pointer' : 'not-allowed',
+                      opacity: deleting ? 0.6 : 1,
+                    }}
+                    onClick={handleDeleteAccount}
+                  >
+                    {deleting ? 'Deleting…' : 'Delete Forever'}
+                  </button>
+                  <button id="cancel-delete-btn" className="btn-secondary" style={{ flex: 1 }} onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }}>Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

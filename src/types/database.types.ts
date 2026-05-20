@@ -803,6 +803,10 @@ export type Database = {
           votes: number
         }[]
       }
+      delete_own_account: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
     }
     Enums: {
       announcement_priority: "general" | "critical"
