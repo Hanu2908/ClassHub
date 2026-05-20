@@ -8,7 +8,12 @@ ALTER TABLE public.votes DROP CONSTRAINT IF EXISTS votes_poll_id_student_id_key;
 ALTER TABLE public.votes DROP CONSTRAINT IF EXISTS votes_poll_id_anonymous_token_key;
 
 -- 3. Add new unique constraints at the option level (allowing multiple options per poll, but only one vote per option)
+ALTER TABLE public.votes DROP CONSTRAINT IF EXISTS votes_option_id_student_id_key;
+DROP INDEX IF EXISTS public.votes_option_id_student_id_key;
 ALTER TABLE public.votes ADD CONSTRAINT votes_option_id_student_id_key UNIQUE (option_id, student_id);
+
+ALTER TABLE public.votes DROP CONSTRAINT IF EXISTS votes_option_id_anonymous_token_key;
+DROP INDEX IF EXISTS public.votes_option_id_anonymous_token_key;
 ALTER TABLE public.votes ADD CONSTRAINT votes_option_id_anonymous_token_key UNIQUE (option_id, anonymous_token);
 
 -- 4. Enable RLS DELETE and UPDATE policies on votes table
