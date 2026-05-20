@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Paperclip, Loader } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
@@ -8,18 +8,25 @@ import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { useAnnouncements } from '../../hooks/useSupabaseQuery';
 import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useSupabaseMutations';
+import { FileUploader } from '../../components/FileUploader';
+import { AttachmentCard } from '../../components/AttachmentCard';
+import { supabase } from '../../lib/supabase';
 
 type Filter = 'all' | 'critical' | 'general';
 
 function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   const createAnn = useCreateAnnouncement();
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+  const userId = authUser?.id;
+
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [priority, setPriority] = useState<'general' | 'critical'>('general');
   const [hasDeadline, setHasDeadline] = useState(false);
   const [deadlineDate, setDeadlineDate] = useState('');
-  const [hasAttachment, setHasAttachment] = useState(false);
-  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [isPosting, setIsPosting] = useState(false);
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -31,19 +38,49 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   const handlePost = async () => {
     if (!title.trim() || !body.trim()) { showToast('Title and body required', 'error'); return; }
     
+    setIsPosting(true);
     try {
-      await createAnn.mutateAsync({
+      const parentId = await createAnn.mutateAsync({
         title: title.trim(),
         message: body.trim(),
         priority,
         deadline: hasDeadline && deadlineDate ? new Date(deadlineDate).toISOString() : null,
       });
+
+      if (parentId && files.length > 0) {
+        if (!sectionId || !userId) throw new Error('Missing section context or user context');
+        for (const file of files) {
+          const path = `${sectionId}/announcements/${parentId}/${file.name}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('attachments')
+            .upload(path, file, { cacheControl: '3600', upsert: true });
+          if (uploadErr) throw uploadErr;
+
+          const { error: dbErr } = await supabase
+            .from('attachments')
+            .insert({
+              section_id: sectionId,
+              announcement_id: parentId,
+              storage_path: path,
+              filename: file.name,
+              file_size: file.size,
+              file_type: file.type,
+              uploaded_by: userId,
+            });
+          if (dbErr) throw dbErr;
+        }
+      }
+
       showToast('Announcement posted', 'success');
       onClose();
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Failed to post', 'error');
+    } finally {
+      setIsPosting(false);
     }
   };
+
+  const pending = createAnn.isPending || isPosting;
 
   return (
     <BottomSheet onClose={onClose} title="Post Announcement">
@@ -78,42 +115,21 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         <div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: hasAttachment ? 8 : 0 }}>
-            <input type="checkbox" checked={hasAttachment} onChange={e => setHasAttachment(e.target.checked)} />
-            <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Add Attachment (PDF/Picture)</span>
-          </label>
-          {hasAttachment && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <label style={{
-                flex: 1, padding: '10px 12px', background: 'var(--bg-elevated)',
-                border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-md)',
-                color: 'var(--text-muted)', font: '400 13px var(--font-body)',
-                textAlign: 'center', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-              }}>
-                <Paperclip size={14} />
-                {attachmentUrl ? 'File Selected' : 'Click to Upload'}
-                <input type="file" style={{ display: 'none' }} accept="application/pdf,image/*" onChange={e => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    setAttachmentUrl(URL.createObjectURL(e.target.files[0]));
-                  }
-                }} />
-              </label>
-            </div>
-          )}
+          <FileUploader files={files} onChange={setFiles} />
         </div>
 
         <button
           onClick={handlePost}
-          disabled={createAnn.isPending}
+          disabled={pending}
           style={{
-            width: '100%', padding: '12px', background: createAnn.isPending ? 'var(--bg-elevated)' : 'var(--accent-primary)',
-            border: 'none', borderRadius: 'var(--radius-md)', cursor: createAnn.isPending ? 'not-allowed' : 'pointer',
-            font: '600 14px var(--font-body)', color: createAnn.isPending ? 'var(--text-muted)' : '#fff', marginTop: 8,
+            width: '100%', padding: '12px', background: pending ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+            border: 'none', borderRadius: 'var(--radius-md)', cursor: pending ? 'not-allowed' : 'pointer',
+            font: '600 14px var(--font-body)', color: pending ? 'var(--text-muted)' : '#fff', marginTop: 8,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {createAnn.isPending && <Loader size={14} className="spin" />}
-          {createAnn.isPending ? 'Posting…' : 'Post Announcement'}
+          {pending && <Loader size={14} className="spin" />}
+          {pending ? 'Posting…' : 'Post Announcement'}
         </button>
       </div>
     </BottomSheet>
@@ -237,19 +253,12 @@ export default function AnnouncementsPage() {
                   {ann.body}
                 </p>
 
-                {ann.attachmentUrl && (
-                  <button
-                    onClick={() => window.open(ann.attachmentUrl!, '_blank')}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', marginBottom: 14,
-                      background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-md)', cursor: 'pointer',
-                      font: '500 13px var(--font-body)', color: 'var(--accent-primary)',
-                      transition: 'all 0.2s', width: 'fit-content'
-                    }}
-                  >
-                    <Paperclip size={14} /> View Attachment
-                  </button>
+                {ann.attachments && ann.attachments.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                    {ann.attachments.map(att => (
+                      <AttachmentCard key={att.id} attachment={att} />
+                    ))}
+                  </div>
                 )}
 
                 {!isAcked ? (

@@ -173,7 +173,10 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
       const to = (page + 1) * limit - 1;
       const { data: anns, error: annErr } = await supabase
         .from('announcements')
-        .select('id, title, message_content, priority, deadline_at, created_at')
+        .select(`
+          id, title, message_content, priority, deadline_at, created_at,
+          attachments (id, filename, file_size, file_type, storage_path)
+        `)
         .eq('section_id', sectionId!)
         .order('created_at', { ascending: false })
         .range(from, to);
@@ -200,6 +203,13 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
         postedAt: a.created_at,
         attachmentUrl: null,
         isAcknowledged: ackIds.includes(a.id),
+        attachments: (a.attachments as any[] ?? []).map((att: any) => ({
+          id: att.id,
+          filename: att.filename,
+          fileSize: att.file_size,
+          fileType: att.file_type,
+          storagePath: att.storage_path,
+        })),
       }));
     },
   });
@@ -223,7 +233,8 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
         .select(`
           id, title, due_date, description, created_at,
           subjects:subject_id (code, name),
-          assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers)
+          assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers),
+          attachments (id, filename, file_size, file_type, storage_path)
         `)
         .eq('section_id', sectionId!)
         .order('created_at', { ascending: false })
@@ -275,6 +286,13 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
           sets,
           submittedLink: sub?.link ?? null,
           createdAt: a.created_at,
+          attachments: (a.attachments as any[] ?? []).map((att: any) => ({
+            id: att.id,
+            filename: att.filename,
+            fileSize: att.file_size,
+            fileType: att.file_type,
+            storagePath: att.storage_path,
+          })),
         };
       });
     },
@@ -303,33 +321,37 @@ export function usePolls() {
       const pollArray = polls ?? [];
       const pollIds = pollArray.map(p => p.id);
       const results: Record<string, Record<string, number>> = {};
+      const voterCounts: Record<string, number> = {};
       const userVotes: Record<string, string[]> = {};
 
       if (pollIds.length > 0) {
-        // 1. Fetch aggregate vote counts securely via RPC to bypass RLS select restrictions
-        const { data: voteCounts, error: countsErr } = await supabase
-          .rpc('batch_poll_results', { target_polls: pollIds });
-        if (countsErr) throw countsErr;
+        // 1. Fetch aggregate vote counts, voter counts, and current user's votes concurrently
+        const [resultsRes, voterCountsRes, myVotesRes] = await Promise.all([
+          supabase.rpc('batch_poll_results', { target_polls: pollIds }),
+          supabase.rpc('batch_poll_voter_counts', { target_polls: pollIds }),
+          userId
+            ? supabase.from('votes').select('poll_id, option_id').in('poll_id', pollIds)
+            : Promise.resolve({ data: [], error: null })
+        ]);
 
-        for (const r of voteCounts ?? []) {
+        if (resultsRes.error) throw resultsRes.error;
+        if (voterCountsRes.error) throw voterCountsRes.error;
+        if (myVotesRes.error) throw myVotesRes.error;
+
+        for (const r of resultsRes.data ?? []) {
           if (!results[r.poll_id]) results[r.poll_id] = {};
           results[r.poll_id][r.option_id] = r.votes;
         }
 
-        // 2. Fetch the current user's votes from the votes table to determine userVotes state (complies with student_id NEVER in query rules)
-        if (userId) {
-          const { data: myVotes, error: myVotesErr } = await supabase
-            .from('votes')
-            .select('poll_id, option_id')
-            .in('poll_id', pollIds);
-          if (myVotesErr) throw myVotesErr;
+        for (const vc of voterCountsRes.data ?? []) {
+          voterCounts[vc.poll_id] = Number(vc.voter_count);
+        }
 
-          for (const mv of myVotes ?? []) {
-            if (!userVotes[mv.poll_id]) {
-              userVotes[mv.poll_id] = [];
-            }
-            userVotes[mv.poll_id].push(mv.option_id);
+        for (const mv of myVotesRes.data ?? []) {
+          if (!userVotes[mv.poll_id]) {
+            userVotes[mv.poll_id] = [];
           }
+          userVotes[mv.poll_id].push(mv.option_id);
         }
       }
 
@@ -356,6 +378,44 @@ export function usePolls() {
           allowMultiple: p.allow_multiple ?? false,
           userVotes: myVotesForPoll,
           userVote: myVotesForPoll[0] ?? null, // Backward compatibility
+          voterCount: voterCounts[p.id] ?? 0,
+        };
+      });
+    },
+  });
+}
+
+export interface ActionablePollVote {
+  optionId: string;
+  studentId: string;
+  studentName: string;
+  classRoll: string | null;
+}
+
+export function useActionablePollVotes(pollId: string, enabled: boolean) {
+  return useQuery<ActionablePollVote[]>({
+    queryKey: ['actionable_poll_votes', pollId],
+    enabled: enabled && !!pollId,
+    staleTime: 1000 * 30, // 30 seconds for quick update
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('votes')
+        .select(`
+          option_id,
+          student_id,
+          users:student_id (name, section_roll)
+        `)
+        .eq('poll_id', pollId);
+
+      if (error) throw error;
+
+      return (data ?? []).map((v: any) => {
+        const u = v.users;
+        return {
+          optionId: v.option_id,
+          studentId: v.student_id,
+          studentName: u?.name ?? 'Unknown',
+          classRoll: u?.section_roll ?? null,
         };
       });
     },

@@ -61,6 +61,14 @@ export interface AssignmentSet {
   pdfUrl: string | null;
 }
 
+export interface Attachment {
+  id: string;
+  filename: string;
+  fileSize: number;
+  fileType: string;
+  storagePath: string;
+}
+
 export interface Assignment {
   id: string;
   title: string;
@@ -74,6 +82,7 @@ export interface Assignment {
   sets: AssignmentSet[];
   submittedLink: string | null;
   createdAt: string;
+  attachments?: Attachment[];
 }
 
 export interface Announcement {
@@ -84,6 +93,7 @@ export interface Announcement {
   deadline: string | null;
   postedAt: string;
   attachmentUrl?: string | null;
+  attachments?: Attachment[];
 }
 
 export interface PollOption {
@@ -103,6 +113,7 @@ export interface Poll {
   allowMultiple: boolean;
   userVotes: string[];
   userVote: string | null;
+  voterCount?: number;
 }
 
 export interface ScheduleSlot {

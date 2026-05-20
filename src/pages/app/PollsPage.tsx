@@ -6,7 +6,7 @@ import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { usePolls } from '../../hooks/useSupabaseQuery';
+import { usePolls, useActionablePollVotes } from '../../hooks/useSupabaseQuery';
 import { useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/useSupabaseMutations';
 import { BottomSheet } from '../../components/BottomSheet';
 
@@ -26,8 +26,13 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
   const userVotes = poll.userVotes ?? (poll.userVote ? [poll.userVote] : []);
   const [showWarning, setShowWarning] = useState(poll.type === 'actionable' && userVotes.length === 0);
   const [warningAccepted, setWarningAccepted] = useState(poll.type !== 'actionable' || userVotes.length > 0);
+  const [expandedOption, setExpandedOption] = useState<string | null>(null);
 
-  const total = poll.options.reduce((s, o) => s + o.votes, 0);
+  const { data: voterVotes = [], isLoading: isLoadingVoters } = useActionablePollVotes(
+    poll.id,
+    role === 'cr' && poll.type === 'actionable'
+  );
+
   const isClosed = poll.status === 'closed';
 
   const handleVote = async (optId: string, isSelected: boolean) => {
@@ -111,45 +116,124 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
       {(!showWarning || warningAccepted || isClosed || userVotes.length > 0) && (
         <div className="vote-bar-wrap">
           {poll.options.map(opt => {
-            const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
+            const pct = poll.voterCount && poll.voterCount > 0 ? Math.min(100, Math.round((opt.votes / poll.voterCount) * 100)) : 0;
             const isSelected = userVotes.includes(opt.id);
             const hasVoted = userVotes.length > 0 || isClosed;
+            const showResults = hasVoted || role === 'cr';
 
             const Icon = poll.allowMultiple
               ? (isSelected ? CheckSquare : Square)
               : (isSelected ? CircleDot : Circle);
 
+            const optVoters = voterVotes.filter(v => v.optionId === opt.id);
+
             return (
-              <div key={opt.id}>
+              <div key={opt.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <button
                   id={`vote-opt-${opt.id}`}
-                  className={`vote-option${isSelected ? ' selected' : ''}${hasVoted ? ' voted' : ''}`}
+                  className={`vote-option${isSelected ? ' selected' : ''}${showResults ? ' voted' : ''}`}
                   style={{ width: '100%', cursor: isClosed ? 'default' : 'pointer' }}
                   onClick={() => handleVote(opt.id, isSelected)}
                   disabled={isClosed}
                 >
                   <div style={{ flex: 1, textAlign: 'left' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: hasVoted ? 6 : 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showResults ? 6 : 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)', display: 'flex', flexShrink: 0 }}>
                           <Icon size={15} />
                         </span>
                         <span style={{ font: '400 13px var(--font-body)', color: 'var(--text-primary)' }}>{opt.text}</span>
                       </div>
-                      {hasVoted && (
+                      {showResults && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ font: '600 12px var(--font-mono)', color: 'var(--accent-primary)' }}>{pct}%</span>
                           <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>({opt.votes})</span>
                         </div>
                       )}
                     </div>
-                    {hasVoted && (
+                    {showResults && (
                       <div style={{ height: 4, background: 'var(--bg-base)', borderRadius: 2, overflow: 'hidden', marginLeft: 23 }}>
                         <div className="vote-bar-fill" style={{ width: `${pct}%` }} />
                       </div>
                     )}
                   </div>
                 </button>
+
+                {role === 'cr' && poll.type === 'actionable' && (
+                  <div style={{ marginTop: 2, marginBottom: 6, marginLeft: 24 }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setExpandedOption(expandedOption === opt.id ? null : opt.id);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        font: '500 11px var(--font-body)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 0',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <span style={{ textDecoration: 'underline' }}>
+                        {expandedOption === opt.id ? 'Hide voters' : 'View voters'}
+                      </span>
+                      <span style={{ 
+                        font: '600 10px var(--font-mono)', 
+                        background: 'rgba(255,255,255,0.06)', 
+                        padding: '1px 5px', 
+                        borderRadius: 4,
+                        color: 'var(--text-primary)' 
+                      }}>
+                        {optVoters.length}
+                      </span>
+                    </button>
+                    
+                    {expandedOption === opt.id && (
+                      <div 
+                        style={{ 
+                          marginTop: 6, 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: 4, 
+                          padding: '8px 10px', 
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid rgba(255, 255, 255, 0.04)',
+                          borderRadius: 'var(--radius-md)'
+                        }}
+                      >
+                        {isLoadingVoters ? (
+                          <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Loading...</span>
+                        ) : optVoters.length === 0 ? (
+                          <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>No votes yet</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {optVoters.map((voter) => (
+                              <span
+                                key={voter.studentId}
+                                className="badge badge-info"
+                                style={{
+                                  padding: '2px 8px',
+                                  fontSize: 10,
+                                  background: 'rgba(34, 211, 238, 0.06)',
+                                  border: '1px solid rgba(34, 211, 238, 0.12)'
+                                }}
+                              >
+                                {voter.studentName} {voter.classRoll ? `(${voter.classRoll})` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -157,7 +241,7 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
       )}
 
       <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 12 }}>
-        {total} voted
+        {poll.voterCount ?? 0} voted
       </p>
     </div>
   );

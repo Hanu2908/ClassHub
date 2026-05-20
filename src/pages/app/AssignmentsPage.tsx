@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, ExternalLink, CheckCircle2, Wand2, Trash2, FileText, Upload, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, Loader } from 'lucide-react';
+import { ArrowLeft, Plus, ExternalLink, CheckCircle2, Wand2, Trash2, FileText, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, Loader } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -9,6 +9,9 @@ import type { AssignmentSet } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { useAssignments, useSubjects } from '../../hooks/useSupabaseQuery';
 import { useCreateAssignment, useDeleteAssignment, useSubmitAssignment, useEnsureSubjects } from '../../hooks/useSupabaseMutations';
+import { FileUploader } from '../../components/FileUploader';
+import { AttachmentCard } from '../../components/AttachmentCard';
+import { supabase } from '../../lib/supabase';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
@@ -44,11 +47,14 @@ function autoGenerate(totalStudents: number, groupSize: number): AssignmentSet[]
   return sets;
 }
 
-// ── CR Wizard ─────────────────────────────────────────────────────────────────
 function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createAssignment = useCreateAssignment();
   const ensureSubjects = useEnsureSubjects();
   const { data: subjectsList = [] } = useSubjects();
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+  const userId = authUser?.id;
+
   const [step, setStep] = useState(1);
 
   // Step 1 fields
@@ -57,8 +63,9 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const [customSubjectName, setCustomSubjectName] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [hasSets, setHasSets] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Step 2 fields
   const [totalStudents, setTotalStudents] = useState('');
@@ -67,7 +74,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
 
   const reset = () => {
     setStep(1); setTitle(''); setSubjectId(''); setCustomSubjectName('');
-    setDueDate(''); setDescription(''); setPdfFile(null); setHasSets(false);
+    setDueDate(''); setDescription(''); setFiles([]); setHasSets(false);
     setTotalStudents(''); setGroupSize(''); setSets([]);
   };
 
@@ -118,6 +125,8 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
     if (hasSets && sets.length === 0) {
       showToast('Generate or add at least one set', 'error'); return;
     }
+
+    setIsPublishing(true);
     try {
       let finalSubjectId = subjectId;
       if (subjectId === 'other') {
@@ -125,7 +134,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
         finalSubjectId = Object.values(mapping)[0];
       }
 
-      await createAssignment.mutateAsync({
+      const parentId = await createAssignment.mutateAsync({
         title: title.trim(),
         subjectId: finalSubjectId,
         dueDate: new Date(dueDate).toISOString(),
@@ -137,10 +146,37 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           pageNumbers: s.pageNumbers,
         })) : undefined,
       });
+
+      if (parentId && files.length > 0) {
+        if (!sectionId || !userId) throw new Error('Missing section context or user context');
+        for (const file of files) {
+          const path = `${sectionId}/assignments/${parentId}/${file.name}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('attachments')
+            .upload(path, file, { cacheControl: '3600', upsert: true });
+          if (uploadErr) throw uploadErr;
+
+          const { error: dbErr } = await supabase
+            .from('attachments')
+            .insert({
+              section_id: sectionId,
+              assignment_id: parentId,
+              storage_path: path,
+              filename: file.name,
+              file_size: file.size,
+              file_type: file.type,
+              uploaded_by: userId,
+            });
+          if (dbErr) throw dbErr;
+        }
+      }
+
       showToast('Assignment published! ✓', 'success');
       handleClose();
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Failed to publish', 'error');
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -154,6 +190,8 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
     font: '500 12px var(--font-body)', color: 'var(--text-secondary)',
     display: 'block', marginBottom: 6,
   };
+
+  const pending = createAssignment.isPending || ensureSubjects.isPending || isPublishing;
 
   return (
     <BottomSheet open={open} onClose={handleClose} title={step === 1 ? 'New Assignment' : 'Configure Sets'}>
@@ -188,33 +226,12 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
             <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} placeholder="Instructions for students…" value={description} onChange={e => setDescription(e.target.value)} />
           </div>
           <div>
-            <label style={labelStyle}>Master PDF</label>
-            <label
-              htmlFor="pdf-upload"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '10px 14px', background: pdfFile ? 'rgba(52,201,123,0.10)' : 'var(--bg-elevated)',
-                border: `1px solid ${pdfFile ? 'rgba(52,201,123,0.4)' : 'var(--border-default)'}`,
-                borderRadius: 'var(--radius-md)', cursor: 'pointer',
-                font: '500 13px var(--font-body)', color: pdfFile ? 'var(--status-safe)' : 'var(--text-secondary)',
-                transition: 'all 0.2s',
-              }}
-            >
-              {pdfFile ? <CheckCircle2 size={15} color="var(--status-safe)" /> : <Upload size={15} />}
-              {pdfFile ? pdfFile.name : 'Upload PDF file'}
-            </label>
-            <input
-              id="pdf-upload"
-              type="file"
-              accept="application/pdf"
-              style={{ display: 'none' }}
-              onChange={e => setPdfFile(e.target.files?.[0] ?? null)}
-            />
+            <FileUploader files={files} onChange={setFiles} />
           </div>
 
           {/* Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: `1px solid ${hasSets ? 'rgba(74,158,255,0.35)' : 'var(--border-default)'}` }}>
-            <div>
+            <div style={{ flex: 1 }}>
               <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)' }}>Split by Roll Numbers</p>
               <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>Assign different pages to different roll ranges</p>
             </div>
@@ -230,7 +247,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
             <button className="btn-secondary" style={{ flex: 1 }} onClick={handleClose}>Cancel</button>
             {hasSets
               ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate || (subjectId === 'other' && !customSubjectName.trim())) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
-              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={createAssignment.isPending || ensureSubjects.isPending}>{(createAssignment.isPending || ensureSubjects.isPending) ? 'Publishing…' : 'Publish'}</button>
+              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={pending}>{pending ? 'Publishing…' : 'Publish'}</button>
             }
           </div>
         </div>
@@ -466,6 +483,15 @@ export default function AssignmentsPage() {
                     </div>
                   </div>
                 ) : null}
+
+                {/* Attachments list */}
+                {a.attachments && a.attachments.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    {a.attachments.map(att => (
+                      <AttachmentCard key={att.id} attachment={att} />
+                    ))}
+                  </div>
+                )}
 
                 {/* Non-set PDF link */}
                 {!a.hasSets && a.pdfUrl ? (

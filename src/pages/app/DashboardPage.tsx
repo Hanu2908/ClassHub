@@ -1,6 +1,6 @@
 import { useState, useMemo, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper, ShieldCheck, BarChart2, ClipboardList, Activity, Percent, Calendar, Clock } from 'lucide-react';
+import { Bell, MessageSquare, ChevronRight, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper, ShieldCheck, BarChart2, ClipboardList, Activity, Percent, Calendar, Clock, Paperclip } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing, deadlineBadgeClass, deadlineLabel, timeAgo } from '../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type ScheduleSlot } from '../../store/appStore';
@@ -519,6 +519,11 @@ function AnnouncementsScroll() {
                 {ann.deadline ? (
                   <span className={`badge ${cls}`}>{label}</span>
                 ) : null}
+                {ann.attachments && ann.attachments.length > 0 && (
+                  <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 6px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-secondary)', width: 'fit-content', marginTop: 4 }}>
+                    <Paperclip size={10} /> {ann.attachments.length}
+                  </span>
+                )}
               </div>
             );
           })}
@@ -536,7 +541,6 @@ function PollBanner() {
   const poll = polls.find(p => p.status === 'active' && !isExpired(p.closesAt));
   if (!poll) return null;
 
-  const total = poll.options.reduce((s, o) => s + o.votes, 0);
   const closes = new Date(poll.closesAt).getTime() - now;
   const closesD = Math.floor(closes / 86400000);
   const closesH = Math.floor((closes % 86400000) / 3600000);
@@ -552,7 +556,7 @@ function PollBanner() {
       <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/app/polls')}>
         <p style={{ font: '600 14px var(--font-body)', color: 'var(--text-primary)', marginBottom: 14 }}>{poll.question}</p>
         {poll.options.slice(0, 2).map(opt => {
-          const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
+          const pct = poll.voterCount && poll.voterCount > 0 ? Math.min(100, Math.round((opt.votes / poll.voterCount) * 100)) : 0;
           return (
             <div key={opt.id} style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -566,7 +570,7 @@ function PollBanner() {
           );
         })}
         <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 12 }}>
-          {total} students voted · <span style={{ color: 'var(--accent-primary)' }}>Go to Polls →</span>
+          {poll.voterCount ?? 0} students voted · <span style={{ color: 'var(--accent-primary)' }}>Go to Polls →</span>
         </p>
       </div>
     </section>
@@ -632,7 +636,14 @@ function AssignmentsScroll() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="truncate" style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 2 }}>{a.title}</div>
-                      <div className="truncate" style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>{a.subject}</div>
+                      <div className="truncate" style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>{a.subject}</span>
+                        {a.attachments && a.attachments.length > 0 && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'var(--text-muted)' }}>
+                            · <Paperclip size={10} style={{ display: 'inline-block' }} /> {a.attachments.length}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <span className={`badge ${cls}`} style={{ flexShrink: 0, font: '600 10px var(--font-mono)' }}>{label}</span>

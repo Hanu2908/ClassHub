@@ -57,6 +57,8 @@ export function useCreateAnnouncement() {
           console.warn('Error invoking send-critical-announcement function:', err);
         }
       }
+
+      return data?.id;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
   });
@@ -130,6 +132,8 @@ export function useCreateAssignment() {
         );
         if (setErr) throw setErr;
       }
+
+      return assignment.id;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assignments'] }),
   });

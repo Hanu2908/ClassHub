@@ -52,7 +52,7 @@ export type Database = {
       }
       announcements: {
         Row: {
-          author_id: string
+          author_id: string | null
           created_at: string
           deadline_at: string | null
           id: string
@@ -66,7 +66,7 @@ export type Database = {
           title: string
         }
         Insert: {
-          author_id: string
+          author_id?: string | null
           created_at?: string
           deadline_at?: string | null
           id?: string
@@ -80,7 +80,7 @@ export type Database = {
           title: string
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
           created_at?: string
           deadline_at?: string | null
           id?: string
@@ -115,31 +115,31 @@ export type Database = {
           assignment_id: string
           description: string
           id: string
+          page_numbers: string | null
           pdf_url: string | null
           roll_end: number
           roll_start: number
           set_label: string
-          page_numbers: string | null
         }
         Insert: {
           assignment_id: string
           description: string
           id?: string
+          page_numbers?: string | null
           pdf_url?: string | null
           roll_end: number
           roll_start: number
           set_label: string
-          page_numbers?: string | null
         }
         Update: {
           assignment_id?: string
           description?: string
           id?: string
+          page_numbers?: string | null
           pdf_url?: string | null
           roll_end?: number
           roll_start?: number
           set_label?: string
-          page_numbers?: string | null
         }
         Relationships: [
           {
@@ -154,7 +154,7 @@ export type Database = {
       assignments: {
         Row: {
           created_at: string
-          created_by: string
+          created_by: string | null
           description: string | null
           due_date: string
           id: string
@@ -165,7 +165,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          created_by: string
+          created_by?: string | null
           description?: string | null
           due_date: string
           id?: string
@@ -176,7 +176,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string
           id?: string
@@ -205,6 +205,74 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attachments: {
+        Row: {
+          announcement_id: string | null
+          assignment_id: string | null
+          created_at: string
+          file_size: number
+          file_type: string
+          filename: string
+          id: string
+          section_id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          announcement_id?: string | null
+          assignment_id?: string | null
+          created_at?: string
+          file_size: number
+          file_type: string
+          filename: string
+          id?: string
+          section_id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          announcement_id?: string | null
+          assignment_id?: string | null
+          created_at?: string
+          file_size?: number
+          file_type?: string
+          filename?: string
+          id?: string
+          section_id?: string
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attachments_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attachments_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attachments_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -357,7 +425,7 @@ export type Database = {
         Row: {
           allow_multiple: boolean
           created_at: string
-          created_by: string
+          created_by: string | null
           expires_at: string | null
           id: string
           is_active: boolean
@@ -368,7 +436,7 @@ export type Database = {
         Insert: {
           allow_multiple?: boolean
           created_at?: string
-          created_by: string
+          created_by?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean
@@ -379,7 +447,7 @@ export type Database = {
         Update: {
           allow_multiple?: boolean
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean
@@ -734,6 +802,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      batch_poll_results: {
+        Args: { target_polls: string[] }
+        Returns: {
+          option_id: string
+          poll_id: string
+          votes: number
+        }[]
+      }
+      batch_poll_voter_counts: {
+        Args: { target_polls: string[] }
+        Returns: {
+          poll_id: string
+          voter_count: number
+        }[]
+      }
+      calculate_anonymous_token: {
+        Args: { poll_id: string; user_id: string }
+        Returns: string
+      }
       create_section_hub: {
         Args: {
           class_roll: string
@@ -761,6 +848,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"]
       }
       current_user_section_id: { Args: never; Returns: string }
+      delete_own_account: { Args: never; Returns: undefined }
       is_cr_for_section: { Args: { target_section: string }; Returns: boolean }
       is_skit_email: { Args: { email: string }; Returns: boolean }
       join_section: {
@@ -794,18 +882,6 @@ export type Database = {
           percentage: number
           votes: number
         }[]
-      }
-      batch_poll_results: {
-        Args: { target_polls: string[] }
-        Returns: {
-          poll_id: string
-          option_id: string
-          votes: number
-        }[]
-      }
-      delete_own_account: {
-        Args: Record<string, never>
-        Returns: undefined
       }
     }
     Enums: {
