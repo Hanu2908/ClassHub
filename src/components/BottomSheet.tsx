@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 interface BottomSheetProps {
   open?: boolean;
   onClose: () => void;
-  title?: string;
+  title?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -57,7 +57,11 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
         <div className="sheet-handle" />
         {title && (
           <div style={{ padding: '0 20px 16px', borderBottom: '1px solid var(--border-default)' }}>
-            <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
+            {typeof title === 'string' ? (
+              <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
+            ) : (
+              title
+            )}
           </div>
         )}
         <div style={{ padding: '20px' }}>{children}</div>

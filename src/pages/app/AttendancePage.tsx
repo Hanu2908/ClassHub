@@ -1069,7 +1069,36 @@ export default function AttendancePage() {
       </main>
 
       {/* ERP Paste Sheet */}
-      <BottomSheet open={erpOpen} onClose={() => { setErpOpen(false); setParsed(null); }} title="Update from ERP">
+      <BottomSheet
+        open={erpOpen}
+        onClose={() => { setErpOpen(false); setParsed(null); }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>Update from ERP</span>
+            <a
+              href="https://erp.skit.ac.in/reports/student_aggregate"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '4px 10px',
+                minHeight: 'unset',
+                height: '24px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-body)',
+                color: 'var(--accent-primary)',
+                borderColor: 'var(--accent-primary-glow)',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Go to ERP
+            </a>
+          </div>
+        }
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!parsed ? (
             <>
