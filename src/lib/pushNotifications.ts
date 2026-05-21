@@ -67,10 +67,7 @@ export async function subscribeToPush(): Promise<boolean> {
       return false;
     }
 
-    // Update user preference flag
-    await supabase.from('users')
-      .update({ notifications_enabled: true })
-      .eq('id', user.id);
+    // Removed notifications_enabled since it does not exist in schema
 
     return true;
   } catch (err) {
@@ -93,13 +90,7 @@ export async function unsubscribeFromPush(): Promise<void> {
         .eq('endpoint', endpoint);
     }
 
-    // Update user preference flag
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('users')
-        .update({ notifications_enabled: false })
-        .eq('id', user.id);
-    }
+    // Removed notifications_enabled since it does not exist in schema
   } catch (err) {
     console.error('[Push] Unsubscribe failed:', err);
   }

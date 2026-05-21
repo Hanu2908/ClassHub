@@ -347,6 +347,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
         }
       )
+      .on(
+        'broadcast',
+        { event: 'custom_notification' },
+        (payload) => {
+          console.log('[Realtime] custom notification broadcast:', payload);
+          useAppStore.getState().addNotification({
+            title: payload.payload.title,
+            body: payload.payload.body,
+            type: 'system'
+          });
+        }
+      )
       .subscribe((status) => {
         if (import.meta.env.DEV) {
           console.log(`[Realtime] Subscription status for section ${sectionId}:`, status);

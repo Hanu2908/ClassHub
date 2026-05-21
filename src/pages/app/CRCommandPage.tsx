@@ -366,40 +366,29 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error('Not authenticated');
 
-      const { data: ann, error: annErr } = await supabase
-        .from('announcements')
-        .insert({
-          title: title.trim(),
-          message_content: body.trim(),
-          priority: 'critical',
-          section_id: section.id,
-          author_id: user.id,
-        })
-        .select('id')
-        .single();
-
-      if (annErr) throw annErr;
-
-      const { data: pushData, error: pushErr } = await supabase.functions.invoke('send-critical-announcement', {
-        body: { announcementId: ann.id },
+      const { data: pushData, error: pushErr } = await supabase.functions.invoke('send-custom-notification', {
+        body: { title: title.trim(), body: body.trim(), sectionId: section.id },
       });
 
       if (pushErr) {
-        console.error('[Notify] Push failed but announcement created:', pushErr);
-        showToast('Announcement posted! Push delivery failed.', 'warning');
-      } else if (pushData) {
+        console.error('[Notify] Push failed:', pushErr);
+        showToast('Notification sent to bell icon! Push delivery failed.', 'warning');
+      } else if (pushData && !pushData.error) {
         const { sent, failed } = pushData;
         if (sent === 0 && failed > 0) {
-          showToast('Announcement posted! Push delivery failed for all.', 'warning');
+          showToast('Notification sent to bell icon! Push delivery failed for all.', 'warning');
         } else if (sent > 0 && failed > 0) {
-          showToast(`Announcement posted! Push sent to ${sent} (${failed} failed).`, 'success');
+          showToast(`Notification sent! Push delivered to ${sent} (${failed} failed).`, 'success');
         } else if (sent > 0) {
-          showToast(`Announcement posted! Push sent to ${sent} students.`, 'success');
+          showToast(`Notification sent! Push delivered to ${sent} students.`, 'success');
         } else {
-          showToast('Announcement posted! (No active subscriptions found)', 'success');
+          showToast('Notification sent! (No active subscriptions found)', 'success');
         }
+      } else if (pushData?.error) {
+        console.error('[Notify] Edge function error:', pushData.error);
+        showToast(`Failed: ${pushData.error}`, 'error');
       } else {
-        showToast('Critical announcement posted and pushed!', 'success');
+        showToast('Notification sent!', 'success');
       }
       onClose();
     } catch (err) {
