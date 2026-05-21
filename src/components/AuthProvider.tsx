@@ -282,7 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'announcements', filter: `section_id=eq.${sectionId}` },
         (payload) => {
-          if (import.meta.env.DEV) console.log('[Realtime] announcement change:', payload);
+          console.log('[Realtime] announcement change:', payload);
           queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
           if (payload.eventType === 'INSERT') {
             useAppStore.getState().addNotification({
@@ -297,7 +297,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'assignments', filter: `section_id=eq.${sectionId}` },
         (payload) => {
-          if (import.meta.env.DEV) console.log('[Realtime] assignment change:', payload);
+          console.log('[Realtime] assignment change:', payload);
           queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] });
           if (payload.eventType === 'INSERT') {
             useAppStore.getState().addNotification({
@@ -312,7 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'polls', filter: `section_id=eq.${sectionId}` },
         (payload) => {
-          if (import.meta.env.DEV) console.log('[Realtime] poll change:', payload);
+          console.log('[Realtime] poll change:', payload);
           queryClient.invalidateQueries({ queryKey: ['polls', sectionId] });
           if (payload.eventType === 'INSERT') {
             useAppStore.getState().addNotification({
@@ -327,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'votes' },
         (payload) => {
-          if (import.meta.env.DEV) console.log('[Realtime] vote change:', payload);
+          console.log('[Realtime] vote change:', payload);
           queryClient.invalidateQueries({ queryKey: ['polls', sectionId] });
         }
       )
@@ -335,7 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'submissions' },
         (payload) => {
-          if (import.meta.env.DEV) console.log('[Realtime] submission change:', payload);
+          console.log('[Realtime] submission change:', payload);
           queryClient.invalidateQueries({ queryKey: ['submissions'] });
         }
       )
@@ -343,7 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'acknowledgments' },
         (payload) => {
-          if (import.meta.env.DEV) console.log('[Realtime] acknowledgment change:', payload);
+          console.log('[Realtime] acknowledgment change:', payload);
           queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
         }
       )
