@@ -581,7 +581,10 @@ function PollBanner() {
 function AssignmentsScroll() {
   const navigate = useNavigate();
   const { data: assignments = [], isLoading } = useAssignments({ limit: 8 });
-  const visible = assignments.filter(a => !isExpired(a.dueDate));
+  const visible = assignments
+    .filter(a => !isExpired(a.dueDate) && a.status !== 'submitted')
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .slice(0, 2);
 
   if (isLoading) return <WidgetSkeleton />;
 
@@ -604,7 +607,7 @@ function AssignmentsScroll() {
       ) : (
           <div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {visible.slice(0, 8).map(a => {
+              {visible.map(a => {
                 const isSubmitted = a.status === 'submitted';
                 const cls = isSubmitted ? 'badge-safe' : deadlineBadgeClass(a.dueDate);
                 const label = isSubmitted ? 'Submitted' : deadlineLabel(a.dueDate);

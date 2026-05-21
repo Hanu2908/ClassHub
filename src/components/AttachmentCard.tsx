@@ -5,9 +5,10 @@ import type { Attachment } from '../store/appStore';
 
 interface AttachmentCardProps {
   attachment: Attachment;
+  pageNumber?: string;
 }
 
-export function AttachmentCard({ attachment }: AttachmentCardProps) {
+export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) {
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async (e: React.MouseEvent) => {
@@ -26,7 +27,12 @@ export function AttachmentCard({ attachment }: AttachmentCardProps) {
       }
 
       if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+        let url = data.signedUrl;
+        if (pageNumber) {
+          const firstPage = pageNumber.match(/\d+/)?.[0];
+          if (firstPage) url += `#page=${firstPage}`;
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
       }
     } catch (err) {
       console.error('[AttachmentCard] Failed to download:', err);

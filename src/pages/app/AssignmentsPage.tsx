@@ -488,7 +488,11 @@ export default function AssignmentsPage() {
                 {a.attachments && a.attachments.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
                     {a.attachments.map(att => (
-                      <AttachmentCard key={att.id} attachment={att} />
+                      <AttachmentCard
+                        key={att.id}
+                        attachment={att}
+                        pageNumber={a.hasSets && userSet ? userSet.pageNumbers : undefined}
+                      />
                     ))}
                   </div>
                 )}
