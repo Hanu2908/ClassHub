@@ -77,7 +77,16 @@ function SubmissionTracker() {
         body: { assignmentId: selected.id },
       });
       if (error) throw error;
-      showToast(`Reminders sent to ${data?.sent ?? 0} students!`, 'success');
+      const { sent, failed } = data;
+      if (sent === 0 && failed > 0) {
+        showToast('Push delivery failed for all students', 'error');
+      } else if (sent > 0 && failed > 0) {
+        showToast(`Reminders sent to ${sent} students (${failed} failed)`, 'warning');
+      } else if (sent > 0) {
+        showToast(`Reminders sent to ${sent} students!`, 'success');
+      } else {
+        showToast('No pending students found', 'info');
+      }
     } catch (err) {
       console.error('[Notify] Bulk remind failed:', err);
       showToast('Failed to send reminders', 'error');
@@ -249,7 +258,7 @@ function SubmissionTracker() {
                               showToast(`Nudging ${st.name}...`, 'info');
                               try {
                                 const { error } = await supabase.functions.invoke('send-assignment-reminders', {
-                                  body: { assignmentId: selected?.id },
+                                  body: { assignmentId: selected?.id, studentId: st.id },
                                 });
                                 if (error) throw error;
                                 showToast(`Nudged ${st.name}!`, 'success');
@@ -339,6 +348,7 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const { data: section } = useSection();
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -350,33 +360,46 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   const handleSend = async () => {
     if (!title.trim()) { showToast('Title is required', 'error'); return; }
     if (!body.trim())  { showToast('Message body is required', 'error'); return; }
+    if (!section?.id) return;
     setSending(true);
     try {
-      // Create announcement in DB first, then send push
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error('Not authenticated');
+
       const { data: ann, error: annErr } = await supabase
         .from('announcements')
         .insert({
           title: title.trim(),
           message_content: body.trim(),
           priority: 'critical',
-          section_id: (await supabase.rpc('current_user_section_id')).data as string,
-          author_id: (await supabase.auth.getUser()).data.user!.id,
+          section_id: section.id,
+          author_id: user.id,
         })
         .select('id')
         .single();
 
       if (annErr) throw annErr;
 
-      // Send push notification via Edge Function
-      const { error: pushErr } = await supabase.functions.invoke('send-critical-announcement', {
+      const { data: pushData, error: pushErr } = await supabase.functions.invoke('send-critical-announcement', {
         body: { announcementId: ann.id },
       });
 
       if (pushErr) {
         console.error('[Notify] Push failed but announcement created:', pushErr);
         showToast('Announcement posted! Push delivery failed.', 'warning');
+      } else if (pushData) {
+        const { sent, failed } = pushData;
+        if (sent === 0 && failed > 0) {
+          showToast('Announcement posted! Push delivery failed for all.', 'warning');
+        } else if (sent > 0 && failed > 0) {
+          showToast(`Announcement posted! Push sent to ${sent} (${failed} failed).`, 'success');
+        } else if (sent > 0) {
+          showToast(`Announcement posted! Push sent to ${sent} students.`, 'success');
+        } else {
+          showToast('Announcement posted! (No active subscriptions found)', 'success');
+        }
       } else {
-        showToast('Notification sent to all students!', 'success');
+        showToast('Critical announcement posted and pushed!', 'success');
       }
       onClose();
     } catch (err) {

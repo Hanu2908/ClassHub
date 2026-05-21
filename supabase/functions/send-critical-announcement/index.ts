@@ -52,13 +52,16 @@ async function sendPush(
 
 function getCors(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
-  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map(s => s.trim()).filter(Boolean);
+  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map(s => s.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
   const headers: Record<string, string> = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
   if (allowed.includes(origin)) headers["Access-Control-Allow-Origin"] = origin;
-  else if (allowed.length === 1) headers["Access-Control-Allow-Origin"] = allowed[0];
+  else if (allowed.length === 1 && origin) headers["Access-Control-Allow-Origin"] = origin;
   return headers;
 }
 
@@ -99,12 +102,26 @@ Deno.serve(async (req) => {
     if (subError) throw subError;
 
     // Send push to each subscription and log
+    let sent = 0;
+    let failed = 0;
+    let cleaned = 0;
     for (const sub of subscriptions ?? []) {
       const result = await sendPush(sub, {
         title: announcement.title,
         body: announcement.message_content,
         url: `/app/announcements?highlight=${announcement.id}`,
       });
+
+      if (result.ok) {
+        sent++;
+      } else {
+        failed++;
+        // Clean up stale/expired subscriptions (410 Gone, 404 Not Found)
+        if (result.error?.includes("410") || result.error?.includes("404") || result.error?.includes("expired") || result.error?.includes("gone")) {
+          await serviceClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+          cleaned++;
+        }
+      }
 
       await serviceClient.from("notification_events").insert({
         section_id: profile.section_id,
@@ -121,7 +138,7 @@ Deno.serve(async (req) => {
 
     await serviceClient.from("announcements").update({ notification_sent: true }).eq("id", announcement.id);
 
-    return Response.json({ sent: subscriptions?.length ?? 0 }, { headers });
+    return Response.json({ sent, failed, cleaned }, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message.includes("CR role required") ? 403 : 400;

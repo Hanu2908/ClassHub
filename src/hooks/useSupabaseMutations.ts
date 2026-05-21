@@ -46,16 +46,17 @@ export function useCreateAnnouncement() {
       if (error) throw error;
 
       if (input.priority === 'critical' && data?.id) {
-        try {
-          const { error: funcError } = await supabase.functions.invoke('send-critical-announcement', {
-            body: { announcementId: data.id },
-          });
+        supabase.functions.invoke('send-critical-announcement', {
+          body: { announcementId: data.id },
+        }).then(({ data, error: funcError }) => {
           if (funcError) {
             console.warn('Failed to broadcast critical announcement notification:', funcError);
+          } else {
+            console.log('Push notification result:', data);
           }
-        } catch (err) {
+        }).catch((err) => {
           console.warn('Error invoking send-critical-announcement function:', err);
-        }
+        });
       }
 
       return data?.id;

@@ -52,13 +52,16 @@ async function sendPush(
 
 function getCors(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
-  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map(s => s.trim()).filter(Boolean);
+  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map(s => s.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
   const headers: Record<string, string> = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
   if (allowed.includes(origin)) headers["Access-Control-Allow-Origin"] = origin;
-  else if (allowed.length === 1) headers["Access-Control-Allow-Origin"] = allowed[0];
+  else if (allowed.length === 1 && origin) headers["Access-Control-Allow-Origin"] = origin;
   return headers;
 }
 
@@ -105,12 +108,25 @@ Deno.serve(async (req) => {
 
     if (subError) throw subError;
 
+    let sent = 0;
+    let failed = 0;
+    let cleaned = 0;
     for (const sub of subscriptions ?? []) {
       const result = await sendPush(sub, {
         title: `Assignment due: ${assignment.title}`,
         body: `Due ${new Date(assignment.due_date).toLocaleString()}`,
         url: `/app/assignments?highlight=${assignment.id}`,
       });
+
+      if (result.ok) {
+        sent++;
+      } else {
+        failed++;
+        if (result.error?.includes("410") || result.error?.includes("404") || result.error?.includes("expired") || result.error?.includes("gone")) {
+          await serviceClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+          cleaned++;
+        }
+      }
 
       await serviceClient.from("notification_events").insert({
         section_id: profile.section_id,
@@ -127,7 +143,7 @@ Deno.serve(async (req) => {
 
     await serviceClient.from("assignments").update({ nudge_sent: true }).eq("id", assignment.id);
 
-    return Response.json({ pending: pendingIds.length, sent: subscriptions?.length ?? 0 }, { headers });
+    return Response.json({ pending: pendingIds.length, sent, failed, cleaned }, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message.includes("CR role required") ? 403 : 400;
