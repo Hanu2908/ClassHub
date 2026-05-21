@@ -67,14 +67,7 @@ export function parseERPAttendance(rawText: string): ParsedSubject[] {
       makeup = mk;
       attendedTotal = pres + od + mk;
       absent = ab;
-      total = attendedTotal + absent;
-    } else if (counts.length === 3) {
-      const [pres, ab, tot] = counts;
-      present = pres;
-      makeup = 0;
-      attendedTotal = pres;
-      absent = ab;
-      total = tot;
+      total = pres + od + ab; // CORRECT FORMULA (excluding makeup from denominator)
     } else {
       const [att, tot] = counts;
       present = att;

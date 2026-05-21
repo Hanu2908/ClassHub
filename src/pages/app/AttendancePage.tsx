@@ -19,6 +19,8 @@ interface ParsedERPSubject {
   name: string;
   type: string;
   present: number;
+  od?: number;
+  makeup?: number;
   absent: number;
   total: number;
   percentage: number;
@@ -52,18 +54,24 @@ function parseERPAttendance(rawText: string): ParsedERPSourceSubject[] {
     const pct = parseFloat(numericCols[numericCols.length - 1]);
     const counts = numericCols.slice(0, -1).map(Number);
 
-    let attended: number, absent: number, total: number;
+    let present: number, od: number = 0, makeup: number = 0, absent: number, total: number;
+    let attendedTotal: number;
     if (counts.length >= 4) {
-      const [pres, od, makeup, ab] = counts;
-      attended = pres + od + makeup;
+      const [pres, o, mk, ab] = counts;
+      present = pres;
+      od = o;
+      makeup = mk;
       absent = ab;
-      total = attended + absent;
+      attendedTotal = pres + o + mk;
+      total = pres + o + ab; // CORRECT FORMULA (excluding makeup from denominator)
     } else if (counts.length === 3) {
       const [pres, ab, tot] = counts;
-      attended = pres; absent = ab; total = tot;
+      present = pres; absent = ab; total = tot;
+      attendedTotal = pres;
     } else {
       const [att, tot] = counts;
-      attended = att; total = tot; absent = total - attended;
+      present = att; total = tot; absent = total - present;
+      attendedTotal = att;
     }
 
     const beforeType = cols.slice(0, typeColIdx);
@@ -76,9 +84,21 @@ function parseERPAttendance(rawText: string): ParsedERPSourceSubject[] {
 
     if (!code) continue;
 
-    const canSkip = pct >= 75 ? Math.floor((attended - 0.75 * total) / 0.75) : 0;
-    const needToAttend = pct < 75 ? Math.ceil((0.75 * total - attended) / 0.25) : 0;
-    subjects.push({ code, name, type, present: attended, absent, total, percentage: pct, canSkip, needToAttend });
+    const canSkip = pct >= 75 ? Math.floor((attendedTotal - 0.75 * total) / 0.75) : 0;
+    const needToAttend = pct < 75 ? Math.ceil((0.75 * total - attendedTotal) / 0.25) : 0;
+    subjects.push({ 
+      code, 
+      name, 
+      type, 
+      present, // Keep raw present
+      od, 
+      makeup, 
+      absent, 
+      total, 
+      percentage: pct, 
+      canSkip, 
+      needToAttend 
+    });
   }
   return subjects;
 }
@@ -476,7 +496,13 @@ export default function AttendancePage() {
 
   const handleConfirm = () => {
     if (!parsed) return;
-    bulkUpsert.mutate(parsed.map(p => ({ code: p.code, present: p.present, absent: p.absent })), {
+    bulkUpsert.mutate(parsed.map(p => ({ 
+      code: p.code, 
+      present: p.present, 
+      absent: p.absent, 
+      od: p.od, 
+      makeup: p.makeup 
+    })), {
       onSuccess: () => {
         showToast('ERP attendance imported successfully', 'success');
         setParsed(null);

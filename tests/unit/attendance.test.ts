@@ -13,6 +13,8 @@ describe("attendance utilities", () => {
       makeup: 1,
       absent: 5,
       percentage: 83.33,
+      total: 29, // present(24) + od(0) + absent(5) = 29
+      canSkip: 4 // (25 attended - 0.75 * 29) / 0.75 = 4.33 -> 4
     });
   });
 

@@ -500,7 +500,7 @@ export function useAttendance() {
 
       const subjects: AttendanceSubject[] = (data ?? []).map(r => {
         const subj = r.subjects as SubjectRelation;
-        const total = r.present + r.od + r.makeup + r.absent;
+        const total = r.present + r.od + r.absent;
         const attended = r.present + r.od + r.makeup;
         const pct = r.percentage ?? (total > 0 ? (attended / total) * 100 : 0);
         // canSkip: how many more can skip while staying >= 75%
