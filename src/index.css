@@ -308,7 +308,7 @@ body {
   position: fixed; bottom: 0;
   left: 50%; transform: translateX(-50%);
   width: 100%; max-width: var(--frame-w);
-  background: var(--bg-overlay);
+  background: rgba(18, 22, 36, 0.96);
   backdrop-filter: var(--glass-blur-heavy);
   -webkit-backdrop-filter: var(--glass-blur-heavy);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -338,7 +338,7 @@ body {
   animation: toastPop 0.3s cubic-bezier(0.16,1,0.3,1);
   pointer-events: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  background: rgba(20, 24, 40, 0.5);
+  background: rgba(20, 24, 40, 0.92);
   backdrop-filter: blur(32px) saturate(200%);
   -webkit-backdrop-filter: blur(32px) saturate(200%);
 }
