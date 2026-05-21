@@ -57,7 +57,7 @@ function getCors(req: Request) {
     .map(s => s.trim().replace(/\/+$/, ""))
     .filter(Boolean);
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, x-client-info, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
   if (allowed.includes(origin)) headers["Access-Control-Allow-Origin"] = origin;
