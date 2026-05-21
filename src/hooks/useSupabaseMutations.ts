@@ -223,8 +223,6 @@ export function useDeletePoll() {
   });
 }
 
-import { generateAnonymousToken } from '../lib/utils';
-
 export function useVotePoll() {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
@@ -237,7 +235,15 @@ export function useVotePoll() {
       isSelected: boolean;
     }) => {
       const isAnonymous = input.pollType === 'general' || input.pollType === 'anonymous';
-      const token = isAnonymous ? generateAnonymousToken(userId!, input.pollId) : null;
+      let token: string | null = null;
+      if (isAnonymous) {
+        const { data, error } = await supabase.rpc('calculate_anonymous_token', {
+          user_id: userId!,
+          poll_id: input.pollId
+        });
+        if (error) throw error;
+        token = data;
+      }
 
       if (input.allowMultiple) {
         // Multi-select poll: toggle option

@@ -1,16 +1,51 @@
 import { useState, useEffect } from 'react';
 import { Download, X, Share, Plus, Sparkles } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
 
 const SNOOZE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 export default function InstallPwaBanner() {
-  const { deferredPrompt, setDeferredPrompt } = useAppStore();
+  const location = useLocation();
+  const { deferredPrompt, setDeferredPrompt, authUser } = useAppStore();
   const [isVisible, setIsVisible] = useState(false);
+  const [hasAutoDismissed, setHasAutoDismissed] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [platform, setPlatform] = useState<'android' | 'ios' | 'other' | null>(null);
 
+  // Reset hasAutoDismissed when leaving the dashboard, so if they return they see it again.
   useEffect(() => {
+    if (location.pathname !== '/app/home') {
+      setHasAutoDismissed(false);
+      setIsVisible(false);
+    }
+  }, [location.pathname]);
+
+  // 10-second auto-dismiss timer
+  useEffect(() => {
+    if (!isVisible) return;
+
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      setHasAutoDismissed(true);
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [isVisible]);
+
+  useEffect(() => {
+    // Only display if user is on '/app/home' and is fully onboarded (has sectionId)
+    if (location.pathname !== '/app/home' || !authUser?.sectionId) {
+      setIsVisible(false);
+      return;
+    }
+
+    // If already auto-dismissed this entry, do not show
+    if (hasAutoDismissed) {
+      setIsVisible(false);
+      return;
+    }
+
     // 1. Detect if running inside a standalone app (already installed)
     const isStandalone = 
       window.matchMedia('(display-mode: standalone)').matches || 
@@ -51,7 +86,7 @@ export default function InstallPwaBanner() {
     } else {
       setPlatform('other');
     }
-  }, [deferredPrompt]);
+  }, [deferredPrompt, location.pathname, authUser?.sectionId, hasAutoDismissed]);
 
   // Handle dismiss (snooze banner for 7 days)
   const handleDismiss = (e?: React.MouseEvent) => {
