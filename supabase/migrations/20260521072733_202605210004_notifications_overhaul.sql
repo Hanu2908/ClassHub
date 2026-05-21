@@ -112,4 +112,4 @@ $$;
 drop trigger if exists trigger_on_poll_created on public.polls;
 create trigger trigger_on_poll_created
   after insert on public.polls
-  for each row execute function public.on_poll_created();
+  for each row execute function public.on_poll_created();;
