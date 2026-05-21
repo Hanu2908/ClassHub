@@ -533,7 +533,7 @@ function PushPermissionCTA({ onDismiss }: PushPermissionCTAProps) {
   );
 }
 
-import { getCategory, CATEGORY_COLORS } from '../../lib/scheduleUtils';
+import { getCategory, CATEGORY_COLORS, CATEGORY_LABELS } from '../../lib/scheduleUtils';
 
 // ── Schedule widget ──────────────────────────────────────────────────────────
 function ScheduleWidget() {
@@ -616,7 +616,7 @@ function ScheduleWidget() {
                   {cls.subject}
                 </p>
                 <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
-                  {cls.code} · {cls.type || 'Lecture'}
+                  {cls.code} · {CATEGORY_LABELS[cat] || cls.type || 'Lecture'}
                 </p>
               </div>
 
@@ -937,6 +937,13 @@ export default function DashboardPage() {
   const [isDiagnoseOpen, setIsDiagnoseOpen] = useState(false);
   const navigate = useNavigate();
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 440);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 440);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // ── Unified Deadlines Aggregation ──
   const unifiedDeadlines = useMemo(() => {
     const list: Array<{
@@ -1133,20 +1140,20 @@ export default function DashboardPage() {
                     {/* Attendance Indicator */}
                     {!isLowAttendance ? (
                       /* Circular progress for Safe/Elite */
-                      <div style={{ position: 'relative', width: 54, height: 54, flexShrink: 0 }}>
-                        <svg width="54" height="54" viewBox="0 0 54 54" style={{ filter: `drop-shadow(0 0 4px hsla(${dynamicHue}, 85%, 55%, 0.3))` }}>
-                          <circle cx="27" cy="27" r="22" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4" />
+                      <div style={{ position: 'relative', width: isMobile ? 68 : 54, height: isMobile ? 68 : 54, flexShrink: 0 }}>
+                        <svg width={isMobile ? 68 : 54} height={isMobile ? 68 : 54} viewBox={isMobile ? "0 0 68 68" : "0 0 54 54"} style={{ filter: `drop-shadow(0 0 ${isMobile ? 6 : 4}px hsla(${dynamicHue}, 85%, 55%, 0.3))` }}>
+                          <circle cx={isMobile ? 34 : 27} cy={isMobile ? 34 : 27} r={isMobile ? 28 : 22} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={isMobile ? 5 : 4} />
                           <circle 
-                            cx="27" 
-                            cy="27" 
-                            r="22" 
+                            cx={isMobile ? 34 : 27} 
+                            cy={isMobile ? 34 : 27} 
+                            r={isMobile ? 28 : 22} 
                             fill="none" 
                             stroke={statusColor} 
-                            strokeWidth="4" 
-                            strokeDasharray="138.23" 
-                            strokeDashoffset={138.23 - (138.23 * Math.min(100, Math.max(0, overallPercent))) / 100}
+                            strokeWidth={isMobile ? 5 : 4} 
+                            strokeDasharray={isMobile ? "175.93" : "138.23"} 
+                            strokeDashoffset={(isMobile ? 175.93 : 138.23) - ((isMobile ? 175.93 : 138.23) * Math.min(100, Math.max(0, overallPercent))) / 100}
                             strokeLinecap="round"
-                            transform="rotate(-90 27 27)"
+                            transform={`rotate(-90 ${isMobile ? 34 : 27} ${isMobile ? 34 : 27})`}
                             style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1)' }}
                           />
                         </svg>
@@ -1157,26 +1164,28 @@ export default function DashboardPage() {
                           alignItems: 'center', 
                           justifyContent: 'center',
                           color: 'var(--text-primary)',
+                          fontSize: isMobile ? 16 : 12,
+                          fontWeight: isMobile ? 700 : 500,
                         }}>
                           {Math.round(overallPercent)}%
                         </div>
                       </div>
                     ) : (
                       /* High Urgency Glowing Warning Ring for Critical/Warning */
-                      <div style={{ position: 'relative', width: 54, height: 54, flexShrink: 0 }}>
-                        <svg width="54" height="54" viewBox="0 0 54 54" className="animate-pulse" style={{ filter: `drop-shadow(0 0 8px hsla(${dynamicHue}, 85%, 55%, 0.7))` }}>
-                          <circle cx="27" cy="27" r="22" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4" />
+                      <div style={{ position: 'relative', width: isMobile ? 68 : 54, height: isMobile ? 68 : 54, flexShrink: 0 }}>
+                        <svg width={isMobile ? 68 : 54} height={isMobile ? 68 : 54} viewBox={isMobile ? "0 0 68 68" : "0 0 54 54"} className="animate-pulse" style={{ filter: `drop-shadow(0 0 ${isMobile ? 10 : 8}px hsla(${dynamicHue}, 85%, 55%, 0.7))` }}>
+                          <circle cx={isMobile ? 34 : 27} cy={isMobile ? 34 : 27} r={isMobile ? 28 : 22} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={isMobile ? 5 : 4} />
                           <circle 
-                            cx="27" 
-                            cy="27" 
-                            r="22" 
+                            cx={isMobile ? 34 : 27} 
+                            cy={isMobile ? 34 : 27} 
+                            r={isMobile ? 28 : 22} 
                             fill="none" 
                             stroke={statusColor} 
-                            strokeWidth="4" 
-                            strokeDasharray="138.23" 
-                            strokeDashoffset={138.23 - (138.23 * Math.min(100, Math.max(0, overallPercent))) / 100}
+                            strokeWidth={isMobile ? 5 : 4} 
+                            strokeDasharray={isMobile ? "175.93" : "138.23"} 
+                            strokeDashoffset={(isMobile ? 175.93 : 138.23) - ((isMobile ? 175.93 : 138.23) * Math.min(100, Math.max(0, overallPercent))) / 100}
                             strokeLinecap="round"
-                            transform="rotate(-90 27 27)"
+                            transform={`rotate(-90 ${isMobile ? 34 : 27} ${isMobile ? 34 : 27})`}
                           />
                         </svg>
                         <div className="t-mono" style={{ 
@@ -1186,6 +1195,8 @@ export default function DashboardPage() {
                           alignItems: 'center', 
                           justifyContent: 'center',
                           color: statusColor,
+                          fontSize: isMobile ? 16 : 12,
+                          fontWeight: isMobile ? 700 : 500,
                           animation: 'nowPulse 1s infinite alternate'
                         }}>
                           {Math.round(overallPercent)}%
@@ -1196,10 +1207,10 @@ export default function DashboardPage() {
                     <div>
                       <div className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Attendance</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                        <span className="t-card-title" style={{ color: statusColor }}>
+                        <span className="t-card-title attendance-mobile-scale-title" style={{ color: statusColor }}>
                           {statusLabel} Standing
                         </span>
-                        <span style={{ 
+                        <span className="attendance-mobile-scale-dot" style={{ 
                           width: 6, 
                           height: 6, 
                           borderRadius: '50%', 

@@ -1,7 +1,8 @@
 export type SubjectCategory = 'technical' | 'lab' | 'non-technical' | 'other';
 
 export function getCategory(code: string, type: string): SubjectCategory {
-  if (type === 'Lab' || code.endsWith('L') || code.endsWith('P')) return 'lab';
+  if (type === 'Lab' || type === 'lab' || code.endsWith('L') || code.endsWith('P')) return 'lab';
+  if (type === 'tutorial' || type === 'Tutorial' || type === 'Non-Tech Lecture') return 'non-technical';
   // Technical / Core engineering subjects
   if (/^(CS|AI|DS|EC|EE|ME|IT|SE)/i.test(code)) return 'technical';
   // Non-technical / Humanities / Management subjects

@@ -19,7 +19,8 @@ const MIN_CARD_HEIGHT = 40;
 const SUBJECT_TYPES = ['Tech Lecture', 'Lab', 'Non-Tech Lecture', 'Other'];
 
 function mapUiTypeToDb(uiType: string): string {
-  if (uiType === 'Tech Lecture' || uiType === 'Non-Tech Lecture') return 'lecture';
+  if (uiType === 'Tech Lecture') return 'lecture';
+  if (uiType === 'Non-Tech Lecture') return 'tutorial';
   if (uiType === 'Lab') return 'lab';
   return 'other';
 }

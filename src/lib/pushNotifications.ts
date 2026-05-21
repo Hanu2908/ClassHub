@@ -37,7 +37,7 @@ export async function subscribeToPush(): Promise<boolean> {
     const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
+      applicationServerKey: applicationServerKey as any,
     });
 
     const json = sub.toJSON();
