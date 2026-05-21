@@ -125,10 +125,10 @@ export default function ManageSubjectsPage() {
             <ArrowLeft size={22} />
           </button>
           <div>
-            <h1 style={{ font: '600 18px var(--font-display)', color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
+            <h1 className="t-page-title" style={{ color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
               Curriculum
             </h1>
-            <p style={{ font: '400 12px var(--font-mono)', color: '#71717a', margin: 0 }}>
+            <p className="t-mono" style={{ color: '#71717a', margin: 0 }}>
               {subjects.length} Subjects Total
             </p>
           </div>
@@ -157,15 +157,15 @@ export default function ManageSubjectsPage() {
             border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 24, marginTop: 20 
           }}>
             <BookOpen size={32} color="#52525b" style={{ marginBottom: 16 }} />
-            <h2 style={{ font: '500 16px var(--font-display)', color: '#fff', marginBottom: 8 }}>No Subjects Yet</h2>
-            <p style={{ font: '400 14px var(--font-body)', color: '#a1a1aa', marginBottom: 24 }}>
+            <h2 className="t-card-title" style={{ color: '#fff', marginBottom: 8 }}>No Subjects Yet</h2>
+            <p className="t-body" style={{ color: '#a1a1aa', marginBottom: 24 }}>
               Add your section's first subject to start tracking attendance and assignments.
             </p>
-            <button 
+            <button className="t-body-medium" 
               onClick={() => openForm()}
               style={{
                 background: 'var(--accent-primary)', color: '#fff', border: 'none',
-                padding: '10px 20px', borderRadius: 100, font: '500 14px var(--font-body)', cursor: 'pointer'
+                padding: '10px 20px', borderRadius: 100, cursor: 'pointer'
               }}
             >
               Add First Subject
@@ -187,20 +187,20 @@ export default function ManageSubjectsPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)'
                 }}>
-                  <span style={{ font: '700 16px var(--font-display)', color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                  <span className="t-card-title" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
                     {subject.code.slice(0, 2)}
                   </span>
                 </div>
 
                 {/* Details */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ font: '600 15px var(--font-display)', color: '#fff', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <p className="t-card-title" style={{ color: '#fff', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {subject.name}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ font: '500 12px var(--font-mono)', color: '#a1a1aa' }}>{subject.code}</span>
+                    <span className="t-mono" style={{ color: '#a1a1aa' }}>{subject.code}</span>
                     <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#3f3f46' }} />
-                    <span style={{ font: '500 12px var(--font-mono)', color: 'var(--accent-primary)' }}>Sem {subject.semester}</span>
+                    <span className="t-mono" style={{ color: 'var(--accent-primary)' }}>Sem {subject.semester}</span>
                   </div>
                 </div>
 
@@ -230,57 +230,54 @@ export default function ManageSubjectsPage() {
         <BottomSheet onClose={() => setFormOpen(false)} title={editingId ? 'Edit Subject' : 'Add Subject'}>
           <div style={{ paddingBottom: 24 }}>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', font: '500 12px var(--font-mono)', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Subject Code
               </label>
-              <input 
+              <input className="t-card-title" 
                 type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                 placeholder="e.g. CSUL201"
                 style={{
                   width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                  font: '500 16px var(--font-mono)', color: '#fff', outline: 'none'
+                  color: '#fff', outline: 'none'
                 }}
               />
             </div>
             
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', font: '500 12px var(--font-mono)', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Subject Name
               </label>
-              <input 
+              <input className="t-body" 
                 type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g. Problem Solving Using OOP"
                 style={{
                   width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                  font: '400 15px var(--font-body)', color: '#fff', outline: 'none'
+                  color: '#fff', outline: 'none'
                 }}
               />
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <label style={{ display: 'block', font: '500 12px var(--font-mono)', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Semester (Auto-detected: {maxSemester})
               </label>
-              <input 
+              <input className="t-card-title" 
                 type="number" min="1" max="10" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}
                 style={{
                   width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                  font: '500 16px var(--font-mono)', color: 'var(--accent-primary)', outline: 'none'
+                  color: 'var(--accent-primary)', outline: 'none'
                 }}
               />
             </div>
 
             <button 
               onClick={handleSave}
-              disabled={mutateSubjects.isPending}
-              style={{
-                width: '100%', padding: '16px', background: '#fff', color: '#000',
-                border: 'none', borderRadius: 12, font: '600 15px var(--font-display)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-              }}
+              disabled={mutateSubjects.isPending} className="t-card-title" style={{ width: '100%', padding: '16px', background: '#fff', color: '#000',
+                border: 'none', borderRadius: 12, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             >
               <Check size={18} />
               {mutateSubjects.isPending ? 'Saving...' : 'Save Curriculum'}
@@ -306,21 +303,20 @@ export default function ManageSubjectsPage() {
             }}>
               <AlertTriangle size={24} />
             </div>
-            <h3 style={{ font: '600 18px var(--font-display)', color: '#fff', marginBottom: 8 }}>Delete Subject?</h3>
-            <p style={{ font: '400 14px var(--font-body)', color: '#a1a1aa', marginBottom: 24, lineHeight: 1.5 }}>
+            <h3 className="t-page-title" style={{ color: '#fff', marginBottom: 8 }}>Delete Subject?</h3>
+            <p className="t-body" style={{ color: '#a1a1aa', marginBottom: 24, lineHeight: 1.5 }}>
               This action is <strong style={{ color: '#ef4444' }}>irreversible</strong>. Deleting this subject will also permanently wipe all associated attendance records and assignments.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
-              <button 
+              <button className="t-body-medium" 
                 onClick={() => setDeleteConfirmId(null)}
-                style={{ flex: 1, padding: 12, background: 'rgba(255,255,255,0.05)', color: '#fff', border: 'none', borderRadius: 10, font: '500 14px var(--font-body)', cursor: 'pointer' }}
+                style={{ flex: 1, padding: 12, background: 'rgba(255,255,255,0.05)', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer' }}
               >
                 Cancel
               </button>
               <button 
                 onClick={handleDelete}
-                disabled={mutateSubjects.isPending}
-                style={{ flex: 1, padding: 12, background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, font: '600 14px var(--font-body)', cursor: 'pointer' }}
+                disabled={mutateSubjects.isPending} className="t-button" style={{ flex: 1, padding: 12, background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer' }}
               >
                 {mutateSubjects.isPending ? 'Deleting...' : 'Delete Permanently'}
               </button>

@@ -74,9 +74,7 @@ const dayTabsRowStyle: React.CSSProperties = {
   gap: 8,
   flexWrap: 'wrap',
 };
-const pageMetaTextStyle: React.CSSProperties = {
-  font: '500 13px var(--font-body)',
-  color: 'var(--text-secondary)',
+const pageMetaTextStyle: React.CSSProperties = {  color: 'var(--text-secondary)',
   marginBottom: -4,
 };
 const loadingPhaseStyle: React.CSSProperties = {
@@ -94,10 +92,10 @@ const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px', boxSizing: 'border-box',
   background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
   borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-  font: '400 14px var(--font-body)', outline: 'none',
+  outline: 'none',
 };
 const labelStyle: React.CSSProperties = {
-  font: '500 12px var(--font-body)', color: 'var(--text-muted)',
+  color: 'var(--text-muted)',
   display: 'block', marginBottom: 6,
 };
 
@@ -167,13 +165,10 @@ function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
         <button
           id="save-slot-btn"
           onClick={handleSave}
-          disabled={upsertSlot.isPending}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          disabled={upsertSlot.isPending} className="t-button" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '13px', background: upsertSlot.isPending ? 'var(--bg-elevated)' : 'var(--accent-primary)', border: 'none',
             borderRadius: 'var(--radius-md)', cursor: upsertSlot.isPending ? 'not-allowed' : 'pointer',
-            font: '600 14px var(--font-body)', color: upsertSlot.isPending ? 'var(--text-muted)' : '#fff',
-          }}
+            color: upsertSlot.isPending ? 'var(--text-muted)' : '#fff' }}
         >
           {upsertSlot.isPending ? <Loader size={14} className="spin" /> : <Save size={16} />}
           {upsertSlot.isPending ? 'Saving…' : 'Save Slot'}
@@ -189,7 +184,7 @@ function LegendChip({ cat }: { cat: SubjectCategory }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-      <span style={{ font: '400 10px var(--font-body)', color: 'var(--text-muted)' }}>
+      <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
         {CATEGORY_LABELS[cat]}
       </span>
     </div>
@@ -227,7 +222,7 @@ export default function SchedulePage() {
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>Schedule</h1>
+          <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1 }}>Schedule</h1>
           {/* Color legend */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {(['technical', 'lab', 'non-technical', 'other'] as SubjectCategory[]).map(c => (
@@ -267,8 +262,8 @@ export default function SchedulePage() {
         ) : classes.length === 0 ? (
           <div style={emptyStateStyle}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
-            <p style={{ font: '600 16px var(--font-display)', color: 'var(--text-secondary)', marginBottom: 6 }}>No classes today!</p>
-            <p style={{ font: '400 13px var(--font-body)' }}>Enjoy your free day.</p>
+            <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>No classes today!</p>
+            <p className="t-body">Enjoy your free day.</p>
           </div>
         ) : (
           <div style={{ position: 'relative' }}>
@@ -289,7 +284,7 @@ export default function SchedulePage() {
               return (
                 <div key={cls.id} className="timeline-item">
                   <div style={{ width: 52, flexShrink: 0, paddingTop: 2 }}>
-                    <p style={{ font: '500 10px var(--font-mono)', color: 'var(--text-muted)', textAlign: 'right', paddingRight: 12, whiteSpace: 'nowrap' }}>
+                    <p className="t-helper" style={{ color: 'var(--text-muted)', textAlign: 'right', paddingRight: 12, whiteSpace: 'nowrap' }}>
                       {formatTime(cls.startTime)}
                     </p>
                   </div>
@@ -310,35 +305,35 @@ export default function SchedulePage() {
                   }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                       <div style={{ flex: 1 }}>
-                        <p style={{ font: '600 14px var(--font-display)', color: isPast ? 'var(--text-muted)' : 'var(--text-primary)', marginBottom: 4 }}>
+                        <p className="t-subtitle" style={{ color: isPast ? 'var(--text-muted)' : 'var(--text-primary)', marginBottom: 4 }}>
                           {cls.subject}
                         </p>
-                        <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)' }}>
+                        <p className="t-caption" style={{ color: 'var(--text-muted)' }}>
                           {cls.code} · {cls.room}{cls.teacher ? ` · ${cls.teacher}` : ''}
                         </p>
-                        <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: 4 }}>
+                        <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 4 }}>
                           {formatTime(cls.startTime)} – {formatTime(cls.endTime)}
                         </p>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                         {isNow && <span className="badge badge-info" style={{ animation: 'nowPulse 2s ease-in-out infinite' }}>NOW</span>}
-                        {label && !isNow && <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{label}</span>}
-                        <span style={{
-                          font: '400 10px var(--font-body)', color: catStyle.color,
+                        {label && !isNow && <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{label}</span>}
+                        <span className="t-mono-sm" style={{
+                          color: catStyle.color,
                           background: catStyle.bg, border: `1px solid ${catStyle.border}`,
                           padding: '2px 8px', borderRadius: 'var(--radius-pill)',
                         }}>
                           {cls.type}
                         </span>
                         {role === 'cr' && (
-                          <button
+                          <button className="t-helper"
                             id={`del-slot-${cls.id}`}
                             onClick={() => handleDelete(cls.id)}
                             style={{
                               background: 'rgba(255,68,68,0.10)', border: '1px solid rgba(255,68,68,0.2)',
                               borderRadius: 6, padding: '4px 6px', cursor: 'pointer',
                               display: 'flex', alignItems: 'center', gap: 4,
-                              font: '500 10px var(--font-body)', color: 'var(--status-critical)',
+                              color: 'var(--status-critical)',
                               transition: 'all 0.2s',
                             }}
                           >
@@ -351,7 +346,7 @@ export default function SchedulePage() {
                 </div>
               );
             })}
-            <p style={{ textAlign: 'center', font: '400 12px var(--font-body)', color: 'var(--text-muted)', padding: '16px 0' }}>
+            <p className="t-caption" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px 0' }}>
               — No more classes —
             </p>
           </div>

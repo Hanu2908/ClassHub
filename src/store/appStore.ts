@@ -130,7 +130,17 @@ export interface ScheduleSlot {
 
 export type ScheduleMap = Record<string, ScheduleSlot[]>;
 
-export type NotificationType = 'cr_broadcast' | 'assignment' | 'announcement' | 'system';
+export type NotificationType =
+  | 'cr_broadcast'
+  | 'assignment'
+  | 'announcement'
+  | 'system'
+  | 'critical_announcement'
+  | 'ack_nudge'
+  | 'assignment_reminder'
+  | 'general_announcement'
+  | 'new_assignment'
+  | 'new_poll';
 
 export interface AppNotification {
   id: string;
@@ -140,6 +150,59 @@ export interface AppNotification {
   createdAt: string;
   read: boolean;
   readAt?: string;
+
+  // Database fields for seamless mapping
+  section_id?: string;
+  recipient_id?: string;
+  actor_id?: string | null;
+  kind?: string;
+  status?: string;
+  target_table?: string | null;
+  target_id?: string | null;
+  read_at?: string | null;
+  created_at?: string;
+  sent_at?: string | null;
+  error_message?: string | null;
+}
+
+export interface DbNotification {
+  id: string;
+  title?: string | null;
+  body?: string | null;
+  kind?: string | null;
+  created_at?: string | null;
+  read_at?: string | null;
+  section_id?: string | null;
+  recipient_id?: string | null;
+  actor_id?: string | null;
+  status?: string | null;
+  target_table?: string | null;
+  target_id?: string | null;
+  sent_at?: string | null;
+  error_message?: string | null;
+}
+
+export function mapDbNotification(db: DbNotification): AppNotification {
+  return {
+    id: db.id,
+    title: db.title || 'Notification',
+    body: db.body || '',
+    type: (db.kind as NotificationType) || 'system',
+    createdAt: db.created_at || new Date().toISOString(),
+    read: !!db.read_at,
+    readAt: db.read_at || undefined,
+    section_id: db.section_id || undefined,
+    recipient_id: db.recipient_id || undefined,
+    actor_id: db.actor_id,
+    kind: db.kind || undefined,
+    status: db.status || undefined,
+    target_table: db.target_table,
+    target_id: db.target_id,
+    read_at: db.read_at,
+    created_at: db.created_at || undefined,
+    sent_at: db.sent_at,
+    error_message: db.error_message,
+  };
 }
 
 // ── Expiry helper — 2 days after deadline ────────────────────────────────────
@@ -187,9 +250,10 @@ interface AppState {
   refreshProfile: () => Promise<void>;
 
   // Notifications
+  setNotifications: (notifications: AppNotification[]) => void;
   addNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void;
-  markAllNotificationsRead: () => void;
-  clearNotification: (id: string) => void;
+  markAllNotificationsRead: () => Promise<void>;
+  clearNotification: (id: string) => Promise<void>;
 
   signOut: () => void;
 }
@@ -263,6 +327,7 @@ export const useAppStore = create<AppState>()(
       },
 
       // ── Notifications ──
+      setNotifications: (notifications) => set({ notifications }),
       addNotification: (n) =>
         set((s) => ({
           notifications: [
@@ -275,12 +340,45 @@ export const useAppStore = create<AppState>()(
             ...s.notifications,
           ],
         })),
-      markAllNotificationsRead: () =>
+      markAllNotificationsRead: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const nowStr = new Date().toISOString();
+        const { error } = await supabase
+          .from('notification_events')
+          .update({ read_at: nowStr })
+          .eq('recipient_id', user.id)
+          .is('read_at', null);
+
+        if (error) {
+          console.error('Failed to mark notifications as read in DB:', error);
+        }
+
         set((s) => ({
-          notifications: s.notifications.map(n => ({ ...n, read: true, readAt: n.readAt ?? new Date().toISOString() })),
-        })),
-      clearNotification: (id) =>
-        set((s) => ({ notifications: s.notifications.filter(n => n.id !== id) })),
+          notifications: s.notifications.map((n) => ({
+            ...n,
+            read: true,
+            readAt: n.readAt ?? nowStr,
+            read_at: n.read_at ?? nowStr,
+          })),
+        }));
+      },
+      clearNotification: async (id) => {
+        const nowStr = new Date().toISOString();
+        const { error } = await supabase
+          .from('notification_events')
+          .update({ read_at: nowStr })
+          .eq('id', id);
+
+        if (error) {
+          console.error('Failed to clear notification in DB:', error);
+        }
+
+        set((s) => ({
+          notifications: s.notifications.filter((n) => n.id !== id),
+        }));
+      },
 
       // ── Sign out ──
       signOut: () =>

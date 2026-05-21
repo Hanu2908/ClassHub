@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -68,12 +69,12 @@ function getCors(req: Request) {
 // ── Main handler: Remind students with PENDING assignment submissions ──
 // Only sends to students who have NOT submitted their assignment.
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   const headers = getCors(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers });
 
   try {
-    const { assignmentId } = await req.json();
+    const { assignmentId, studentId } = await req.json();
     if (!assignmentId) throw new Error("assignmentId is required");
 
     const ctx = getContext(req);
@@ -89,16 +90,34 @@ Deno.serve(async (req) => {
 
     if (assignmentError || !assignment) throw new Error("Assignment not found");
 
-    // Find students with pending submissions ONLY
-    const { data: pendingSubmissions, error: pendingError } = await serviceClient
-      .from("submissions")
-      .select("student_id")
-      .eq("assignment_id", assignment.id)
-      .eq("status", "pending");
+    let pendingIds: string[] = [];
+    if (studentId) {
+      // Check if student's submission is pending/not submitted
+      const { data: sub, error: subErr } = await serviceClient
+        .from("submissions")
+        .select("status")
+        .eq("assignment_id", assignment.id)
+        .eq("student_id", studentId)
+        .maybeSingle();
+      if (subErr) throw subErr;
+      if (!sub || sub.status === "pending") {
+        pendingIds = [studentId];
+      }
+    } else {
+      // Find students with pending submissions ONLY
+      const { data: pendingSubmissions, error: pendingError } = await serviceClient
+        .from("submissions")
+        .select("student_id")
+        .eq("assignment_id", assignment.id)
+        .eq("status", "pending");
 
-    if (pendingError) throw pendingError;
+      if (pendingError) throw pendingError;
+      pendingIds = (pendingSubmissions ?? []).map((r: { student_id: string }) => r.student_id);
+    }
 
-    const pendingIds = (pendingSubmissions ?? []).map((r) => r.student_id);
+    if (pendingIds.length === 0) {
+      return Response.json({ pending: 0, sent: 0 }, { headers });
+    }
 
     // Get push subscriptions only for pending students
     const { data: subscriptions, error: subError } = await serviceClient
@@ -111,10 +130,12 @@ Deno.serve(async (req) => {
     let sent = 0;
     let failed = 0;
     let cleaned = 0;
+    const notifTitle = `Assignment due: ${assignment.title}`;
+    const notifBody = `Due ${new Date(assignment.due_date).toLocaleString()}`;
     for (const sub of subscriptions ?? []) {
       const result = await sendPush(sub, {
-        title: `Assignment due: ${assignment.title}`,
-        body: `Due ${new Date(assignment.due_date).toLocaleString()}`,
+        title: notifTitle,
+        body: notifBody,
         url: `/app/assignments?highlight=${assignment.id}`,
       });
 
@@ -134,12 +155,16 @@ Deno.serve(async (req) => {
         status: result.ok ? "sent" : "failed",
         target_table: "assignments",
         target_id: assignment.id,
+        title: notifTitle,
+        body: notifBody,
         error_message: result.error,
         sent_at: result.ok ? new Date().toISOString() : null,
       });
     }
 
-    await serviceClient.from("assignments").update({ nudge_sent: true }).eq("id", assignment.id);
+    if (!studentId) {
+      await serviceClient.from("assignments").update({ nudge_sent: true }).eq("id", assignment.id);
+    }
 
     return Response.json({ pending: pendingIds.length, sent, failed, cleaned }, { headers });
   } catch (error) {

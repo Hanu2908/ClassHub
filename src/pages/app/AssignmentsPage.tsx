@@ -183,11 +183,11 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', background: 'var(--bg-elevated)',
     border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
-    font: '400 13px var(--font-body)', color: 'var(--text-primary)',
+    color: 'var(--text-primary)',
     outline: 'none', boxSizing: 'border-box',
   };
   const labelStyle: React.CSSProperties = {
-    font: '500 12px var(--font-body)', color: 'var(--text-secondary)',
+    color: 'var(--text-secondary)',
     display: 'block', marginBottom: 6,
   };
 
@@ -232,8 +232,8 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           {/* Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: `1px solid ${hasSets ? 'rgba(74,158,255,0.35)' : 'var(--border-default)'}` }}>
             <div style={{ flex: 1 }}>
-              <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)' }}>Split by Roll Numbers</p>
-              <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>Assign different pages to different roll ranges</p>
+              <p className="t-button" style={{ color: 'var(--text-primary)' }}>Split by Roll Numbers</p>
+              <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>Assign different pages to different roll ranges</p>
             </div>
             <button
               onClick={() => setHasSets(v => !v)}
@@ -255,7 +255,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Auto-generate controls */}
           <div style={{ padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-            <p style={{ font: '600 12px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em' }}>AUTO-GENERATE</p>
+            <p className="t-mono" style={{ color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.05em' }}>AUTO-GENERATE</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={labelStyle}>Total Students</label>
@@ -267,8 +267,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
               </div>
             </div>
             <button
-              onClick={handleGenerate}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', font: '600 12px var(--font-body)', color: 'var(--accent-primary)', cursor: 'pointer' }}
+              onClick={handleGenerate} className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', color: 'var(--accent-primary)', cursor: 'pointer' }}
             >
               <Wand2 size={13} /> Auto-Generate
             </button>
@@ -277,16 +276,16 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           {/* Sets table */}
           {sets.length > 0 && (
             <div>
-              <p style={{ font: '600 12px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.05em' }}>SETS — ALL FIELDS EDITABLE</p>
+              <p className="t-mono" style={{ color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.05em' }}>SETS — ALL FIELDS EDITABLE</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
                 {/* Header */}
                 <div style={{ display: 'grid', gridTemplateColumns: '64px 72px 72px 80px 28px', gap: 5, padding: '0 4px' }}>
                   {['Label', 'Roll From', 'Roll To', 'Pages', ''].map(h => (
-                    <p key={h} style={{ font: '600 10px var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>{h}</p>
+                    <p key={h} className="t-badge t-mono" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}>{h}</p>
                   ))}
                 </div>
                 {sets.map((s, idx) => {
-                  const cellInput: React.CSSProperties = { ...inputStyle, padding: '5px 7px', font: '400 12px var(--font-mono)', minWidth: 0 };
+                  const cellInput: React.CSSProperties = { ...inputStyle, padding: '5px 7px', minWidth: 0 };
                   return (
                     <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '64px 72px 72px 80px 28px', gap: 5, alignItems: 'center', padding: '6px 4px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)' }}>
                       {/* Label */}
@@ -332,8 +331,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           )}
 
           <button
-            onClick={addRow}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'none', border: '1px dashed var(--border-active)', borderRadius: 'var(--radius-md)', font: '500 12px var(--font-body)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+            onClick={addRow} className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'none', border: '1px dashed var(--border-active)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', cursor: 'pointer' }}
           >
             <Plus size={13} /> Add Row Manually
           </button>
@@ -392,7 +390,7 @@ export default function AssignmentsPage() {
           <button id="assign-back-btn" onClick={() => navigate('/app/home')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }} aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>Assignments</h1>
+          <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Assignments</h1>
         </div>
         <div className="filter-tabs">
           {(['all', 'pending', 'submitted', 'overdue'] as Filter[]).map(f => (
@@ -420,7 +418,7 @@ export default function AssignmentsPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                      <h2 style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>{a.title}</h2>
+                      <h2 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>{a.title}</h2>
                       {role === 'cr' ? (
                         <button
                           id={`del-assign-${a.id}`}
@@ -436,11 +434,11 @@ export default function AssignmentsPage() {
                         </button>
                       ) : null}
                     </div>
-                    <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8 }}>{a.subject} · {a.subjectCode}</p>
+                    <p className="t-caption" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{a.subject} · {a.subjectCode}</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span className={`badge ${bdg}`}>{lbl}</span>
                       {!isSubmitted ? (
-                        <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
                           Due {new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       ) : null}
@@ -449,20 +447,20 @@ export default function AssignmentsPage() {
                 </div>
 
                 {a.description ? (
-                  <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{a.description}</p>
+                  <p className="t-body" style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{a.description}</p>
                 ) : null}
 
                 {/* ── Student set banner ── */}
                 {a.hasSets && userSet ? (
                   <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,171,64,0.35)', background: 'rgba(255,171,64,0.07)', padding: '14px 14px 12px', marginBottom: 12 }}>
-                    <p style={{ font: '600 10px var(--font-mono)', color: 'rgba(255,171,64,0.9)', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <p className="t-badge" style={{ color: 'rgba(255,171,64,0.9)', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <AlertTriangle size={10} color="rgba(255,171,64,0.9)" /> YOUR ASSIGNMENT
                     </p>
-                    <p style={{ font: '700 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>
+                    <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
                       Based on Roll #{classRoll}, you are in{' '}
                       <span style={{ color: 'var(--accent-primary)' }}>{userSet.label}</span>
                     </p>
-                    <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)', marginBottom: userSet.pdfUrl || a.pdfUrl ? 10 : 0 }}>
+                    <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: userSet.pdfUrl || a.pdfUrl ? 10 : 0 }}>
                       Complete the questions on{' '}
                       <strong style={{ color: 'var(--text-primary)' }}>
                         Pages {userSet.pageNumbers || '—'}
@@ -471,12 +469,12 @@ export default function AssignmentsPage() {
                     </p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {userSet.pdfUrl ? (
-                        <a href={userSet.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', font: '500 12px var(--font-body)', color: 'var(--accent-primary)', textDecoration: 'none' }}>
+                        <a href={userSet.pdfUrl} target="_blank" rel="noopener noreferrer" className="t-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', color: 'var(--accent-primary)', textDecoration: 'none' }}>
                           <ExternalLink size={11} /> Open Set PDF
                         </a>
                       ) : null}
                       {a.pdfUrl && !userSet.pdfUrl ? (
-                        <a href={a.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', font: '500 12px var(--font-body)', color: 'var(--accent-primary)', textDecoration: 'none' }}>
+                        <a href={a.pdfUrl} target="_blank" rel="noopener noreferrer" className="t-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', color: 'var(--accent-primary)', textDecoration: 'none' }}>
                           <FileText size={11} /> Open Master PDF
                         </a>
                       ) : null}
@@ -499,7 +497,7 @@ export default function AssignmentsPage() {
 
                 {/* Non-set PDF link */}
                 {!a.hasSets && a.pdfUrl ? (
-                  <a href={a.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', font: '500 12px var(--font-body)', color: 'var(--text-secondary)', textDecoration: 'none', marginBottom: 12 }}>
+                  <a href={a.pdfUrl} target="_blank" rel="noopener noreferrer" className="t-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', color: 'var(--text-secondary)', textDecoration: 'none', marginBottom: 12 }}>
                     <FileText size={11} /> View PDF
                   </a>
                 ) : null}
@@ -508,13 +506,13 @@ export default function AssignmentsPage() {
                 {isSubmitted ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--status-safe-bg)', border: '1px solid rgba(52,201,123,0.35)', borderRadius: 'var(--radius-md)', transition: 'all 0.3s ease' }}>
                     <CheckCircle2 size={15} color="var(--status-safe)" />
-                    <p style={{ font: '600 13px var(--font-body)', color: 'var(--status-safe)' }}>Submitted ✓</p>
+                    <p className="t-button" style={{ color: 'var(--status-safe)' }}>Submitted ✓</p>
                   </div>
                 ) : (
-                  <button
+                  <button className="t-button"
                     id={`submit-btn-${a.id}`}
                     onClick={() => handleMarkSubmitted(a.id)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.4)', borderRadius: 'var(--radius-md)', cursor: 'pointer', font: '600 13px var(--font-body)', color: 'var(--accent-primary)', width: '100%', transition: 'all 0.2s ease' }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.4)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--accent-primary)', width: '100%', transition: 'all 0.2s ease' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,158,255,0.18)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary-glow)'; }}
                   >

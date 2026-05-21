@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAppStore, type AuthUser } from '../store/appStore';
+import { useAppStore, type AuthUser, type DbNotification } from '../store/appStore';
 import { queryClient } from '../lib/queryClient';
 import { showToast } from '../components/Toast';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -372,6 +372,95 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [sectionId]);
+
+  // ── Supabase Realtime Notifications Sync ──
+  const authUser = useAppStore(s => s.authUser);
+  const setNotifications = useAppStore(s => s.setNotifications);
+
+  useEffect(() => {
+    if (!authUser?.id) return;
+
+    if (import.meta.env.DEV) {
+      console.log(`[Realtime] Setting up notifications subscription for user: ${authUser.id}`);
+    }
+
+    // 1. Initial Fetch of notifications
+    async function fetchInitialNotifications() {
+      const { data, error } = await supabase
+        .from('notification_events')
+        .select('*')
+        .eq('recipient_id', authUser!.id)
+        .order('created_at', { ascending: false })
+        .limit(50); // Cap at 50 to keep it fast
+
+      if (error) {
+        console.error('[Realtime] Failed to fetch initial notifications:', error);
+        return;
+      }
+
+      if (data) {
+        const { mapDbNotification } = await import('../store/appStore');
+        setNotifications(data.map(mapDbNotification));
+      }
+    }
+
+    fetchInitialNotifications();
+
+    // 2. Real-time Subscription for notification_events
+    const channel = supabase
+      .channel(`user-notifications-${authUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notification_events',
+          filter: `recipient_id=eq.${authUser.id}`,
+        },
+        async (payload) => {
+          if (import.meta.env.DEV) console.log('[Realtime] notification change:', payload);
+          const { mapDbNotification } = await import('../store/appStore');
+
+          if (payload.eventType === 'INSERT') {
+            const newNotif = mapDbNotification(payload.new as DbNotification);
+            
+            // Add to store
+            useAppStore.setState((s) => ({
+              notifications: [newNotif, ...s.notifications],
+            }));
+
+            // Trigger a beautiful toast notification!
+            showToast(newNotif.title, 'info');
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedNotif = mapDbNotification(payload.new as DbNotification);
+            
+            // Update in store
+            useAppStore.setState((s) => ({
+              notifications: s.notifications.map((n) =>
+                n.id === updatedNotif.id ? updatedNotif : n
+              ),
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            // Remove from store
+            useAppStore.setState((s) => ({
+              notifications: s.notifications.filter((n) => n.id !== payload.old.id),
+            }));
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (import.meta.env.DEV) {
+          console.log(`[Realtime] Notifications subscription status for ${authUser!.id}:`, status);
+        }
+      });
+
+    return () => {
+      if (import.meta.env.DEV) {
+        console.log(`[Realtime] Cleaning up notifications subscription for user: ${authUser!.id}`);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [authUser?.id, setNotifications]);
 
   return <>{children}</>;
 }

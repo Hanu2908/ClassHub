@@ -114,7 +114,7 @@ export default function ProfilePage() {
         borderBottom: '1px solid var(--border-default)', padding: '16px 20px',
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
-        <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>Profile</h1>
+        <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Profile</h1>
       </header>
 
       <main className="page-content">
@@ -125,10 +125,10 @@ export default function ProfilePage() {
           ) : (
             <div className="avatar-initials" style={{ margin: '0 auto 16px' }}>{initials}</div>
           )}
-          <h2 style={{ font: '700 20px var(--font-display)', color: 'var(--text-primary)', marginBottom: 6 }}>
+          <h2 className="t-feature" style={{ color: 'var(--text-primary)', marginBottom: 6 }}>
             {displayName}
           </h2>
-          <p style={{ font: '400 12px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 12 }}>
+          <p className="t-mono" style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
             {displayEmail}
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -136,7 +136,7 @@ export default function ProfilePage() {
               {displayRole === 'cr' ? '⭐ Class Rep' : 'Student'}
             </span>
             <span className="badge badge-info">{sectionName}</span>
-            <span style={{ font: '400 12px var(--font-mono)', color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
+            <span className="t-mono" style={{ color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
               Roll {classRoll}
             </span>
           </div>
@@ -144,10 +144,10 @@ export default function ProfilePage() {
 
         {/* Hub info */}
         <div>
-          <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>HUB INFO</p>
+          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>HUB INFO</p>
           <div className="card" style={{ padding: 0 }}>
             {[
-              { label: 'Hub Code', value: hubCode, action: <button id="copy-hub-code" onClick={handleCopy} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', font: '500 12px var(--font-body)', display: 'flex', alignItems: 'center', gap: 4 }}><Copy size={13} /> Copy</button> },
+              { label: 'Hub Code', value: hubCode, action: <button id="copy-hub-code" onClick={handleCopy} className="t-label" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}><Copy size={13} /> Copy</button> },
               { label: 'Section', value: sectionName },
               { label: 'Institution', value: institution },
               { label: 'University Roll', value: universityRoll },
@@ -156,9 +156,9 @@ export default function ProfilePage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-default)' : 'none',
               }}>
-                <span style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>{row.label}</span>
+                <span className="t-body" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ font: '500 13px var(--font-mono)', color: 'var(--text-primary)' }}>{row.value}</span>
+                  <span className="t-mono" style={{ color: 'var(--text-primary)' }}>{row.value}</span>
                   {row.action}
                 </div>
               </div>
@@ -168,10 +168,10 @@ export default function ProfilePage() {
 
         {/* CGPA Calculator */}
         <div>
-          <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>TOOLS</p>
+          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>TOOLS</p>
           <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%' }} onClick={() => showToast('CGPA Calculator coming soon!', 'info')}>
             <Calculator size={18} color="var(--accent-primary)" />
-            <span style={{ flex: 1, font: '500 14px var(--font-body)', color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
+            <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
             <ChevronRight size={16} color="var(--text-muted)" />
           </button>
         </div>
@@ -179,18 +179,17 @@ export default function ProfilePage() {
         {/* PWA Install */}
         {deferredPrompt && (
           <div>
-            <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>GET THE APP</p>
+            <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>GET THE APP</p>
             <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(145deg, rgba(74,158,255,0.1) 0%, rgba(74,158,255,0.02) 100%)', border: '1px solid rgba(74,158,255,0.2)' }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Download size={20} color="#fff" />
               </div>
               <div style={{ flex: 1 }}>
-                <h3 style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>Level up your experience</h3>
-                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)' }}>Install ClassHub for faster access and offline features.</p>
+                <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>Level up your experience</h3>
+                <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>Install ClassHub for faster access and offline features.</p>
               </div>
               <button 
-                onClick={handleInstallApp}
-                style={{ background: 'var(--text-primary)', color: 'var(--bg-base)', border: 'none', borderRadius: 'var(--radius-md)', padding: '8px 14px', font: '600 13px var(--font-body)', cursor: 'pointer', flexShrink: 0 }}
+                onClick={handleInstallApp} className="t-button" style={{ background: 'var(--text-primary)', color: 'var(--bg-base)', border: 'none', borderRadius: 'var(--radius-md)', padding: '8px 14px', cursor: 'pointer', flexShrink: 0 }}
               >
                 Install
               </button>
@@ -200,7 +199,7 @@ export default function ProfilePage() {
 
         {/* Settings */}
         <div>
-          <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>SETTINGS</p>
+          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>SETTINGS</p>
           <div className="card" style={{ padding: 0 }}>
             <div
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: pushSupported && !pushBlocked ? 'pointer' : 'default', opacity: pushSupported ? 1 : 0.5 }}
@@ -209,12 +208,12 @@ export default function ProfilePage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Bell size={16} color="var(--text-secondary)" />
                 <div>
-                  <span style={{ font: '400 14px var(--font-body)', color: 'var(--text-primary)' }}>Notifications</span>
+                  <span className="t-body" style={{ color: 'var(--text-primary)' }}>Notifications</span>
                   {pushBlocked && (
-                    <p style={{ font: '400 11px var(--font-body)', color: 'var(--status-critical)', marginTop: 2 }}>Blocked in browser settings</p>
+                    <p className="t-mono-sm" style={{ color: 'var(--status-critical)', marginTop: 2 }}>Blocked in browser settings</p>
                   )}
                   {!pushSupported && (
-                    <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 2 }}>Not supported in this browser</p>
+                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>Not supported in this browser</p>
                   )}
                 </div>
               </div>
@@ -239,7 +238,7 @@ export default function ProfilePage() {
 
         {/* Danger zone */}
         <div>
-          <p style={{ font: '500 12px var(--font-body)', color: 'var(--status-critical)', marginBottom: 8, paddingLeft: 4 }}>DANGER ZONE</p>
+          <p className="t-label" style={{ color: 'var(--status-critical)', marginBottom: 8, paddingLeft: 4 }}>DANGER ZONE</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {!showLeaveConfirm ? (
               <button id="leave-hub-btn" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--status-warning)' }}
@@ -248,11 +247,11 @@ export default function ProfilePage() {
               </button>
             ) : (
               <div style={{ background: 'var(--status-critical-bg)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 16 }}>
-                <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 12 }}>
+                <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginBottom: 12 }}>
                   Are you sure? You'll need a new hub code to rejoin.
                 </p>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button id="confirm-leave-btn" style={{ flex: 1, padding: '10px', background: 'var(--status-critical)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', font: '600 13px var(--font-body)', cursor: 'pointer' }}
+                  <button id="confirm-leave-btn" className="t-button" style={{ flex: 1, padding: '10px', background: 'var(--status-critical)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
                     onClick={handleLeaveHub}>Leave</button>
                   <button id="cancel-leave-btn" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowLeaveConfirm(false)}>Cancel</button>
                 </div>
@@ -267,10 +266,10 @@ export default function ProfilePage() {
               </button>
             ) : (
               <div style={{ background: 'var(--status-critical-bg)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 16 }}>
-                <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)', marginBottom: 4 }}>
+                <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
                   This will permanently delete your account and all your data.
                 </p>
-                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 12 }}>
+                <p className="t-caption" style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>
                   Type <strong style={{ color: 'var(--status-critical)' }}>DELETE</strong> to confirm.
                 </p>
                 <input
@@ -285,15 +284,12 @@ export default function ProfilePage() {
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button
                     id="confirm-delete-btn"
-                    disabled={deleteInput !== 'DELETE' || deleting}
-                    style={{
-                      flex: 1, padding: '10px',
+                    disabled={deleteInput !== 'DELETE' || deleting} className="t-button" style={{ flex: 1, padding: '10px',
                       background: deleteInput === 'DELETE' ? 'var(--status-critical)' : 'var(--bg-elevated)',
                       color: deleteInput === 'DELETE' ? '#fff' : 'var(--text-muted)',
                       border: 'none', borderRadius: 'var(--radius-md)',
-                      font: '600 13px var(--font-body)', cursor: deleteInput === 'DELETE' ? 'pointer' : 'not-allowed',
-                      opacity: deleting ? 0.6 : 1,
-                    }}
+                      cursor: deleteInput === 'DELETE' ? 'pointer' : 'not-allowed',
+                      opacity: deleting ? 0.6 : 1 }}
                     onClick={handleDeleteAccount}
                   >
                     {deleting ? 'Deleting…' : 'Delete Forever'}

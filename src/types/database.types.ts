@@ -331,42 +331,51 @@ export type Database = {
       notification_events: {
         Row: {
           actor_id: string | null
+          body: string | null
           created_at: string
           error_message: string | null
           id: string
           kind: Database["public"]["Enums"]["notification_kind"]
+          read_at: string | null
           recipient_id: string | null
           section_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["notification_status"]
           target_id: string | null
           target_table: string | null
+          title: string | null
         }
         Insert: {
           actor_id?: string | null
+          body?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
           kind: Database["public"]["Enums"]["notification_kind"]
+          read_at?: string | null
           recipient_id?: string | null
           section_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["notification_status"]
           target_id?: string | null
           target_table?: string | null
+          title?: string | null
         }
         Update: {
           actor_id?: string | null
+          body?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["notification_kind"]
+          read_at?: string | null
           recipient_id?: string | null
           section_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["notification_status"]
           target_id?: string | null
           target_table?: string | null
+          title?: string | null
         }
         Relationships: [
           {
@@ -890,6 +899,9 @@ export type Database = {
         | "critical_announcement"
         | "ack_nudge"
         | "assignment_reminder"
+        | "general_announcement"
+        | "new_assignment"
+        | "new_poll"
       notification_status: "queued" | "sent" | "failed"
       poll_type: "general" | "actionable"
       slot_type: "lecture" | "lab" | "tutorial" | "other"
@@ -1027,6 +1039,9 @@ export const Constants = {
         "critical_announcement",
         "ack_nudge",
         "assignment_reminder",
+        "general_announcement",
+        "new_assignment",
+        "new_poll",
       ],
       notification_status: ["queued", "sent", "failed"],
       poll_type: ["general", "actionable"],

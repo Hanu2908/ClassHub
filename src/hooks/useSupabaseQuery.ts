@@ -18,6 +18,23 @@ type AssignmentSetRelation = {
 };
 type PollOptionRelation = { id: string; label: string; sort_order: number };
 
+interface AttachmentRow {
+  id: string;
+  filename: string;
+  file_size: number;
+  file_type: string;
+  storage_path: string;
+}
+
+interface VoteRow {
+  option_id: string;
+  student_id: string;
+  users: {
+    name: string;
+    section_roll: string | null;
+  } | null;
+}
+
 // ── Helper: current user context ─────────────────────────────────────────────
 
 function useAuthContext() {
@@ -203,7 +220,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
         postedAt: a.created_at,
         attachmentUrl: null,
         isAcknowledged: ackIds.includes(a.id),
-        attachments: (a.attachments as any[] ?? []).map((att: any) => ({
+        attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
           id: att.id,
           filename: att.filename,
           fileSize: att.file_size,
@@ -286,7 +303,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
           sets,
           submittedLink: sub?.link ?? null,
           createdAt: a.created_at,
-          attachments: (a.attachments as any[] ?? []).map((att: any) => ({
+          attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
             id: att.id,
             filename: att.filename,
             fileSize: att.file_size,
@@ -409,7 +426,7 @@ export function useActionablePollVotes(pollId: string, enabled: boolean) {
 
       if (error) throw error;
 
-      return (data ?? []).map((v: any) => {
+      return (data as unknown as VoteRow[] ?? []).map((v) => {
         const u = v.users;
         return {
           optionId: v.option_id,

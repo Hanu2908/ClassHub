@@ -35,7 +35,7 @@ export function ToastContainer() {
       {toasts.map(t => (
         <div key={t.id} className={`toast toast-${t.type}`}>
           {icons[t.type]}
-          <span style={{ flex: 1, color: 'var(--text-primary)', font: '500 13px var(--font-body)' }}>{t.message}</span>
+          <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)' }}>{t.message}</span>
           <button
             onClick={() => setToasts(p => p.filter(x => x.id !== t.id))}
             style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'2px',display:'flex' }}

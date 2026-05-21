@@ -157,17 +157,17 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
     <div className="card" style={{ borderLeft: `3px solid ${color}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <DonutRing percentage={pct} size={52}>
-          <span style={{ font: '700 12px var(--font-mono)', color }}>
+          <span className="t-mono" style={{ color }}>
             {pct.toFixed(0)}%
           </span>
         </DonutRing>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-            <p className="truncate" style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>
+            <p className="truncate t-subtitle" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>
               {sub.name}
             </p>
           </div>
-          <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 8 }}>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>
             {sub.code} · {sub.type} · {sub.present}/{sub.total} present
           </p>
           <div style={{ height: 4, background: 'var(--bg-elevated)', borderRadius: 2, overflow: 'hidden' }}>
@@ -179,16 +179,16 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
       <div style={{ marginTop: 12, padding: '8px 12px', background: bg, borderRadius: 'var(--radius-sm)' }}>
         {pct >= 75 ? (
           sub.canSkip > 0 ? (
-            <p style={{ font: '400 12px var(--font-body)', color, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <p className="t-caption" style={{ color, display: 'flex', alignItems: 'center', gap: 5 }}>
               <CheckCircle2 size={13} /> Can skip <strong>{sub.canSkip}</strong> more class{sub.canSkip > 1 ? 'es' : ''}
             </p>
           ) : (
-            <p style={{ font: '400 12px var(--font-body)', color, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <p className="t-caption" style={{ color, display: 'flex', alignItems: 'center', gap: 5 }}>
               <AlertTriangle size={13} /> At threshold — don't skip any more
             </p>
           )
         ) : (
-          <p style={{ font: '400 12px var(--font-body)', color, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <p className="t-caption" style={{ color, display: 'flex', alignItems: 'center', gap: 5 }}>
             <AlertTriangle size={13} /> Attend next <strong>{sub.needToAttend}</strong> consecutively to recover
           </p>
         )}
@@ -565,10 +565,10 @@ export default function AttendancePage() {
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>Attendance</h1>
+          <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Attendance</h1>
         </div>
-        <button id="update-erp-btn" onClick={() => setErpOpen(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', font: '500 12px var(--font-body)', color: 'var(--accent-primary)', cursor: 'pointer' }}>
+        <button className="t-label" id="update-erp-btn" onClick={() => setErpOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', color: 'var(--accent-primary)', cursor: 'pointer' }}>
           <RefreshCw size={13} /> Update from ERP
         </button>
       </header>
@@ -601,25 +601,25 @@ export default function AttendancePage() {
 
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
                 <DonutRing percentage={safeOverall} size={104} strokeWidth={9}>
-                  <span style={{ font: '700 24px var(--font-mono)', color: 'var(--tier-color)' }}>
+                  <span className="t-feature" style={{ color: 'var(--tier-color)' }}>
                     {safeOverall.toFixed(1)}%
                   </span>
                 </DonutRing>
               </div>
 
-              <p style={{ font: '600 13px var(--font-body)', color: 'var(--text-primary)', maxWidth: '90%', margin: '0 auto', lineHeight: 1.4 }}>
+              <p className="t-button" style={{ color: 'var(--text-primary)', maxWidth: '90%', margin: '0 auto', lineHeight: 1.4 }}>
                 {tierMessage}
               </p>
 
               <div style={{ display: 'flex', gap: 24, marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border-default)', width: '100%', justifyContent: 'center' }}>
                 <div>
-                  <p style={{ font: '700 16px var(--font-mono)', color: 'var(--text-primary)' }}>{overallAttended}</p>
-                  <p style={{ font: '500 9px var(--font-body)', color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 2 }}>Attended</p>
+                  <p className="t-mono" style={{ color: 'var(--text-primary)' }}>{overallAttended}</p>
+                  <p className="t-helper" style={{ color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 2 }}>Attended</p>
                 </div>
                 <div style={{ width: 1, background: 'var(--border-default)', alignSelf: 'stretch' }} />
                 <div>
-                  <p style={{ font: '700 16px var(--font-mono)', color: 'var(--text-primary)' }}>{overallTotal}</p>
-                  <p style={{ font: '500 9px var(--font-body)', color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 2 }}>Total Held</p>
+                  <p className="t-mono" style={{ color: 'var(--text-primary)' }}>{overallTotal}</p>
+                  <p className="t-helper" style={{ color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 2 }}>Total Held</p>
                 </div>
               </div>
             </div>
@@ -630,7 +630,7 @@ export default function AttendancePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <BarChart3 size={15} color="var(--accent-primary)" />
-                    <span style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)' }}>Attendance Breakdown</span>
+                    <span className="t-subtitle" style={{ color: 'var(--text-primary)' }}>Attendance Breakdown</span>
                   </div>
                   <div className="segment-switcher">
                     <button className={`segment-btn ${chartType === 'bar' ? 'active' : ''}`} onClick={() => setChartType('bar')}>
@@ -766,8 +766,8 @@ export default function AttendancePage() {
                         {subjects.map(s => (
                           <div key={s.code + '-legend'} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR(s.percentage) }} />
-                            <span style={{ font: '600 10px var(--font-mono)', color: 'var(--text-secondary)' }}>{s.code}</span>
-                            <span style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>({s.percentage.toFixed(0)}%)</span>
+                            <span className="t-badge" style={{ color: 'var(--text-secondary)' }}>{s.code}</span>
+                            <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>({s.percentage.toFixed(0)}%)</span>
                           </div>
                         ))}
                       </div>
@@ -797,7 +797,7 @@ export default function AttendancePage() {
             <div className="card" style={{ padding: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
                 <Calculator size={15} color="var(--accent-primary)" />
-                <span style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)' }}>Prediction Playground</span>
+                <span className="t-subtitle" style={{ color: 'var(--text-primary)' }}>Prediction Playground</span>
                 <button 
                   onClick={() => setActiveInfoBox(activeInfoBox === 'playground' ? null : 'playground')} 
                   style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, marginLeft: 'auto' }}
@@ -808,7 +808,7 @@ export default function AttendancePage() {
               </div>
 
               {activeInfoBox === 'playground' && (
-                <div style={{ padding: 10, background: 'var(--bg-base)', borderLeft: '3px solid var(--accent-primary)', borderRadius: 'var(--radius-sm)', font: '400 11px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14 }}>
+                <div className="t-mono-sm" style={{ padding: 10, background: 'var(--bg-base)', borderLeft: '3px solid var(--accent-primary)', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14 }}>
                   <strong>Attendance Simulator:</strong> Simulate different attendance scenarios in real-time. Drag the sliders or edit values to see how your overall score reacts.
                 </div>
               )}
@@ -837,18 +837,18 @@ export default function AttendancePage() {
                 {activePlaygroundTab === 'boost' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ font: '600 12px var(--font-body)', color: 'var(--text-secondary)' }}>Attend future classes:</span>
+                      <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Attend future classes:</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button className="btn-secondary" style={{ padding: 4, borderRadius: 6 }} onClick={() => setBoostVal(prev => Math.max(0, prev - 1))} aria-label="Decrease"><Minus size={12} /></button>
-                        <span style={{ font: '700 14px var(--font-mono)', color: 'var(--text-primary)', minWidth: 20, textAlign: 'center' }}>{boostVal}</span>
+                        <span className="t-mono" style={{ color: 'var(--text-primary)', minWidth: 20, textAlign: 'center' }}>{boostVal}</span>
                         <button className="btn-secondary" style={{ padding: 4, borderRadius: 6 }} onClick={() => setBoostVal(prev => prev + 1)} aria-label="Increase"><Plus size={12} /></button>
                       </div>
                     </div>
                     <input type="range" min="0" max="40" value={boostVal} onChange={e => setBoostVal(Number(e.target.value))} className="glass-slider" />
                     
                     <div style={{ padding: '12px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ font: '500 12px var(--font-body)', color: 'var(--text-secondary)' }}>Projected Overall:</span>
-                      <span style={{ font: '700 14px var(--font-mono)', color: '#3b82f6' }}>
+                      <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Projected Overall:</span>
+                      <span className="t-mono" style={{ color: '#3b82f6' }}>
                         {boostSimResult.percent.toFixed(2)}% <span style={{ fontSize: 10, fontWeight: 600 }}>({boostSimResult.delta >= 0 ? '+' : ''}{boostSimResult.delta.toFixed(2)}%)</span>
                       </span>
                     </div>
@@ -858,10 +858,10 @@ export default function AttendancePage() {
                 {activePlaygroundTab === 'bunk' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ font: '600 12px var(--font-body)', color: 'var(--text-secondary)' }}>Bunk future classes:</span>
+                      <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Bunk future classes:</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button className="btn-secondary" style={{ padding: 4, borderRadius: 6 }} onClick={() => setBunkVal(prev => Math.max(0, prev - 1))} aria-label="Decrease"><Minus size={12} /></button>
-                        <span style={{ font: '700 14px var(--font-mono)', color: 'var(--text-primary)', minWidth: 20, textAlign: 'center' }}>{bunkVal}</span>
+                        <span className="t-mono" style={{ color: 'var(--text-primary)', minWidth: 20, textAlign: 'center' }}>{bunkVal}</span>
                         <button className="btn-secondary" style={{ padding: 4, borderRadius: 6 }} onClick={() => setBunkVal(prev => prev + 1)} aria-label="Increase"><Plus size={12} /></button>
                       </div>
                     </div>
@@ -876,8 +876,8 @@ export default function AttendancePage() {
                       justifyContent: 'space-between', 
                       alignItems: 'center' 
                     }}>
-                      <span style={{ font: '500 12px var(--font-body)', color: 'var(--text-secondary)' }}>Projected Overall:</span>
-                      <span style={{ font: '700 14px var(--font-mono)', color: bunkSimResult.remainsSafe ? '#10b981' : '#ef4444' }}>
+                      <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Projected Overall:</span>
+                      <span className="t-mono" style={{ color: bunkSimResult.remainsSafe ? '#10b981' : '#ef4444' }}>
                         {bunkSimResult.percent.toFixed(2)}% <span style={{ fontSize: 10, fontWeight: 600 }}>(-{bunkSimResult.delta.toFixed(2)}%)</span>
                       </span>
                     </div>
@@ -887,17 +887,17 @@ export default function AttendancePage() {
                 {activePlaygroundTab === 'target' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ font: '600 12px var(--font-body)', color: 'var(--text-secondary)' }}>Target Percentage desired:</span>
+                      <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Target Percentage desired:</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button className="btn-secondary" style={{ padding: 4, borderRadius: 6 }} onClick={() => setTargetVal(prev => Math.max(50, prev - 1))} aria-label="Decrease"><Minus size={12} /></button>
-                        <span style={{ font: '700 14px var(--font-mono)', color: 'var(--text-primary)', minWidth: 32, textAlign: 'center' }}>{targetVal}%</span>
+                        <span className="t-mono" style={{ color: 'var(--text-primary)', minWidth: 32, textAlign: 'center' }}>{targetVal}%</span>
                         <button className="btn-secondary" style={{ padding: 4, borderRadius: 6 }} onClick={() => setTargetVal(prev => Math.min(99, prev + 1))} aria-label="Increase"><Plus size={12} /></button>
                       </div>
                     </div>
                     <input type="range" min="50" max="99" value={targetVal} onChange={e => setTargetVal(Number(e.target.value))} className="glass-slider" />
 
                     <div style={{ padding: '12px 14px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.15)', textAlign: 'center' }}>
-                      <p style={{ font: '500 12px var(--font-body)', color: 'var(--text-secondary)' }}>
+                      <p className="t-label" style={{ color: 'var(--text-secondary)' }}>
                         {targetSimResult > 0 ? (
                           <>You need to attend next <strong style={{ color: '#10b981', fontFamily: 'var(--font-mono)', fontSize: 13 }}>{targetSimResult}</strong> classes consecutively.</>
                         ) : (
@@ -911,18 +911,18 @@ export default function AttendancePage() {
                 {activePlaygroundTab === 'od' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ font: '600 12px var(--font-body)', color: 'var(--text-secondary)' }}>Add On-Duty (OD) classes:</span>
+                      <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Add On-Duty (OD) classes:</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button className="btn-secondary" style={{ padding: 4, borderRadius: 6 }} onClick={() => setOdVal(prev => Math.max(0, prev - 1))} aria-label="Decrease"><Minus size={12} /></button>
-                        <span style={{ font: '700 14px var(--font-mono)', color: 'var(--text-primary)', minWidth: 20, textAlign: 'center' }}>{odVal}</span>
+                        <span className="t-mono" style={{ color: 'var(--text-primary)', minWidth: 20, textAlign: 'center' }}>{odVal}</span>
                         <button className="btn-secondary" style={{ padding: 4, borderRadius: 6 }} onClick={() => setOdVal(prev => prev + 1)} aria-label="Increase"><Plus size={12} /></button>
                       </div>
                     </div>
                     <input type="range" min="0" max="25" value={odVal} onChange={e => setOdVal(Number(e.target.value))} className="glass-slider" />
 
                     <div style={{ padding: '12px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ font: '500 12px var(--font-body)', color: 'var(--text-secondary)' }}>Projected Overall:</span>
-                      <span style={{ font: '700 14px var(--font-mono)', color: '#3b82f6' }}>
+                      <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Projected Overall:</span>
+                      <span className="t-mono" style={{ color: '#3b82f6' }}>
                         {odSimResult.percent.toFixed(2)}% <span style={{ fontSize: 10, fontWeight: 600 }}>({odSimResult.delta >= 0 ? '+' : ''}{odSimResult.delta.toFixed(2)}%)</span>
                       </span>
                     </div>
@@ -934,8 +934,8 @@ export default function AttendancePage() {
                     {/* Attend sliders */}
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ font: '500 11px var(--font-body)', color: 'var(--text-muted)' }}>Continuous Classes to Attend:</span>
-                        <span style={{ font: '700 12px var(--font-mono)', color: 'var(--text-primary)' }}>{mixAttendVal}</span>
+                        <span className="t-helper" style={{ color: 'var(--text-muted)' }}>Continuous Classes to Attend:</span>
+                        <span className="t-mono" style={{ color: 'var(--text-primary)' }}>{mixAttendVal}</span>
                       </div>
                       <input type="range" min="0" max="30" value={mixAttendVal} onChange={e => setMixAttendVal(Number(e.target.value))} className="glass-slider" style={{ margin: '4px 0' }} />
                     </div>
@@ -943,15 +943,15 @@ export default function AttendancePage() {
                     {/* Bunk sliders */}
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ font: '500 11px var(--font-body)', color: 'var(--text-muted)' }}>Additional Classes to Bunk:</span>
-                        <span style={{ font: '700 12px var(--font-mono)', color: 'var(--text-primary)' }}>{mixBunkVal}</span>
+                        <span className="t-helper" style={{ color: 'var(--text-muted)' }}>Additional Classes to Bunk:</span>
+                        <span className="t-mono" style={{ color: 'var(--text-primary)' }}>{mixBunkVal}</span>
                       </div>
                       <input type="range" min="0" max="20" value={mixBunkVal} onChange={e => setMixBunkVal(Number(e.target.value))} className="glass-slider" style={{ margin: '4px 0' }} />
                     </div>
 
                     <div style={{ padding: '12px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ font: '500 12px var(--font-body)', color: 'var(--text-secondary)' }}>Projected Overall:</span>
-                      <span style={{ font: '700 14px var(--font-mono)', color: '#3b82f6' }}>
+                      <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Projected Overall:</span>
+                      <span className="t-mono" style={{ color: '#3b82f6' }}>
                         {mixSimResult.percent.toFixed(2)}% <span style={{ fontSize: 10, fontWeight: 600 }}>({mixSimResult.delta >= 0 ? '+' : ''}{mixSimResult.delta.toFixed(2)}%)</span>
                       </span>
                     </div>
@@ -964,7 +964,7 @@ export default function AttendancePage() {
             <div className="card" style={{ padding: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
                 <Calendar size={15} color="var(--accent-primary)" />
-                <span style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)' }}>75% Target Date Prediction</span>
+                <span className="t-subtitle" style={{ color: 'var(--text-primary)' }}>75% Target Date Prediction</span>
                 <button 
                   onClick={() => setActiveInfoBox(activeInfoBox === 'date' ? null : 'date')} 
                   style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, marginLeft: 'auto' }}
@@ -975,17 +975,17 @@ export default function AttendancePage() {
               </div>
 
               {activeInfoBox === 'date' && (
-                <div style={{ padding: 10, background: 'var(--bg-base)', borderLeft: '3px solid var(--accent-primary)', borderRadius: 'var(--radius-sm)', font: '400 11px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14 }}>
+                <div className="t-mono-sm" style={{ padding: 10, background: 'var(--bg-base)', borderLeft: '3px solid var(--accent-primary)', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14 }}>
                   <strong>Date Simulator:</strong> Runs a chronological day-by-day calendar simulation. It automatically excludes Sundays, Rajasthan midterm holidays, public holidays, Autumn (Diwali) breaks, and Winter vacation slots. Initializes active class frequencies Mon-Sat directly from your section timetable.
                 </div>
               )}
 
-              <p style={{ font: '500 11px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 10 }}>Edit weekly frequencies (synced from Timetable DB):</p>
+              <p className="t-helper" style={{ color: 'var(--text-secondary)', marginBottom: 10 }}>Edit weekly frequencies (synced from Timetable DB):</p>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 14 }}>
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                   <div key={day} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <span style={{ font: '600 10px var(--font-body)', color: 'var(--text-muted)' }}>{day}</span>
+                    <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{day}</span>
                     <input 
                       type="number" 
                       min="0" 
@@ -1015,10 +1015,10 @@ export default function AttendancePage() {
 
               {predictedDate && (
                 <div style={{ marginTop: 14, padding: 14, background: 'rgba(106, 17, 203, 0.05)', border: '1px solid rgba(106, 17, 203, 0.15)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                  <p style={{ font: '500 11px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 4 }}>Predicted Date to hit 75%:</p>
-                  <p style={{ font: '700 14px var(--font-body)', color: '#a78bfa' }}>{predictedDate}</p>
+                  <p className="t-helper" style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>Predicted Date to hit 75%:</p>
+                  <p className="t-body-medium" style={{ color: '#a78bfa' }}>{predictedDate}</p>
                   {predictedDaysCount !== null && predictedDaysCount > 0 && (
-                    <p style={{ font: '500 10px var(--font-mono)', color: 'var(--text-muted)', marginTop: 4 }}>({predictedDaysCount} days of college from now)</p>
+                    <p className="t-helper" style={{ color: 'var(--text-muted)', marginTop: 4 }}>({predictedDaysCount} days of college from now)</p>
                   )}
                 </div>
               )}
@@ -1042,7 +1042,7 @@ export default function AttendancePage() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <DonutRing percentage={safeOverall} size={24} />
-                  <span style={{ font: '600 13px var(--font-display)' }}>Subject Breakdown ({subjects.length})</span>
+                  <span className="t-subtitle">Subject Breakdown ({subjects.length})</span>
                 </div>
                 {listExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
@@ -1076,7 +1076,7 @@ export default function AttendancePage() {
                   {processedSubjects.length > 0 ? (
                     processedSubjects.map(sub => <SubjectCard key={sub.code} sub={sub} />)
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)', font: '500 12px var(--font-body)' }}>
+                    <div className="t-label" style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>
                       No subjects found matching your filters.
                     </div>
                   )}
@@ -1086,8 +1086,8 @@ export default function AttendancePage() {
 
             {subjects.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-                <p style={{ font: '500 14px var(--font-body)', color: 'var(--text-secondary)' }}>No attendance data yet</p>
-                <p style={{ font: '400 12px var(--font-body)', marginTop: 4 }}>Use "Update from ERP" to import your data</p>
+                <p className="t-body-medium" style={{ color: 'var(--text-secondary)' }}>No attendance data yet</p>
+                <p className="t-caption" style={{ marginTop: 4 }}>Use "Update from ERP" to import your data</p>
               </div>
             )}
           </>
@@ -1100,7 +1100,7 @@ export default function AttendancePage() {
         onClose={() => { setErpOpen(false); setParsed(null); }}
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>Update from ERP</span>
+            <span className="t-card-title" style={{ color: 'var(--text-primary)' }}>Update from ERP</span>
             <a
               href="https://erp.skit.ac.in/reports/student_aggregate"
               target="_blank"
@@ -1128,11 +1128,11 @@ export default function AttendancePage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!parsed ? (
             <>
-              <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>
+              <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
                 Paste your ERP Attendance table below.
               </p>
               <div style={{ padding: '10px 12px', background: 'var(--bg-base)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', lineHeight: 1.8 }}>
+                <p className="t-mono-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>
                   How to copy:<br />
                   ERP → Student Info → Attendance Report<br />
                   → Select All → Copy → Paste here
@@ -1140,8 +1140,7 @@ export default function AttendancePage() {
               </div>
               <textarea
                 id="erp-textarea"
-                className="input"
-                style={{ minHeight: 160, resize: 'vertical', font: '400 12px var(--font-mono)' }}
+                className="input t-mono" style={{ minHeight: 160, resize: 'vertical' }}
                 placeholder="Paste ERP attendance data here..."
                 value={erpText}
                 onChange={e => setErpText(e.target.value)}
@@ -1153,7 +1152,7 @@ export default function AttendancePage() {
           ) : (
             <>
               <div style={{ padding: '12px', background: 'var(--status-safe-bg)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(52,201,123,0.25)' }}>
-                <p style={{ font: '500 13px var(--font-body)', color: 'var(--status-safe)' }}>
+                <p className="t-body-medium" style={{ color: 'var(--status-safe)' }}>
                   ✓ Parsed {parsed.length} subjects successfully
                 </p>
               </div>
@@ -1161,7 +1160,7 @@ export default function AttendancePage() {
                   {parsed.map((s, idx) => (
                     <div key={s.code + idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-base)', borderRadius: 'var(--radius-sm)', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)' }}>{s.name}</span>
+                        <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>{s.name}</span>
                       {s.subjectId ? (
                         <button onClick={async () => {
                           const newName = prompt('Edit subject name', s.name);
@@ -1183,8 +1182,8 @@ export default function AttendancePage() {
                       ) : null}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ font: '600 12px var(--font-mono)', color: STATUS_COLOR(s.percentage) }}>{s.percentage.toFixed(1)}%</span>
-                      {s.subjectId ? <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>Mapped</span> : <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>New</span>}
+                      <span className="t-mono" style={{ color: STATUS_COLOR(s.percentage) }}>{s.percentage.toFixed(1)}%</span>
+                      {s.subjectId ? <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Mapped</span> : <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>New</span>}
                     </div>
                   </div>
                 ))}

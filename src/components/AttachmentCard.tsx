@@ -91,8 +91,8 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
         {getFileIcon(attachment.fileType)}
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
           <span 
+            className="t-body-medium"
             style={{ 
-              font: '500 13px var(--font-body)', 
               color: 'var(--text-primary)', 
               overflow: 'hidden', 
               textOverflow: 'ellipsis', 
@@ -101,7 +101,7 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
           >
             {attachment.filename}
           </span>
-          <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-secondary)' }}>
+          <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
             {formatSize(attachment.fileSize)}
           </span>
         </div>

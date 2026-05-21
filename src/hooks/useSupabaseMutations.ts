@@ -87,7 +87,10 @@ export function useAcknowledge() {
       });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['announcements'] });
+      qc.invalidateQueries({ queryKey: ['section_acknowledgments'] });
+    },
   });
 }
 

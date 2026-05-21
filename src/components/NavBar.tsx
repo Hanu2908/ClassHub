@@ -46,7 +46,7 @@ export function NavBar() {
           >
             {isActive && <div className="navbar-active-pill" />}
             <span className="nav-icon"><Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} /></span>
-            {isActive && <span style={{ fontSize: 10, fontFamily: 'var(--font-body)' }}>{tab.label}</span>}
+            {isActive && <span className="t-mono-sm">{tab.label}</span>}
           </button>
         );
       })}

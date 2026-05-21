@@ -93,7 +93,7 @@ export function FileUploader({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-      <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-secondary)' }}>
+      <label className="t-subtitle" style={{ color: 'var(--text-secondary)' }}>
         Attachments (Max {maxFiles} files, {maxSizeMB}MB each)
       </label>
       
@@ -159,10 +159,10 @@ export function FileUploader({
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-          <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>
+          <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>
             {isDragActive ? 'Drop files here' : 'Click to upload or drag & drop'}
           </span>
-          <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>
+          <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
             PDF, PNG, JPG, JPEG, CSV, sheets, texts
           </span>
         </div>
@@ -198,8 +198,8 @@ export function FileUploader({
                 <Paperclip size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
                   <span 
+                    className="t-caption"
                     style={{ 
-                      font: '400 12px var(--font-body)', 
                       color: 'var(--text-primary)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -208,7 +208,7 @@ export function FileUploader({
                   >
                     {file.name}
                   </span>
-                  <span style={{ font: '400 10px var(--font-mono)', color: 'var(--text-secondary)' }}>
+                  <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
                     {formatSize(file.size)}
                   </span>
                 </div>

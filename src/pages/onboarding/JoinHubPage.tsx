@@ -18,7 +18,7 @@ interface FormErrors {
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
-    <p style={{ display: 'flex', alignItems: 'center', gap: 6, font: '500 12px var(--font-body)', color: 'var(--status-critical)', marginTop: 8 }}>
+    <p className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--status-critical)', marginTop: 8 }}>
       <AlertCircle size={14} />
       {msg}
     </p>
@@ -107,7 +107,7 @@ export default function JoinHubPage() {
         >
           <ArrowLeft size={22} />
         </button>
-        <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>Join a Hub</h1>
+        <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Join a Hub</h1>
       </div>
 
       {/* Icon + subtitle */}
@@ -119,10 +119,10 @@ export default function JoinHubPage() {
         }}>
           <Lock size={26} color="var(--accent-primary)" />
         </div>
-        <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)', marginBottom: 6 }}>
+        <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 6 }}>
           Enter your hub details
         </p>
-        <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>
+        <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
           Get the code from your Class Rep
         </p>
       </div>
@@ -130,7 +130,7 @@ export default function JoinHubPage() {
       <form onSubmit={handleSubmit} style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Hub Code */}
         <div>
-          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Hub Code <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input
@@ -148,14 +148,14 @@ export default function JoinHubPage() {
             style={{ letterSpacing: '0.2em', fontSize: 20, textAlign: 'center' }}
           />
           <FieldError msg={errors.hubCode} />
-          <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
             e.g. P2WXYZ — get this from your CR
           </p>
         </div>
 
         {/* Class Roll */}
         <div>
-          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Class Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input
@@ -173,14 +173,14 @@ export default function JoinHubPage() {
             }}
           />
           <FieldError msg={errors.classRoll} />
-          <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
             Your 2-digit class roll (e.g. 17)
           </p>
         </div>
 
         {/* University Roll */}
         <div>
-          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             University Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input
@@ -198,7 +198,7 @@ export default function JoinHubPage() {
             }}
           />
           <FieldError msg={errors.universityRoll} />
-          <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
             e.g. 25ESKCX089
           </p>
         </div>

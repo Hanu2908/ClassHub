@@ -175,8 +175,8 @@ export default function SignIn() {
           <div className="success-ring" style={{ marginBottom: 24 }}>
             <CheckCircle2 size={30} color="var(--status-safe)" strokeWidth={2} />
           </div>
-          <p style={{ font: '600 20px var(--font-display)', color: 'var(--text-primary)', marginBottom: 8 }}>You're in.</p>
-          <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>Taking you to your dashboard…</p>
+          <p className="t-feature" style={{ color: 'var(--text-primary)', marginBottom: 8 }}>You're in.</p>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Taking you to your dashboard…</p>
         </div>
       )}
 
@@ -193,10 +193,10 @@ export default function SignIn() {
           </div>
         </div>
 
-        <h1 className="stagger-1" style={{ font: '700 30px/1.2 var(--font-display)', color: 'var(--text-primary)', textAlign: 'center', letterSpacing: '-0.6px', marginBottom: 6 }}>
+        <h1 className="stagger-1 t-hero" style={{ color: 'var(--text-primary)', textAlign: 'center', letterSpacing: '-0.6px', marginBottom: 6 }}>
           ClassHub
         </h1>
-        <p className="stagger-2" style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.06em', marginBottom: 32 }}>
+        <p className="stagger-2 t-mono-sm" style={{ color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.06em', marginBottom: 32 }}>
           Your academic workspace
         </p>
 
@@ -207,7 +207,7 @@ export default function SignIn() {
           {state === 'error' && (
             <div className="error-banner">
               <AlertCircle size={14} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 1 }} />
-              <div style={{ font: '400 11px var(--font-mono)', color: '#FCEBEB', lineHeight: 1.7 }}>
+              <div className="t-mono-sm" style={{ color: '#FCEBEB', lineHeight: 1.7 }}>
                 <strong style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Access denied.</strong>{' '}
                 Only <strong style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>@skit.ac.in</strong>{' '}
                 accounts are permitted.
@@ -215,16 +215,16 @@ export default function SignIn() {
             </div>
           )}
 
-          <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>
+          <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
             Sign in to continue
           </p>
-          <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 24 }}>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 24 }}>
             Restricted to <span style={{ color: 'var(--accent-primary)' }}>@skit.ac.in</span> accounts.
           </p>
 
           <div className="divider" style={{ marginBottom: 20 }}>
             <div className="divider-line" />
-            <span style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.06em', padding: '0 8px', whiteSpace: 'nowrap' }}>continue with</span>
+            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em', padding: '0 8px', whiteSpace: 'nowrap' }}>continue with</span>
             <div className="divider-line" />
           </div>
 
@@ -232,13 +232,13 @@ export default function SignIn() {
 
           <div className="domain-badge" style={{ marginTop: 4 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--status-safe)', flexShrink: 0 }} />
-            <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-secondary)' }}>
+            <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
               SKIT Jaipur · Institutional Login
             </span>
           </div>
         </TiltCard>
 
-        <p className="stagger-4" style={{ marginTop: 24, font: '400 10px var(--font-mono)', color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.04em' }}>
+        <p className="stagger-4 t-mono-sm" style={{ marginTop: 24, color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.04em' }}>
           v1.0 &nbsp;·&nbsp; <a href="#" style={{ color: 'inherit' }}>Privacy</a> &nbsp;·&nbsp; <a href="#" style={{ color: 'inherit' }}>Terms</a>
         </p>
       </div>

@@ -18,9 +18,9 @@ export default function StatusCard({ title, value, icon, onClick, compact }: Sta
         >
             {icon ? <div style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div> : null}
             <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: '500 11px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 4 }}>{title}</div>
-                <div style={{
-                    font: '700 16px var(--font-display)',
+                <div className="t-mono-sm" style={{ color: 'var(--text-muted)', marginBottom: 4 }}>{title}</div>
+                <div className="t-card-title" style={{
+                    fontWeight: 700,
                     color: 'var(--text-primary)',
                     whiteSpace: typeof value === 'string' ? 'nowrap' : undefined,
                     overflow: typeof value === 'string' ? 'hidden' : undefined,

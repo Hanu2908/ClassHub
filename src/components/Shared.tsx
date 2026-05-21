@@ -94,10 +94,10 @@ export function MultiDonut({ segments, size = 72, strokeWidth = 8 }: MultiDonutP
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ font: '700 14px var(--font-display)', color: 'var(--text-primary)' }}>
+          <div className="t-subtitle" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
             {Math.round(segments.reduce((s, seg) => s + seg.percentage, 0))}%
           </div>
-          <div style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Done</div>
+          <div className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Done</div>
         </div>
       </div>
     </div>
@@ -116,8 +116,8 @@ export function EmptyState({ emoji, icon, title, subtitle }: EmptyStateProps) {
   return (
     <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
       <div style={{ fontSize: 40, marginBottom: 12, display: 'flex', justifyContent: 'center' }}>{icon ?? emoji}</div>
-      <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-secondary)', marginBottom: 6 }}>{title}</p>
-      {subtitle && <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>{subtitle}</p>}
+      <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>{title}</p>
+      {subtitle && <p className="t-body" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
     </div>
   );
 }

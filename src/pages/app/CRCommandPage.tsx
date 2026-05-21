@@ -25,10 +25,10 @@ function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: str
       }}>
         {icon}
       </div>
-      <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>{title}</p>
+      <p className="t-card-title" style={{ color: 'var(--text-primary)', flex: 1 }}>{title}</p>
       {count !== undefined ? (
-        <span style={{
-          font: '600 12px var(--font-mono)', color: 'var(--accent-primary)',
+        <span className="t-mono" style={{
+          color: 'var(--accent-primary)',
           background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)',
           padding: '2px 8px', borderRadius: 'var(--radius-pill)',
         }}>
@@ -110,7 +110,7 @@ function SubmissionTracker() {
           {/* Assignment picker */}
           {visible.length > 0 ? (
             <>
-              <select
+              <select className="t-body"
                 id="cr-assign-select"
                 value={selected?.id ?? ''}
                 onChange={e => setSelectedAssignmentId(e.target.value)}
@@ -118,7 +118,7 @@ function SubmissionTracker() {
                   width: '100%', padding: '9px 12px', marginBottom: 12,
                   background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
                   borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-                  font: '400 13px var(--font-body)', outline: 'none',
+                  outline: 'none',
                 }}
               >
                 {visible.map(a => (
@@ -151,10 +151,10 @@ function SubmissionTracker() {
                     userSelect: 'none',
                   }}
                 >
-                  <p style={{ font: '700 20px var(--font-display)', color: 'var(--status-safe)', transition: 'transform 0.2s' }}>
+                  <p className="t-feature" style={{ color: 'var(--status-safe)', transition: 'transform 0.2s' }}>
                     {submittedCount}
                   </p>
-                  <p style={{ font: '600 11px var(--font-body)', color: subFilter === 'submitted' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                  <p className="t-label" style={{ color: subFilter === 'submitted' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                     ✓ Submitted
                   </p>
                 </div>
@@ -182,10 +182,10 @@ function SubmissionTracker() {
                     userSelect: 'none',
                   }}
                 >
-                  <p style={{ font: '700 20px var(--font-display)', color: 'var(--status-critical)', transition: 'transform 0.2s' }}>
+                  <p className="t-feature" style={{ color: 'var(--status-critical)', transition: 'transform 0.2s' }}>
                     {pendingMembers.length}
                   </p>
-                  <p style={{ font: '600 11px var(--font-body)', color: subFilter === 'not_submitted' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                  <p className="t-label" style={{ color: subFilter === 'not_submitted' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                     ✗ Pending
                   </p>
                 </div>
@@ -193,13 +193,9 @@ function SubmissionTracker() {
 
               {subFilter === 'not_submitted' && pendingMembers.length > 0 ? (
                 <button
-                  onClick={handleBulkNotify}
-                  style={{
-                    width: '100%', padding: '10px', marginBottom: 10,
+                  onClick={handleBulkNotify} className="t-button" style={{ width: '100%', padding: '10px', marginBottom: 10,
                     background: 'rgba(74,158,255,0.1)', border: '1px solid rgba(74,158,255,0.2)',
-                    borderRadius: 8, color: 'var(--accent-primary)', font: '600 13px var(--font-body)',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-                  }}
+                    borderRadius: 8, color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 >
                   <Bell size={14} /> Notify Pending Students
                 </button>
@@ -208,11 +204,11 @@ function SubmissionTracker() {
               {/* Student list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
                 {isLoading ? (
-                  <p style={{ textAlign: 'center', padding: '16px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>
+                  <p className="t-body" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
                     Loading submissions...
                   </p>
                 ) : filtered.length === 0 ? (
-                  <p style={{ textAlign: 'center', padding: '16px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>
+                  <p className="t-body" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
                     No students in this list
                   </p>
                 ) : filtered.map(st => {
@@ -229,11 +225,11 @@ function SubmissionTracker() {
                         background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                       }}>
-                        <span style={{ font: '600 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
+                        <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>{st.name}</p>
-                        <p style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.universityRoll ?? ''}</p>
+                        <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{st.name}</p>
+                        <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>{st.universityRoll ?? ''}</p>
                       </div>
                       
                       {subFilter === 'submitted' ? (
@@ -284,7 +280,7 @@ function SubmissionTracker() {
               </div>
             </>
           ) : (
-            <p style={{ textAlign: 'center', padding: '20px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>
+            <p className="t-body" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
               No active assignments
             </p>
           )}
@@ -311,7 +307,7 @@ function ClassAttendance() {
         {expanded ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
             {members.length === 0 ? (
-              <p style={{ textAlign: 'center', padding: '20px', font: '400 13px var(--font-body)', color: 'var(--text-muted)' }}>No members in section</p>
+              <p className="t-body" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No members in section</p>
             ) : members.map(st => (
               <div
                 key={st.id}
@@ -326,11 +322,11 @@ function ClassAttendance() {
                   background: 'var(--bg-base)', border: '1px solid var(--border-default)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                  <span style={{ font: '600 11px var(--font-mono)', color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
+                  <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>{st.name}</p>
-                  <p style={{ font: '400 10px var(--font-mono)', color: 'var(--text-muted)' }}>{st.email}</p>
+                  <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{st.name}</p>
+                  <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>{st.email}</p>
                 </div>
                 <span className={`badge ${st.role === 'cr' ? 'badge-warning' : 'badge-info'}`} style={{ fontSize: 10 }}>
                   {st.role === 'cr' ? 'CR' : 'Student'}
@@ -354,7 +350,7 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
     background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
     borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-    font: '400 14px var(--font-body)', outline: 'none',
+    outline: 'none',
   };
 
   const handleSend = async () => {
@@ -403,24 +399,21 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
     <BottomSheet onClose={onClose} title="Send Notification">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 20 }}>
         <div>
-          <label style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
+          <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
           <input id="notif-title" style={inputStyle} placeholder="e.g. Important update" value={title} onChange={e => setTitle(e.target.value)} />
         </div>
         <div>
-          <label style={{ font: '500 12px var(--font-body)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
+          <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
           <textarea id="notif-body" style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder="Write your message to the class…" value={body} onChange={e => setBody(e.target.value)} />
         </div>
         <button
           id="send-notif-btn"
           onClick={handleSend}
-          disabled={sending}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          disabled={sending} className="t-button" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '13px', background: sending ? 'var(--bg-elevated)' : 'var(--accent-primary)',
             border: 'none', borderRadius: 'var(--radius-md)', cursor: sending ? 'not-allowed' : 'pointer',
-            font: '600 14px var(--font-body)', color: sending ? 'var(--text-muted)' : '#fff',
-            transition: 'all 0.2s', marginTop: 10
-          }}
+            color: sending ? 'var(--text-muted)' : '#fff',
+            transition: 'all 0.2s', marginTop: 10 }}
         >
           <Send size={15} /> {sending ? 'Sending…' : 'Send Notification'}
         </button>
@@ -514,7 +507,7 @@ function InviteCodeCard() {
           }}>
             <Lock size={16} color="var(--accent-primary)" />
           </div>
-          <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', flex: 1 }}>
+          <p className="t-card-title" style={{ color: 'var(--text-primary)', flex: 1 }}>
             Section Invite Code
           </p>
         </div>
@@ -529,8 +522,7 @@ function InviteCodeCard() {
           padding: '10px 14px',
           marginTop: 4,
         }}>
-          <span style={{
-            font: '700 22px var(--font-mono)',
+          <span className="t-feature" style={{
             letterSpacing: '0.12em',
             color: obscured ? 'var(--text-muted)' : 'var(--accent-primary)',
             transition: 'color 0.2s',
@@ -595,10 +587,10 @@ function InviteCodeCard() {
             }}>
               <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
               <div>
-                <p style={{ font: '600 13px var(--font-display)', color: 'var(--status-critical)', marginBottom: 3 }}>
+                <p className="t-subtitle" style={{ color: 'var(--status-critical)', marginBottom: 3 }}>
                   WARNING: Permanent Invalidation
                 </p>
-                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                   This will immediately invalidate the current code. Existing members will remain unaffected, but new students must use the new code to join.
                 </p>
               </div>
@@ -667,10 +659,10 @@ export default function CRCommandPage() {
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ShieldCheck size={18} color="var(--accent-primary)" />
-            <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>CR Command Center</h1>
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>CR Command Center</h1>
           </div>
         </div>
-        <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-muted)', paddingLeft: 34 }}>
+        <p className="t-caption" style={{ color: 'var(--text-muted)', paddingLeft: 34 }}>
           Manage submissions, attendance & notifications
         </p>
       </header>
@@ -680,27 +672,27 @@ export default function CRCommandPage() {
         
         {/* Quick Actions */}
         <section>
-          <p style={{ font: '600 13px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 8 }}>QUICK ACTIONS</p>
+          <p className="t-mono" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>QUICK ACTIONS</p>
           <div className="carousel" style={{ paddingBottom: 4 }}>
             <button className="card" onClick={() => navigate('/app/polls', { state: { openCreate: true } })} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <BarChart2 size={16} color="var(--status-info)" />
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Create Poll</span>
+              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Create Poll</span>
             </button>
             <button className="card" onClick={() => navigate('/app/announcements', { state: { openCreate: true } })} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <Megaphone size={16} color="var(--status-warning)" />
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Announcement</span>
+              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Announcement</span>
             </button>
             <button className="card" onClick={() => setShowNotifSheet(true)} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <Bell size={16} color="var(--status-critical)" />
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Notification</span>
+              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Notification</span>
             </button>
             <button className="card" onClick={() => navigate('/app/assignments', { state: { openCreate: true } })} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <ClipboardList size={16} color="var(--status-safe)" />
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Add Assignment</span>
+              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Add Assignment</span>
             </button>
             <button className="card" onClick={() => navigate('/app/cr/subjects')} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <BookOpen size={16} color="#c084fc" />
-              <span style={{ font: '500 13px var(--font-body)', color: 'var(--text-primary)' }}>Subjects</span>
+              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Subjects</span>
             </button>
           </div>
         </section>
@@ -710,7 +702,7 @@ export default function CRCommandPage() {
 
         {/* Danger Zone */}
         <section style={{ marginTop: 16 }}>
-          <p style={{ font: '600 13px var(--font-mono)', color: 'var(--status-critical)', marginBottom: 8, letterSpacing: '0.04em' }}>DANGER ZONE</p>
+          <p className="t-mono" style={{ color: 'var(--status-critical)', marginBottom: 8, letterSpacing: '0.04em' }}>DANGER ZONE</p>
           <div style={{
             padding: 16, borderRadius: 'var(--radius-lg)',
             background: 'rgba(255,68,68,0.04)',
@@ -719,15 +711,15 @@ export default function CRCommandPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <p style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', marginBottom: 2 }}>Delete Section Hub</p>
-                <p style={{ font: '400 12px var(--font-body)', color: 'var(--text-secondary)' }}>Permanently remove this hub, all students, and data.</p>
+                <p className="t-subtitle" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>Delete Section Hub</p>
+                <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>Permanently remove this hub, all students, and data.</p>
               </div>
-              <button
+              <button className="t-button"
                 onClick={() => showToast('Section deletion coming soon', 'info')}
                 style={{
                   background: 'rgba(255,68,68,0.1)', color: 'var(--status-critical)',
                   border: '1px solid rgba(255,68,68,0.25)', padding: '8px 12px',
-                  borderRadius: 'var(--radius-md)', font: '600 13px var(--font-body)',
+                  borderRadius: 'var(--radius-md)', 
                   cursor: 'pointer', flexShrink: 0, transition: 'background var(--transition-fast)'
                 }}
               >

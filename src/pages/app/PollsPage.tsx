@@ -70,7 +70,7 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          <span className="t-mono-sm" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             {isClosed ? 'Closed' : timeLeft(poll.closesAt)}
           </span>
           {role === 'cr' && (
@@ -91,14 +91,14 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
         </div>
       </div>
 
-      <p style={{ font: '600 15px var(--font-display)', color: 'var(--text-primary)', marginBottom: 14 }}>
+      <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 14 }}>
         {poll.question}
       </p>
 
       {/* Actionable warning */}
       {poll.type === 'actionable' && showWarning && !warningAccepted && (
         <div style={{ background: 'var(--status-warning-bg)', border: '1px solid rgba(255,181,71,0.3)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 14 }}>
-          <p style={{ font: '500 13px var(--font-body)', color: 'var(--status-warning)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <p className="t-body-medium" style={{ color: 'var(--status-warning)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
             <AlertTriangle size={13} /> The CR can see your individual response for this poll.
           </p>
           <button
@@ -142,12 +142,12 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
                         <span style={{ color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)', display: 'flex', flexShrink: 0 }}>
                           <Icon size={15} />
                         </span>
-                        <span style={{ font: '400 13px var(--font-body)', color: 'var(--text-primary)' }}>{opt.text}</span>
+                        <span className="t-body" style={{ color: 'var(--text-primary)' }}>{opt.text}</span>
                       </div>
                       {showResults && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ font: '600 12px var(--font-mono)', color: 'var(--accent-primary)' }}>{pct}%</span>
-                          <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>({opt.votes})</span>
+                          <span className="t-mono" style={{ color: 'var(--accent-primary)' }}>{pct}%</span>
+                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>({opt.votes})</span>
                         </div>
                       )}
                     </div>
@@ -161,7 +161,7 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
 
                 {role === 'cr' && poll.type === 'actionable' && (
                   <div style={{ marginTop: 2, marginBottom: 6, marginLeft: 24 }}>
-                    <button
+                    <button className="t-helper"
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -171,9 +171,7 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: 'var(--text-secondary)',
-                        font: '500 11px var(--font-body)',
-                        display: 'flex',
+                        color: 'var(--text-secondary)',                        display: 'flex',
                         alignItems: 'center',
                         gap: 4,
                         padding: '2px 0',
@@ -184,13 +182,10 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
                       <span style={{ textDecoration: 'underline' }}>
                         {expandedOption === opt.id ? 'Hide voters' : 'View voters'}
                       </span>
-                      <span style={{ 
-                        font: '600 10px var(--font-mono)', 
-                        background: 'rgba(255,255,255,0.06)', 
+                      <span className="t-badge" style={{ background: 'rgba(255,255,255,0.06)', 
                         padding: '1px 5px', 
                         borderRadius: 4,
-                        color: 'var(--text-primary)' 
-                      }}>
+                        color: 'var(--text-primary)' }}>
                         {optVoters.length}
                       </span>
                     </button>
@@ -209,9 +204,9 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
                         }}
                       >
                         {isLoadingVoters ? (
-                          <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>Loading...</span>
+                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Loading...</span>
                         ) : optVoters.length === 0 ? (
-                          <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>No votes yet</span>
+                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>No votes yet</span>
                         ) : (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {optVoters.map((voter) => (
@@ -240,7 +235,7 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
         </div>
       )}
 
-      <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 12 }}>
+      <p className="t-mono-sm t-body" style={{ color: 'var(--text-muted)', marginTop: 12 }}>
         {poll.voterCount ?? 0} voted
       </p>
     </div>
@@ -320,9 +315,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
     background: 'var(--bg-elevated)',
     border: '1px solid var(--border-default)',
     borderRadius: 'var(--radius-md)',
-    color: 'var(--text-primary)',
-    font: '400 14px var(--font-body)',
-    outline: 'none',
+    color: 'var(--text-primary)',    outline: 'none',
   };
 
   return (
@@ -330,7 +323,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 24 }}>
         {/* Question */}
         <div>
-          <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
             Question <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input
@@ -345,11 +338,11 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
 
         {/* Poll Type Toggle */}
         <div>
-          <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
             Poll Type
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
+            <button className="t-button"
               id="poll-type-general-btn"
               type="button"
               onClick={() => setPollType('general')}
@@ -358,12 +351,12 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
                 background: pollType === 'general' ? 'var(--accent-primary-glow)' : 'var(--bg-elevated)',
                 border: `1px solid ${pollType === 'general' ? 'var(--accent-primary)' : 'var(--border-default)'}`,
                 color: pollType === 'general' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                font: '600 13px var(--font-body)', cursor: 'pointer', transition: 'all 0.2s',
+                cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
               Anonymous (General)
             </button>
-            <button
+            <button className="t-button"
               id="poll-type-actionable-btn"
               type="button"
               onClick={() => setPollType('actionable')}
@@ -372,13 +365,13 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
                 background: pollType === 'actionable' ? 'rgba(255,181,71,0.08)' : 'var(--bg-elevated)',
                 border: `1px solid ${pollType === 'actionable' ? 'var(--status-warning)' : 'var(--border-default)'}`,
                 color: pollType === 'actionable' ? 'var(--status-warning)' : 'var(--text-secondary)',
-                font: '600 13px var(--font-body)', cursor: 'pointer', transition: 'all 0.2s',
+                cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
               Actionable (CR Visible)
             </button>
           </div>
-          <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
             {pollType === 'general'
               ? 'Votes are completely secure and anonymous. CR cannot trace individual responses.'
               : 'CR will be able to see who voted for which option.'}
@@ -399,10 +392,10 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
           transition: 'all 0.2s',
         }} onClick={() => setAllowMultiple(!allowMultiple)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)' }}>
+            <span className="t-subtitle" style={{ color: 'var(--text-primary)' }}>
               Multiple Choice Poll
             </span>
-            <span style={{ font: '400 11px var(--font-body)', color: 'var(--text-muted)' }}>
+            <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
               Allow students to select more than one option
             </span>
           </div>
@@ -431,19 +424,15 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
         {/* Dynamic Options */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)' }}>
+            <label className="t-subtitle" style={{ color: 'var(--text-primary)' }}>
               Options <span style={{ color: 'var(--status-critical)' }}>*</span>
             </label>
             {options.length < 6 && (
               <button
                 id="add-poll-option-btn"
                 type="button"
-                onClick={handleAddOption}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--accent-primary)', font: '600 12px var(--font-body)',
-                  display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px',
-                }}
+                onClick={handleAddOption} className="t-label" style={{ background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px' }}
               >
                 <Plus size={14} /> Add Option
               </button>
@@ -481,7 +470,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
 
         {/* Expiry */}
         <div>
-          <label style={{ font: '600 13px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
             Poll Duration
           </label>
           <select
@@ -503,14 +492,11 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
         <button
           id="create-poll-submit-btn"
           type="submit"
-          disabled={loading}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          disabled={loading} className="t-button" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '13px', background: loading ? 'var(--bg-elevated)' : 'var(--accent-primary)',
             border: 'none', borderRadius: 'var(--radius-md)', cursor: loading ? 'not-allowed' : 'pointer',
-            font: '600 14px var(--font-body)', color: loading ? 'var(--text-muted)' : '#fff',
-            transition: 'all 0.2s', marginTop: 8,
-          }}
+            color: loading ? 'var(--text-muted)' : '#fff',
+            transition: 'all 0.2s', marginTop: 8 }}
         >
           {loading ? 'Creating...' : 'Create Poll'}
         </button>
@@ -564,7 +550,7 @@ export default function PollsPage() {
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
             <BarChart2 size={18} color="var(--accent-primary)" />
-            <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>Polls</h1>
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Polls</h1>
           </div>
         </div>
         <div className="filter-tabs">

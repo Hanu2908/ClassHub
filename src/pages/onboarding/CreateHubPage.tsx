@@ -15,7 +15,7 @@ function randomAlpha(n: number) {
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
-    <p style={{ display: 'flex', alignItems: 'center', gap: 6, font: '500 12px var(--font-body)', color: 'var(--status-critical)', marginTop: 8 }}>
+    <p className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--status-critical)', marginTop: 8 }}>
       <AlertCircle size={14} />
       {msg}
     </p>
@@ -117,8 +117,8 @@ export default function CreateHubPage() {
       <div style={{ minHeight: '100dvh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div className="card" style={{ maxWidth: 360, width: '100%', textAlign: 'center', animation: 'popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
-          <h2 style={{ font: '700 22px var(--font-display)', color: 'var(--text-primary)', marginBottom: 8 }}>Hub Created!</h2>
-          <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)', marginBottom: 24 }}>
+          <h2 className="t-feature" style={{ color: 'var(--text-primary)', marginBottom: 8 }}>Hub Created!</h2>
+          <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
             Share this code with students to invite them.
           </p>
 
@@ -128,11 +128,9 @@ export default function CreateHubPage() {
             borderRadius: 'var(--radius-md)', padding: '20px 16px', marginBottom: 16,
             boxShadow: 'var(--shadow-glow-blue)',
           }}>
-            <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginBottom: 8 }}>Your Hub Code</p>
-            <p style={{
-              font: '700 32px var(--font-mono)', color: 'var(--accent-primary)',
-              letterSpacing: '0.18em',
-            }}>{generatedCode}</p>
+            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>Your Hub Code</p>
+            <p className="t-hero" style={{ color: 'var(--accent-primary)',
+              letterSpacing: '0.18em' }}>{generatedCode}</p>
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
@@ -163,30 +161,30 @@ export default function CreateHubPage() {
         >
           <ArrowLeft size={22} />
         </button>
-        <h1 style={{ font: '600 18px var(--font-display)', color: 'var(--text-primary)' }}>Create a Hub</h1>
+        <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Create a Hub</h1>
       </div>
 
       <div style={{ textAlign: 'center', padding: '28px 24px 20px' }}>
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--status-safe-bg)', border: '1px solid rgba(52,201,123,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
           <CheckCircle2 size={26} color="var(--status-safe)" />
         </div>
-        <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>Set up your section</p>
-        <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>CR access granted after creation</p>
+        <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>Set up your section</p>
+        <p className="t-body" style={{ color: 'var(--text-secondary)' }}>CR access granted after creation</p>
       </div>
 
       <form onSubmit={handleCreate} style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div>
-          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Section Code <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="section-code-input" className={`input mono${errors.sectionCode ? ' input-error' : ''}`} placeholder="P2" maxLength={3}
             value={sectionCode} onChange={e => setSectionCode(e.target.value.toUpperCase())} />
           <FieldError msg={errors.sectionCode} />
-          <p style={{ font: '400 11px var(--font-mono)', color: 'var(--text-muted)', marginTop: 6 }}>e.g. P2, A3, CS1</p>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>e.g. P2, A3, CS1</p>
         </div>
 
         <div>
-          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Hub Name <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="hub-name-input" className={`input${errors.hubName ? ' input-error' : ''}`} placeholder="Section P2 — SKIT"
@@ -195,7 +193,7 @@ export default function CreateHubPage() {
         </div>
 
         <div>
-          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Class Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="cr-class-roll-input" className={`input${errors.classRoll ? ' input-error' : ''}`} placeholder="01" maxLength={2} inputMode="numeric"
@@ -204,7 +202,7 @@ export default function CreateHubPage() {
         </div>
 
         <div>
-          <label style={{ font: '600 14px var(--font-display)', color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             University Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="cr-uni-roll-input" className={`input mono${errors.universityRoll ? ' input-error' : ''}`} placeholder="25ESKCX089" maxLength={12}

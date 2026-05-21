@@ -36,7 +36,7 @@ export default function ChoicePage() {
             <ClassHubLogo />
           </div>
           <h1 className="text-display" style={{ marginBottom: 8 }}>ClassHub</h1>
-          <p style={{ font: '400 15px var(--font-body)', color: 'var(--text-secondary)' }}>
+          <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
             Your section, organized.
           </p>
         </div>
@@ -57,10 +57,10 @@ export default function ChoicePage() {
               <DoorOpen size={24} color="var(--accent-primary)" />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>
+              <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
                 Join a Hub
               </p>
-              <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>
+              <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
                 Enter the code from your Class Rep
               </p>
             </div>
@@ -81,10 +81,10 @@ export default function ChoicePage() {
               <PlusCircle size={24} color="var(--status-safe)" />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)', marginBottom: 4 }}>
+              <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
                 Create a Hub
               </p>
-              <p style={{ font: '400 13px var(--font-body)', color: 'var(--text-secondary)' }}>
+              <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
                 For Class Reps — set up your section
               </p>
             </div>
@@ -92,7 +92,7 @@ export default function ChoicePage() {
           </button>
         </div>
 
-        <p className="stagger-4" style={{ textAlign: 'center', marginTop: 40, font: '400 11px var(--font-mono)', color: 'var(--text-muted)' }}>
+        <p className="stagger-4 t-mono-sm" style={{ textAlign: 'center', marginTop: 40, color: 'var(--text-muted)' }}>
           Section P2 · SKIT Jaipur
         </p>
       </div>
