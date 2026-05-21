@@ -651,6 +651,7 @@ export type Database = {
           section_id: string
           start_time: string
           subject_id: string | null
+          teacher: string | null
           type: Database["public"]["Enums"]["slot_type"]
           updated_at: string
         }
@@ -664,6 +665,7 @@ export type Database = {
           section_id: string
           start_time: string
           subject_id?: string | null
+          teacher?: string | null
           type?: Database["public"]["Enums"]["slot_type"]
           updated_at?: string
         }
@@ -677,6 +679,7 @@ export type Database = {
           section_id?: string
           start_time?: string
           subject_id?: string | null
+          teacher?: string | null
           type?: Database["public"]["Enums"]["slot_type"]
           updated_at?: string
         }

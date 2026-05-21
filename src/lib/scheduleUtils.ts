@@ -22,3 +22,26 @@ export const CATEGORY_LABELS: Record<SubjectCategory, string> = {
   'non-technical': 'Non-Tech Lecture',
   other:         'Other',
 };
+
+// ── Quick-add time helpers ────────────────────────────────────────────────────
+
+/** Default slot duration in minutes, keyed by slot type */
+export const TYPE_DURATIONS: Record<string, number> = {
+  'Tech Lecture':      60,
+  'Lab':               120,
+  'Non-Tech Lecture':  60,
+  'Other':             60,
+};
+
+/**
+ * Calculate end time given a start time (HH:MM) and slot type.
+ * Returns HH:MM string.
+ */
+export function calculateEndTime(startTime: string, type: string): string {
+  const [h, m] = startTime.split(':').map(Number);
+  const dur = TYPE_DURATIONS[type] ?? 60;
+  const totalMin = h * 60 + m + dur;
+  const eh = Math.floor(totalMin / 60) % 24;
+  const em = totalMin % 60;
+  return `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
+}

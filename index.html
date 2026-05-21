@@ -42,12 +42,6 @@
                 }
               });
             }
-          });
-        } else {
-          // Prod mode: register service worker normally
-          window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
-          });
         }
       }
     </script>

@@ -1,40 +1,40 @@
-import { useState } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Loader } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import { useSchedule, useSubjects } from '../../hooks/useSupabaseQuery';
-import { useUpsertScheduleSlot, useDeleteScheduleSlot } from '../../hooks/useSupabaseMutations';
-import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS } from '../../lib/scheduleUtils';
+import { useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSupabaseMutations';
+import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS } from '../../lib/scheduleUtils';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 type ScheduleDay = typeof DAYS[number];
 const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const DAY_FULL: Record<string, string> = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' };
+const PX_PER_HOUR = 80;
+const MIN_CARD_HEIGHT = 40;
+const SUBJECT_TYPES = ['Tech Lecture', 'Lab', 'Non-Tech Lecture', 'Other'];
+
+function mapUiTypeToDb(uiType: string): string {
+  if (uiType === 'Tech Lecture' || uiType === 'Non-Tech Lecture') return 'lecture';
+  if (uiType === 'Lab') return 'lab';
+  return 'other';
+}
 
 function currentDayKey(): string {
   return new Date().toLocaleDateString('en-US', { weekday: 'short' });
 }
 
 function isScheduleDay(day: string): day is ScheduleDay {
-  return DAYS.some((scheduleDay) => scheduleDay === day);
+  return DAYS.some((d) => d === day);
 }
 
-function toDate(timeStr: string): Date {
+function toMinutes(timeStr: string): number {
   const [h, m] = timeStr.split(':').map(Number);
-  const d = new Date(); d.setHours(h, m, 0, 0); return d;
-}
-
-function hoursLabel(timeStr: string): string {
-  const now = new Date();
-  const target = toDate(timeStr);
-  const diff = target.getTime() - now.getTime();
-  if (diff <= 0) return '';
-  const hrs = Math.floor(diff / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-  return hrs > 0 ? `in ${hrs}h ${mins}m` : `in ${mins}m`;
+  return h * 60 + m;
 }
 
 function formatTime(t: string): string {
@@ -43,72 +43,59 @@ function formatTime(t: string): string {
   return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${suffix}`;
 }
 
-// Using shared category system from scheduleUtils
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m break`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m break` : `${h}h break`;
+}
 
-const scheduleHeaderStyle: React.CSSProperties = {
-  position: 'sticky',
-  top: 0,
-  zIndex: 50,
-  background: 'rgba(13,15,20,0.95)',
-  backdropFilter: 'blur(16px)',
-  borderBottom: '1px solid var(--border-default)',
-  padding: '16px 20px',
-};
-const headerRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  marginBottom: 14,
-};
-const backButtonStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  color: 'var(--text-secondary)',
-  padding: 4,
-  display: 'flex',
-  marginLeft: -4,
-};
-const dayTabsRowStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: 8,
-  flexWrap: 'wrap',
-};
-const pageMetaTextStyle: React.CSSProperties = {  color: 'var(--text-secondary)',
-  marginBottom: -4,
-};
-const loadingPhaseStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '40px 20px',
-};
-const emptyStateStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '60px 20px',
-  color: 'var(--text-muted)',
-};
+// ── Add slot bottom sheet (Quick-add batch mode) ──────────────────────────────
 
-// ── Add slot form ─────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px', boxSizing: 'border-box',
   background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
   borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-  outline: 'none',
+  outline: 'none', fontSize: 13,
 };
 const labelStyle: React.CSSProperties = {
-  color: 'var(--text-muted)',
-  display: 'block', marginBottom: 6,
+  color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: 11,
 };
 
-const SUBJECT_TYPES = ['Lecture', 'Lab', 'Tutorial', 'Other'];
+interface AddSlotSheetProps {
+  day: string;
+  existingSlots: { subject: string; code: string; startTime: string; endTime: string; type: string }[];
+  onClose: () => void;
+}
 
-function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
+function AddSlotSheet({ day, existingSlots, onClose }: AddSlotSheetProps) {
   const { data: subjects = [] } = useSubjects();
   const upsertSlot = useUpsertScheduleSlot();
   const [subjectId, setSubjectId] = useState('');
   const [room, setRoom] = useState('');
-  const [type, setType] = useState('Lecture');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('10:00');
+  const [teacher, setTeacher] = useState('');
+  const [type, setType] = useState('Tech Lecture');
+  const [addedCount, setAddedCount] = useState(0);
+
+  // Smart defaults: start after last existing or added slot
+  const lastEndTime = useMemo(() => {
+    const allSlots = [...existingSlots].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return allSlots.length > 0 ? allSlots[allSlots.length - 1].endTime : '08:15';
+  }, [existingSlots]);
+
+  const [startTime, setStartTime] = useState(lastEndTime);
+  const [endTime, setEndTime] = useState(() => calculateEndTime(lastEndTime, 'Tech Lecture'));
+
+  // Auto-recalculate end time when type changes
+  const handleTypeChange = (newType: string) => {
+    setType(newType);
+    setEndTime(calculateEndTime(startTime, newType));
+  };
+
+  const handleStartTimeChange = (newStart: string) => {
+    setStartTime(newStart);
+    setEndTime(calculateEndTime(newStart, type));
+  };
 
   const handleSave = async () => {
     if (!subjectId || !startTime || !endTime) {
@@ -122,16 +109,43 @@ function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
         startTime,
         endTime,
         room: room.trim() || undefined,
-        type,
+        type: mapUiTypeToDb(type),
+        teacher: teacher.trim() || undefined,
       });
-      showToast('Slot added — visible to all students', 'success');
-      onClose();
+      setAddedCount(c => c + 1);
+      showToast(`Slot added (${addedCount + 1})`, 'success');
+
+      // Auto-advance: start time = this slot's end time
+      const nextStart = endTime;
+      setStartTime(nextStart);
+      setEndTime(calculateEndTime(nextStart, type));
+      // Room & teacher remembered, subject cleared for next pick
+      setSubjectId('');
     } catch { showToast('Failed to add slot', 'error'); }
   };
 
   return (
-    <BottomSheet onClose={onClose} title={`Add Class — ${day}`}>
+    <BottomSheet onClose={onClose} title={`Add Classes — ${DAY_FULL[day] ?? day}`}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
+        {/* Mini timeline preview */}
+        {existingSlots.length > 0 && (
+          <div className="mini-timeline">
+            <span style={{ ...labelStyle, marginBottom: 2 }}>
+              {existingSlots.length + addedCount} slot{existingSlots.length + addedCount !== 1 ? 's' : ''} on {DAY_FULL[day]}
+            </span>
+            {existingSlots.slice(-3).map((s, i) => {
+              const cat = getCategory(s.code, s.type);
+              return (
+                <div key={i} className="mini-timeline-slot">
+                  <div className="slot-accent" style={{ background: CATEGORY_COLORS[cat].color }} />
+                  <span>{formatTime(s.startTime)} – {formatTime(s.endTime)}</span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.subject}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div>
           <label style={labelStyle}>Subject *</label>
           <select style={inputStyle} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
@@ -142,7 +156,7 @@ function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
             <label style={labelStyle}>Type</label>
-            <select style={{ ...inputStyle }} value={type} onChange={e => setType(e.target.value)}>
+            <select style={inputStyle} value={type} onChange={e => handleTypeChange(e.target.value)}>
               {SUBJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
@@ -151,27 +165,108 @@ function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
             <input style={inputStyle} placeholder="Block B-102" value={room} onChange={e => setRoom(e.target.value)} />
           </div>
         </div>
+        <div>
+          <label style={labelStyle}>Teacher (optional)</label>
+          <input style={inputStyle} placeholder="Prof. Name" value={teacher} onChange={e => setTeacher(e.target.value)} />
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <label style={labelStyle}>Start Time *</label>
-            <input style={inputStyle} type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+            <label style={labelStyle}>Start *</label>
+            <input style={inputStyle} type="time" value={startTime} onChange={e => handleStartTimeChange(e.target.value)} />
           </div>
           <div>
-            <label style={labelStyle}>End Time *</label>
+            <label style={labelStyle}>End * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({TYPE_DURATIONS[type] ?? 60}m)</span></label>
             <input style={inputStyle} type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
           </div>
         </div>
 
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            id="save-slot-btn"
+            onClick={handleSave}
+            disabled={upsertSlot.isPending}
+            className="t-button"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '13px', background: upsertSlot.isPending ? 'var(--bg-elevated)' : 'var(--accent-primary)', border: 'none',
+              borderRadius: 'var(--radius-md)', cursor: upsertSlot.isPending ? 'not-allowed' : 'pointer',
+              color: upsertSlot.isPending ? 'var(--text-muted)' : '#fff',
+            }}
+          >
+            {upsertSlot.isPending ? <Loader size={14} className="spin" /> : <Plus size={16} />}
+            {upsertSlot.isPending ? 'Saving…' : 'Add & Next'}
+          </button>
+          <button
+            onClick={onClose}
+            className="t-button"
+            style={{
+              padding: '13px 20px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)',
+            }}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── Copy Day sheet ───────────────────────────────────────────────────────────
+
+function CopyDaySheet({ targetDay, schedule, onClose }: {
+  targetDay: string;
+  schedule: Record<string, { id: string }[]>;
+  onClose: () => void;
+}) {
+  const [sourceDay, setSourceDay] = useState('');
+  const copyMutation = useCopyDaySlots();
+  const sourceDays = DAYS.filter(d => d !== targetDay && (schedule[d]?.length ?? 0) > 0);
+  const sourceCount = schedule[sourceDay]?.length ?? 0;
+  const targetCount = schedule[targetDay]?.length ?? 0;
+
+  const handleCopy = async () => {
+    if (!sourceDay) return;
+    try {
+      await copyMutation.mutateAsync({ fromDay: DAY_MAP[sourceDay], toDay: DAY_MAP[targetDay] });
+      showToast(`Copied ${sourceCount} slots from ${DAY_FULL[sourceDay]} → ${DAY_FULL[targetDay]}`, 'success');
+      onClose();
+    } catch { showToast('Failed to copy', 'error'); }
+  };
+
+  return (
+    <BottomSheet onClose={onClose} title={`Copy to ${DAY_FULL[targetDay]}`}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
+        <div>
+          <label style={labelStyle}>Copy from</label>
+          <select style={inputStyle} value={sourceDay} onChange={e => setSourceDay(e.target.value)}>
+            <option value="">Select source day…</option>
+            {sourceDays.map(d => (
+              <option key={d} value={d}>{DAY_FULL[d]} ({schedule[d]?.length ?? 0} classes)</option>
+            ))}
+          </select>
+        </div>
+        {sourceDay && targetCount > 0 && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: 12, background: 'var(--status-warning-bg)', border: '1px solid rgba(251, 191, 36, 0.2)', borderRadius: 'var(--radius-md)' }}>
+            <AlertTriangle size={16} color="var(--status-warning)" style={{ flexShrink: 0, marginTop: 1 }} />
+            <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>
+              This will replace {targetCount} existing class{targetCount !== 1 ? 'es' : ''} on {DAY_FULL[targetDay]} with {sourceCount} class{sourceCount !== 1 ? 'es' : ''} from {DAY_FULL[sourceDay]}.
+            </span>
+          </div>
+        )}
         <button
-          id="save-slot-btn"
-          onClick={handleSave}
-          disabled={upsertSlot.isPending} className="t-button" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '13px', background: upsertSlot.isPending ? 'var(--bg-elevated)' : 'var(--accent-primary)', border: 'none',
-            borderRadius: 'var(--radius-md)', cursor: upsertSlot.isPending ? 'not-allowed' : 'pointer',
-            color: upsertSlot.isPending ? 'var(--text-muted)' : '#fff' }}
+          onClick={handleCopy}
+          disabled={!sourceDay || copyMutation.isPending}
+          className="t-button"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '13px', background: !sourceDay ? 'var(--bg-elevated)' : 'var(--accent-primary)', border: 'none',
+            borderRadius: 'var(--radius-md)', cursor: !sourceDay ? 'not-allowed' : 'pointer',
+            color: !sourceDay ? 'var(--text-muted)' : '#fff',
+          }}
         >
-          {upsertSlot.isPending ? <Loader size={14} className="spin" /> : <Save size={16} />}
-          {upsertSlot.isPending ? 'Saving…' : 'Save Slot'}
+          {copyMutation.isPending ? <Loader size={14} className="spin" /> : <Copy size={16} />}
+          {copyMutation.isPending ? 'Copying…' : 'Copy & Replace'}
         </button>
       </div>
     </BottomSheet>
@@ -179,6 +274,7 @@ function AddSlotSheet({ day, onClose }: { day: string; onClose: () => void }) {
 }
 
 // ── Legend chip ───────────────────────────────────────────────────────────────
+
 function LegendChip({ cat }: { cat: SubjectCategory }) {
   const { color } = CATEGORY_COLORS[cat];
   return (
@@ -191,7 +287,85 @@ function LegendChip({ cat }: { cat: SubjectCategory }) {
   );
 }
 
+// ── Swipeable schedule card ──────────────────────────────────────────────────
+
+function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
+  cls: { id: string; subject: string; code: string; room: string; teacher: string; type: string; startTime: string; endTime: string };
+  isNow: boolean;
+  isPast: boolean;
+  isCR: boolean;
+  onDelete: (id: string) => void;
+  style: React.CSSProperties;
+}) {
+  const [swipeX, setSwipeX] = useState(0);
+  const [startX, setStartX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+
+  const cat = getCategory(cls.code, cls.type);
+  const catStyle = CATEGORY_COLORS[cat];
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isCR) return;
+    setStartX(e.touches[0].clientX);
+    setSwiping(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!swiping || !isCR) return;
+    const diff = e.touches[0].clientX - startX;
+    if (diff < 0) setSwipeX(Math.max(diff, -80));
+  };
+
+  const handleTouchEnd = () => {
+    if (!swiping) return;
+    setSwiping(false);
+    if (swipeX < -50) {
+      // Show delete confirmation
+      if (window.confirm(`Remove "${cls.subject}" at ${formatTime(cls.startTime)}?`)) {
+        onDelete(cls.id);
+      }
+    }
+    setSwipeX(0);
+  };
+
+  return (
+    <div style={{ ...style, position: 'absolute', overflow: 'hidden', borderRadius: 'var(--radius-md)' }}>
+      {/* Delete zone behind */}
+      {isCR && swipeX < 0 && (
+        <div className="swipe-delete-zone">
+          <Trash2 size={18} />
+        </div>
+      )}
+      <div
+        className={`schedule-card ${isPast ? 'is-past' : ''} ${isNow ? 'is-now' : ''}`}
+        style={{
+          position: 'relative',
+          left: 0, right: 0, top: 0, bottom: 0,
+          height: '100%',
+          transform: `translateX(${swipeX}px)`,
+          transition: swiping ? 'none' : 'transform 0.2s ease',
+          background: catStyle.bg,
+          borderColor: catStyle.border,
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="schedule-card-accent" style={{ background: catStyle.color }} />
+        <div className="schedule-card-body">
+          <div className="schedule-subject">{cls.subject}</div>
+          <div className="schedule-meta">
+            {formatTime(cls.startTime)} – {formatTime(cls.endTime)} · {cls.code}{cls.room ? ` · ${cls.room}` : ''}{cls.teacher ? ` · ${cls.teacher}` : ''}
+          </div>
+          <div className="schedule-type">{CATEGORY_LABELS[cat] || cls.type}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function SchedulePage() {
   const navigate = useNavigate();
   const todayKey = currentDayKey();
@@ -199,159 +373,339 @@ export default function SchedulePage() {
     isScheduleDay(todayKey) ? todayKey : 'Mon'
   );
   const [showAddSheet, setShowAddSheet] = useState(false);
-  const now = new Date();
-  const role = useAppStore(s => s.role);
-  const { data: schedule = {}, isLoading } = useSchedule({ day: selectedDay });
-  const deleteSlotMutation = useDeleteScheduleSlot();
+  const [showCopySheet, setShowCopySheet] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
+  const [slideDir, setSlideDir] = useState<'left' | 'right' | ''>('');
+  const [slideKey, setSlideKey] = useState(0);
+  const [showJumpToNow, setShowJumpToNow] = useState(false);
+  const [confirmClearDay, setConfirmClearDay] = useState(false);
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const nowLineRef = useRef<HTMLDivElement>(null);
 
-  const classes = (schedule[selectedDay] ?? []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const role = useAppStore(s => s.role);
+  const isCR = role === 'cr';
+  const { data: schedule = {}, isLoading } = useSchedule();
+  const deleteSlotMutation = useDeleteScheduleSlot();
+  const clearDayMutation = useClearDaySlots();
+
+  const classes = useMemo(() =>
+    (schedule[selectedDay] ?? []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [schedule, selectedDay]
+  );
+
+  // Calculate class counts per day for badges
+  const dayCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    DAYS.forEach(d => { counts[d] = schedule[d]?.length ?? 0; });
+    return counts;
+  }, [schedule]);
+
+  // Proportional timeline calculations
+  const timeRange = useMemo(() => {
+    if (classes.length === 0) return { startHour: 8, endHour: 17 };
+    const firstMin = toMinutes(classes[0].startTime);
+    const lastMin = Math.max(...classes.map(c => toMinutes(c.endTime)));
+    return {
+      startHour: Math.floor(firstMin / 60),
+      endHour: Math.ceil(lastMin / 60),
+    };
+  }, [classes]);
+
+  const totalHours = timeRange.endHour - timeRange.startHour;
+  const timelineHeight = Math.max(totalHours * PX_PER_HOUR, 200);
+
+  // Hour marks
+  const hourMarks = useMemo(() => {
+    const marks: number[] = [];
+    for (let h = timeRange.startHour; h <= timeRange.endHour; h++) marks.push(h);
+    return marks;
+  }, [timeRange]);
+
+  // Gap detection (>30 min)
+  const gaps = useMemo(() => {
+    const result: { startMin: number; endMin: number; duration: number }[] = [];
+    for (let i = 0; i < classes.length - 1; i++) {
+      const endCurrent = toMinutes(classes[i].endTime);
+      const startNext = toMinutes(classes[i + 1].startTime);
+      const gap = startNext - endCurrent;
+      if (gap > 30) result.push({ startMin: endCurrent, endMin: startNext, duration: gap });
+    }
+    return result;
+  }, [classes]);
+
+  // Now line position
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const isToday = selectedDay === todayKey;
+  const nowLineY = isToday ? ((nowMinutes / 60) - timeRange.startHour) * PX_PER_HOUR : -1;
+  const showNowLine = isToday && nowLineY >= 0 && nowLineY <= timelineHeight;
+
+  // Auto-scroll to now
+  useEffect(() => {
+    if (isToday && nowLineRef.current && timelineRef.current) {
+      const container = timelineRef.current.closest('.page-content');
+      if (container) {
+        const rect = nowLineRef.current.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const offset = rect.top - containerRect.top - containerRect.height / 2;
+        container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' });
+      }
+    }
+  }, [isToday, selectedDay]);
+
+  // Jump to now visibility
+  useEffect(() => {
+    if (!isToday) { setShowJumpToNow(false); return; }
+    const container = timelineRef.current?.closest('.page-content');
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (!nowLineRef.current) return;
+      const rect = nowLineRef.current.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const isVisible = rect.top >= containerRect.top && rect.bottom <= containerRect.bottom;
+      setShowJumpToNow(!isVisible);
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isToday, selectedDay]);
+
+  const jumpToNow = useCallback(() => {
+    if (nowLineRef.current) {
+      nowLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
+  // Day switching with swipe
+  const swipeRef = useRef({ startX: 0, startY: 0, active: false });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    swipeRef.current = { startX: e.clientX, startY: e.clientY, active: true };
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!swipeRef.current.active) return;
+    swipeRef.current.active = false;
+    const diffX = e.clientX - swipeRef.current.startX;
+    const diffY = Math.abs(e.clientY - swipeRef.current.startY);
+    if (Math.abs(diffX) > 50 && diffY < 80) {
+      const idx = DAYS.indexOf(selectedDay);
+      if (diffX < 0 && idx < DAYS.length - 1) {
+        setSlideDir('right');
+        setSlideKey(k => k + 1);
+        setSelectedDay(DAYS[idx + 1]);
+      } else if (diffX > 0 && idx > 0) {
+        setSlideDir('left');
+        setSlideKey(k => k + 1);
+        setSelectedDay(DAYS[idx - 1]);
+      }
+    }
+  };
+
+  const handleDaySelect = (day: ScheduleDay) => {
+    const curIdx = DAYS.indexOf(selectedDay);
+    const newIdx = DAYS.indexOf(day);
+    setSlideDir(newIdx > curIdx ? 'right' : 'left');
+    setSlideKey(k => k + 1);
+    setSelectedDay(day);
+  };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteSlotMutation.mutateAsync(id);
-      showToast('Slot removed — updated for all students', 'info');
+      showToast('Slot removed', 'info');
     } catch { showToast('Failed to remove slot', 'error'); }
   };
 
+  const handleClearDay = async () => {
+    try {
+      await clearDayMutation.mutateAsync(DAY_MAP[selectedDay]);
+      showToast(`Cleared all slots for ${DAY_FULL[selectedDay]}`, 'info');
+      setConfirmClearDay(false);
+    } catch { showToast('Failed to clear day', 'error'); }
+  };
+
+  // Date subheading
+  const dateSubheading = isToday
+    ? `Today — ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}`
+    : DAY_FULL[selectedDay] ?? selectedDay;
+
   return (
     <div className="page-shell">
-      <header style={scheduleHeaderStyle}>
-        <div style={headerRowStyle}>
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        background: 'rgba(13, 15, 20, 0.45)',
+        backdropFilter: 'blur(32px) saturate(200%)',
+        WebkitBackdropFilter: 'blur(32px) saturate(200%)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.06)',
+        padding: '16px 20px 0',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <button id="schedule-back-btn" onClick={() => navigate('/app/home')}
-            style={backButtonStyle}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }}
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
           <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1 }}>Schedule</h1>
-          {/* Color legend */}
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {(['technical', 'lab', 'non-technical', 'other'] as SubjectCategory[]).map(c => (
-              <LegendChip key={c} cat={c} />
-            ))}
-          </div>
+
+          {/* Legend toggle */}
+          <button
+            onClick={() => setShowLegend(!showLegend)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: showLegend ? 'var(--accent-primary)' : 'var(--text-muted)', padding: 4, display: 'flex' }}
+            aria-label="Toggle legend"
+          >
+            <Info size={18} />
+          </button>
+
+          {/* CR actions */}
+          {isCR && (
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                onClick={() => setShowCopySheet(true)}
+                style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'var(--font-mono)' }}
+                aria-label="Copy day"
+              >
+                <Copy size={12} /> Copy
+              </button>
+              {classes.length > 0 && (
+                <button
+                  onClick={() => setConfirmClearDay(true)}
+                  style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--status-critical)', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'var(--font-mono)' }}
+                  aria-label="Clear day"
+                >
+                  <Trash2 size={12} /> Clear
+                </button>
+              )}
+            </div>
+          )}
         </div>
-        <div className="day-tabs" style={dayTabsRowStyle}>
+
+        {/* Day tabs with class count badges */}
+        <div className="day-tabs" style={{ paddingBottom: 12 }}>
           {DAYS.map(day => {
-            const isToday = day === todayKey;
             const isActive = day === selectedDay;
+            const isDayToday = day === todayKey;
+            const count = dayCounts[day] ?? 0;
             return (
               <button
                 key={day}
                 id={`day-tab-${day}`}
-                className={`day-tab${isActive ? ' active' : ''}${isToday ? ' today' : ''}`}
-                onClick={() => setSelectedDay(day)}
+                className={`day-tab${isActive ? ' active' : ''}${isDayToday ? ' today' : ''}`}
+                onClick={() => handleDaySelect(day)}
               >
                 <span>{day}</span>
-                <div className="day-dot" style={{ background: isToday ? 'currentColor' : 'transparent' }} />
+                {count > 0 && <span className="day-badge">{count}</span>}
+                <div className="day-dot" style={{ background: isDayToday ? 'currentColor' : 'transparent' }} />
               </button>
             );
           })}
         </div>
       </header>
 
+      {/* Collapsible legend */}
+      <div className={`legend-collapsible${showLegend ? ' open' : ''}`}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          {(['technical', 'lab', 'non-technical', 'other'] as SubjectCategory[]).map(c => (
+            <LegendChip key={c} cat={c} />
+          ))}
+        </div>
+      </div>
+
       <main className="page-content">
-        <p style={pageMetaTextStyle}>
-          {selectedDay === todayKey ? `Today — ` : ''}
-          {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+        <p className="t-caption" style={{ color: 'var(--text-secondary)', padding: '8px 0 4px' }}>
+          {dateSubheading}
         </p>
 
         {isLoading ? (
-          <div style={loadingPhaseStyle}>
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <Loader size={24} color="var(--accent-primary)" className="spin" />
           </div>
         ) : classes.length === 0 ? (
-          <div style={emptyStateStyle}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
-            <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>No classes today!</p>
-            <p className="t-body">Enjoy your free day.</p>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+            <div className="schedule-empty-icon">
+              <CalendarCheck size={28} color="var(--status-safe)" />
+            </div>
+            <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>No classes{isToday ? ' today' : ''}!</p>
+            <p className="t-body">{isToday ? 'Enjoy your free day.' : `${DAY_FULL[selectedDay]} is free.`}</p>
           </div>
         ) : (
-          <div style={{ position: 'relative' }}>
-            {/* Vertical timeline line */}
-            <div style={{ position: 'absolute', left: 52, top: 0, bottom: 0, width: 1, background: 'var(--border-default)' }} />
-
-            {classes.map((cls) => {
-              const start = toDate(cls.startTime);
-              const end = toDate(cls.endTime);
-              const isNow = selectedDay === todayKey && start <= now && now <= end;
-              const isPast = selectedDay === todayKey && end < now;
-              const dotColor = isNow ? 'var(--status-safe)' : isPast ? 'var(--text-muted)' : 'var(--accent-primary)';
-              const label = isNow ? 'NOW' : selectedDay === todayKey && start > now ? hoursLabel(cls.startTime) : '';
-
-              const cat = getCategory(cls.code, cls.type);
-              const catStyle = CATEGORY_COLORS[cat];
-
+          <div
+            ref={timelineRef}
+            className={`schedule-timeline ${slideDir === 'right' ? 'schedule-slide-right' : slideDir === 'left' ? 'schedule-slide-left' : ''}`}
+            key={slideKey}
+            style={{ height: timelineHeight + 16, marginTop: 8 }}
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+          >
+            {/* Hour marks */}
+            {hourMarks.map(h => {
+              const y = (h - timeRange.startHour) * PX_PER_HOUR;
               return (
-                <div key={cls.id} className="timeline-item">
-                  <div style={{ width: 52, flexShrink: 0, paddingTop: 2 }}>
-                    <p className="t-helper" style={{ color: 'var(--text-muted)', textAlign: 'right', paddingRight: 12, whiteSpace: 'nowrap' }}>
-                      {formatTime(cls.startTime)}
-                    </p>
-                  </div>
-                  <div style={{ position: 'relative', zIndex: 1, marginTop: 4 }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: '50%', border: `2px solid ${dotColor}`,
-                      background: isNow ? dotColor : 'var(--bg-base)',
-                      boxShadow: isNow ? `0 0 8px ${dotColor}` : undefined,
-                    }} />
-                  </div>
-                  <div className="card" style={{
-                    flex: 1, padding: '12px 14px',
-                    opacity: isPast ? 0.5 : 1,
-                    borderColor: isNow ? 'var(--border-active)' : catStyle.border,
-                    background: isPast ? undefined : catStyle.bg,
-                    boxShadow: isNow ? 'var(--shadow-glow-blue)' : undefined,
-                    animation: 'fadeSlideUp 0.35s ease both',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                      <div style={{ flex: 1 }}>
-                        <p className="t-subtitle" style={{ color: isPast ? 'var(--text-muted)' : 'var(--text-primary)', marginBottom: 4 }}>
-                          {cls.subject}
-                        </p>
-                        <p className="t-caption" style={{ color: 'var(--text-muted)' }}>
-                          {cls.code} · {cls.room}{cls.teacher ? ` · ${cls.teacher}` : ''}
-                        </p>
-                        <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 4 }}>
-                          {formatTime(cls.startTime)} – {formatTime(cls.endTime)}
-                        </p>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                        {isNow && <span className="badge badge-info" style={{ animation: 'nowPulse 2s ease-in-out infinite' }}>NOW</span>}
-                        {label && !isNow && <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{label}</span>}
-                        <span className="t-mono-sm" style={{
-                          color: catStyle.color,
-                          background: catStyle.bg, border: `1px solid ${catStyle.border}`,
-                          padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-                        }}>
-                          {cls.type}
-                        </span>
-                        {role === 'cr' && (
-                          <button className="t-helper"
-                            id={`del-slot-${cls.id}`}
-                            onClick={() => handleDelete(cls.id)}
-                            style={{
-                              background: 'rgba(255,68,68,0.10)', border: '1px solid rgba(255,68,68,0.2)',
-                              borderRadius: 6, padding: '4px 6px', cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', gap: 4,
-                              color: 'var(--status-critical)',
-                              transition: 'all 0.2s',
-                            }}
-                          >
-                            <Trash2 size={11} /> Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                <div key={h} className="schedule-hour-mark" style={{ top: y }}>
+                  <span className="schedule-hour-label">
+                    {h % 12 || 12}{h < 12 ? 'a' : 'p'}
+                  </span>
+                  <div className="schedule-hour-line" />
                 </div>
               );
             })}
-            <p className="t-caption" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px 0' }}>
-              — No more classes —
-            </p>
+
+            {/* Gap indicators */}
+            {gaps.map((gap, i) => {
+              const y = ((gap.startMin / 60) - timeRange.startHour) * PX_PER_HOUR;
+              const h = (gap.duration / 60) * PX_PER_HOUR;
+              return (
+                <div key={`gap-${i}`} className="schedule-gap" style={{ top: y, height: h }}>
+                  <span className="schedule-gap-label">{formatDuration(gap.duration)}</span>
+                </div>
+              );
+            })}
+
+            {/* Class cards */}
+            {classes.map((cls, i) => {
+              const startMin = toMinutes(cls.startTime);
+              const endMin = toMinutes(cls.endTime);
+              const durationMin = endMin - startMin;
+              const y = ((startMin / 60) - timeRange.startHour) * PX_PER_HOUR;
+              const h = Math.max((durationMin / 60) * PX_PER_HOUR - 2, MIN_CARD_HEIGHT); // -2 for gap between cards
+              const isNowClass = isToday && startMin <= nowMinutes && nowMinutes <= endMin;
+              const isPastClass = isToday && endMin < nowMinutes;
+
+              return (
+                <SwipeableCard
+                  key={cls.id}
+                  cls={cls}
+                  isNow={isNowClass}
+                  isPast={isPastClass}
+                  isCR={isCR}
+                  onDelete={handleDelete}
+                  style={{
+                    top: y,
+                    height: h,
+                    left: 52,
+                    right: 8,
+                    animationDelay: `${i * 40}ms`,
+                  }}
+                />
+              );
+            })}
+
+            {/* Now line */}
+            {showNowLine && (
+              <div ref={nowLineRef} className="schedule-now-line" style={{ top: nowLineY }} />
+            )}
           </div>
         )}
       </main>
+
+      {/* Jump to now pill */}
+      {showJumpToNow && isToday && (
+        <button className="jump-to-now" onClick={jumpToNow}>
+          <ChevronDown size={14} /> Jump to now
+        </button>
+      )}
 
       {/* CR: add slot FAB */}
       <CROnly>
@@ -365,8 +719,53 @@ export default function SchedulePage() {
         </button>
       </CROnly>
 
+      {/* Bottom sheets */}
       {showAddSheet && (
-        <AddSlotSheet day={selectedDay} onClose={() => setShowAddSheet(false)} />
+        <AddSlotSheet
+          day={selectedDay}
+          existingSlots={classes.map(c => ({ subject: c.subject, code: c.code, startTime: c.startTime, endTime: c.endTime, type: c.type }))}
+          onClose={() => setShowAddSheet(false)}
+        />
+      )}
+
+      {showCopySheet && (
+        <CopyDaySheet
+          targetDay={selectedDay}
+          schedule={schedule}
+          onClose={() => setShowCopySheet(false)}
+        />
+      )}
+
+      {/* Clear day confirmation */}
+      {confirmClearDay && (
+        <BottomSheet onClose={() => setConfirmClearDay(false)} title="Clear All Classes">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 14, background: 'var(--status-critical-bg)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-md)' }}>
+              <AlertTriangle size={18} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 1 }} />
+              <span className="t-body" style={{ color: 'var(--text-secondary)' }}>
+                This will permanently remove all {classes.length} class{classes.length !== 1 ? 'es' : ''} from {DAY_FULL[selectedDay]}. This cannot be undone.
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setConfirmClearDay(false)}
+                className="t-button"
+                style={{ flex: 1, padding: 13, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearDay}
+                disabled={clearDayMutation.isPending}
+                className="t-button"
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 13, background: 'var(--status-critical)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: '#fff' }}
+              >
+                {clearDayMutation.isPending ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
+                {clearDayMutation.isPending ? 'Clearing…' : 'Clear All'}
+              </button>
+            </div>
+          </div>
+        </BottomSheet>
       )}
 
       <NavBar />

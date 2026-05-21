@@ -6,6 +6,7 @@ import { useAppStore, type AuthUser, type DbNotification } from '../store/appSto
 import { queryClient } from '../lib/queryClient';
 import { showToast } from '../components/Toast';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import InstallPwaBanner from './InstallPwaBanner';
 
 const SKIT_DOMAIN = '@skit.ac.in';
 
@@ -462,7 +463,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [authUser?.id, setNotifications]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <InstallPwaBanner />
+    </>
+  );
 }
 
 /**

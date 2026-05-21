@@ -2,9 +2,15 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
+import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
+
+// Register the PWA service worker automatically in production
+if (import.meta.env.PROD) {
+  registerSW({ immediate: true });
+}
 
 // Self-healing: Unregister any active Service Workers on localhost to prevent aggressive browser caching
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {

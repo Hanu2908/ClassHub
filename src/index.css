@@ -87,6 +87,14 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 button {
@@ -95,6 +103,35 @@ button {
 
 a {
   text-decoration: none;
+}
+
+/* ── PWA Banner Animations ── */
+@keyframes pwaSlideUp {
+  from {
+    transform: translate(-50%, 24px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes pwaFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.install-banner-slide {
+  animation: pwaSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.install-overlay-fade {
+  animation: pwaFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ── Root layout — desktop shows phone frame ── */
@@ -1001,22 +1038,202 @@ body {
   background: var(--border-default);
 }
 
-/* ── Schedule timeline ── */
-.timeline-item {
-  display: flex;
-  gap: 12px;
-  padding: 8px 0;
+/* ── Schedule timeline (proportional calendar-style) ── */
+.schedule-timeline {
+  position: relative;
+  min-height: 200px;
 }
 
-.timeline-dot {
+.schedule-hour-mark {
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  pointer-events: none;
+}
+
+.schedule-hour-label {
+  width: 44px;
+  flex-shrink: 0;
+  font: 500 10px var(--font-mono);
+  color: var(--text-muted);
+  text-align: right;
+  padding-right: 8px;
+  transform: translateY(-6px);
+}
+
+.schedule-hour-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.schedule-card {
+  position: absolute;
+  left: 52px;
+  right: 8px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  overflow: hidden;
+  display: flex;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+  animation: fadeSlideUp 0.3s ease both;
+  touch-action: pan-y;
+}
+
+.schedule-card:active {
+  transform: scale(0.985);
+}
+
+.schedule-card.is-past {
+  opacity: 0.45;
+}
+
+.schedule-card.is-now {
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: 0 0 16px rgba(96, 165, 250, 0.12), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.schedule-card-accent {
+  width: 3.5px;
+  flex-shrink: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+.schedule-card-body {
+  flex: 1;
+  padding: 8px 12px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.schedule-card-body .schedule-subject {
+  font: 600 13px var(--font-display);
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.schedule-card-body .schedule-meta {
+  font: 400 10px var(--font-mono);
+  color: var(--text-muted);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.schedule-card-body .schedule-type {
+  font: 500 9px var(--font-mono);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* ── Now line ── */
+.schedule-now-line {
+  position: absolute;
+  left: 44px;
+  right: 0;
+  height: 2px;
+  background: var(--status-critical);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.schedule-now-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -4px;
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  flex-shrink: 0;
-  border: 2px solid var(--accent-primary);
+  background: var(--status-critical);
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
 }
 
-/* ── Day tabs ── */
+/* ── Gap indicator ── */
+.schedule-gap {
+  position: absolute;
+  left: 52px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.schedule-gap-label {
+  font: 500 10px var(--font-mono);
+  color: var(--status-safe);
+  background: var(--status-safe-bg);
+  padding: 2.5px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px dashed rgba(52, 211, 153, 0.22);
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Jump to now pill ── */
+.jump-to-now {
+  position: fixed;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  font: 600 11px var(--font-body);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 16px rgba(96, 165, 250, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  cursor: pointer;
+  animation: fadeSlideUp 0.25s ease both;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.jump-to-now:active {
+  transform: translateX(-50%) scale(0.94);
+}
+
+/* ── Swipe-to-delete ── */
+.schedule-card-swipe-container {
+  position: absolute;
+  left: 52px;
+  right: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.swipe-delete-zone {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 72px;
+  background: rgba(248, 113, 113, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--status-critical);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+/* ── Day tabs (updated) ── */
 .day-tabs {
   display: flex;
   gap: 4px;
@@ -1029,7 +1246,7 @@ body {
 
 .day-tab {
   min-width: 44px;
-  padding: 7px 10px;
+  padding: 7px 10px 4px;
   border-radius: var(--radius-md);
   font: 500 12px var(--font-body);
   text-align: center;
@@ -1039,13 +1256,30 @@ body {
   transition: all var(--transition-fast);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
+  position: relative;
 }
 
 .day-tab.active {
   background: var(--accent-primary-glow);
   border-color: var(--accent-primary);
   color: var(--accent-primary);
+}
+
+.day-tab .day-badge {
+  font: 600 9px var(--font-mono);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-pill);
+  padding: 1px 6px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.day-tab.active .day-badge {
+  color: var(--accent-primary);
+  background: rgba(96, 165, 250, 0.12);
 }
 
 .day-dot {
@@ -1058,6 +1292,80 @@ body {
 
 .day-tab.today .day-dot {
   background: currentColor;
+}
+
+/* ── Collapsible legend ── */
+.legend-collapsible {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+  padding: 0 20px;
+}
+
+.legend-collapsible.open {
+  max-height: 60px;
+  opacity: 1;
+  padding: 8px 20px;
+}
+
+/* ── Day transition ── */
+@keyframes slideInFromRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.schedule-slide-right {
+  animation: slideInFromRight 0.25s ease both;
+}
+
+.schedule-slide-left {
+  animation: slideInFromLeft 0.25s ease both;
+}
+
+/* ── Mini timeline preview (quick-add) ── */
+.mini-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.mini-timeline-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  font: 400 11px var(--font-body);
+  color: var(--text-secondary);
+}
+
+.mini-timeline-slot .slot-accent {
+  width: 3px;
+  height: 20px;
+  border-radius: 1.5px;
+  flex-shrink: 0;
+}
+
+/* ── Empty state icon ── */
+.schedule-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.15);
 }
 
 /* ── SignIn compat ── */

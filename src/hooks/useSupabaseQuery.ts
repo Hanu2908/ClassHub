@@ -443,35 +443,23 @@ export function useActionablePollVotes(pollId: string, enabled: boolean) {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function useSchedule(opts?: { day?: string; limit?: number }) {
+export function useSchedule() {
   const { sectionId, isAuthLoading } = useAuthContext();
-  const day = opts?.day ?? undefined; // day as 'Mon'..'Sun'
-  const limit = opts?.limit ?? 500;
 
   return useQuery<ScheduleMap>({
-    queryKey: ['schedule', sectionId, day, limit],
+    queryKey: ['schedule', sectionId],
     enabled: !!sectionId && !isAuthLoading,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      // If a specific day is requested, fetch only that day's slots to reduce payload.
-      let query = supabase
+      const { data, error } = await supabase
         .from('timetable_slots')
         .select(`
-          id, day_of_week, start_time, end_time, room, type, created_by,
+          id, day_of_week, start_time, end_time, room, type, teacher, created_by,
           subjects:subject_id (code, name)
         `)
         .eq('section_id', sectionId!)
         .order('start_time');
 
-      if (typeof day === 'string') {
-        const idx = DAY_NAMES.indexOf(day);
-        if (idx >= 0) query = query.eq('day_of_week', idx);
-      } else {
-        // global fetch: cap results to avoid accidental huge payloads
-        query = query.limit(limit);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
 
       const map: ScheduleMap = {};
@@ -484,7 +472,7 @@ export function useSchedule(opts?: { day?: string; limit?: number }) {
           subject: subjectData?.name ?? 'Free Period',
           code: subjectData?.code ?? '',
           room: slot.room ?? '',
-          teacher: '',
+          teacher: (slot as Record<string, unknown>).teacher as string ?? '',
           type: slot.type.charAt(0).toUpperCase() + slot.type.slice(1),
           startTime: slot.start_time.slice(0, 5), // HH:MM
           endTime: slot.end_time.slice(0, 5),

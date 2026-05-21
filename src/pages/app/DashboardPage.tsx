@@ -539,7 +539,7 @@ import { getCategory, CATEGORY_COLORS } from '../../lib/scheduleUtils';
 function ScheduleWidget() {
   const navigate = useNavigate();
   const key = todayKey();
-  const { data: schedule, isLoading } = useSchedule({ day: key });
+  const { data: schedule, isLoading } = useSchedule();
   const classes = useMemo(() => schedule?.[key] ?? [], [schedule, key]);
   const now = useMemo(() => new Date(), []);
   const current = useMemo(() => classes.find((c) => {

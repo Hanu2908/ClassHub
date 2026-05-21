@@ -304,6 +304,7 @@ export function useUpsertScheduleSlot() {
       endTime: string;
       room?: string;
       type?: string;
+      teacher?: string;
     }) => {
       const row = {
         ...(input.id ? { id: input.id } : {}),
@@ -314,6 +315,7 @@ export function useUpsertScheduleSlot() {
         end_time: input.endTime,
         room: input.room ?? null,
         type: (input.type?.toLowerCase() ?? 'lecture') as SlotType,
+        teacher: input.teacher ?? null,
         created_by: userId!,
       };
       const { error } = await supabase.from('timetable_slots').upsert(row);
@@ -329,6 +331,67 @@ export function useDeleteScheduleSlot() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('timetable_slots').delete().eq('id', id);
       if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
+  });
+}
+
+/** Clear all slots for a specific day in the section */
+export function useClearDaySlots() {
+  const qc = useQueryClient();
+  const { sectionId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (dayOfWeek: number) => {
+      if (!sectionId) throw new Error('No section');
+      const { error } = await supabase
+        .from('timetable_slots')
+        .delete()
+        .eq('section_id', sectionId)
+        .eq('day_of_week', dayOfWeek);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
+  });
+}
+
+/** Copy all slots from one day to another (replaces target day) */
+export function useCopyDaySlots() {
+  const qc = useQueryClient();
+  const { sectionId, userId } = useAuthContext();
+  return useMutation({
+    mutationFn: async ({ fromDay, toDay }: { fromDay: number; toDay: number }) => {
+      if (!sectionId) throw new Error('No section');
+      // 1. Fetch source day slots
+      const { data: source, error: fetchErr } = await supabase
+        .from('timetable_slots')
+        .select('subject_id, start_time, end_time, room, type, teacher')
+        .eq('section_id', sectionId)
+        .eq('day_of_week', fromDay);
+      if (fetchErr) throw fetchErr;
+      if (!source || source.length === 0) throw new Error('No slots to copy');
+
+      // 2. Delete target day
+      const { error: delErr } = await supabase
+        .from('timetable_slots')
+        .delete()
+        .eq('section_id', sectionId)
+        .eq('day_of_week', toDay);
+      if (delErr) throw delErr;
+
+      // 3. Insert copies
+      const copies = source.map(s => ({
+        section_id: sectionId!,
+        subject_id: s.subject_id,
+        day_of_week: toDay,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        room: s.room,
+        type: s.type,
+        teacher: s.teacher,
+        created_by: userId!,
+      }));
+      const { error: insErr } = await supabase.from('timetable_slots').insert(copies);
+      if (insErr) throw insErr;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
   });
