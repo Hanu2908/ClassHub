@@ -116,11 +116,8 @@ Deno.serve(async (req) => {
         sent++;
       } else {
         failed++;
-        // Clean up stale/expired subscriptions (410 Gone, 404 Not Found)
-        if (result.error?.includes("410") || result.error?.includes("404") || result.error?.includes("expired") || result.error?.includes("gone")) {
-          await serviceClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-          cleaned++;
-        }
+        await serviceClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        cleaned++;
       }
 
       await serviceClient.from("notification_events").insert({
