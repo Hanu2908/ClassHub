@@ -1290,9 +1290,9 @@ function AssignmentsScroll() {
                       {a.subject.includes('DBMS') ? <BookOpen size={16} color="var(--accent-primary)" /> : a.subject.includes('OS') ? <Cpu size={16} color="var(--status-safe)" /> : <BookMarked size={16} color="var(--status-warning)" />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="truncate t-button" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{a.title}</div>
+                      <div className="truncate t-button" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{a.subject}</div>
                       <div className="truncate t-mono-sm" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>{a.subject}</span>
+                        <span>{a.title}</span>
                         {a.attachments && a.attachments.length > 0 && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'var(--text-muted)' }}>
                             · <Paperclip size={10} style={{ display: 'inline-block' }} /> {a.attachments.length}

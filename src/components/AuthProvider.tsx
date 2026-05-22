@@ -7,6 +7,7 @@ import { queryClient } from '../lib/queryClient';
 import { showToast } from '../components/Toast';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import InstallPwaBanner from './InstallPwaBanner';
+import { ensurePushSubscription } from '../lib/pushNotifications';
 
 const SKIT_DOMAIN = '@skit.ac.in';
 
@@ -358,13 +359,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Supabase Realtime Notifications Sync ──
   const authUser = useAppStore(s => s.authUser);
+  const authUserId = authUser?.id;
   const setNotifications = useAppStore(s => s.setNotifications);
 
   useEffect(() => {
-    if (!authUser?.id) return;
+    if (!authUserId) return;
+    const userId = authUserId;
 
     if (import.meta.env.DEV) {
-      console.log(`[Realtime] Setting up notifications subscription for user: ${authUser.id}`);
+      console.log(`[Realtime] Setting up notifications subscription for user: ${userId}`);
     }
 
     // 1. Initial Fetch of notifications
@@ -372,7 +375,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from('notification_events')
         .select('*')
-        .eq('recipient_id', authUser!.id)
+        .eq('recipient_id', userId)
         .order('created_at', { ascending: false })
         .limit(50); // Cap at 50 to keep it fast
 
@@ -389,16 +392,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     fetchInitialNotifications();
 
+    // Heal push subscriptions that may have been cleaned up server-side.
+    // Only in production — SW is intentionally disabled in dev.
+    if (import.meta.env.PROD) {
+      ensurePushSubscription().catch((err) => {
+        console.warn('[Push] ensurePushSubscription on auth ready failed:', err);
+      });
+    }
+
     // 2. Real-time Subscription for notification_events
     const channel = supabase
-      .channel(`user-notifications-${authUser.id}`)
+      .channel(`user-notifications-${userId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'notification_events',
-          filter: `recipient_id=eq.${authUser.id}`,
+          filter: `recipient_id=eq.${userId}`,
         },
         async (payload) => {
           if (import.meta.env.DEV) console.log('[Realtime] notification change:', payload);
@@ -433,17 +444,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       )
       .subscribe((status) => {
         if (import.meta.env.DEV) {
-          console.log(`[Realtime] Notifications subscription status for ${authUser!.id}:`, status);
+          console.log(`[Realtime] Notifications subscription status for ${userId}:`, status);
         }
       });
 
     return () => {
       if (import.meta.env.DEV) {
-        console.log(`[Realtime] Cleaning up notifications subscription for user: ${authUser!.id}`);
+        console.log(`[Realtime] Cleaning up notifications subscription for user: ${userId}`);
       }
       supabase.removeChannel(channel);
     };
-  }, [authUser?.id, setNotifications]);
+  }, [authUserId, setNotifications]);
 
   return (
     <>

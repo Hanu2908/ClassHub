@@ -11,7 +11,13 @@ export default function InstallPwaBanner() {
   const [isVisible, setIsVisible] = useState(false);
   const [hasAutoDismissed, setHasAutoDismissed] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
-  const [platform, setPlatform] = useState<'android' | 'ios' | 'other' | null>(null);
+  const [platform] = useState<'android' | 'ios' | 'other' | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(userAgent)) return 'ios';
+    if (/android/.test(userAgent)) return 'android';
+    return 'other';
+  });
 
   // Reset hasAutoDismissed when leaving the dashboard, so if they return they see it again.
   useEffect(() => {
@@ -37,64 +43,48 @@ export default function InstallPwaBanner() {
   }, [isVisible]);
 
   useEffect(() => {
-    const checkPwaStatus = () => {
-      // Only display if user is on '/app/home' and is fully onboarded (has sectionId)
-      if (location.pathname !== '/app/home' || !authUser?.sectionId) {
-        setIsVisible(false);
-        return;
-      }
+    // Only display if user is on '/app/home' and is fully onboarded (has sectionId)
+    if (location.pathname !== '/app/home' || !authUser?.sectionId) {
+      const timer = setTimeout(() => setIsVisible(false), 0);
+      return () => clearTimeout(timer);
+    }
 
-      // If already auto-dismissed this entry, do not show
-      if (hasAutoDismissed) {
-        setIsVisible(false);
-        return;
-      }
+    // If already auto-dismissed this entry, do not show
+    if (hasAutoDismissed) {
+      const timer = setTimeout(() => setIsVisible(false), 0);
+      return () => clearTimeout(timer);
+    }
 
-      // 1. Detect if running inside a standalone app (already installed)
-      const isStandalone = 
-        window.matchMedia('(display-mode: standalone)').matches || 
-        ('standalone' in window.navigator && (window.navigator as Navigator & { standalone?: boolean }).standalone === true);
+    // 1. Detect if running inside a standalone app (already installed)
+    const isStandalone = 
+      window.matchMedia('(display-mode: standalone)').matches || 
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-      if (isStandalone) {
-        setIsVisible(false);
-        return;
-      }
+    if (isStandalone) {
+      const timer = setTimeout(() => setIsVisible(false), 0);
+      return () => clearTimeout(timer);
+    }
 
-      // 2. Check if a snooze is active in localStorage
-      const snoozedAt = localStorage.getItem('classhub-pwa-snoozed');
-      if (snoozedAt) {
-        const timeDiff = Date.now() - parseInt(snoozedAt, 10);
-        if (timeDiff < SNOOZE_DURATION) {
-          setIsVisible(false);
-          return;
-        }
-      }
-
-      // 3. Detect operating system
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      const isIOS = /iphone|ipad|ipod/.test(userAgent);
-      const isAndroid = /android/.test(userAgent);
-
-      if (isIOS) {
-        setPlatform('ios');
-        // For iOS, show banner after a short onboarding/loading delay (e.g. 2.5 seconds)
-        const timer = setTimeout(() => setIsVisible(true), 2500);
+    // 2. Check if a snooze is active in localStorage
+    const snoozedAt = localStorage.getItem('classhub-pwa-snoozed');
+    if (snoozedAt) {
+      const timeDiff = Date.now() - parseInt(snoozedAt, 10);
+      if (timeDiff < SNOOZE_DURATION) {
+        const timer = setTimeout(() => setIsVisible(false), 0);
         return () => clearTimeout(timer);
-      } else if (deferredPrompt || isAndroid) {
-        setPlatform('android');
-        // For Android/Chrome: if deferredPrompt is captured, show immediately. 
-        // If deferredPrompt is not yet set but it's Android, it might be loading, so wait.
-        if (deferredPrompt) {
-          setIsVisible(true);
-        }
-      } else {
-        setPlatform('other');
       }
-    };
+    }
 
-    const timer = setTimeout(checkPwaStatus, 0);
-    return () => clearTimeout(timer);
-  }, [deferredPrompt, location.pathname, authUser?.sectionId, hasAutoDismissed]);
+    // 3. Handle visibility
+    if (platform === 'ios') {
+      // For iOS, show banner after a short onboarding/loading delay (e.g. 2.5 seconds)
+      const timer = setTimeout(() => setIsVisible(true), 2500);
+      return () => clearTimeout(timer);
+    } else if (deferredPrompt) {
+      const timer = setTimeout(() => setIsVisible(true), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [deferredPrompt, location.pathname, authUser?.sectionId, hasAutoDismissed, platform]);
 
   // Handle dismiss (snooze banner for 7 days)
   const handleDismiss = (e?: React.MouseEvent) => {

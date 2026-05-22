@@ -586,6 +586,7 @@ export interface AssignmentSubmission {
   status: 'pending' | 'submitted';
   submittedAt: string | null;
   nudgeSent: boolean;
+  crVerified: boolean;
 }
 
 export function useAssignmentSubmissions(assignmentId: string | null) {
@@ -599,7 +600,7 @@ export function useAssignmentSubmissions(assignmentId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('submissions')
-        .select('id, assignment_id, student_id, submission_link, status, submitted_at, nudge_sent')
+        .select('id, assignment_id, student_id, submission_link, status, submitted_at, nudge_sent, cr_verified')
         .eq('assignment_id', assignmentId!);
       if (error) throw error;
       
@@ -611,6 +612,7 @@ export function useAssignmentSubmissions(assignmentId: string | null) {
         status: s.status as 'pending' | 'submitted',
         submittedAt: s.submitted_at,
         nudgeSent: s.nudge_sent,
+        crVerified: s.cr_verified ?? false,
       }));
     },
   });

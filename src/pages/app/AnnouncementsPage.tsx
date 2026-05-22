@@ -159,10 +159,16 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+interface SectionAck {
+  announcement_id: string;
+  user_id: string;
+  acknowledged_at: string;
+}
+
 interface AcksTrackingSheetProps {
   announcement: Announcement;
   onClose: () => void;
-  sectionAcks: { announcement_id: string; user_id: string; acknowledged_at: string }[];
+  sectionAcks: SectionAck[];
   members: SectionMember[];
 }
 

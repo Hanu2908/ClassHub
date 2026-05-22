@@ -96,6 +96,53 @@ export async function unsubscribeFromPush(): Promise<void> {
   }
 }
 
+/**
+ * Heal function: called on app boot / auth ready.
+ * If the browser has an active push subscription and permission is granted,
+ * ensure it is registered in Supabase. The server may have cleaned up a stale
+ * endpoint — this silently re-saves the current subscription so pushes resume
+ * without any user action.
+ */
+export async function ensurePushSubscription(): Promise<void> {
+  try {
+    if (!isPushSupported()) return;
+    if (Notification.permission !== 'granted') return;
+    if (!VAPID_PUBLIC_KEY) return;
+
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return; // User hasn't subscribed — nothing to heal
+
+    const json = sub.toJSON();
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Upsert the current subscription — idempotent if already present
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .upsert(
+        {
+          user_id: user.id,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth,
+        },
+        { onConflict: 'endpoint' }
+      );
+
+    if (error) {
+      console.warn('[Push] ensurePushSubscription upsert failed:', error);
+    } else {
+      console.log('[Push] Subscription ensured in DB');
+    }
+  } catch (err) {
+    // Non-critical — don't throw, just log
+    console.warn('[Push] ensurePushSubscription failed:', err);
+  }
+}
+
 /** Convert base64-encoded VAPID key to Uint8Array for pushManager */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -107,3 +154,4 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   }
   return outputArray;
 }
+
