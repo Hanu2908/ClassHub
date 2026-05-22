@@ -139,6 +139,7 @@ export function FileUploader({
           ref={fileInputRef}
           type="file"
           multiple
+          accept="image/*,application/pdf,text/*,.csv,application/vnd.openxmlformats-officedocument.*,application/vnd.ms-excel,application/msword,application/vnd.ms-powerpoint"
           onChange={handleFileInput}
           style={{ display: 'none' }}
         />

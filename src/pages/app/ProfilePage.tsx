@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
@@ -166,14 +166,28 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* CGPA Calculator */}
+        {/* TOOLS */}
         <div>
           <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>TOOLS</p>
-          <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%' }} onClick={() => showToast('CGPA Calculator coming soon!', 'info')}>
-            <Calculator size={18} color="var(--accent-primary)" />
-            <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
-            <ChevronRight size={16} color="var(--text-muted)" />
-          </button>
+          <div className="card" style={{ padding: 0 }}>
+            <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }} onClick={() => showToast('CGPA Calculator coming soon!', 'info')}>
+              <Calculator size={18} color="var(--accent-primary)" />
+              <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
+            <a
+              id="resource-hub-btn"
+              href="https://resource-hub-drab.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="list-row"
+              style={{ textDecoration: 'none', color: 'inherit', borderRadius: 0 }}
+            >
+              <ExternalLink size={18} color="var(--status-safe)" />
+              <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>Resource Hub</span>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </a>
+          </div>
         </div>
 
         {/* PWA Install */}
@@ -234,6 +248,20 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Account — Sign Out */}
+        <div>
+          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>ACCOUNT</p>
+          <button
+            id="sign-out-btn"
+            className="list-row"
+            style={{ width: '100%' }}
+            onClick={() => { signOut(); navigate('/'); }}
+          >
+            <LogOut size={18} color="var(--status-critical)" />
+            <span className="t-body-medium" style={{ flex: 1, color: 'var(--status-critical)', textAlign: 'left' }}>Sign Out</span>
+          </button>
         </div>
 
         {/* Danger zone */}

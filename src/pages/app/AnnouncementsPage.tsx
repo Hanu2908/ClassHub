@@ -12,6 +12,7 @@ import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '..
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
+import { buildStoragePath } from '../../lib/utils/attachments';
 
 type Filter = 'all' | 'critical' | 'general';
 
@@ -51,10 +52,10 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
       if (parentId && files.length > 0) {
         if (!sectionId || !userId) throw new Error('Missing section context or user context');
         for (const file of files) {
-          const path = `${sectionId}/announcements/${parentId}/${file.name}`;
+          const path = buildStoragePath(sectionId, 'announcement', parentId, file.name);
           const { error: uploadErr } = await supabase.storage
             .from('attachments')
-            .upload(path, file, { cacheControl: '3600', upsert: true });
+            .upload(path, file, { cacheControl: '3600', upsert: false });
           if (uploadErr) throw uploadErr;
 
           const { error: dbErr } = await supabase

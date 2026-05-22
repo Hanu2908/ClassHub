@@ -272,7 +272,6 @@ function SubmissionTracker() {
                               <ExternalLink size={14} color="var(--accent-primary)" />
                             </a>
                           )}
-                          {/* CR unmark button */}
                           <button
                             onClick={async () => {
                               if (!selected) return;
@@ -288,15 +287,15 @@ function SubmissionTracker() {
                               }
                             }}
                             style={{
-                              background: 'rgba(52,201,123,0.12)', border: '1px solid rgba(52,201,123,0.3)',
+                              background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
                               borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: 'var(--status-safe)', fontSize: 11, fontWeight: 600, gap: 4,
+                              color: '#f59e0b', fontSize: 11, fontWeight: 600, gap: 4,
                             }}
                             title={`Unmark ${st.name} as submitted`}
                           >
-                            <CheckCircle2 size={12} />
-                            Verified
+                            <XCircle size={12} />
+                            Unmark
                           </button>
                         </div>
                       ) : (
@@ -323,7 +322,6 @@ function SubmissionTracker() {
                           >
                             <Bell size={14} color="var(--accent-primary)" />
                           </button>
-                          {/* CR mark as verified */}
                           <button
                             onClick={async () => {
                               if (!selected) return;
@@ -349,7 +347,6 @@ function SubmissionTracker() {
                             <CheckCircle2 size={12} />
                             Mark
                           </button>
-                          <XCircle size={16} color="var(--status-critical)" />
                         </div>
                       )}
                     </div>
