@@ -25,13 +25,14 @@ export default function PDFViewerPage() {
   const [numPages, setNumPages] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.2); // Render scaling multiplier
   const [loading, setLoading] = useState<boolean>(true);
-  const [rendering, setRendering] = useState<boolean>(false);
   const [scriptLoaded, setScriptLoaded] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderTaskRef = useRef<any>(null);
+  const renderingRef = useRef<boolean>(false);
 
   // Load PDF.js dynamically from CDN
   useEffect(() => {
@@ -107,10 +108,10 @@ export default function PDFViewerPage() {
 
   // Page Render Functionality
   const renderPage = useCallback(async () => {
-    if (!pdf || !canvasRef.current || rendering) return;
+    if (!pdf || !canvasRef.current || renderingRef.current) return;
 
     try {
-      setRendering(true);
+      renderingRef.current = true;
       const page = await pdf.getPage(pageNum);
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
@@ -132,18 +133,17 @@ export default function PDFViewerPage() {
       
       const viewport = page.getViewport({ scale: responsiveScale * dpr });
 
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      
-      // Set CSS dimensions for dynamic responsive fitting
-      canvas.style.width = `${containerWidth * scale}px`;
-      canvas.style.maxWidth = 'none';
-      canvas.style.height = 'auto';
+      // Create an offscreen canvas for double-buffered flicker-free rendering
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = viewport.width;
+      tempCanvas.height = viewport.height;
+      const tempContext = tempCanvas.getContext('2d');
 
-      context.scale(1, 1);
+      if (!tempContext) return;
+      tempContext.scale(1, 1);
 
       const renderContext = {
-        canvasContext: context,
+        canvasContext: tempContext,
         viewport: viewport
       };
 
@@ -152,15 +152,26 @@ export default function PDFViewerPage() {
 
       await renderTask.promise;
       renderTaskRef.current = null;
+
+      // Once pre-rendered completely, copy contents to the visible canvas in a single paint operation
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      // Set CSS dimensions for dynamic responsive fitting
+      canvas.style.width = `${containerWidth * scale}px`;
+      canvas.style.maxWidth = 'none';
+      canvas.style.height = 'auto';
+
+      context.drawImage(tempCanvas, 0, 0);
     } catch (err) {
       const error = err as any; // eslint-disable-line @typescript-eslint/no-explicit-any
       if (error?.name !== 'RenderingCancelledException') {
         console.error('[PDFViewer] Render error:', err);
       }
     } finally {
-      setRendering(false);
+      renderingRef.current = false;
     }
-  }, [pdf, pageNum, scale, rendering]);
+  }, [pdf, pageNum, scale]);
 
   // Trigger page render when page, PDF, or scale changes
   useEffect(() => {
@@ -180,6 +191,69 @@ export default function PDFViewerPage() {
       active = false;
     };
   }, [renderPage]);
+
+  // Track scale in a ref to keep event listeners stable
+  const scaleRef = useRef(scale);
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
+  // Implement pinch-to-zoom on the PDF container, preventing default page-wide zoom
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let startDist = 0;
+    let startScale = 1.2;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        startDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        startScale = scaleRef.current;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && startDist > 0) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = dist / startDist;
+        const newScale = Math.min(Math.max(startScale * factor, 0.6), 3.0);
+        setScale(Math.round(newScale * 10) / 10);
+      }
+    };
+
+    const onTouchEnd = () => {
+      startDist = 0;
+    };
+
+    const onGestureStart = (e: Event) => {
+      e.preventDefault();
+    };
+
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd);
+    container.addEventListener('touchcancel', onTouchEnd);
+    container.addEventListener('gesturestart', onGestureStart, { passive: false });
+    container.addEventListener('gesturechange', onGestureStart, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
+      container.removeEventListener('touchcancel', onTouchEnd);
+      container.removeEventListener('gesturestart', onGestureStart);
+      container.removeEventListener('gesturechange', onGestureStart);
+    };
+  }, []);
 
   // Navigation handlers
   const handlePrevPage = () => {
@@ -351,15 +425,18 @@ export default function PDFViewerPage() {
       </header>
 
       {/* Main Content Render Panel */}
-      <main style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        overflow: 'auto',
-        position: 'relative'
-      }}>
+      <main 
+        ref={containerRef}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          overflow: 'auto',
+          position: 'relative'
+        }}
+      >
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
             <Loader2 className="spin" size={32} color="var(--accent-primary)" />
