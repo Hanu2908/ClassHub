@@ -18,6 +18,7 @@ const AssignmentsPage = lazy(() => import('./pages/app/AssignmentsPage'));
 const AttendancePage = lazy(() => import('./pages/app/AttendancePage'));
 const CRCommandPage = lazy(() => import('./pages/app/CRCommandPage'));
 const ManageSubjectsPage = lazy(() => import('./pages/app/ManageSubjectsPage'));
+const PDFViewerPage = lazy(() => import('./pages/app/PDFViewerPage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -108,6 +109,7 @@ export default function App() {
             <Route path="/app/attendance" element={<RequireAuth><RequireHub><AttendancePage /></RequireHub></RequireAuth>} />
             <Route path="/app/cr-command" element={<RequireAuth><RequireHub><CRCommandPage /></RequireHub></RequireAuth>} />
             <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><ManageSubjectsPage /></RequireHub></RequireAuth>} />
+            <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><PDFViewerPage /></RequireHub></RequireAuth>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

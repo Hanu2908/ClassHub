@@ -1,82 +1,20 @@
 // @ts-nocheck
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import webpush from "npm:web-push@3.6.7";
-
-// ── Inline helpers (self-contained for Dashboard deploy) ──
-
-function getContext(req: Request) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const jwt = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
-  if (!supabaseUrl || !serviceRoleKey || !jwt) throw new Error("Missing env or JWT");
-  return { supabaseUrl, serviceRoleKey, anonKey, jwt };
-}
-
-async function requireCr(ctx: ReturnType<typeof getContext>) {
-  const userClient = createClient(ctx.supabaseUrl, ctx.anonKey, {
-    global: { headers: { Authorization: `Bearer ${ctx.jwt}` } },
-  });
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) throw new Error("Invalid JWT");
-
-  const serviceClient = createClient(ctx.supabaseUrl, ctx.serviceRoleKey);
-  const { data: profile, error: profileError } = await serviceClient
-    .from("users").select("id, role, section_id").eq("id", authData.user.id).single();
-  if (profileError || !profile || profile.role !== "cr" || !profile.section_id) {
-    throw new Error("CR role required");
-  }
-  return { serviceClient, user: authData.user, profile };
-}
-
-async function sendPush(
-  sub: { endpoint: string; p256dh: string; auth: string },
-  payload: { title: string; body: string; url?: string },
-) {
-  const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY");
-  const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY");
-  if (!vapidPublic || !vapidPrivate) return { ok: false, error: "Missing VAPID keys" };
-  try {
-    webpush.setVapidDetails(
-      Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@classhub.local",
-      vapidPublic, vapidPrivate,
-    );
-    await webpush.sendNotification(
-      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-      JSON.stringify(payload),
-    );
-    return { ok: true, error: null };
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Push send failed" };
-  }
-}
-
-function getCors(req: Request) {
-  const origin = req.headers.get("Origin") ?? "";
-  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map(s => s.trim().replace(/\/+$/, ""))
-    .filter(Boolean);
-  const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-  if (allowed.includes(origin)) headers["Access-Control-Allow-Origin"] = origin;
-  else if (allowed.length === 1 && origin) headers["Access-Control-Allow-Origin"] = origin;
-  return headers;
-}
+import { getFunctionContext, requireCr } from "../_shared/auth.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendWebPush } from "../_shared/push.ts";
+import { processBatched } from "../_shared/batch.ts";
 
 // ── Main handler ──
 
 Deno.serve(async (req) => {
-  const headers = getCors(req);
+  const headers = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers });
 
   try {
     const { announcementId } = await req.json();
     if (!announcementId) throw new Error("announcementId is required");
 
-    const ctx = getContext(req);
+    const ctx = getFunctionContext(req);
     const { serviceClient, profile, user } = await requireCr(ctx);
 
     // Fetch announcement — must be in CR's section and critical
@@ -102,12 +40,13 @@ Deno.serve(async (req) => {
 
     if (subError) throw subError;
 
-    // Send push to each subscription and log
+    // Send push + log in batches of 10 with fault isolation
     let sent = 0;
     let failed = 0;
     let cleaned = 0;
-    for (const sub of subscriptions ?? []) {
-      const result = await sendPush(sub, {
+
+    const results = await processBatched(subscriptions ?? [], async (sub) => {
+      const result = await sendWebPush(sub, {
         title: announcement.title,
         body: announcement.message_content,
         url: `/app/announcements?highlight=${announcement.id}`,
@@ -132,7 +71,9 @@ Deno.serve(async (req) => {
         error_message: result.error,
         sent_at: result.ok ? new Date().toISOString() : null,
       });
-    }
+
+      return result;
+    });
 
     await serviceClient.from("announcements").update({ notification_sent: true }).eq("id", announcement.id);
 

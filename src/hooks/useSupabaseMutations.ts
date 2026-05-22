@@ -143,6 +143,101 @@ export function useCreateAssignment() {
   });
 }
 
+export function useUpdateAssignment() {
+  const qc = useQueryClient();
+  const { sectionId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      title: string;
+      description?: string;
+      subjectId: string;
+      dueDate: string;
+      sets?: { id?: string; label: string; description: string; rollStart: number; rollEnd: number; pdfUrl?: string | null; pageNumbers?: string | null }[];
+      notifyClass?: boolean;
+    }) => {
+      // 1. Update assignment
+      const { error: assignmentErr } = await supabase
+        .from('assignments')
+        .update({
+          title: input.title,
+          description: input.description ?? null,
+          subject_id: input.subjectId,
+          due_date: input.dueDate,
+        })
+        .eq('id', input.id);
+      if (assignmentErr) throw assignmentErr;
+
+      // 2. Sync assignment sets
+      const { data: existingSets, error: getSetsErr } = await supabase
+        .from('assignment_sets')
+        .select('id')
+        .eq('assignment_id', input.id);
+      if (getSetsErr) throw getSetsErr;
+
+      const existingIds = (existingSets ?? []).map(s => s.id);
+
+      if (input.sets && input.sets.length > 0) {
+        const setsToUpsert = input.sets.map(s => ({
+          ...(s.id ? { id: s.id } : {}),
+          assignment_id: input.id,
+          set_label: s.label,
+          description: s.description,
+          roll_start: s.rollStart,
+          roll_end: s.rollEnd,
+          pdf_url: s.pdfUrl ?? null,
+          page_numbers: s.pageNumbers ?? null,
+        }));
+
+        const { error: upsertErr } = await supabase
+          .from('assignment_sets')
+          .upsert(setsToUpsert);
+        if (upsertErr) throw upsertErr;
+
+        const inputSetIds = input.sets.map(s => s.id).filter(Boolean) as string[];
+        const idsToDelete = existingIds.filter(id => !inputSetIds.includes(id));
+        if (idsToDelete.length > 0) {
+          const { error: delErr } = await supabase
+            .from('assignment_sets')
+            .delete()
+            .in('id', idsToDelete);
+          if (delErr) throw delErr;
+        }
+      } else {
+        if (existingIds.length > 0) {
+          const { error: delErr } = await supabase
+            .from('assignment_sets')
+            .delete()
+            .eq('assignment_id', input.id);
+          if (delErr) throw delErr;
+        }
+      }
+
+      // 3. Optional class push notifications
+      if (input.notifyClass && sectionId) {
+        supabase.functions.invoke('send-custom-notification', {
+          body: {
+            title: `Assignment Updated: ${input.title}`,
+            body: `The assignment details or deadline have been modified. Please review.`,
+            sectionId: sectionId
+          }
+        }).then(({ data, error: funcError }) => {
+          if (funcError) {
+            console.warn('Failed to send class update push notifications:', funcError);
+          } else {
+            console.log('Custom update push notification sent:', data);
+          }
+        }).catch(err => {
+          console.warn('Error invoking send-custom-notification function:', err);
+        });
+      }
+
+      return input.id;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assignments'] }),
+  });
+}
+
 export function useDeleteAssignment() {
   const qc = useQueryClient();
   return useMutation({

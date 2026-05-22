@@ -74,6 +74,7 @@ export interface Assignment {
   title: string;
   subject: string;
   subjectCode: string;
+  subjectId?: string;
   dueDate: string;
   description: string;
   status: 'pending' | 'submitted';
@@ -135,6 +136,7 @@ export type NotificationType =
   | 'assignment'
   | 'announcement'
   | 'system'
+  | 'custom'
   | 'critical_announcement'
   | 'ack_nudge'
   | 'assignment_reminder'

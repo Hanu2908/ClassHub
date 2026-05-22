@@ -285,13 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (payload) => {
           console.log('[Realtime] announcement change:', payload);
           queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
-          if (payload.eventType === 'INSERT') {
-            useAppStore.getState().addNotification({
-              title: payload.new.priority === 'critical' ? 'Critical Announcement' : 'New Announcement',
-              body: payload.new.title,
-              type: 'announcement'
-            });
-          }
+          // Notification toast/bell is handled by the notification_events realtime subscription
         }
       )
       .on(
@@ -300,13 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (payload) => {
           console.log('[Realtime] assignment change:', payload);
           queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] });
-          if (payload.eventType === 'INSERT') {
-            useAppStore.getState().addNotification({
-              title: 'New Assignment',
-              body: payload.new.title,
-              type: 'assignment'
-            });
-          }
+          // Notification toast/bell is handled by the notification_events realtime subscription
         }
       )
       .on(
@@ -315,13 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (payload) => {
           console.log('[Realtime] poll change:', payload);
           queryClient.invalidateQueries({ queryKey: ['polls', sectionId] });
-          if (payload.eventType === 'INSERT') {
-            useAppStore.getState().addNotification({
-              title: 'New Poll',
-              body: payload.new.question,
-              type: 'system'
-            });
-          }
+          // Notification toast/bell is handled by the notification_events realtime subscription
         }
       )
       .on(

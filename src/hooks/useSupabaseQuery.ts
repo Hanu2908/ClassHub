@@ -252,7 +252,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
       const assignmentsQuery = supabase
         .from('assignments')
         .select(`
-          id, title, due_date, description, created_at,
+          id, title, subject_id, due_date, description, created_at,
           subjects:subject_id (code, name),
           assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers),
           attachments (id, filename, file_size, file_type, storage_path)
@@ -299,6 +299,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
           title: a.title,
           subject: subjectData?.name ?? 'Unknown',
           subjectCode: subjectData?.code ?? '???',
+          subjectId: a.subject_id,
           dueDate: a.due_date,
           description: a.description ?? '',
           status: (sub?.status ?? 'pending') as 'pending' | 'submitted',
@@ -509,7 +510,7 @@ export function useAttendance() {
 
       const subjects: AttendanceSubject[] = (data ?? []).map(r => {
         const subj = r.subjects as SubjectRelation;
-        const total = r.present + r.od + r.makeup + r.absent;
+        const total = r.present + r.od + r.absent;
         const attended = r.present + r.od + r.makeup;
         const pct = r.percentage ?? (total > 0 ? (attended / total) * 100 : 0);
         // canSkip: how many more can skip while staying >= 75%
@@ -640,7 +641,7 @@ export function useSectionAttendance() {
       const aggregates: Record<string, StudentAttendanceAggregate> = {};
       
       (data ?? []).forEach(r => {
-        const total = r.present + r.od + r.makeup + r.absent;
+        const total = r.present + r.od + r.absent;
         const attended = r.present + r.od + r.makeup;
         
         if (!aggregates[r.user_id]) {

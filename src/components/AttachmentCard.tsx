@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Download, FileText, FileImage, FileCode, File, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Attachment } from '../store/appStore';
@@ -9,6 +10,7 @@ interface AttachmentCardProps {
 }
 
 export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) {
+  const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async (e: React.MouseEvent) => {
@@ -27,12 +29,13 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
       }
 
       if (data?.signedUrl) {
-        let url = data.signedUrl;
-        if (pageNumber) {
-          const firstPage = pageNumber.match(/\d+/)?.[0];
-          if (firstPage) url += `#page=${firstPage}`;
+        const isPDF = attachment.fileType.toLowerCase().includes('pdf') || attachment.filename.toLowerCase().endsWith('.pdf');
+        if (isPDF) {
+          const firstPage = pageNumber ? (pageNumber.match(/\d+/)?.[0] || '1') : '1';
+          navigate(`/app/pdf-viewer?url=${encodeURIComponent(data.signedUrl)}&page=${firstPage}&range=${encodeURIComponent(pageNumber || '')}&title=${encodeURIComponent(attachment.filename)}`);
+        } else {
+          window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
         }
-        window.open(url, '_blank', 'noopener,noreferrer');
       }
     } catch (err) {
       console.error('[AttachmentCard] Failed to download:', err);

@@ -50,7 +50,6 @@ export function parseERPAttendance(rawText: string): ParsedSubject[] {
     if (numericCols.length < 2) continue;
     if (numericCols.some(c => isNaN(Number(c)))) continue;
 
-    const pct = parseFloat(numericCols[numericCols.length - 1]);
     const counts = numericCols.slice(0, -1).map(Number);
 
     // We'll preserve the raw "present" and "makeup" columns as reported by ERP
@@ -70,7 +69,7 @@ export function parseERPAttendance(rawText: string): ParsedSubject[] {
       makeup = mk;
       absent = ab;
       attendedTotal = pres + o + mk;
-      total = pres + o + mk + ab; // ERP formula including makeup in denominator
+      total = pres + o + ab; // ERP formula: Present + OD + Absent (makeup excluded from total held)
     } else if (counts.length === 3) {
       const [pres, ab, tot] = counts;
       present = pres;
@@ -84,6 +83,8 @@ export function parseERPAttendance(rawText: string): ParsedSubject[] {
       absent = total - present;
       attendedTotal = att;
     }
+
+    const pct = total > 0 ? Number(((attendedTotal / total) * 100).toFixed(2)) : 0;
 
     const beforeType = cols.slice(0, typeColIdx);
     const startIdx = /^\d+$/.test(beforeType[0] ?? '') ? 1 : 0;

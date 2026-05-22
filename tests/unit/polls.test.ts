@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { generateAnonymousToken } from "../../src/lib/utils";
 import { pollSchema } from "../../src/lib/validation/polls.schema";
 import { isExpired, TWO_DAYS_MS } from "../../src/store/appStore";
@@ -50,8 +50,11 @@ describe("isExpired", () => {
   });
 
   it("returns false at exactly 2 days after deadline", () => {
-    const exactlyTwoDays = new Date(Date.now() - TWO_DAYS_MS).toISOString();
+    const now = Date.now();
+    const exactlyTwoDays = new Date(now - TWO_DAYS_MS).toISOString();
+    const spy = vi.spyOn(Date, "now").mockReturnValue(now);
     expect(isExpired(exactlyTwoDays)).toBe(false);
+    spy.mockRestore();
   });
 
   it("returns true more than 2 days after deadline", () => {

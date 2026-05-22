@@ -1,147 +1,106 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import webpush from "npm:web-push"
+// @ts-nocheck
+import { getFunctionContext, requireCr } from "../_shared/auth.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendWebPush } from "../_shared/push.ts";
+import { processBatched } from "../_shared/batch.ts";
 
-const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || ""
-const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") || ""
-const VAPID_SUBJECT = "mailto:admin@classhub.com"
+// ── Main handler: Send custom CR notification to all section members ──
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-}
-
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders })
-  }
+Deno.serve(async (req: Request) => {
+  const headers = getCorsHeaders(req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers });
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
-    )
+    const { title, body, sectionId } = await req.json();
 
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    )
-
-    const { title, body, sectionId } = await req.json()
-
-    console.log(`[send-custom-notification] Request:`, { title, body, sectionId })
+    console.log(`[send-custom-notification] Request:`, { title, body, sectionId });
 
     if (!title || !body || !sectionId) {
       return new Response(JSON.stringify({ error: "Missing title, body, or sectionId" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...headers, "Content-Type": "application/json" },
         status: 400,
-      })
+      });
     }
 
-    // 1. Verify user is a CR for this section
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser()
-    if (userError || !userData.user) throw new Error("Unauthorized")
+    const ctx = getFunctionContext(req);
+    const { serviceClient, profile, user } = await requireCr(ctx);
 
-    const { data: authorData, error: authorError } = await supabaseClient
-      .from("users")
-      .select("role, section_id")
-      .eq("id", userData.user.id)
-      .single()
-
-    if (authorError || authorData.role !== "cr" || authorData.section_id !== sectionId) {
-      throw new Error("Only the CR of this section can send notifications")
+    // Verify CR owns this section
+    if (profile.section_id !== sectionId) {
+      throw new Error("Only the CR of this section can send notifications");
     }
 
-    // 2. Fetch all subscriptions for users in this section
+    // Fetch all subscriptions for users in this section
     const { data: subscriptions, error: subsError } = await serviceClient
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth, user_id, users!inner(section_id)")
-      .eq("users.section_id", sectionId)
+      .eq("users.section_id", sectionId);
 
-    if (subsError) throw subsError
+    if (subsError) throw subsError;
 
-    console.log(`[send-custom-notification] Found ${subscriptions?.length || 0} subscriptions for section ${sectionId}`)
+    console.log(`[send-custom-notification] Found ${subscriptions?.length || 0} subscriptions for section ${sectionId}`);
 
-    // 3. Setup web-push
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+    // Send pushes + log events in batches with fault isolation
+    const staleIds: string[] = [];
+    let sent = 0;
+    let failed = 0;
 
-    // 4. Send pushes
-    const payload = {
-      title: title,
-      body: body,
-      type: "system"
-    }
+    await processBatched(subscriptions ?? [], async (subRecord) => {
+      const result = await sendWebPush(subRecord, {
+        title,
+        body,
+      });
 
-    const staleIds: string[] = []
-    let sent = 0
-    let failed = 0
-
-    await Promise.all((subscriptions || []).map(async (subRecord) => {
-      const sub = {
-        endpoint: subRecord.endpoint,
-        keys: {
-          p256dh: subRecord.p256dh,
-          auth: subRecord.auth
-        }
+      if (result.ok) {
+        sent++;
+      } else {
+        failed++;
+        staleIds.push(subRecord.endpoint);
       }
 
-      try {
-        await webpush.sendNotification(
-          sub,
-          JSON.stringify(payload)
-        )
-        sent++
-        
-        // Log event
-        await serviceClient.from("notification_events").insert({
-          recipient_id: subRecord.user_id,
-          title: payload.title,
-          body: payload.body,
-          type: "system",
-          status: "sent",
-        })
-      } catch (err: any) {
-        failed++
-        staleIds.push(subRecord.endpoint)
-      }
-    }))
+      // Log event in notification_events with correct column name and enum value
+      await serviceClient.from("notification_events").insert({
+        section_id: sectionId,
+        recipient_id: subRecord.user_id,
+        actor_id: user.id,
+        kind: "custom",
+        status: result.ok ? "sent" : "failed",
+        target_table: "announcements",
+        title,
+        body,
+        error_message: result.error,
+        sent_at: result.ok ? new Date().toISOString() : null,
+      });
 
-    // 5. Cleanup stale subscriptions
+      return result;
+    });
+
+    // Cleanup stale subscriptions
     if (staleIds.length > 0) {
       await serviceClient
         .from("push_subscriptions")
         .delete()
-        .in("endpoint", staleIds)
+        .in("endpoint", staleIds);
     }
-
-    // 6. Broadcast Realtime event to trigger Bell Icon
-    const channel = serviceClient.channel(`section-${sectionId}`)
-    await channel.send({
-      type: 'broadcast',
-      event: 'custom_notification',
-      payload: { title, body }
-    })
 
     return new Response(
       JSON.stringify({
         ok: true,
         sent,
         failed,
-        cleaned: staleIds.length
+        cleaned: staleIds.length,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...headers, "Content-Type": "application/json" },
         status: 200,
       }
-    )
+    );
 
   } catch (error: any) {
-    console.error("[send-custom-notification] Error:", error.message)
-    // Return 200 with ok: false so frontend doesn't crash on parse
+    console.error("[send-custom-notification] Error:", error.message);
     return new Response(JSON.stringify({ ok: false, error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...headers, "Content-Type": "application/json" },
       status: 200,
-    })
+    });
   }
-})
+});

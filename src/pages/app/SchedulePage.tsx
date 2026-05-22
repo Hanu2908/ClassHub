@@ -98,6 +98,13 @@ function AddSlotSheet({ day, existingSlots, onClose }: AddSlotSheetProps) {
     setEndTime(calculateEndTime(newStart, type));
   };
 
+  const startHour = useMemo(() => {
+    if (!startTime) return 8;
+    return Number(startTime.split(':')[0]);
+  }, [startTime]);
+
+  const isEarlyAM = startHour >= 0 && startHour < 8;
+
   const handleSave = async () => {
     if (!subjectId || !startTime || !endTime) {
       showToast('Select a subject and set times', 'error');
@@ -180,6 +187,48 @@ function AddSlotSheet({ day, existingSlots, onClose }: AddSlotSheetProps) {
             <input id="slot-end-input" style={inputStyle} type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
           </div>
         </div>
+
+        {isEarlyAM && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            padding: '10px 12px',
+            background: 'rgba(251, 191, 36, 0.06)',
+            border: '1px solid rgba(251, 191, 36, 0.2)',
+            borderRadius: 'var(--radius-md)',
+            boxSizing: 'border-box',
+          }}>
+            <span className="t-caption" style={{ color: 'var(--status-warning)', display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.3 }}>
+              <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+              Scheduled at {formatTime(startTime)} (AM). Did you mean PM?
+            </span>
+            <button
+              onClick={() => {
+                const [h, m] = startTime.split(':');
+                const newHour = (Number(h) + 12) % 24;
+                const newTime = `${newHour.toString().padStart(2, '0')}:${m}`;
+                handleStartTimeChange(newTime);
+              }}
+              className="t-button"
+              style={{
+                background: 'rgba(251, 191, 36, 0.12)',
+                border: '1px solid rgba(251, 191, 36, 0.25)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--status-warning)',
+                padding: '4px 8px',
+                fontSize: 10,
+                cursor: 'pointer',
+                fontFamily: 'var(--font-mono)',
+                whiteSpace: 'nowrap',
+                fontWeight: 600,
+              }}
+            >
+              Switch to PM
+            </button>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -456,7 +505,10 @@ export default function SchedulePage() {
 
   // Jump to now visibility
   useEffect(() => {
-    if (!isToday) { setShowJumpToNow(false); return; }
+    if (!isToday) {
+      const timer = setTimeout(() => setShowJumpToNow(false), 0);
+      return () => clearTimeout(timer);
+    }
     const container = timelineRef.current?.closest('.page-content');
     if (!container) return;
 
