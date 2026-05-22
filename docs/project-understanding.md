@@ -16,7 +16,7 @@
 - sections, users, subjects, attendance_records, announcements,
   acknowledgments, assignments, assignment_sets, submissions,
   polls, votes, push_subscriptions
-(See schema: [docs/schema.sql](docs/schema.sql))
+(See schema: [docs/schema.sql](docs/schema.sql) | Roadmap: [docs/roadmap.md](docs/roadmap.md))
 
 **Key code areas**
 - UI pages: [src/pages/app](src/pages/app)
