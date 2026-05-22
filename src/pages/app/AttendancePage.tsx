@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, Loader, Edit3,
   TrendingUp, TrendingDown, Target, Info, ChevronDown, ChevronUp,
-  BarChart3, PieChart, Calendar, Plus, Minus, Calculator
+  BarChart3, PieChart, Calendar, Plus, Minus, Calculator,
+  Crown, Trophy, Sparkles, Flame, BookOpen, Clock
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing } from '../../components/Shared';
@@ -123,6 +124,56 @@ export default function AttendancePage() {
   const [erpText, setErpText] = useState('');
   const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
 
+  // LocalStorage-based timezone-resilient daily review streak
+  const [streakCount, setStreakCount] = useState<number>(0);
+
+  useEffect(() => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const storedStreakStr = localStorage.getItem('classhub_attendance_streak_count');
+      const storedLastDateStr = localStorage.getItem('classhub_attendance_streak_last_date');
+
+      let currentStreak = storedStreakStr ? parseInt(storedStreakStr, 10) : 0;
+
+      if (storedLastDateStr) {
+        const lastDate = new Date(storedLastDateStr);
+        lastDate.setHours(0, 0, 0, 0);
+
+        const diffTime = today.getTime() - lastDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          // Increment streak
+          currentStreak += 1;
+          localStorage.setItem('classhub_attendance_streak_count', currentStreak.toString());
+          localStorage.setItem('classhub_attendance_streak_last_date', today.toISOString());
+        } else if (diffDays > 1) {
+          // Reset streak to 1
+          currentStreak = 1;
+          localStorage.setItem('classhub_attendance_streak_count', '1');
+          localStorage.setItem('classhub_attendance_streak_last_date', today.toISOString());
+        } else if (diffDays === 0 && currentStreak === 0) {
+          // Safeguard
+          currentStreak = 1;
+          localStorage.setItem('classhub_attendance_streak_count', '1');
+          localStorage.setItem('classhub_attendance_streak_last_date', today.toISOString());
+        }
+      } else {
+        // First ever check-in
+        currentStreak = 1;
+        localStorage.setItem('classhub_attendance_streak_count', '1');
+        localStorage.setItem('classhub_attendance_streak_last_date', today.toISOString());
+      }
+      setTimeout(() => {
+        setStreakCount(currentStreak);
+      }, 0);
+    } catch (err) {
+      console.error('Failed to run daily attendance streak engine:', err);
+    }
+  }, []);
+
   // Playground / Sandbox States
   const [activePlaygroundTab, setActivePlaygroundTab] = useState<'boost' | 'bunk' | 'target' | 'od' | 'mix'>('boost');
   const [boostVal, setBoostVal] = useState<number>(5);
@@ -190,6 +241,14 @@ export default function AttendancePage() {
   const overallAttended = useMemo(() => subjects.reduce((sum, s) => sum + s.present, 0), [subjects]);
   const overallTotal = useMemo(() => subjects.reduce((sum, s) => sum + s.total, 0), [subjects]);
   const safeOverall = overallTotal > 0 ? (overallAttended / overallTotal) * 100 : overall;
+
+  const canSkipOverall = useMemo(() => {
+    return overallTotal > 0 ? Math.max(0, Math.floor((overallAttended - 0.75 * overallTotal) / 0.75)) : 0;
+  }, [overallTotal, overallAttended]);
+
+  const needToAttendOverall = useMemo(() => {
+    return overallTotal > 0 ? Math.max(0, Math.ceil((0.75 * overallTotal - overallAttended) / 0.25)) : 0;
+  }, [overallTotal, overallAttended]);
 
   const arcSegments = useMemo(() => {
     if (subjects.length === 0) return [];
@@ -284,27 +343,40 @@ export default function AttendancePage() {
   }, [subjects]);
 
   const tierStyleClass = useMemo(() => {
-    if (safeOverall >= 85) return 'attendance-elite';
-    if (safeOverall >= 75) return 'attendance-safe';
-    if (safeOverall >= 65) return 'attendance-warning';
-    if (safeOverall >= 45) return 'attendance-danger';
-    return 'attendance-critical';
+    if (safeOverall >= 90) return 'attendance-zenith';
+    if (safeOverall >= 80) return 'attendance-gold';
+    if (safeOverall >= 75) return 'attendance-silver';
+    return 'attendance-warned';
   }, [safeOverall]);
 
   const tierBadgeText = useMemo(() => {
-    if (safeOverall >= 85) return '👑 ELITE STUDENT';
-    if (safeOverall >= 75) return '😎 SAFE ZONE';
-    if (safeOverall >= 65) return '⚠️ WARNING ZONE';
-    if (safeOverall >= 45) return '🔥 DANGER ZONE';
-    return '💀 LEGENDARY';
+    if (safeOverall >= 90) return '✨ ZENITH STUDENT';
+    if (safeOverall >= 80) return '🏆 GOLD STANDING';
+    if (safeOverall >= 75) return '🥈 SILVER STANDING';
+    return '⚠️ WARNED STANDING';
   }, [safeOverall]);
 
   const tierMessage = useMemo(() => {
-    if (safeOverall >= 85) return "Attendance so high HOD is asking for your autograph. Nerd alert! 🤓";
-    if (safeOverall >= 75) return "Perfect balance. Life is set, just keep maintaining it! ✨";
-    if (safeOverall >= 65) return "Living on the edge? A couple of bunks and it's game over. Sambhal ja! 🛑";
-    if (safeOverall >= 45) return "HOD room loading... parent call incoming. Prayers sent. 🙏";
-    return "College is temporary, backlogs are permanent. Next sem phodenge! 🗿";
+    if (safeOverall >= 90) {
+      return `Attendance so high HOD is asking for your autograph. Nerd alert! 🤓 Status clear: you can skip up to ${canSkipOverall} classes without dropping below 75%.`;
+    }
+    if (safeOverall >= 80) {
+      return `Perfect balance. Life is set, just keep maintaining it! ✨ Status clear: you can skip up to ${canSkipOverall} classes without dropping below 75%.`;
+    }
+    if (safeOverall >= 75) {
+      if (canSkipOverall > 2) {
+        return `Silver standing! Technically, you can still skip up to ${canSkipOverall} classes without dropping below 75%. Safe for now! 🥈`;
+      }
+      return `Living on the edge! You can only skip ${canSkipOverall} more class${canSkipOverall === 1 ? '' : 'es'} before game over. Sambhal ja! 🛑`;
+    }
+    return `HOD room loading... parent call incoming. You need to attend at least ${needToAttendOverall} consecutive classes to recover 75% standing. Prayers sent. 🙏`;
+  }, [safeOverall, canSkipOverall, needToAttendOverall]);
+
+  const TierIcon = useMemo(() => {
+    if (safeOverall >= 90) return Crown;
+    if (safeOverall >= 80) return Trophy;
+    if (safeOverall >= 75) return Sparkles;
+    return AlertTriangle;
   }, [safeOverall]);
 
   // Dynamic simulation computations
@@ -498,48 +570,131 @@ export default function AttendancePage() {
           </div>
         ) : (
           <>
-            {/* Top Level Premium Header Stats Card */}
-            <div className="tier-glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-              <div style={{
-                position: 'absolute', top: 0, left: '20%', right: '20%', height: 1.5,
-                background: `linear-gradient(90deg, transparent, var(--tier-color, var(--accent-primary)), transparent)`,
-              }} />
-
-              <span className="badge" style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid var(--tier-border)',
-                color: 'var(--tier-color)',
-                fontSize: 10,
-                letterSpacing: '1px',
-                fontWeight: 700,
-                padding: '4px 12px',
-                borderRadius: 20,
-                marginBottom: 14
-              }}>{tierBadgeText}</span>
-
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-                <DonutRing percentage={safeOverall} size={104} strokeWidth={9}>
-                  <span className="t-feature" style={{ color: 'var(--tier-color)' }}>
+            {/* Top Level Premium 4-Column Zenith Stats Grid */}
+            <div className={`zenith-stats-grid ${tierStyleClass}`}>
+              {/* CELL 1: STANDING */}
+              <div className="zenith-stat-cell">
+                <span className="t-mono-sm" style={{
+                  color: 'var(--tier-color)',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  marginBottom: 8,
+                  opacity: 0.9
+                }}>
+                  Standing
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <TierIcon size={16} style={{ color: 'var(--tier-color)' }} />
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
                     {safeOverall.toFixed(1)}%
                   </span>
-                </DonutRing>
+                </div>
+                <span className="t-badge" style={{
+                  color: 'var(--tier-color)',
+                  fontSize: '8px',
+                  fontWeight: 800,
+                  letterSpacing: '0.5px',
+                  padding: '2px 6px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--tier-border)',
+                  borderRadius: '100px'
+                }}>
+                  {tierBadgeText.replace(/👑 |✨ |🏆 |🥈 |⚠️ /g, '')}
+                </span>
               </div>
 
-              <p className="t-button" style={{ color: 'var(--text-primary)', maxWidth: '90%', margin: '0 auto', lineHeight: 1.4 }}>
+              {/* CELL 2: SESSIONS */}
+              <div className="zenith-stat-cell">
+                <span className="t-mono-sm" style={{
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  marginBottom: 8
+                }}>
+                  Sessions
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <BookOpen size={16} style={{ color: 'var(--accent-primary)' }} />
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
+                    {overallAttended}
+                  </span>
+                </div>
+                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '9px' }}>
+                  Attended
+                </span>
+              </div>
+
+              {/* CELL 3: STUDY TIME */}
+              <div className="zenith-stat-cell">
+                <span className="t-mono-sm" style={{
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  marginBottom: 8
+                }}>
+                  Lectures
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Clock size={16} style={{ color: 'var(--status-info)' }} />
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
+                    {overallTotal}
+                  </span>
+                </div>
+                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '9px' }}>
+                  Total Held
+                </span>
+              </div>
+
+              {/* CELL 4: STREAK */}
+              <div className="zenith-stat-cell">
+                <span className="t-mono-sm" style={{
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  marginBottom: 8
+                }}>
+                  Streak
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Flame size={16} className="flame-glow-pulse" />
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
+                    {streakCount}
+                  </span>
+                </div>
+                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '9px' }}>
+                  Daily Visits
+                </span>
+              </div>
+            </div>
+
+            {/* Premium Motivational Glassmorphic Ribbon */}
+            <div className={`card ${tierStyleClass}`} style={{
+              padding: '12px 16px',
+              border: '1px solid var(--tier-border)',
+              background: 'var(--bg-surface)',
+              boxShadow: 'var(--tier-shadow)',
+              backdropFilter: 'var(--glass-blur)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center'
+            }}>
+              <p className="t-body-medium" style={{ 
+                color: 'var(--text-primary)', 
+                fontSize: '13px', 
+                lineHeight: '1.4', 
+                fontWeight: 600
+              }}>
                 {tierMessage}
               </p>
-
-              <div style={{ display: 'flex', gap: 24, marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border-default)', width: '100%', justifyContent: 'center' }}>
-                <div>
-                  <p className="t-mono" style={{ color: 'var(--text-primary)' }}>{overallAttended}</p>
-                  <p className="t-helper" style={{ color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 2 }}>Attended</p>
-                </div>
-                <div style={{ width: 1, background: 'var(--border-default)', alignSelf: 'stretch' }} />
-                <div>
-                  <p className="t-mono" style={{ color: 'var(--text-primary)' }}>{overallTotal}</p>
-                  <p className="t-helper" style={{ color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 2 }}>Total Held</p>
-                </div>
-              </div>
             </div>
 
             {/* Premium Custom SVG Charts Card */}

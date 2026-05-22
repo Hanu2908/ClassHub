@@ -204,16 +204,12 @@ Supabase Auth. Never generate a separate ID for a user.
 
 ---
 
-## ADR-012 — Announcement Accountability: Four-Layer System
-**Decision:** Critical announcement visibility is enforced through
-four sequential layers:
-1. Push notification (V1.1) → gets student to open the app
-2. Persistent red banner blocking all navigation → forces attention
-3. Acknowledge button → writes to `acknowledgments` table
-4. 1-Click Nudge → fires push only to unacknowledged students
-**`nudge_sent` boolean:** Set to `true` after first nudge to prevent
-duplicate sends. Must be reset to `false` manually if a second nudge
-is intentionally needed.
+## ADR-012 — Announcement Accountability: Three-Layer System
+**Decision:** Critical announcement visibility and tracking are enforced through a three-layer high-fidelity loop:
+1. **Real-time Notification / Web Push (V1.1):** Alerts the student immediately on their device or in-app to open the dashboard.
+2. **Prominent Dashboard Critical Carousel:** A high-visibility, high-aesthetic red-accented alerts container positioned at the absolute top of the dashboard feed, ensuring it is seen first without obtrusively hijacking general navigation.
+3. **Interactive Read Receipt (Acknowledge) & Targeted Nudges:** The student taps "Acknowledge" to log a read receipt. CRs can monitor granular section acknowledgment statistics in real-time and send a targeted 1-click nudge to unacknowledged students.
+**`nudge_sent` boolean:** Set to `true` after the first nudge to prevent duplicate sends. Must be reset to `false` manually if a second nudge is intentionally needed.
 **Date:** May 2026
 
 ---

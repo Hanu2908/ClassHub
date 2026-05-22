@@ -62,7 +62,7 @@ V1.0 is a **closed beta** targeting **Section P2** (~70 students). The system is
 | # | Feature | Description |
 |---|---------|-------------|
 | 1 | **Personalized Assignment Sets** | Professors assign different work to different roll number ranges. Students see only their assigned set. Major product differentiator. |
-| 2 | **Critical Announcement System** | Four-layer accountability: Push (V1.1) → Persistent red banner → Acknowledge button → 1-Click Nudge to unacknowledged students. |
+| 2 | **Critical Announcement System** | Three-layer accountability: Real-time alert/Push → Dashboard Critical Carousel → Acknowledge button & Targeted Nudges. |
 | 3 | **Attendance Predictions** | Students paste ERP text; app parses aggregate data (attended/total per subject). Shows debarment risk, can-skip, and must-attend calculations. No raw class logs stored. |
 | 4 | **Two-Type Poll System** | General polls are truly anonymous (no `student_id` ever). Actionable polls let CR see individual responses, with a visible warning badge before the student votes. |
 | 5 | **Invite-Code Onboarding** | OAuth proves SKIT identity; invite code proves section membership. CR generates/rotates invite codes. |
@@ -228,7 +228,7 @@ assignments (1) ──→ (N) assignment_sets
 
 ### How Critical Acknowledgment Flow Works
 
-This is the **Four-Layer Accountability System** (ADR-012):
+This is the **Three-Layer Accountability System** (ADR-012):
 
 ```mermaid
 sequenceDiagram
@@ -238,24 +238,23 @@ sequenceDiagram
     participant DB as Database
 
     CR->>DB: INSERT announcement (priority='critical')
-    Note over System: Layer 1 (V1.1): Push notification
-    System-->>Student: Web Push → "Open the app"
+    Note over System: Layer 1 (V1.1): Real-time notification/Push
+    System-->>Student: Web Push or In-app Alert → "Critical announcement active"
     
-    Note over System: Layer 2: Persistent red banner
-    Student->>System: Opens app
-    System->>Student: Red banner blocks all navigation
-    Student->>Student: Cannot dismiss, must read
+    Note over System: Layer 2: Dashboard Critical Carousel
+    Student->>System: Opens dashboard
+    System->>Student: Renders high-visibility carousel card at top
+    Note over Student: Non-obtrusive to nav, but visually striking
     
-    Note over System: Layer 3: Acknowledge button
+    Note over System: Layer 3: Acknowledge button & Targeted Nudges
     Student->>DB: UPSERT acknowledgments (announcement_id, user_id)
     DB-->>System: UNIQUE(announcement_id, user_id) — idempotent
-    Note over Student: Banner clears after acknowledgment
+    Note over Student: Carousel card clears after acknowledgment
     
-    Note over System: Layer 4: 1-Click Nudge
     CR->>System: "Nudge unacknowledged"
     System->>DB: Query users LEFT JOIN acknowledgments WHERE ack IS NULL
-    System->>System: Edge Function: send push to each unacknowledged
-    System->>DB: SET nudge_sent = true (blocks duplicate sends)
+    System->>System: Edge Function: send push nudge to unacknowledged
+    System->>DB: SET nudge_sent = true (blocks duplicate nudges)
 ```
 
 **Database mechanics:**

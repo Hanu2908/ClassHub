@@ -337,52 +337,98 @@ function LegendChip({ cat }: { cat: SubjectCategory }) {
   );
 }
 
+interface SwipeableCardSlot {
+  id: string;
+  subject: string;
+  code: string;
+  room: string;
+  teacher: string;
+  type: string;
+  startTime: string;
+  endTime: string;
+}
+
 // ── Swipeable schedule card ──────────────────────────────────────────────────
 
 function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
-  cls: { id: string; subject: string; code: string; room: string; teacher: string; type: string; startTime: string; endTime: string };
+  cls: SwipeableCardSlot;
   isNow: boolean;
   isPast: boolean;
   isCR: boolean;
-  onDelete: (id: string) => void;
+  onDelete: (cls: SwipeableCardSlot) => void;
   style: React.CSSProperties;
 }) {
   const [swipeX, setSwipeX] = useState(0);
-  const [startX, setStartX] = useState(0);
-  const [swiping, setSwiping] = useState(false);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const startXRef = useRef(0);
+  const isSnappedRef = useRef(false);
 
   const cat = getCategory(cls.code, cls.type);
   const catStyle = CATEGORY_COLORS[cat];
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
     if (!isCR) return;
-    setStartX(e.touches[0].clientX);
-    setSwiping(true);
+    setIsSwiping(true);
+    startXRef.current = e.clientX;
+    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!swiping || !isCR) return;
-    const diff = e.touches[0].clientX - startX;
-    if (diff < 0) setSwipeX(Math.max(diff, -80));
-  };
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isSwiping || !isCR) return;
+    const diffX = e.clientX - startXRef.current;
+    let targetX = isSnappedRef.current ? -80 + diffX : diffX;
 
-  const handleTouchEnd = () => {
-    if (!swiping) return;
-    setSwiping(false);
-    if (swipeX < -50) {
-      // Show delete confirmation
-      if (window.confirm(`Remove "${cls.subject}" at ${formatTime(cls.startTime)}?`)) {
-        onDelete(cls.id);
-      }
+    // Premium elastic rubber-band cap
+    if (targetX > 0) {
+      targetX = targetX * 0.15; // resist swiping right
+    } else if (targetX < -80) {
+      targetX = -80 + (targetX + 80) * 0.3; // resist past -80px
     }
+
+    setSwipeX(targetX);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isSwiping) return;
+    setIsSwiping(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+
+    if (swipeX < -70) {
+      // Swipe deep to delete
+      onDelete(cls);
+      setSwipeX(0);
+      isSnappedRef.current = false;
+    } else if (swipeX < -40) {
+      // Snap open to reveal trash button
+      setSwipeX(-80);
+      isSnappedRef.current = true;
+    } else {
+      // Snap shut
+      setSwipeX(0);
+      isSnappedRef.current = false;
+    }
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    if (!isSwiping) return;
+    setIsSwiping(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
     setSwipeX(0);
+    isSnappedRef.current = false;
   };
 
   return (
     <div style={{ ...style, position: 'absolute', overflow: 'hidden', borderRadius: 'var(--radius-md)' }}>
       {/* Delete zone behind */}
-      {isCR && swipeX < 0 && (
-        <div className="swipe-delete-zone">
+      {isCR && (
+        <div 
+          className="swipe-delete-zone" 
+          onClick={() => onDelete(cls)}
+          style={{
+            opacity: swipeX < 0 ? 1 : 0,
+            transition: 'opacity 0.25s ease',
+          }}
+        >
           <Trash2 size={18} />
         </div>
       )}
@@ -392,14 +438,16 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
           position: 'relative',
           left: 0, right: 0, top: 0, bottom: 0,
           height: '100%',
-          transform: `translateX(${swipeX}px)`,
-          transition: swiping ? 'none' : 'transform 0.2s ease',
+          transform: `translate3d(${swipeX}px, 0, 0)`,
+          transition: isSwiping ? 'none' : 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
           background: catStyle.bg,
           borderColor: catStyle.border,
+          touchAction: 'pan-y',
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
       >
         <div className="schedule-card-accent" style={{ background: catStyle.color }} />
         <div className="schedule-card-body">
@@ -429,6 +477,7 @@ export default function SchedulePage() {
   const [slideKey, setSlideKey] = useState(0);
   const [showJumpToNow, setShowJumpToNow] = useState(false);
   const [confirmClearDay, setConfirmClearDay] = useState(false);
+  const [slotToDelete, setSlotToDelete] = useState<SwipeableCardSlot | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const nowLineRef = useRef<HTMLDivElement>(null);
 
@@ -530,35 +579,100 @@ export default function SchedulePage() {
     }
   }, []);
 
-  // Day switching with swipe
-  const swipeRef = useRef({ startX: 0, startY: 0, active: false });
+  // Day switching with real-time horizontal timeline slider
+  const [dragX, setDragX] = useState(0);
+  const [isTimelineDragging, setIsTimelineDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, isSwipe: false, isLocked: false });
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    // Ignore swiping if starting on a class card, which has swipe-to-delete
+  const handleTimelinePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.closest('.schedule-card') || target.closest('.swipe-delete-zone')) {
+    if (target.closest('.schedule-card') || target.closest('.swipe-delete-zone') || target.closest('.t-button') || target.closest('button')) {
       return;
     }
-    swipeRef.current = { startX: e.clientX, startY: e.clientY, active: true };
+    
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      isSwipe: false,
+      isLocked: false
+    };
+    setIsTimelineDragging(true);
+    setDragX(0);
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!swipeRef.current.active) return;
-    swipeRef.current.active = false;
-    const diffX = e.clientX - swipeRef.current.startX;
-    const diffY = Math.abs(e.clientY - swipeRef.current.startY);
-    if (Math.abs(diffX) > 50 && diffY < 80) {
-      const idx = DAYS.indexOf(selectedDay);
-      if (diffX < 0 && idx < DAYS.length - 1) {
-        setSlideDir('right');
-        setSlideKey(k => k + 1);
-        setSelectedDay(DAYS[idx + 1]);
-      } else if (diffX > 0 && idx > 0) {
-        setSlideDir('left');
-        setSlideKey(k => k + 1);
-        setSelectedDay(DAYS[idx - 1]);
+  const handleTimelinePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isTimelineDragging) return;
+    
+    const ref = dragStartRef.current;
+    const diffX = e.clientX - ref.x;
+    const diffY = e.clientY - ref.y;
+    
+    if (!ref.isLocked) {
+      if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+          ref.isSwipe = true;
+        }
+        ref.isLocked = true;
       }
     }
+    
+    if (ref.isSwipe) {
+      if (e.cancelable) e.preventDefault();
+      
+      const idx = DAYS.indexOf(selectedDay);
+      let targetX = diffX;
+      
+      // Rubber banding boundaries
+      if (idx === 0 && diffX > 0) {
+        targetX = diffX * 0.35;
+      } else if (idx === DAYS.length - 1 && diffX < 0) {
+        targetX = diffX * 0.35;
+      }
+      
+      setDragX(targetX);
+    }
+  };
+
+  const handleTimelinePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isTimelineDragging) return;
+    setIsTimelineDragging(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    
+    const ref = dragStartRef.current;
+    if (ref.isSwipe) {
+      const idx = DAYS.indexOf(selectedDay);
+      const threshold = 80;
+      
+      if (dragX < -threshold && idx < DAYS.length - 1) {
+        // Switch to next day
+        setSlideDir('');
+        setSelectedDay(DAYS[idx + 1]);
+        setDragX(150);
+        setTimeout(() => {
+          setDragX(0);
+        }, 30);
+      } else if (dragX > threshold && idx > 0) {
+        // Switch to previous day
+        setSlideDir('');
+        setSelectedDay(DAYS[idx - 1]);
+        setDragX(-150);
+        setTimeout(() => {
+          setDragX(0);
+        }, 30);
+      } else {
+        setDragX(0);
+      }
+    } else {
+      setDragX(0);
+    }
+  };
+
+  const handleTimelinePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isTimelineDragging) return;
+    setIsTimelineDragging(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    setDragX(0);
   };
 
   const handleDaySelect = (day: ScheduleDay) => {
@@ -567,13 +681,6 @@ export default function SchedulePage() {
     setSlideDir(newIdx > curIdx ? 'right' : 'left');
     setSlideKey(k => k + 1);
     setSelectedDay(day);
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteSlotMutation.mutateAsync(id);
-      showToast('Slot removed', 'info');
-    } catch { showToast('Failed to remove slot', 'error'); }
   };
 
   const handleClearDay = async () => {
@@ -679,93 +786,108 @@ export default function SchedulePage() {
         role="tabpanel"
         id={`schedule-panel-${selectedDay}`}
         aria-labelledby={`day-tab-${selectedDay}`}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
+        onPointerDown={handleTimelinePointerDown}
+        onPointerMove={handleTimelinePointerMove}
+        onPointerUp={handleTimelinePointerUp}
+        onPointerCancel={handleTimelinePointerCancel}
+        style={{
+          touchAction: 'pan-y'
+        }}
       >
         <p className="t-caption" style={{ color: 'var(--text-secondary)', padding: '8px 0 4px' }}>
           {dateSubheading}
         </p>
 
-        {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ display: 'inline-block' }}>
-              <Loader size={24} color="var(--accent-primary)" className="spin" />
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            transform: `translate3d(${dragX}px, 0, 0)`,
+            transition: isTimelineDragging ? 'none' : 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
+          }}
+        >
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ display: 'inline-block' }}>
+                <Loader size={24} color="var(--accent-primary)" className="spin" />
+              </div>
             </div>
-          </div>
-        ) : classes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-            <div className="schedule-empty-icon">
-              <CalendarCheck size={28} color="var(--status-safe)" />
+          ) : classes.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+              <div className="schedule-empty-icon">
+                <CalendarCheck size={28} color="var(--status-safe)" />
+              </div>
+              <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>No classes{isToday ? ' today' : ''}!</p>
+              <p className="t-body">{isToday ? 'Enjoy your free day.' : `${DAY_FULL[selectedDay]} is free.`}</p>
             </div>
-            <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>No classes{isToday ? ' today' : ''}!</p>
-            <p className="t-body">{isToday ? 'Enjoy your free day.' : `${DAY_FULL[selectedDay]} is free.`}</p>
-          </div>
-        ) : (
-          <div
-            ref={timelineRef}
-            className={`schedule-timeline ${slideDir === 'right' ? 'schedule-slide-right' : slideDir === 'left' ? 'schedule-slide-left' : ''}`}
-            key={slideKey}
-            style={{ height: timelineHeight + 16, marginTop: 8 }}
-          >
-            {/* Hour marks */}
-            {hourMarks.map(h => {
-              const y = (h - timeRange.startHour) * PX_PER_HOUR;
-              return (
-                <div key={h} className="schedule-hour-mark" style={{ top: y }}>
-                  <span className="schedule-hour-label">
-                    {h % 12 || 12}{h < 12 ? 'a' : 'p'}
-                  </span>
-                  <div className="schedule-hour-line" />
-                </div>
-              );
-            })}
+          ) : (
+            <div
+              ref={timelineRef}
+              className={`schedule-timeline ${slideDir === 'right' ? 'schedule-slide-right' : slideDir === 'left' ? 'schedule-slide-left' : ''}`}
+              key={slideKey}
+              style={{ height: timelineHeight + 16, marginTop: 8 }}
+            >
+              {/* Hour marks */}
+              {hourMarks.map(h => {
+                const y = (h - timeRange.startHour) * PX_PER_HOUR;
+                return (
+                  <div key={h} className="schedule-hour-mark" style={{ top: y }}>
+                    <span className="schedule-hour-label">
+                      {h % 12 || 12}{h < 12 ? 'a' : 'p'}
+                    </span>
+                    <div className="schedule-hour-line" />
+                  </div>
+                );
+              })}
 
-            {/* Gap indicators */}
-            {gaps.map((gap, i) => {
-              const y = ((gap.startMin / 60) - timeRange.startHour) * PX_PER_HOUR;
-              const h = (gap.duration / 60) * PX_PER_HOUR;
-              return (
-                <div key={`gap-${i}`} className="schedule-gap" style={{ top: y, height: h }}>
-                  <span className="schedule-gap-label">{formatDuration(gap.duration)}</span>
-                </div>
-              );
-            })}
+              {/* Gap indicators */}
+              {gaps.map((gap, i) => {
+                const y = ((gap.startMin / 60) - timeRange.startHour) * PX_PER_HOUR;
+                const h = (gap.duration / 60) * PX_PER_HOUR;
+                return (
+                  <div key={`gap-${i}`} className="schedule-gap" style={{ top: y, height: h }}>
+                    <span className="schedule-gap-label">{formatDuration(gap.duration)}</span>
+                  </div>
+                );
+              })}
 
-            {/* Class cards */}
-            {classes.map((cls, i) => {
-              const startMin = toMinutes(cls.startTime);
-              const endMin = toMinutes(cls.endTime);
-              const durationMin = endMin - startMin;
-              const y = ((startMin / 60) - timeRange.startHour) * PX_PER_HOUR;
-              const h = Math.max((durationMin / 60) * PX_PER_HOUR - 2, MIN_CARD_HEIGHT); // -2 for gap between cards
-              const isNowClass = isToday && startMin <= nowMinutes && nowMinutes <= endMin;
-              const isPastClass = isToday && endMin < nowMinutes;
+              {/* Class cards */}
+              {classes.map((cls, i) => {
+                const startMin = toMinutes(cls.startTime);
+                const endMin = toMinutes(cls.endTime);
+                const durationMin = endMin - startMin;
+                const y = ((startMin / 60) - timeRange.startHour) * PX_PER_HOUR;
+                const h = Math.max((durationMin / 60) * PX_PER_HOUR - 2, MIN_CARD_HEIGHT); // -2 for gap between cards
+                const isNowClass = isToday && startMin <= nowMinutes && nowMinutes <= endMin;
+                const isPastClass = isToday && endMin < nowMinutes;
 
-              return (
-                <SwipeableCard
-                  key={cls.id}
-                  cls={cls}
-                  isNow={isNowClass}
-                  isPast={isPastClass}
-                  isCR={isCR}
-                  onDelete={handleDelete}
-                  style={{
-                    top: y,
-                    height: h,
-                    left: 52,
-                    right: 8,
-                    animationDelay: `${i * 40}ms`,
-                  }}
-                />
-              );
-            })}
+                return (
+                  <SwipeableCard
+                    key={cls.id}
+                    cls={cls}
+                    isNow={isNowClass}
+                    isPast={isPastClass}
+                    isCR={isCR}
+                    onDelete={setSlotToDelete}
+                    style={{
+                      top: y,
+                      height: h,
+                      left: 52,
+                      right: 8,
+                      animationDelay: `${i * 40}ms`,
+                    }}
+                  />
+                );
+              })}
 
-            {/* Now line */}
-            {showNowLine && (
-              <div ref={nowLineRef} className="schedule-now-line" style={{ top: nowLineY }} />
-            )}
-          </div>
-        )}
+              {/* Now line */}
+              {showNowLine && (
+                <div ref={nowLineRef} className="schedule-now-line" style={{ top: nowLineY }} />
+              )}
+            </div>
+          )}
+        </div>
       </main>
 
       {/* Jump to now pill */}
@@ -802,6 +924,108 @@ export default function SchedulePage() {
           schedule={schedule}
           onClose={() => setShowCopySheet(false)}
         />
+      )}
+
+      {slotToDelete && (
+        <BottomSheet onClose={() => setSlotToDelete(null)} title="Remove Class from Timetable">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 0 20px' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              padding: 16,
+              background: 'var(--status-critical-bg)',
+              border: '1px solid rgba(248, 113, 113, 0.2)',
+              borderRadius: 'var(--radius-lg)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={20} color="var(--status-critical)" />
+                <span className="t-subtitle" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Confirm Deletion</span>
+              </div>
+              
+              <p className="t-body" style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Are you sure you want to remove this class from the schedule?
+              </p>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: 12,
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                marginTop: 4
+              }}>
+                <div style={{
+                  width: 4,
+                  alignSelf: 'stretch',
+                  background: CATEGORY_COLORS[getCategory(slotToDelete.code, slotToDelete.type)].color,
+                  borderRadius: 2
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="t-button" style={{ color: 'var(--text-primary)', margin: 0 }}>{slotToDelete.subject}</p>
+                  <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>
+                    {formatTime(slotToDelete.startTime)} – {formatTime(slotToDelete.endTime)} · {slotToDelete.room || 'No Room'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setSlotToDelete(null)}
+                className="t-button"
+                style={{
+                  flex: 1,
+                  padding: 13,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (slotToDelete) {
+                    try {
+                      await deleteSlotMutation.mutateAsync(slotToDelete.id);
+                      showToast('Class successfully removed', 'info');
+                    } catch {
+                      showToast('Failed to remove class', 'error');
+                    }
+                    setSlotToDelete(null);
+                  }
+                }}
+                disabled={deleteSlotMutation.isPending}
+                className="t-button"
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: 13,
+                  background: 'var(--status-critical)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  color: '#fff',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {deleteSlotMutation.isPending ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
+                {deleteSlotMutation.isPending ? 'Removing…' : 'Delete Class'}
+              </button>
+            </div>
+          </div>
+        </BottomSheet>
       )}
 
       {/* Clear day confirmation */}

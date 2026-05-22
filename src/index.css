@@ -271,6 +271,8 @@ body {
   min-height: 100dvh;
   background: var(--bg-base);
   padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  position: relative;
+  overflow-x: hidden;
 }
 
 .page-content {
@@ -2519,3 +2521,306 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+/* ── Custom Zenith & Status Glows ── */
+.attendance-zenith {
+  --tier-color: #c084fc; /* Light Purple / Amethyst */
+  --tier-bg-glow: rgba(192, 132, 252, 0.06);
+  --tier-border: rgba(192, 132, 252, 0.2);
+  --tier-shadow: var(--shadow-card);
+}
+
+.attendance-gold {
+  --tier-color: #fbbf24; /* Golden Amber */
+  --tier-bg-glow: rgba(251, 191, 36, 0.06);
+  --tier-border: rgba(251, 191, 36, 0.2);
+  --tier-shadow: var(--shadow-card);
+}
+
+.attendance-silver {
+  --tier-color: #cbd5e1; /* Elegant Slate Silver */
+  --tier-bg-glow: rgba(203, 213, 225, 0.04);
+  --tier-border: rgba(203, 213, 225, 0.15);
+  --tier-shadow: var(--shadow-card);
+}
+
+.attendance-warned {
+  --tier-color: #ef4444; /* Crimson Red */
+  --tier-bg-glow: rgba(239, 68, 68, 0.05);
+  --tier-border: rgba(239, 68, 68, 0.2);
+  --tier-shadow: var(--shadow-card);
+}
+
+/* Pulsing Flame Breathing Glow */
+@keyframes flame-glow-pulse {
+  0% {
+    filter: drop-shadow(0 0 2px rgba(249, 115, 22, 0.4));
+    transform: scale(1);
+  }
+  100% {
+    filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.8));
+    transform: scale(1.06);
+  }
+}
+
+.flame-glow-pulse {
+  animation: flame-glow-pulse 1.4s infinite alternate ease-in-out;
+  color: #f97316; /* Flame Orange */
+}
+
+/* ── Zenith Stats Grid & Cells ── */
+.zenith-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.zenith-stat-cell {
+  background: linear-gradient(135deg, var(--tier-bg-glow, rgba(255, 255, 255, 0.01)) 0%, var(--bg-surface) 100%);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--tier-border, var(--border-default));
+  box-shadow: var(--tier-shadow, var(--shadow-card));
+  border-radius: var(--radius-lg);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.zenith-stat-cell:hover {
+  transform: translateY(-2px);
+  border-color: var(--tier-color, var(--accent-primary-glow));
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), var(--tier-shadow);
+}
+
+@media (max-width: 768px) {
+  .zenith-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .zenith-stat-cell {
+    padding: 14px 10px;
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ── Interactive Card Stack Carousel ── */
+.announcement-stack-container {
+  position: relative;
+  height: 152px;
+  width: 100%;
+  max-width: 480px;
+  margin: 8px auto 16px auto;
+  perspective: 1000px;
+  perspective-origin: 50% 50%;
+}
+
+.announcement-card-layer {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  left: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, filter 0.4s ease;
+  will-change: transform, opacity;
+}
+
+/* Layer styling when stacking behind */
+.announcement-layer-0 {
+  transform: translate3d(0, 0, 0) scale(1);
+  z-index: 3;
+  opacity: 1;
+  filter: blur(0);
+}
+
+.announcement-layer-1 {
+  transform: translate3d(0, 8px, -12px) scale(0.96);
+  z-index: 2;
+  opacity: 0.90;
+  filter: blur(0.2px);
+  pointer-events: none;
+}
+
+.announcement-layer-2 {
+  transform: translate3d(0, 16px, -24px) scale(0.92);
+  z-index: 1;
+  opacity: 0.70;
+  filter: blur(0.8px);
+  pointer-events: none;
+}
+
+.announcement-layer-hidden {
+  transform: translate3d(0, 24px, -36px) scale(0.88);
+  z-index: 0;
+  opacity: 0;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+/* Swipe-away animation states */
+.announcement-swipe-left {
+  transform: translate3d(-150%, 0, 0) rotate(-15deg) scale(0.9) !important;
+  opacity: 0 !important;
+}
+
+.announcement-swipe-right {
+  transform: translate3d(150%, 0, 0) rotate(15deg) scale(0.9) !important;
+  opacity: 0 !important;
+}
+
+/* Opaque Solid Charcoal Theming */
+.card-solid-charcoal {
+  background: #111318 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.card-critical-solid {
+  background: #111318 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(248, 113, 113, 0.45) !important;
+  box-shadow: 0 4px 16px rgba(248, 113, 113, 0.08), inset 0 0 8px rgba(248, 113, 113, 0.04) !important;
+}
+
+.card-critical-solid:hover {
+  border-color: rgba(248, 113, 113, 0.65) !important;
+  box-shadow: 0 8px 24px rgba(248, 113, 113, 0.15), inset 0 0 12px rgba(248, 113, 113, 0.08) !important;
+}
+
+.card-general-solid {
+  background: #111318 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(96, 165, 250, 0.35) !important;
+  box-shadow: 0 4px 16px rgba(96, 165, 250, 0.05) !important;
+}
+
+.card-general-solid:hover {
+  border-color: rgba(96, 165, 250, 0.55) !important;
+  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.1) !important;
+}
+
+/* Deletion Reveal behind Class Cards */
+.swipe-delete-zone {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  background: var(--status-critical);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+/* ── Neon Indicators & Animation ── */
+@keyframes neon-dot-pulse {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(34, 211, 238, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0);
+  }
+}
+
+.pulse-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #22d3ee; /* Neon Cyan */
+  display: inline-block;
+  animation: neon-dot-pulse 2s infinite ease-in-out;
+}
+
+/* ── Bottom Sheet Drawer Overlay ── */
+.drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.drawer-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.bottom-sheet-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 85vh;
+  background: linear-gradient(180deg, rgba(18, 18, 22, 0.98) 0%, rgba(10, 10, 12, 1) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px 24px 0 0;
+  z-index: 1001;
+  transform: translate3d(0, 100%, 0);
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  overflow-y: auto;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+  padding: 12px 24px 32px 24px;
+}
+
+.bottom-sheet-drawer.active {
+  transform: translate3d(0, 0, 0);
+}
+
+.drawer-drag-handle {
+  width: 40px;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  margin: 0 auto 20px auto;
+  cursor: pointer;
+  transition: background-color var(--transition-base);
+}
+
+.drawer-drag-handle:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.drawer-attachment-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all var(--transition-base);
+}
+
+.drawer-attachment-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}

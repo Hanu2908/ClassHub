@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Bell, Users } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Bell, Users, Award, Coffee, Calendar, Megaphone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
-import { useAppStore, isExpired } from '../../store/appStore';
+import { useAppStore, isExpired, type Announcement, type Attachment } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useAnnouncements, useSectionMembers } from '../../hooks/useSupabaseQuery';
+import { useAnnouncements, useSectionMembers, type SectionMember } from '../../hooks/useSupabaseQuery';
 import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useSupabaseMutations';
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
@@ -160,10 +160,10 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
 }
 
 interface AcksTrackingSheetProps {
-  announcement: any;
+  announcement: Announcement;
   onClose: () => void;
-  sectionAcks: any[];
-  members: any[];
+  sectionAcks: { announcement_id: string; user_id: string; acknowledged_at: string }[];
+  members: SectionMember[];
 }
 
 function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: AcksTrackingSheetProps) {
@@ -183,7 +183,7 @@ function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: Acks
   const pendingStudents = totalStudents.filter(m => !ackedUserIds.has(m.id));
 
   // Fuzzy filter by name or class roll
-  const filterList = (list: any[]) => {
+  const filterList = (list: SectionMember[]) => {
     return list.filter(m => 
       m.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
       (m.classRoll && m.classRoll.toLowerCase().includes(studentSearch.toLowerCase()))
@@ -205,8 +205,8 @@ function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: Acks
       });
       if (error) throw error;
       showToast(`Nudge sent to ${studentName}`, 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to send nudge', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to send nudge', 'error');
     } finally {
       setNudgingIds(prev => {
         const next = new Set(prev);
@@ -228,8 +228,8 @@ function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: Acks
       });
       if (error) throw error;
       showToast(`Nudge sent to all unacknowledged students (${pendingStudents.length})`, 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to send bulk nudge', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to send bulk nudge', 'error');
     } finally {
       setIsNudgingAll(false);
     }
@@ -349,6 +349,66 @@ function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: Acks
   );
 }
 
+interface CategoryInfo {
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}
+
+function getAnnouncementCategory(title: string, priority: 'critical' | 'general'): CategoryInfo {
+  const t = (title || '').toLowerCase();
+  
+  if (priority === 'critical' || t.includes('urgent') || t.includes('attention') || t.includes('alert') || t.includes('important')) {
+    return {
+      name: 'Critical Alert',
+      icon: <AlertTriangle size={14} color="#f87171" />,
+      color: '#f87171',
+      bgColor: 'rgba(239, 68, 68, 0.08)',
+      borderColor: 'rgba(239, 68, 68, 0.2)',
+    };
+  }
+  
+  if (t.includes('exam') || t.includes('test') || t.includes('quiz') || t.includes('midterm') || t.includes('practical') || t.includes('mst') || t.includes('assessment') || t.includes('viva')) {
+    return {
+      name: 'Academic Exam',
+      icon: <Award size={14} color="#a78bfa" />,
+      color: '#a78bfa',
+      bgColor: 'rgba(167, 139, 250, 0.08)',
+      borderColor: 'rgba(167, 139, 250, 0.2)',
+    };
+  }
+  
+  if (t.includes('schedule') || t.includes('class') || t.includes('timing') || t.includes('timetable') || t.includes('slot') || t.includes('rescheduled') || t.includes('postponed')) {
+    return {
+      name: 'Schedule Change',
+      icon: <Calendar size={14} color="#34d399" />,
+      color: '#34d399',
+      bgColor: 'rgba(52, 211, 153, 0.08)',
+      borderColor: 'rgba(52, 211, 153, 0.2)',
+    };
+  }
+  
+  if (t.includes('holiday') || t.includes('leave') || t.includes('cancel') || t.includes('closed') || t.includes('break') || t.includes('vacation')) {
+    return {
+      name: 'Campus Holiday',
+      icon: <Coffee size={14} color="#fbbf24" />,
+      color: '#fbbf24',
+      bgColor: 'rgba(251, 191, 36, 0.08)',
+      borderColor: 'rgba(251, 191, 36, 0.2)',
+    };
+  }
+  
+  return {
+    name: 'General Announcement',
+    icon: <Megaphone size={14} color="#60a5fa" />,
+    color: '#60a5fa',
+    bgColor: 'rgba(96, 165, 250, 0.08)',
+    borderColor: 'rgba(96, 165, 250, 0.15)',
+  };
+}
+
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -358,7 +418,7 @@ export default function AnnouncementsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'priority' | 'deadline'>('newest');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [trackingAnnouncement, setTrackingAnnouncement] = useState<any | null>(null);
+  const [trackingAnnouncement, setTrackingAnnouncement] = useState<Announcement | null>(null);
 
   const role = useAppStore(s => s.role);
   const authUser = useAppStore(s => s.authUser);
@@ -397,6 +457,9 @@ export default function AnnouncementsPage() {
   // Auto-expiry: hide items past deadline + 2 days
   const visible = announcements.filter(a => !isExpired(a.deadline));
 
+  // Pure rendering date timestamp initialized once on mount to keep rendering pure
+  const [now] = useState(() => Date.now());
+
   const filtered = visible.filter(a => {
     const matchesFilter = filter === 'all' ? true : a.priority === filter;
     const matchesSearch = searchQuery.trim() === '' || 
@@ -409,7 +472,6 @@ export default function AnnouncementsPage() {
       if (b.priority === 'critical' && a.priority !== 'critical') return 1;
       return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
     } else if (sortBy === 'deadline') {
-      const now = Date.now();
       const getDeadlineScore = (deadline: string | null) => {
         if (!deadline) return Infinity;
         const time = new Date(deadline).getTime();
@@ -569,12 +631,26 @@ export default function AnnouncementsPage() {
                 <div className="announcement-card-content">
                   {/* Left balanced column (75%) */}
                   <div className="announcement-card-left">
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-                      {isCritical && (
-                        <span className="badge badge-critical" style={{ background: 'rgba(248, 113, 113, 0.15)', color: 'var(--status-critical)' }}>
-                          <AlertTriangle size={10} /> CRITICAL
-                        </span>
-                      )}
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {(() => {
+                        const category = getAnnouncementCategory(ann.title, ann.priority);
+                        return (
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 5,
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            background: category.bgColor,
+                            border: `1px solid ${category.borderColor}`,
+                          }}>
+                            {category.icon}
+                            <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '10px' }}>
+                              {category.name}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       {ann.deadline && <span className={`badge ${bdg}`}>{lbl}</span>}
                     </div>
                     
@@ -588,14 +664,14 @@ export default function AnnouncementsPage() {
 
                     {ann.attachments && ann.attachments.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-                        {ann.attachments.map((att: any) => (
+                        {ann.attachments.map((att: Attachment) => (
                           <AttachmentCard key={att.id} attachment={att} />
                         ))}
                       </div>
                     )}
 
                     <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 'auto', paddingTop: 8 }}>
-                      Posted {timeAgo(ann.postedAt)}
+                      {timeAgo(ann.postedAt)}
                     </p>
                   </div>
 
