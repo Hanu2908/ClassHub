@@ -9,7 +9,11 @@ interface BottomSheetProps {
 
 export function BottomSheet({ open = true, onClose, title, children }: BottomSheetProps) {
   const startY = useRef(0);
+  const lastYRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const velocityRef = useRef(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  
   const [dragging, setDragging] = useState(false);
   const [offsetY, setOffsetY] = useState(0);
 
@@ -29,18 +33,66 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
 
   if (!open) return null;
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startY.current = e.touches[0].clientY;
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Only drag with left mouse button click or touch
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    
     setDragging(true);
+    startY.current = e.clientY;
+    lastYRef.current = e.clientY;
+    lastTimeRef.current = Date.now();
+    velocityRef.current = 0;
+    
+    e.currentTarget.setPointerCapture(e.pointerId);
   };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const delta = e.touches[0].clientY - startY.current;
-    if (delta > 0) setOffsetY(delta);
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    
+    const currentY = e.clientY;
+    const currentTime = Date.now();
+    const timeDelta = currentTime - lastTimeRef.current;
+    
+    // Calculate swipe velocity in px/ms
+    if (timeDelta > 0) {
+      velocityRef.current = (currentY - lastYRef.current) / timeDelta;
+    }
+    
+    lastYRef.current = currentY;
+    lastTimeRef.current = currentTime;
+    
+    const delta = currentY - startY.current;
+    
+    // Premium elastic rubber-band stretch when dragging up
+    let targetOffsetY = delta;
+    if (targetOffsetY < 0) {
+      targetOffsetY = targetOffsetY * 0.15;
+    }
+    
+    setOffsetY(targetOffsetY);
   };
-  const handleTouchEnd = () => {
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!dragging) return;
     setDragging(false);
-    if (offsetY > 80) { setOffsetY(0); onClose(); }
-    else setOffsetY(0);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    
+    // Dismiss if dragged down > 100px OR flicked down with velocity > 0.4px/ms and minimum displacement
+    if (offsetY > 100 || (velocityRef.current > 0.4 && offsetY > 20)) {
+      setOffsetY(window.innerHeight); // slide out off-screen snappily
+      setTimeout(() => {
+        onClose();
+      }, 150); // fast transition matching the physics feel
+    } else {
+      setOffsetY(0); // bounce snap back to open position
+    }
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    setDragging(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    setOffsetY(0);
   };
 
   return (
@@ -49,21 +101,38 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
       <div
         ref={panelRef}
         className="sheet-panel"
-        style={{ transform: `translateX(-50%) translateY(${offsetY}px)`, transition: dragging ? 'none' : undefined }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        style={{
+          transform: `translateX(-50%) translateY(${offsetY}px)`,
+          transition: dragging ? 'none' : 'transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05)',
+        }}
       >
-        <div className="sheet-handle" />
-        {title && (
-          <div style={{ padding: '0 20px 16px', borderBottom: '1px solid var(--border-default)' }}>
-            {typeof title === 'string' ? (
-              <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
-            ) : (
-              title
-            )}
-          </div>
-        )}
+        {/* Enforce Option A: Drag zone restricted only to the handle and header area */}
+        <div
+          className="sheet-drag-zone"
+          style={{
+            cursor: dragging ? 'grabbing' : 'grab',
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+        >
+          <div className="sheet-handle" />
+          {title && (
+            <div style={{ padding: '0 20px 16px', borderBottom: '1px solid var(--border-default)' }}>
+              {typeof title === 'string' ? (
+                <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
+              ) : (
+                title
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Content area: safe from drag triggers, supporting standard scrolling */}
         <div style={{ padding: '20px' }}>{children}</div>
       </div>
     </>

@@ -1432,6 +1432,7 @@ export default function DashboardPage() {
       dueDate: string;
       route: string;
       icon: typeof ClipboardList;
+      subject?: string;
     }> = [];
 
     // 1. Assignments
@@ -1444,6 +1445,7 @@ export default function DashboardPage() {
           dueDate: a.dueDate,
           route: '/app/assignments',
           icon: ClipboardList,
+          subject: a.subject,
         });
       }
     });
@@ -1880,7 +1882,9 @@ export default function DashboardPage() {
                           textOverflow: 'ellipsis',
                           textWrap: 'balance'
                         }}>
-                          {primaryDeadline.title}
+                          {primaryDeadline.type === 'assignment' && primaryDeadline.subject
+                            ? primaryDeadline.subject
+                            : primaryDeadline.title}
                         </span>
                       </div>
                     </div>

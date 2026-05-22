@@ -65,9 +65,9 @@
   --text-xl: 1.375rem;   /* 22px */
   --text-2xl: 1.75rem;   /* 28px */
 
-  --transition-fast: 150ms ease;
-  --transition-base: 300ms ease;
-  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-base: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 280ms cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Legacy compat aliases */
   --bg-card: var(--bg-surface);
@@ -583,7 +583,7 @@ body {
   inset: 0;
   background: rgba(0, 0, 0, 0.70);
   z-index: 200;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -604,7 +604,7 @@ body {
   max-height: 88vh;
   overflow-y: auto;
   z-index: 201;
-  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
