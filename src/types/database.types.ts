@@ -598,6 +598,7 @@ export type Database = {
       submissions: {
         Row: {
           assignment_id: string
+          cr_verified: boolean
           id: string
           nudge_sent: boolean
           status: Database["public"]["Enums"]["submission_status"]
@@ -607,6 +608,7 @@ export type Database = {
         }
         Insert: {
           assignment_id: string
+          cr_verified?: boolean
           id?: string
           nudge_sent?: boolean
           status?: Database["public"]["Enums"]["submission_status"]
@@ -616,6 +618,7 @@ export type Database = {
         }
         Update: {
           assignment_id?: string
+          cr_verified?: boolean
           id?: string
           nudge_sent?: boolean
           status?: Database["public"]["Enums"]["submission_status"]

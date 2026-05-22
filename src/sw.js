@@ -37,21 +37,39 @@ registerRoute(
   }
 );
 
-// ── Push Notifications (Preserved from original sw.js) ──
+// ── Push Notifications ──
 
 self.addEventListener("push", (e) => {
   const data = e.data ? e.data.json() : {};
   const title = data.title || "ClassHub";
   const options = {
     body: data.body || "",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: "/icon_192.png",
+    badge: "/icon_192.png",
     data: { url: data.url || "/app/home" },
     vibrate: [100, 50, 100],
     tag: data.tag || "classhub-" + Date.now(),
     renotify: true,
   };
-  e.waitUntil(self.registration.showNotification(title, options));
+
+  // Only show OS notification if no focused ClassHub tab is visible.
+  // When the user is actively on the app, skip the OS popup to avoid duplicates.
+  e.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        const hasFocusedClient = clientList.some(
+          (client) =>
+            client.url.startsWith(self.location.origin) &&
+            "focus" in client &&
+            client.focused
+        );
+        if (!hasFocusedClient) {
+          return self.registration.showNotification(title, options);
+        }
+        // App is open and focused — silently skip OS notification
+      })
+  );
 });
 
 // ── Notification Click (Navigate or Focus application tab) ──

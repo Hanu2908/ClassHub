@@ -12,6 +12,7 @@ import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { useAssignments, useSectionMembers, useAssignmentSubmissions, useSection, useSectionAttendance } from '../../hooks/useSupabaseQuery';
 import type { SectionInfo } from '../../hooks/useSupabaseQuery';
+import { useCRToggleSubmission } from '../../hooks/useSupabaseMutations';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 
@@ -57,12 +58,14 @@ function SubmissionTracker() {
   const selected = visible.find(a => a.id === selectedAssignmentId) ?? visible[0];
 
   const { data: submissions = [], isLoading } = useAssignmentSubmissions(selected?.id ?? null);
+  const crToggle = useCRToggleSubmission();
 
+  // CR tracker uses cr_verified (CR's own mark), not student's self-reported status
   const submittedMembers = members.filter(m =>
-    submissions.some(s => s.studentId === m.id && s.status === 'submitted')
+    submissions.some(s => s.studentId === m.id && s.crVerified === true)
   );
   const pendingMembers = members.filter(m =>
-    !submissions.some(s => s.studentId === m.id && s.status === 'submitted')
+    !submissions.some(s => s.studentId === m.id && s.crVerified === true)
   );
 
   const submittedCount = submittedMembers.length;
@@ -269,7 +272,32 @@ function SubmissionTracker() {
                               <ExternalLink size={14} color="var(--accent-primary)" />
                             </a>
                           )}
-                          <CheckCircle2 size={16} color="var(--status-safe)" />
+                          {/* CR unmark button */}
+                          <button
+                            onClick={async () => {
+                              if (!selected) return;
+                              try {
+                                await crToggle.mutateAsync({
+                                  assignmentId: selected.id,
+                                  studentId: st.id,
+                                  crVerified: false,
+                                });
+                                showToast(`Unmarked ${st.name}`, 'info');
+                              } catch {
+                                showToast('Failed to update', 'error');
+                              }
+                            }}
+                            style={{
+                              background: 'rgba(52,201,123,0.12)', border: '1px solid rgba(52,201,123,0.3)',
+                              borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: 'var(--status-safe)', fontSize: 11, fontWeight: 600, gap: 4,
+                            }}
+                            title={`Unmark ${st.name} as submitted`}
+                          >
+                            <CheckCircle2 size={12} />
+                            Verified
+                          </button>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -294,6 +322,32 @@ function SubmissionTracker() {
                             title={`Nudge ${st.name}`}
                           >
                             <Bell size={14} color="var(--accent-primary)" />
+                          </button>
+                          {/* CR mark as verified */}
+                          <button
+                            onClick={async () => {
+                              if (!selected) return;
+                              try {
+                                await crToggle.mutateAsync({
+                                  assignmentId: selected.id,
+                                  studentId: st.id,
+                                  crVerified: true,
+                                });
+                                showToast(`Marked ${st.name} as submitted ✓`, 'success');
+                              } catch {
+                                showToast('Failed to update', 'error');
+                              }
+                            }}
+                            style={{
+                              background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.25)',
+                              borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600, gap: 4,
+                            }}
+                            title={`Mark ${st.name} as submitted`}
+                          >
+                            <CheckCircle2 size={12} />
+                            Mark
                           </button>
                           <XCircle size={16} color="var(--status-critical)" />
                         </div>

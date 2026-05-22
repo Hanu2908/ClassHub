@@ -945,7 +945,12 @@ export default function AssignmentsPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                      <h2 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>{a.title}</h2>
+                      <div style={{ minWidth: 0 }}>
+                        {/* Subject is the primary heading */}
+                        <h2 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{a.subject}</h2>
+                        {/* Assignment title is secondary */}
+                        <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>{a.title}</p>
+                      </div>
                       {role === 'cr' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                           <button
@@ -982,7 +987,7 @@ export default function AssignmentsPage() {
                         </div>
                       ) : null}
                     </div>
-                    <p className="t-caption" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{a.subject} · {a.subjectCode}</p>
+                    <p className="t-caption" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{a.subjectCode}</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span className={`badge ${bdg}`}>{lbl}</span>
                       <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>

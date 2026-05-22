@@ -267,6 +267,35 @@ export function useSubmitAssignment() {
   });
 }
 
+/**
+ * CR-only: toggle cr_verified flag on a student's submission.
+ * This is independent of the student's own `status` field.
+ * If no row exists yet (student hasn't self-submitted), creates one with cr_verified=true.
+ */
+export function useCRToggleSubmission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      assignmentId: string;
+      studentId: string;
+      crVerified: boolean;
+    }) => {
+      const { error } = await supabase
+        .from('submissions')
+        .upsert({
+          assignment_id: input.assignmentId,
+          student_id: input.studentId,
+          cr_verified: input.crVerified,
+        }, { onConflict: 'assignment_id,student_id', ignoreDuplicates: false });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['assignment_submissions', vars.assignmentId] });
+    },
+  });
+}
+
+
 // ── Polls ────────────────────────────────────────────────────────────────────
 
 export function useCreatePoll() {

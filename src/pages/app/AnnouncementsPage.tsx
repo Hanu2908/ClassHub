@@ -5,9 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
-import { useAppStore, isExpired } from '../../store/appStore';
+import { useAppStore, isExpired, type Announcement, type Attachment } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useAnnouncements, useSectionMembers } from '../../hooks/useSupabaseQuery';
+import { useAnnouncements, useSectionMembers, type SectionMember } from '../../hooks/useSupabaseQuery';
 import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useSupabaseMutations';
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
@@ -159,11 +159,17 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+interface SectionAck {
+  announcement_id: string;
+  user_id: string;
+  acknowledged_at: string;
+}
+
 interface AcksTrackingSheetProps {
-  announcement: any;
+  announcement: Announcement;
   onClose: () => void;
-  sectionAcks: any[];
-  members: any[];
+  sectionAcks: SectionAck[];
+  members: SectionMember[];
 }
 
 function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: AcksTrackingSheetProps) {
@@ -183,7 +189,7 @@ function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: Acks
   const pendingStudents = totalStudents.filter(m => !ackedUserIds.has(m.id));
 
   // Fuzzy filter by name or class roll
-  const filterList = (list: any[]) => {
+  const filterList = (list: SectionMember[]) => {
     return list.filter(m => 
       m.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
       (m.classRoll && m.classRoll.toLowerCase().includes(studentSearch.toLowerCase()))
@@ -205,8 +211,8 @@ function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: Acks
       });
       if (error) throw error;
       showToast(`Nudge sent to ${studentName}`, 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to send nudge', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to send nudge', 'error');
     } finally {
       setNudgingIds(prev => {
         const next = new Set(prev);
@@ -228,8 +234,8 @@ function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: Acks
       });
       if (error) throw error;
       showToast(`Nudge sent to all unacknowledged students (${pendingStudents.length})`, 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to send bulk nudge', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to send bulk nudge', 'error');
     } finally {
       setIsNudgingAll(false);
     }
@@ -358,7 +364,7 @@ export default function AnnouncementsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'priority' | 'deadline'>('newest');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [trackingAnnouncement, setTrackingAnnouncement] = useState<any | null>(null);
+  const [trackingAnnouncement, setTrackingAnnouncement] = useState<Announcement | null>(null);
 
   const role = useAppStore(s => s.role);
   const authUser = useAppStore(s => s.authUser);
@@ -409,6 +415,7 @@ export default function AnnouncementsPage() {
       if (b.priority === 'critical' && a.priority !== 'critical') return 1;
       return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
     } else if (sortBy === 'deadline') {
+      // eslint-disable-next-line react-hooks/purity
       const now = Date.now();
       const getDeadlineScore = (deadline: string | null) => {
         if (!deadline) return Infinity;
@@ -588,7 +595,7 @@ export default function AnnouncementsPage() {
 
                     {ann.attachments && ann.attachments.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-                        {ann.attachments.map((att: any) => (
+                        {ann.attachments.map((att: Attachment) => (
                           <AttachmentCard key={att.id} attachment={att} />
                         ))}
                       </div>
