@@ -13,8 +13,8 @@ describe('parseERPAttendance edge cases', () => {
       makeup: 1, 
       absent: 5, 
       percentage: 83.33,
-      total: 29, // present(24) + od(0) + absent(5) = 29 (excluding makeup from total denominator)
-      canSkip: 4 // (25 attended - 0.75 * 29) / 0.75 = (25 - 21.75) / 0.75 = 3.25 / 0.75 = 4.33 -> 4
+      total: 30, // present(24) + od(0) + makeup(1) + absent(5) = 30
+      canSkip: 3 // (25 attended - 0.75 * 30) / 0.75 = (25 - 22.5) / 0.75 = 2.5 / 0.75 = 3.33 -> 3
     });
   });
 
@@ -22,8 +22,8 @@ describe('parseERPAttendance edge cases', () => {
     const rows = parseERPAttendance('1 DBMS201 Database Management Systems Lecture 24 0 1 5 83.33');
     expect(rows).toHaveLength(1);
     expect(rows[0].code).toBe('DBMS201');
-    expect(rows[0].total).toBe(29);
-    expect(rows[0].canSkip).toBe(4);
+    expect(rows[0].total).toBe(30);
+    expect(rows[0].canSkip).toBe(3);
   });
 
   it('ignores invalid lines and parses valid ones', () => {

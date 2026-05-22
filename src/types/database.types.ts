@@ -861,6 +861,10 @@ export type Database = {
       }
       current_user_section_id: { Args: never; Returns: string }
       delete_own_account: { Args: never; Returns: undefined }
+      delete_section_hub: {
+        Args: { target_section_id: string }
+        Returns: undefined
+      }
       is_cr_for_section: { Args: { target_section: string }; Returns: boolean }
       is_skit_email: { Args: { email: string }; Returns: boolean }
       join_section: {

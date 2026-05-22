@@ -3,13 +3,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
   XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, BookOpen,
-  CheckCircle2, ExternalLink, Copy, Share2, RefreshCw, Lock, Unlock, Loader2
+  CheckCircle2, ExternalLink, Copy, Share2, RefreshCw, Lock, Unlock, Loader2,
+  AlertTriangle, Trash2
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useAssignments, useSectionMembers, useAssignmentSubmissions, useSection } from '../../hooks/useSupabaseQuery';
+import { useAssignments, useSectionMembers, useAssignmentSubmissions, useSection, useSectionAttendance } from '../../hooks/useSupabaseQuery';
 import type { SectionInfo } from '../../hooks/useSupabaseQuery';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
@@ -17,7 +18,7 @@ import { supabase } from '../../lib/supabase';
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
       <div style={{
         width: 32, height: 32, borderRadius: 10,
         background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)',
@@ -48,7 +49,9 @@ function SubmissionTracker() {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>('not_submitted');
   const [hoveredCard, setHoveredCard] = useState<'submitted' | 'pending' | null>(null);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [headerHovered, setHeaderHovered] = useState(false);
+  const [headerActive, setHeaderActive] = useState(false);
 
   const visible = assignments.filter(a => !isExpired(a.dueDate));
   const selected = visible.find(a => a.id === selectedAssignmentId) ?? visible[0];
@@ -94,9 +97,30 @@ function SubmissionTracker() {
   };
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-        onClick={() => setExpanded(e => !e)}>
+    <div className="card" style={{ padding: 0 }}>
+      <div 
+        onClick={() => setExpanded(e => !e)}
+        onMouseEnter={() => setHeaderHovered(true)}
+        onMouseLeave={() => { setHeaderHovered(false); setHeaderActive(false); }}
+        onTouchStart={() => setHeaderActive(true)}
+        onTouchEnd={() => setHeaderActive(false)}
+        onMouseDown={() => setHeaderActive(true)}
+        onMouseUp={() => setHeaderActive(false)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          padding: '14px 16px',
+          borderRadius: 'var(--radius-lg)',
+          transition: 'background var(--transition-fast)',
+          userSelect: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          background: headerActive 
+            ? 'rgba(255, 255, 255, 0.08)' 
+            : (headerHovered ? 'rgba(255, 255, 255, 0.04)' : 'transparent')
+        }}
+      >
         <SectionHead
           icon={<ClipboardList size={16} color="var(--accent-primary)" />}
           title="Submission Tracker"
@@ -106,7 +130,7 @@ function SubmissionTracker() {
       </div>
 
       {expanded ? (
-        <>
+        <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)' }}>
           {/* Assignment picker */}
           {visible.length > 0 ? (
             <>
@@ -284,7 +308,7 @@ function SubmissionTracker() {
               No active assignments
             </p>
           )}
-        </>
+        </div>
       ) : null}
     </div>
   );
@@ -293,50 +317,314 @@ function SubmissionTracker() {
 // ── 2. Class Attendance Overview ──────────────────────────────────────────────
 function ClassAttendance() {
   const { data: members = [] } = useSectionMembers();
-  const [expanded, setExpanded] = useState(true);
+  const { data: attendanceMap = {}, isLoading: isAttendanceLoading } = useSectionAttendance();
+  const [expanded, setExpanded] = useState(false);
+  const [headerHovered, setHeaderHovered] = useState(false);
+  const [headerActive, setHeaderActive] = useState(false);
+
+  // Stateful filtering and sorting
+  const [filter, setFilter] = useState<'all' | 'below_75' | 'above_75'>('all');
+  const [sortBy, setSortBy] = useState<'roll' | 'attendance_asc' | 'attendance_desc'>('roll');
+
+  // Map each member with their attendance aggregate
+  const membersWithAttendance = members.map(m => {
+    const att = attendanceMap[m.id];
+    return {
+      ...m,
+      overallPercentage: att?.overallPercentage ?? null,
+      totalHeld: att?.totalHeld ?? 0,
+    };
+  });
+
+  // Calculate section aggregates
+  const validPercent = membersWithAttendance.filter(m => m.overallPercentage !== null);
+  const sectionAvg = validPercent.length > 0
+    ? validPercent.reduce((sum, m) => sum + m.overallPercentage!, 0) / validPercent.length
+    : null;
+
+  const criticalCount = membersWithAttendance.filter(
+    m => m.overallPercentage !== null && m.overallPercentage < 75
+  ).length;
+
+  const safeCount = membersWithAttendance.filter(
+    m => m.overallPercentage !== null && m.overallPercentage >= 75
+  ).length;
+
+  // Filter members
+  const filteredMembers = membersWithAttendance.filter(m => {
+    if (filter === 'below_75') {
+      return m.overallPercentage !== null && m.overallPercentage < 75;
+    }
+    if (filter === 'above_75') {
+      return m.overallPercentage !== null && m.overallPercentage >= 75;
+    }
+    return true;
+  });
+
+  // Sort members
+  const getRollNumber = (roll: string | null | undefined) => {
+    if (!roll) return 999;
+    const cleaned = roll.replace(/[^0-9]/g, '');
+    const num = parseInt(cleaned, 10);
+    return isNaN(num) ? 999 : num;
+  };
+
+  const sortedMembers = [...filteredMembers].sort((a, b) => {
+    if (sortBy === 'attendance_asc') {
+      if (a.overallPercentage === null) return 1;
+      if (b.overallPercentage === null) return -1;
+      return a.overallPercentage - b.overallPercentage;
+    }
+    if (sortBy === 'attendance_desc') {
+      if (a.overallPercentage === null) return 1;
+      if (b.overallPercentage === null) return -1;
+      return b.overallPercentage - a.overallPercentage;
+    }
+    // Default: Roll sort
+    const rollA = getRollNumber(a.classRoll);
+    const rollB = getRollNumber(b.classRoll);
+    return rollA - rollB;
+  });
 
   return (
-    <>
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-          onClick={() => setExpanded(e => !e)}>
-          <SectionHead icon={<Users size={16} color="var(--accent-primary)" />} title="Section Members" count={members.length} />
-          {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
-        </div>
+    <div className="card" style={{ padding: 0 }}>
+      <div 
+        onClick={() => setExpanded(e => !e)}
+        onMouseEnter={() => setHeaderHovered(true)}
+        onMouseLeave={() => { setHeaderHovered(false); setHeaderActive(false); }}
+        onTouchStart={() => setHeaderActive(true)}
+        onTouchEnd={() => setHeaderActive(false)}
+        onMouseDown={() => setHeaderActive(true)}
+        onMouseUp={() => setHeaderActive(false)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          padding: '14px 16px',
+          borderRadius: 'var(--radius-lg)',
+          transition: 'background var(--transition-fast)',
+          userSelect: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          background: headerActive 
+            ? 'rgba(255, 255, 255, 0.08)' 
+            : (headerHovered ? 'rgba(255, 255, 255, 0.04)' : 'transparent')
+        }}
+      >
+        <SectionHead icon={<Users size={16} color="var(--accent-primary)" />} title="Section Members" count={members.length} />
+        {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+      </div>
 
-        {expanded ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
-            {members.length === 0 ? (
-              <p className="t-body" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No members in section</p>
-            ) : members.map(st => (
-              <div
-                key={st.id}
+      {expanded ? (
+        <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)' }}>
+          {/* Executive Summary Strip */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 14px',
+            marginBottom: 14,
+            gap: 12
+          }}>
+            <div style={{ flex: 1 }}>
+              <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>Section Average</p>
+              <p className="t-subtitle" style={{ color: sectionAvg !== null ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 600 }}>
+                {sectionAvg !== null ? `${sectionAvg.toFixed(1)}%` : '—'}
+              </p>
+            </div>
+            <div style={{ width: 1, background: 'var(--border-default)' }} />
+            <div style={{ flex: 1 }}>
+              <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>At Debarment Risk</p>
+              <p className="t-subtitle" style={{ color: criticalCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)', fontWeight: 600 }}>
+                {criticalCount} {criticalCount === 1 ? 'student' : 'students'}
+              </p>
+            </div>
+          </div>
+
+          {/* Interactive Controls & Filters */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            marginBottom: 12,
+            flexWrap: 'wrap'
+          }}>
+            {/* Filter Pills */}
+            <div className="carousel" style={{ display: 'flex', gap: 6, margin: 0, paddingBottom: 0 }}>
+              <button
+                onClick={() => setFilter('all')}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 12px', borderRadius: 10,
-                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: filter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                  background: filter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
+                  color: filter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
                 }}
               >
-                <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: 'var(--bg-base)', border: '1px solid var(--border-default)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
-                  <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{st.name}</p>
-                  <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>{st.email}</p>
-                </div>
-                <span className={`badge ${st.role === 'cr' ? 'badge-warning' : 'badge-info'}`} style={{ fontSize: 10 }}>
-                  {st.role === 'cr' ? 'CR' : 'Student'}
-                </span>
-              </div>
-            ))}
+                All ({members.length})
+              </button>
+              <button
+                onClick={() => setFilter('below_75')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: filter === 'below_75' ? '1px solid var(--status-critical)' : '1px solid var(--border-default)',
+                  background: filter === 'below_75' ? 'rgba(248, 113, 113, 0.15)' : 'transparent',
+                  color: filter === 'below_75' ? 'var(--status-critical)' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
+                }}
+              >
+                Below 75% ({criticalCount})
+              </button>
+              <button
+                onClick={() => setFilter('above_75')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: filter === 'above_75' ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
+                  background: filter === 'above_75' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
+                  color: filter === 'above_75' ? 'var(--status-safe)' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
+                }}
+              >
+                75%+ ({safeCount})
+              </button>
+            </div>
+
+            {/* Sort Picker */}
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as 'roll' | 'attendance_asc' | 'attendance_desc')}
+              style={{
+                padding: '6px 10px',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-primary)',
+                fontSize: 12,
+                outline: 'none',
+                cursor: 'pointer',
+                transition: 'all var(--transition-fast)'
+              }}
+            >
+              <option value="roll">Sort: Roll No</option>
+              <option value="attendance_asc">Sort: Low % First</option>
+              <option value="attendance_desc">Sort: High % First</option>
+            </select>
           </div>
-        ) : null}
-      </div>
-    </>
+
+          {/* Members List Container */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            maxHeight: 280,
+            overflowY: 'auto'
+          }}>
+            {isAttendanceLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '30px', gap: 10 }}>
+                <Loader2 size={16} className="animate-spin" color="var(--accent-primary)" />
+                <p className="t-body" style={{ color: 'var(--text-muted)' }}>Loading attendance details...</p>
+              </div>
+            ) : sortedMembers.length === 0 ? (
+              <p className="t-body" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                {filter === 'below_75' ? 'No students below 75% attendance!' : 'No members found'}
+              </p>
+            ) : sortedMembers.map(st => {
+              const pct = st.overallPercentage;
+              return (
+                <div
+                  key={st.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: 'var(--bg-base)',
+                    border: '1px solid var(--border-default)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{st.name}</p>
+                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>{st.universityRoll ?? st.email}</p>
+                  </div>
+
+                  {pct === null ? (
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-pill)',
+                      color: 'var(--text-secondary)',
+                      background: 'var(--border-default)',
+                      border: '1px solid var(--border-default)',
+                      userSelect: 'none',
+                    }}>
+                      N/A
+                    </span>
+                  ) : pct < 75 ? (
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-pill)',
+                      color: 'var(--status-critical)',
+                      background: 'var(--status-critical-bg)',
+                      border: '1px solid rgba(248, 113, 113, 0.15)',
+                      boxShadow: 'var(--shadow-glow-red)',
+                      userSelect: 'none',
+                    }}>
+                      {pct.toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-pill)',
+                      color: 'var(--status-safe)',
+                      background: 'var(--status-safe-bg)',
+                      border: '1px solid rgba(52, 211, 153, 0.15)',
+                      userSelect: 'none',
+                    }}>
+                      {pct.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -631,6 +919,11 @@ export default function CRCommandPage() {
   const location = useLocation();
   const role = useAppStore(s => s.role);
   const [showNotifSheet, setShowNotifSheet] = useState(!!location.state?.openBroadcast);
+  const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [deletingHub, setDeletingHub] = useState(false);
+  const { data: section } = useSection();
+  const refreshProfile = useAppStore(s => s.refreshProfile);
+  const setActiveTab = useAppStore(s => s.setActiveTab);
 
   useEffect(() => {
     if (location.state?.openBroadcast) {
@@ -643,6 +936,36 @@ export default function CRCommandPage() {
     navigate('/app/home', { replace: true });
     return null;
   }
+
+  const handleDeleteHub = async () => {
+    if (!section?.id) return;
+    setDeletingHub(true);
+    try {
+      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+        showToast('[Demo] Section Hub deleted successfully!', 'success');
+        useAppStore.setState({ role: 'student', authUser: null, user: null, hub: null });
+        setActiveTab('home');
+        navigate('/', { replace: true });
+        return;
+      }
+
+      const { error } = await supabase.rpc('delete_section_hub', { target_section_id: section.id });
+      if (error) throw error;
+
+      showToast('Section Hub deleted successfully!', 'success');
+      // Refresh profile to pick up the NULL section and student role
+      await refreshProfile();
+      setActiveTab('home');
+      navigate('/', { replace: true });
+    } catch (err: unknown) {
+      console.error('[Delete] Hub deletion failed:', err);
+      const errMsg = err instanceof Error ? err.message : 'Failed to delete Section Hub';
+      showToast(errMsg, 'error');
+    } finally {
+      setDeletingHub(false);
+      setShowDeleteSheet(false);
+    }
+  };
 
   return (
     <div className="page-shell">
@@ -715,7 +1038,7 @@ export default function CRCommandPage() {
                 <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>Permanently remove this hub, all students, and data.</p>
               </div>
               <button className="t-button"
-                onClick={() => showToast('Section deletion coming soon', 'info')}
+                onClick={() => setShowDeleteSheet(true)}
                 style={{
                   background: 'rgba(255,68,68,0.1)', color: 'var(--status-critical)',
                   border: '1px solid rgba(255,68,68,0.25)', padding: '8px 12px',
@@ -734,6 +1057,69 @@ export default function CRCommandPage() {
       </main>
 
       {showNotifSheet ? <SendNotificationSheet onClose={() => setShowNotifSheet(false)} /> : null}
+
+      {showDeleteSheet && (
+        <BottomSheet onClose={() => setShowDeleteSheet(false)} title="Delete Section Hub?">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>
+            <div style={{
+              background: 'rgba(255, 68, 68, 0.05)',
+              border: '1.5px solid rgba(255, 68, 68, 0.2)',
+              borderRadius: 'var(--radius-md)',
+              padding: '12px 14px',
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start',
+            }}>
+              <AlertTriangle size={20} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <p className="t-subtitle" style={{ color: 'var(--status-critical)', marginBottom: 4 }}>
+                  CRITICAL: Absolute Destruction
+                </p>
+                <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                  This action is permanent and cannot be undone. It will completely delete:
+                </p>
+                <ul style={{ color: 'var(--text-secondary)', fontSize: '11px', margin: '6px 0 0 16px', padding: 0, lineHeight: 1.5 }}>
+                  <li>All subjects and academic slots</li>
+                  <li>All assignments, sets, and student submissions</li>
+                  <li>All announcements and attendance logs</li>
+                  <li>All active polls, votes, and section data</li>
+                </ul>
+                <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4, marginTop: 8 }}>
+                  You and all other students in this section will be instantly detached and prompted to join or create a new hub.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => setShowDeleteSheet(false)} 
+                style={{ flex: 1, minHeight: 48 }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={handleDeleteHub} 
+                disabled={deletingHub}
+                style={{ 
+                  flex: 1, 
+                  background: 'linear-gradient(180deg, #FF6B6B 0%, #E83E3C 100%)', 
+                  boxShadow: '0 4px 16px rgba(255,68,68,0.25)',
+                  minHeight: 48,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                {deletingHub ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                {deletingHub ? 'Deleting Hub…' : 'Yes, Delete Hub'}
+              </button>
+            </div>
+          </div>
+        </BottomSheet>
+      )}
 
       <NavBar />
     </div>

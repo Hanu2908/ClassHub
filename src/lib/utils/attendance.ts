@@ -17,6 +17,7 @@ export type ParsedSubject = {
   name: string;
   type: string;
   present: number;
+  od?: number;
   makeup?: number;
   absent: number;
   total: number;
@@ -56,25 +57,32 @@ export function parseERPAttendance(rawText: string): ParsedSubject[] {
     // while using an internal `attendedTotal` (present + od + makeup) for recovery
     // calculations.
     let present: number;
-    let makeup: number;
+    let od: number = 0;
+    let makeup: number = 0;
     let absent: number;
     let total: number;
     let attendedTotal: number;
 
     if (counts.length >= 4) {
-      const [pres, od, mk, ab] = counts;
+      const [pres, o, mk, ab] = counts;
       present = pres;
+      od = o;
       makeup = mk;
-      attendedTotal = pres + od + mk;
       absent = ab;
-      total = pres + od + ab; // CORRECT FORMULA (excluding makeup from denominator)
+      attendedTotal = pres + o + mk;
+      total = pres + o + mk + ab; // ERP formula including makeup in denominator
+    } else if (counts.length === 3) {
+      const [pres, ab, tot] = counts;
+      present = pres;
+      absent = ab;
+      total = tot;
+      attendedTotal = pres;
     } else {
       const [att, tot] = counts;
       present = att;
-      makeup = 0;
-      attendedTotal = att;
       total = tot;
-      absent = total - attendedTotal;
+      absent = total - present;
+      attendedTotal = att;
     }
 
     const beforeType = cols.slice(0, typeColIdx);
@@ -88,7 +96,7 @@ export function parseERPAttendance(rawText: string): ParsedSubject[] {
     const canSkip = pct >= 75 ? Math.floor((attendedTotal - 0.75 * total) / 0.75) : 0;
     const needToAttend = pct < 75 ? Math.ceil((0.75 * total - attendedTotal) / 0.25) : 0;
 
-    subjects.push({ code, name, type, present, makeup, absent, total, percentage: pct, canSkip, needToAttend });
+    subjects.push({ code, name, type, present, od, makeup, absent, total, percentage: pct, canSkip, needToAttend });
   }
 
   return subjects;

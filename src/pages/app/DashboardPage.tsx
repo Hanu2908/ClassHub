@@ -228,15 +228,15 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
       <style>{`
         @keyframes pulsate-glow {
           0% {
-            box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.15), 0 0 5px rgba(239, 68, 68, 0.05);
+            box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.08), 0 0 4px rgba(239, 68, 68, 0.02);
           }
           100% {
-            box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.35), 0 0 15px rgba(239, 68, 68, 0.25);
+            box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.22), 0 0 10px rgba(239, 68, 68, 0.12);
           }
         }
         @keyframes pulsate-alert {
           0%, 100% { transform: scale(1); opacity: 0.95; }
-          50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6)); }
+          50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.45)); }
         }
         @keyframes pulse-bell {
           0%, 100% { transform: rotate(0deg); }
@@ -270,9 +270,9 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
           position: 'relative',
           margin: '12px 16px 4px',
           borderRadius: 'var(--radius-md)',
-          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(13, 15, 20, 0.75) 100%)',
-          border: '1px solid rgba(239, 68, 68, 0.4)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37), 0 0 12px 0 rgba(239, 68, 68, 0.15)',
+          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.07) 0%, rgba(13, 15, 20, 0.9) 100%)',
+          border: '1px solid rgba(239, 68, 68, 0.22)',
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.4), 0 0 8px 0 rgba(239, 68, 68, 0.08)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
           overflow: 'hidden',
@@ -288,8 +288,8 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
             inset: 0,
             borderRadius: 'var(--radius-md)',
             pointerEvents: 'none',
-            boxShadow: 'inset 0 0 15px rgba(239, 68, 68, 0.15)',
-            animation: 'pulsate-glow 2.5s infinite alternate',
+            boxShadow: 'inset 0 0 12px rgba(239, 68, 68, 0.12)',
+            animation: 'pulsate-glow 4s infinite alternate',
           }}
         />
 
@@ -307,7 +307,7 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
               color="var(--status-critical)"
               style={{
                 flexShrink: 0,
-                animation: 'pulsate-alert 1.5s infinite ease-in-out',
+                animation: 'pulsate-alert 4s infinite ease-in-out',
               }}
             />
           </div>
@@ -325,14 +325,33 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
             <p
               className="truncate t-subtitle" style={{ color: 'var(--text-primary)',
                 margin: 0,
-                letterSpacing: '-0.01em' }}
+                fontWeight: 600,
+                letterSpacing: '-0.015em' }}
             >
               {current.title}
             </p>
+            {current.body && (
+              <p
+                style={{
+                  color: 'var(--text-secondary)',
+                  fontSize: '11px',
+                  lineHeight: '1.4',
+                  marginTop: '4px',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  opacity: 0.85
+                }}
+              >
+                {current.body}
+              </p>
+            )}
             <p
               className="truncate t-mono-sm" style={{ color: 'var(--text-secondary)',
-                marginTop: 2,
-                margin: '2px 0 0' }}
+                marginTop: 4,
+                margin: '4px 0 0' }}
             >
               {timeAgo(current.postedAt)}
             </p>
@@ -1105,7 +1124,7 @@ export default function DashboardPage() {
 
             const isLowAttendance = overallPercent < 75;
 
-            let statusLabel = 'Safe';
+            let statusLabel: string;
             if (overallPercent >= 85) {
               statusLabel = 'Elite';
             } else if (overallPercent >= 75) {
@@ -1140,20 +1159,20 @@ export default function DashboardPage() {
                     {/* Attendance Indicator */}
                     {!isLowAttendance ? (
                       /* Circular progress for Safe/Elite */
-                      <div style={{ position: 'relative', width: isMobile ? 68 : 54, height: isMobile ? 68 : 54, flexShrink: 0 }}>
-                        <svg width={isMobile ? 68 : 54} height={isMobile ? 68 : 54} viewBox={isMobile ? "0 0 68 68" : "0 0 54 54"} style={{ filter: `drop-shadow(0 0 ${isMobile ? 6 : 4}px hsla(${dynamicHue}, 85%, 55%, 0.3))` }}>
-                          <circle cx={isMobile ? 34 : 27} cy={isMobile ? 34 : 27} r={isMobile ? 28 : 22} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={isMobile ? 5 : 4} />
+                      <div style={{ position: 'relative', width: isMobile ? 68 : 72, height: isMobile ? 68 : 72, flexShrink: 0 }}>
+                        <svg width={isMobile ? 68 : 72} height={isMobile ? 68 : 72} viewBox={isMobile ? "0 0 68 68" : "0 0 72 72"} style={{ filter: `drop-shadow(0 0 ${isMobile ? 6 : 4}px hsla(${dynamicHue}, 85%, 55%, 0.3))` }}>
+                          <circle cx={isMobile ? 34 : 36} cy={isMobile ? 34 : 36} r={isMobile ? 28 : 30} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={5} />
                           <circle 
-                            cx={isMobile ? 34 : 27} 
-                            cy={isMobile ? 34 : 27} 
-                            r={isMobile ? 28 : 22} 
+                            cx={isMobile ? 34 : 36} 
+                            cy={isMobile ? 34 : 36} 
+                            r={isMobile ? 28 : 30} 
                             fill="none" 
                             stroke={statusColor} 
-                            strokeWidth={isMobile ? 5 : 4} 
-                            strokeDasharray={isMobile ? "175.93" : "138.23"} 
-                            strokeDashoffset={(isMobile ? 175.93 : 138.23) - ((isMobile ? 175.93 : 138.23) * Math.min(100, Math.max(0, overallPercent))) / 100}
+                            strokeWidth={5} 
+                            strokeDasharray={isMobile ? "175.93" : "188.50"} 
+                            strokeDashoffset={(isMobile ? 175.93 : 188.50) - ((isMobile ? 175.93 : 188.50) * Math.min(100, Math.max(0, overallPercent))) / 100}
                             strokeLinecap="round"
-                            transform={`rotate(-90 ${isMobile ? 34 : 27} ${isMobile ? 34 : 27})`}
+                            transform={`rotate(-90 ${isMobile ? 34 : 36} ${isMobile ? 34 : 36})`}
                             style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1)' }}
                           />
                         </svg>
@@ -1164,28 +1183,28 @@ export default function DashboardPage() {
                           alignItems: 'center', 
                           justifyContent: 'center',
                           color: 'var(--text-primary)',
-                          fontSize: isMobile ? 16 : 12,
-                          fontWeight: isMobile ? 700 : 500,
+                          fontSize: '16px',
+                          fontWeight: 700,
                         }}>
                           {Math.round(overallPercent)}%
                         </div>
                       </div>
                     ) : (
                       /* High Urgency Glowing Warning Ring for Critical/Warning */
-                      <div style={{ position: 'relative', width: isMobile ? 68 : 54, height: isMobile ? 68 : 54, flexShrink: 0 }}>
-                        <svg width={isMobile ? 68 : 54} height={isMobile ? 68 : 54} viewBox={isMobile ? "0 0 68 68" : "0 0 54 54"} className="animate-pulse" style={{ filter: `drop-shadow(0 0 ${isMobile ? 10 : 8}px hsla(${dynamicHue}, 85%, 55%, 0.7))` }}>
-                          <circle cx={isMobile ? 34 : 27} cy={isMobile ? 34 : 27} r={isMobile ? 28 : 22} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={isMobile ? 5 : 4} />
+                      <div style={{ position: 'relative', width: isMobile ? 68 : 72, height: isMobile ? 68 : 72, flexShrink: 0 }}>
+                        <svg width={isMobile ? 68 : 72} height={isMobile ? 68 : 72} viewBox={isMobile ? "0 0 68 68" : "0 0 72 72"} className="animate-pulse" style={{ filter: `drop-shadow(0 0 ${isMobile ? 10 : 8}px hsla(${dynamicHue}, 85%, 55%, 0.7))` }}>
+                          <circle cx={isMobile ? 34 : 36} cy={isMobile ? 34 : 36} r={isMobile ? 28 : 30} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={5} />
                           <circle 
-                            cx={isMobile ? 34 : 27} 
-                            cy={isMobile ? 34 : 27} 
-                            r={isMobile ? 28 : 22} 
+                            cx={isMobile ? 34 : 36} 
+                            cy={isMobile ? 34 : 36} 
+                            r={isMobile ? 28 : 30} 
                             fill="none" 
                             stroke={statusColor} 
-                            strokeWidth={isMobile ? 5 : 4} 
-                            strokeDasharray={isMobile ? "175.93" : "138.23"} 
-                            strokeDashoffset={(isMobile ? 175.93 : 138.23) - ((isMobile ? 175.93 : 138.23) * Math.min(100, Math.max(0, overallPercent))) / 100}
+                            strokeWidth={5} 
+                            strokeDasharray={isMobile ? "175.93" : "188.50"} 
+                            strokeDashoffset={(isMobile ? 175.93 : 188.50) - ((isMobile ? 175.93 : 188.50) * Math.min(100, Math.max(0, overallPercent))) / 100}
                             strokeLinecap="round"
-                            transform={`rotate(-90 ${isMobile ? 34 : 27} ${isMobile ? 34 : 27})`}
+                            transform={`rotate(-90 ${isMobile ? 34 : 36} ${isMobile ? 34 : 36})`}
                           />
                         </svg>
                         <div className="t-mono" style={{ 
@@ -1195,8 +1214,8 @@ export default function DashboardPage() {
                           alignItems: 'center', 
                           justifyContent: 'center',
                           color: statusColor,
-                          fontSize: isMobile ? 16 : 12,
-                          fontWeight: isMobile ? 700 : 500,
+                          fontSize: '16px',
+                          fontWeight: 700,
                           animation: 'nowPulse 1s infinite alternate'
                         }}>
                           {Math.round(overallPercent)}%
@@ -1328,14 +1347,15 @@ export default function DashboardPage() {
             {primaryDeadline ? (
               (() => {
                 const dueDate = new Date(primaryDeadline.dueDate).getTime();
+                /* eslint-disable-next-line react-hooks/purity */
                 const now = Date.now();
                 const diffMs = dueDate - now;
                 const diffHours = diffMs / (1000 * 60 * 60);
 
                 // Urgency level styles
-                let barColor = 'var(--accent-primary)';
-                let urgencyColor = 'var(--accent-primary)';
-                let statusLabel = 'Upcoming';
+                let barColor: string;
+                let urgencyColor: string;
+                let statusLabel: string;
                 let pulseAnimation = 'none';
 
                 if (diffHours <= 24) {

@@ -148,36 +148,36 @@ function AddSlotSheet({ day, existingSlots, onClose }: AddSlotSheetProps) {
         )}
 
         <div>
-          <label style={labelStyle}>Subject *</label>
-          <select style={inputStyle} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
+          <label htmlFor="slot-subject-select" style={labelStyle}>Subject *</label>
+          <select id="slot-subject-select" style={inputStyle} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
             <option value="">Select subject…</option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
           </select>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <label style={labelStyle}>Type</label>
-            <select style={inputStyle} value={type} onChange={e => handleTypeChange(e.target.value)}>
+            <label htmlFor="slot-type-select" style={labelStyle}>Type</label>
+            <select id="slot-type-select" style={inputStyle} value={type} onChange={e => handleTypeChange(e.target.value)}>
               {SUBJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Room</label>
-            <input style={inputStyle} placeholder="Block B-102" value={room} onChange={e => setRoom(e.target.value)} />
+            <label htmlFor="slot-room-input" style={labelStyle}>Room</label>
+            <input id="slot-room-input" style={inputStyle} placeholder="Block B-102" value={room} onChange={e => setRoom(e.target.value)} />
           </div>
         </div>
         <div>
-          <label style={labelStyle}>Teacher (optional)</label>
-          <input style={inputStyle} placeholder="Prof. Name" value={teacher} onChange={e => setTeacher(e.target.value)} />
+          <label htmlFor="slot-teacher-input" style={labelStyle}>Teacher (optional)</label>
+          <input id="slot-teacher-input" style={inputStyle} placeholder="Prof. Name" value={teacher} onChange={e => setTeacher(e.target.value)} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <label style={labelStyle}>Start *</label>
-            <input style={inputStyle} type="time" value={startTime} onChange={e => handleStartTimeChange(e.target.value)} />
+            <label htmlFor="slot-start-input" style={labelStyle}>Start *</label>
+            <input id="slot-start-input" style={inputStyle} type="time" value={startTime} onChange={e => handleStartTimeChange(e.target.value)} />
           </div>
           <div>
-            <label style={labelStyle}>End * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({TYPE_DURATIONS[type] ?? 60}m)</span></label>
-            <input style={inputStyle} type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+            <label htmlFor="slot-end-input" style={labelStyle}>End * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({TYPE_DURATIONS[type] ?? 60}m)</span></label>
+            <input id="slot-end-input" style={inputStyle} type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
           </div>
         </div>
 
@@ -239,8 +239,8 @@ function CopyDaySheet({ targetDay, schedule, onClose }: {
     <BottomSheet onClose={onClose} title={`Copy to ${DAY_FULL[targetDay]}`}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
         <div>
-          <label style={labelStyle}>Copy from</label>
-          <select style={inputStyle} value={sourceDay} onChange={e => setSourceDay(e.target.value)}>
+          <label htmlFor="copy-source-select" style={labelStyle}>Copy from</label>
+          <select id="copy-source-select" style={inputStyle} value={sourceDay} onChange={e => setSourceDay(e.target.value)}>
             <option value="">Select source day…</option>
             {sourceDays.map(d => (
               <option key={d} value={d}>{DAY_FULL[d]} ({schedule[d]?.length ?? 0} classes)</option>
@@ -482,6 +482,11 @@ export default function SchedulePage() {
   const swipeRef = useRef({ startX: 0, startY: 0, active: false });
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    // Ignore swiping if starting on a class card, which has swipe-to-delete
+    const target = e.target as HTMLElement;
+    if (target.closest('.schedule-card') || target.closest('.swipe-delete-zone')) {
+      return;
+    }
     swipeRef.current = { startX: e.clientX, startY: e.clientY, active: true };
   };
 
@@ -584,7 +589,7 @@ export default function SchedulePage() {
         </div>
 
         {/* Day tabs with class count badges */}
-        <div className="day-tabs" style={{ paddingBottom: 12 }}>
+        <div className="day-tabs" style={{ paddingBottom: 12 }} role="tablist" aria-label="Schedule days">
           {DAYS.map(day => {
             const isActive = day === selectedDay;
             const isDayToday = day === todayKey;
@@ -595,6 +600,9 @@ export default function SchedulePage() {
                 id={`day-tab-${day}`}
                 className={`day-tab${isActive ? ' active' : ''}${isDayToday ? ' today' : ''}`}
                 onClick={() => handleDaySelect(day)}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`schedule-panel-${day}`}
               >
                 <span>{day}</span>
                 {count > 0 && <span className="day-badge">{count}</span>}
@@ -614,14 +622,23 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <main className="page-content">
+      <main 
+        className="page-content"
+        role="tabpanel"
+        id={`schedule-panel-${selectedDay}`}
+        aria-labelledby={`day-tab-${selectedDay}`}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+      >
         <p className="t-caption" style={{ color: 'var(--text-secondary)', padding: '8px 0 4px' }}>
           {dateSubheading}
         </p>
 
         {isLoading ? (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <Loader size={24} color="var(--accent-primary)" className="spin" />
+            <div style={{ display: 'inline-block' }}>
+              <Loader size={24} color="var(--accent-primary)" className="spin" />
+            </div>
           </div>
         ) : classes.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
@@ -637,8 +654,6 @@ export default function SchedulePage() {
             className={`schedule-timeline ${slideDir === 'right' ? 'schedule-slide-right' : slideDir === 'left' ? 'schedule-slide-left' : ''}`}
             key={slideKey}
             style={{ height: timelineHeight + 16, marginTop: 8 }}
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
           >
             {/* Hour marks */}
             {hourMarks.map(h => {

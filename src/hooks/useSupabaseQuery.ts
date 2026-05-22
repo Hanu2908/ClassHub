@@ -505,7 +505,7 @@ export function useAttendance() {
 
       const subjects: AttendanceSubject[] = (data ?? []).map(r => {
         const subj = r.subjects as SubjectRelation;
-        const total = r.present + r.od + r.absent;
+        const total = r.present + r.od + r.makeup + r.absent;
         const attended = r.present + r.od + r.makeup;
         const pct = r.percentage ?? (total > 0 ? (attended / total) * 100 : 0);
         // canSkip: how many more can skip while staying >= 75%
@@ -608,6 +608,58 @@ export function useAssignmentSubmissions(assignmentId: string | null) {
         nudgeSent: s.nudge_sent,
       }));
     },
+  });
+}
+
+export interface StudentAttendanceAggregate {
+  userId: string;
+  totalPresent: number;
+  totalHeld: number;
+  overallPercentage: number | null;
+}
+
+export function useSectionAttendance() {
+  const { role, sectionId, isAuthLoading } = useAuthContext();
+  const isCR = role === 'cr';
+
+  return useQuery<Record<string, StudentAttendanceAggregate>>({
+    queryKey: ['section_attendance', sectionId],
+    enabled: !!sectionId && !isAuthLoading && isCR,
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('user_id, present, od, makeup, absent');
+      
+      if (error) throw error;
+
+      const aggregates: Record<string, StudentAttendanceAggregate> = {};
+      
+      (data ?? []).forEach(r => {
+        const total = r.present + r.od + r.makeup + r.absent;
+        const attended = r.present + r.od + r.makeup;
+        
+        if (!aggregates[r.user_id]) {
+          aggregates[r.user_id] = {
+            userId: r.user_id,
+            totalPresent: 0,
+            totalHeld: 0,
+            overallPercentage: null
+          };
+        }
+        
+        aggregates[r.user_id].totalPresent += attended;
+        aggregates[r.user_id].totalHeld += total;
+      });
+
+      Object.values(aggregates).forEach(agg => {
+        if (agg.totalHeld > 0) {
+          agg.overallPercentage = (agg.totalPresent / agg.totalHeld) * 100;
+        }
+      });
+
+      return aggregates;
+    }
   });
 }
 

@@ -14,93 +14,11 @@ import { useAppStore } from '../../store/appStore';
 import { useAttendance, useSchedule } from '../../hooks/useSupabaseQuery';
 import { useBulkUpsertAttendance, useEnsureSubjects, useUpdateSubject } from '../../hooks/useSupabaseMutations';
 
-interface ParsedERPSubject {
-  code: string;
-  name: string;
-  type: string;
-  present: number;
-  od?: number;
-  makeup?: number;
-  absent: number;
-  total: number;
-  percentage: number;
-  canSkip: number;
-  needToAttend: number;
+import { parseERPAttendance } from '../../lib/utils/attendance';
+import type { ParsedSubject } from '../../lib/utils/attendance';
+
+interface ParsedERPSubject extends ParsedSubject {
   subjectId: string | null;
-}
-
-type ParsedERPSourceSubject = Omit<ParsedERPSubject, 'subjectId'>;
-
-function parseERPAttendance(rawText: string): ParsedERPSourceSubject[] {
-  const lines = rawText.trim().split(/\r?\n/);
-  const subjects: ParsedERPSourceSubject[] = [];
-  const TYPES = new Set(['Lecture', 'Tutorial', 'Lab', 'Practical', 'Laboratory', 'Tut']);
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    const cols = trimmed.includes('\t')
-      ? trimmed.split('\t').map(c => c.trim()).filter(c => c.length > 0)
-      : trimmed.split(/\s{2,}/).map(c => c.trim()).filter(c => c.length > 0);
-
-    const typeColIdx = cols.findIndex(c => TYPES.has(c));
-    if (typeColIdx < 0) continue;
-
-    const numericCols = cols.slice(typeColIdx + 1);
-    if (numericCols.length < 2) continue;
-    if (numericCols.some(c => isNaN(Number(c)))) continue;
-
-    const pct = parseFloat(numericCols[numericCols.length - 1]);
-    const counts = numericCols.slice(0, -1).map(Number);
-
-    let present: number, od: number = 0, makeup: number = 0, absent: number, total: number;
-    let attendedTotal: number;
-    if (counts.length >= 4) {
-      const [pres, o, mk, ab] = counts;
-      present = pres;
-      od = o;
-      makeup = mk;
-      absent = ab;
-      attendedTotal = pres + o + mk;
-      total = pres + o + ab; // CORRECT FORMULA (excluding makeup from denominator)
-    } else if (counts.length === 3) {
-      const [pres, ab, tot] = counts;
-      present = pres; absent = ab; total = tot;
-      attendedTotal = pres;
-    } else {
-      const [att, tot] = counts;
-      present = att; total = tot; absent = total - present;
-      attendedTotal = att;
-    }
-
-    const beforeType = cols.slice(0, typeColIdx);
-    const startIdx = /^\d+$/.test(beforeType[0] ?? '') ? 1 : 0;
-    if (beforeType.length <= startIdx) continue;
-
-    const code = beforeType[startIdx];
-    const name = beforeType.slice(startIdx + 1).join(' ').trim() || code;
-    const type = cols[typeColIdx];
-
-    if (!code) continue;
-
-    const canSkip = pct >= 75 ? Math.floor((attendedTotal - 0.75 * total) / 0.75) : 0;
-    const needToAttend = pct < 75 ? Math.ceil((0.75 * total - attendedTotal) / 0.25) : 0;
-    subjects.push({ 
-      code, 
-      name, 
-      type, 
-      present, // Keep raw present
-      od, 
-      makeup, 
-      absent, 
-      total, 
-      percentage: pct, 
-      canSkip, 
-      needToAttend 
-    });
-  }
-  return subjects;
 }
 
 const STATUS_COLOR = (pct: number) => {
