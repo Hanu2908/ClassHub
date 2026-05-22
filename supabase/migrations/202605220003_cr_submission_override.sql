@@ -10,6 +10,9 @@ alter table public.submissions
 -- Allow CR to update cr_verified for assignments in their section.
 -- The existing "CR may nudge submissions" policy only allows updating nudge_sent.
 -- This new policy explicitly covers cr_verified updates by the CR.
+-- Drop first to make migration idempotent (safe to re-run on preview branches).
+drop policy if exists "CR updates submission verification status" on public.submissions;
+
 create policy "CR updates submission verification status"
 on public.submissions for update to authenticated
 using (
