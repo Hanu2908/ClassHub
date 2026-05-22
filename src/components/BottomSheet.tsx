@@ -78,14 +78,15 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
     e.currentTarget.releasePointerCapture(e.pointerId);
     
     // Dismiss if dragged down > 100px OR flicked down with velocity > 0.4px/ms and minimum displacement
-    if (offsetY > 100 || (velocityRef.current > 0.4 && offsetY > 20)) {
-      setOffsetY(window.innerHeight); // slide out off-screen snappily
-      setTimeout(() => {
-        onClose();
-      }, 150); // fast transition matching the physics feel
-    } else {
-      setOffsetY(0); // bounce snap back to open position
-    }
+   // Let the panel slide out with a faster, dedicated linear-glide exit transition
+  if (panelRef.current) {
+    panelRef.current.style.transition = 'transform 0.24s cubic-bezier(0.25, 1, 0.5, 1)';
+  }
+  setOffsetY(window.innerHeight); 
+  
+  setTimeout(() => {
+    onClose();
+  }, 240); // Wait for the full 240ms exit slide-down to finish completely
   };
 
   const handlePointerCancel = (e: React.PointerEvent) => {
@@ -103,7 +104,8 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
         className="sheet-panel"
         style={{
           transform: `translateX(-50%) translateY(${offsetY}px)`,
-          transition: dragging ? 'none' : 'transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05)',
+// NEW SMOOTH TWEAK:
+transition: dragging ? 'none' : 'transform 0.32s cubic-bezier(0.25, 1, 0.5, 1)',
         }}
       >
         {/* Enforce Option A: Drag zone restricted only to the handle and header area */}
