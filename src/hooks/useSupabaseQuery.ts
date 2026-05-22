@@ -39,12 +39,16 @@ interface VoteRow {
 
 function useAuthContext() {
   const authUser = useAppStore(s => s.authUser);
+  const session = useAppStore(s => s.session);
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
+  const isDemo = authUser?.sectionId === 'demo-section';
+  const isAuthenticated = !!session || isDemo;
   return {
     userId: authUser?.id ?? null,
     sectionId: authUser?.sectionId ?? null,
     role: authUser?.role ?? 'student',
     isAuthLoading,
+    isAuthenticated,
   };
 }
 
@@ -59,10 +63,10 @@ export interface SectionInfo {
 }
 
 export function useSection() {
-  const { sectionId, isAuthLoading } = useAuthContext();
+  const { sectionId, isAuthenticated } = useAuthContext();
   return useQuery<SectionInfo | null>({
     queryKey: ['section', sectionId],
-    enabled: !!sectionId && !isAuthLoading,
+    enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -103,10 +107,10 @@ export interface SubjectInfo {
 }
 
 export function useSubjects() {
-  const { sectionId, isAuthLoading } = useAuthContext();
+  const { sectionId, isAuthenticated } = useAuthContext();
   return useQuery<SubjectInfo[]>({
     queryKey: ['subjects', sectionId],
-    enabled: !!sectionId && !isAuthLoading,
+    enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -178,12 +182,12 @@ export function useMutateSubjects() {
 // ── 3. Announcements ─────────────────────────────────────────────────────────
 
 export function useAnnouncements(opts?: { page?: number; limit?: number }) {
-  const { sectionId, userId, isAuthLoading } = useAuthContext();
+  const { sectionId, userId, isAuthenticated } = useAuthContext();
   const page = opts?.page ?? 0;
   const limit = opts?.limit ?? 100; // default cap to avoid unbounded fetches
   return useQuery<(Announcement & { isAcknowledged: boolean })[]>({
     queryKey: ['announcements', sectionId, userId, page, limit],
-    enabled: !!sectionId && !isAuthLoading,
+    enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const from = page * limit;
@@ -235,12 +239,12 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
 // ── 4. Assignments ───────────────────────────────────────────────────────────
 
 export function useAssignments(opts?: { page?: number; limit?: number }) {
-  const { sectionId, userId, isAuthLoading } = useAuthContext();
+  const { sectionId, userId, isAuthenticated } = useAuthContext();
   const page = opts?.page ?? 0;
   const limit = opts?.limit ?? 100;
   return useQuery<Assignment[]>({
     queryKey: ['assignments', sectionId, userId, page, limit],
-    enabled: !!sectionId && !isAuthLoading,
+    enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const from = page * limit;
@@ -319,10 +323,10 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
 // ── 5. Polls ─────────────────────────────────────────────────────────────────
 
 export function usePolls() {
-  const { sectionId, userId, isAuthLoading } = useAuthContext();
+  const { sectionId, userId, isAuthenticated } = useAuthContext();
   return useQuery<Poll[]>({
     queryKey: ['polls', sectionId, userId],
-    enabled: !!sectionId && !isAuthLoading,
+    enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data: polls, error } = await supabase
@@ -444,11 +448,11 @@ export function useActionablePollVotes(pollId: string, enabled: boolean) {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function useSchedule() {
-  const { sectionId, isAuthLoading } = useAuthContext();
+  const { sectionId, isAuthenticated } = useAuthContext();
 
   return useQuery<ScheduleMap>({
     queryKey: ['schedule', sectionId],
-    enabled: !!sectionId && !isAuthLoading,
+    enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -488,10 +492,10 @@ export function useSchedule() {
 // ── 7. Attendance ────────────────────────────────────────────────────────────
 
 export function useAttendance() {
-  const { userId, isAuthLoading } = useAuthContext();
+  const { userId, isAuthenticated } = useAuthContext();
   return useQuery<{ subjects: AttendanceSubject[]; overall: number }>({
     queryKey: ['attendance', userId],
-    enabled: !!userId && !isAuthLoading,
+    enabled: !!userId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -547,10 +551,10 @@ export interface SectionMember {
 }
 
 export function useSectionMembers() {
-  const { sectionId, isAuthLoading } = useAuthContext();
+  const { sectionId, isAuthenticated } = useAuthContext();
   return useQuery<SectionMember[]>({
     queryKey: ['members', sectionId],
-    enabled: !!sectionId && !isAuthLoading,
+    enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
       const { data, error } = await supabase
@@ -619,12 +623,12 @@ export interface StudentAttendanceAggregate {
 }
 
 export function useSectionAttendance() {
-  const { role, sectionId, isAuthLoading } = useAuthContext();
+  const { role, sectionId, isAuthenticated } = useAuthContext();
   const isCR = role === 'cr';
 
   return useQuery<Record<string, StudentAttendanceAggregate>>({
     queryKey: ['section_attendance', sectionId],
-    enabled: !!sectionId && !isAuthLoading && isCR,
+    enabled: !!sectionId && isAuthenticated && isCR,
     staleTime: 1000 * 60 * 5, // 5 minutes cache
     queryFn: async () => {
       const { data, error } = await supabase
