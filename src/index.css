@@ -2614,10 +2614,10 @@ animation: slideUp 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05);
 /* ── Interactive Card Stack Carousel ── */
 .announcement-stack-container {
   position: relative;
-  height: 152px;
+  height: 176px;
   width: 100%;
-  max-width: 480px;
-  margin: 8px auto 16px auto;
+  max-width: 600px;
+  margin: 1px auto 0px auto;
   perspective: 1000px;
   perspective-origin: 50% 50%;
 }
