@@ -67,7 +67,8 @@ Deno.serve(async (req: Request) => {
 
     let sent = 0;
     let failed = 0;
-    let cleaned = 0;
+    const staleEndpoints: string[] = [];
+    const notificationEvents: any[] = [];
     const notifTitle = `Assignment due: ${assignment.title}`;
     const notifBody = `Due ${new Date(assignment.due_date).toLocaleString()}`;
 
@@ -82,11 +83,10 @@ Deno.serve(async (req: Request) => {
         sent++;
       } else {
         failed++;
-        await serviceClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-        cleaned++;
+        staleEndpoints.push(sub.endpoint);
       }
 
-      await serviceClient.from("notification_events").insert({
+      notificationEvents.push({
         section_id: profile.section_id,
         recipient_id: sub.user_id,
         actor_id: user.id,
@@ -103,11 +103,24 @@ Deno.serve(async (req: Request) => {
       return result;
     });
 
+    // Batch insert notification events
+    if (notificationEvents.length > 0) {
+      await serviceClient.from("notification_events").insert(notificationEvents);
+    }
+
+    // Batch delete stale subscriptions
+    if (staleEndpoints.length > 0) {
+      await serviceClient
+        .from("push_subscriptions")
+        .delete()
+        .in("endpoint", staleEndpoints);
+    }
+
     if (!studentId) {
       await serviceClient.from("assignments").update({ nudge_sent: true }).eq("id", assignment.id);
     }
 
-    return Response.json({ pending: pendingIds.length, sent, failed, cleaned }, { headers });
+    return Response.json({ pending: pendingIds.length, sent, failed, cleaned: staleEndpoints.length }, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message.includes("CR role required") ? 403 : 400;

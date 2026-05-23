@@ -46,17 +46,18 @@ export function useCreateAnnouncement() {
       if (error) throw error;
 
       if (input.priority === 'critical' && data?.id) {
-        supabase.functions.invoke('send-critical-announcement', {
-          body: { announcementId: data.id },
-        }).then(({ data, error: funcError }) => {
+        try {
+          const { data: pushData, error: funcError } = await supabase.functions.invoke('send-critical-announcement', {
+            body: { announcementId: data.id },
+          });
           if (funcError) {
             console.warn('Failed to broadcast critical announcement notification:', funcError);
           } else {
-            console.log('Push notification result:', data);
+            console.log('Push notification result:', pushData);
           }
-        }).catch((err) => {
+        } catch (err) {
           console.warn('Error invoking send-critical-announcement function:', err);
-        });
+        }
       }
 
       return data?.id;
@@ -215,21 +216,22 @@ export function useUpdateAssignment() {
 
       // 3. Optional class push notifications
       if (input.notifyClass && sectionId) {
-        supabase.functions.invoke('send-custom-notification', {
-          body: {
-            title: `Assignment Updated: ${input.title}`,
-            body: `The assignment details or deadline have been modified. Please review.`,
-            sectionId: sectionId
-          }
-        }).then(({ data, error: funcError }) => {
+        try {
+          const { data: pushData, error: funcError } = await supabase.functions.invoke('send-custom-notification', {
+            body: {
+              title: `Assignment Updated: ${input.title}`,
+              body: `The assignment details or deadline have been modified. Please review.`,
+              sectionId: sectionId
+            }
+          });
           if (funcError) {
             console.warn('Failed to send class update push notifications:', funcError);
           } else {
-            console.log('Custom update push notification sent:', data);
+            console.log('Custom update push notification sent:', pushData);
           }
-        }).catch(err => {
+        } catch (err) {
           console.warn('Error invoking send-custom-notification function:', err);
-        });
+        }
       }
 
       return input.id;

@@ -28,24 +28,22 @@ Deno.serve(async (req) => {
     if (announcementError || !announcement) throw new Error("Announcement not found");
     if (announcement.priority !== "critical") throw new Error("Only critical announcements trigger this function");
 
-    // Get all push subscriptions for users in this section
-    const { data: sectionUsers } = await serviceClient
-      .from("users").select("id").eq("section_id", profile.section_id);
-    const userIds = (sectionUsers ?? []).map((r) => r.id);
-
+    // Get all push subscriptions for users in this section using single joined query
     const { data: subscriptions, error: subError } = await serviceClient
       .from("push_subscriptions")
-      .select("user_id, endpoint, p256dh, auth")
-      .in("user_id", userIds);
+      .select("user_id, endpoint, p256dh, auth, users!inner(section_id)")
+      .eq("users.section_id", profile.section_id);
 
     if (subError) throw subError;
 
-    // Send push + log in batches of 10 with fault isolation
+    // Send push + collect batch database updates
     let sent = 0;
     let failed = 0;
-    let cleaned = 0;
+    const staleEndpoints: string[] = [];
+    const successfulUserIds: string[] = [];
+    const failedUserIds: string[] = [];
 
-    const results = await processBatched(subscriptions ?? [], async (sub) => {
+    await processBatched(subscriptions ?? [], async (sub) => {
       const result = await sendWebPush(sub, {
         title: announcement.title,
         body: announcement.message_content,
@@ -54,30 +52,53 @@ Deno.serve(async (req) => {
 
       if (result.ok) {
         sent++;
+        successfulUserIds.push(sub.user_id);
       } else {
         failed++;
-        await serviceClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-        cleaned++;
+        staleEndpoints.push(sub.endpoint);
+        failedUserIds.push(sub.user_id);
       }
-
-      await serviceClient.from("notification_events").insert({
-        section_id: profile.section_id,
-        recipient_id: sub.user_id,
-        actor_id: user.id,
-        kind: "critical_announcement",
-        status: result.ok ? "sent" : "failed",
-        target_table: "announcements",
-        target_id: announcement.id,
-        error_message: result.error,
-        sent_at: result.ok ? new Date().toISOString() : null,
-      });
 
       return result;
     });
 
+    // Batch update successful push notification events (no duplicates, updates trigger-created records)
+    if (successfulUserIds.length > 0) {
+      await serviceClient
+        .from("notification_events")
+        .update({
+          status: "sent",
+          sent_at: new Date().toISOString(),
+        })
+        .in("recipient_id", successfulUserIds)
+        .eq("target_table", "announcements")
+        .eq("target_id", announcement.id);
+    }
+
+    // Batch update failed push notification events
+    if (failedUserIds.length > 0) {
+      await serviceClient
+        .from("notification_events")
+        .update({
+          status: "failed",
+          error_message: "Push notification delivery failed",
+        })
+        .in("recipient_id", failedUserIds)
+        .eq("target_table", "announcements")
+        .eq("target_id", announcement.id);
+    }
+
+    // Batch delete stale subscriptions
+    if (staleEndpoints.length > 0) {
+      await serviceClient
+        .from("push_subscriptions")
+        .delete()
+        .in("endpoint", staleEndpoints);
+    }
+
     await serviceClient.from("announcements").update({ notification_sent: true }).eq("id", announcement.id);
 
-    return Response.json({ sent, failed, cleaned }, { headers });
+    return Response.json({ sent, failed, cleaned: staleEndpoints.length }, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message.includes("CR role required") ? 403 : 400;
