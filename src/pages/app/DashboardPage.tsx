@@ -958,8 +958,12 @@ function AnnouncementsScroll() {
                                   }
                                 }}
                                 style={{
-                                  background: 'rgba(52, 211, 153, 0.12)',
-                                  border: '1px solid rgba(52, 211, 153, 0.35)',
+                                  background: ann.priority === 'critical' 
+                                    ? 'rgba(239, 68, 68, 0.12)' 
+                                    : 'rgba(96, 165, 250, 0.12)',
+                                  border: ann.priority === 'critical' 
+                                    ? '1px solid rgba(239, 68, 68, 0.35)' 
+                                    : '1px solid rgba(96, 165, 250, 0.35)',
                                   borderRadius: '50%',
                                   width: 36,
                                   height: 36,
@@ -967,7 +971,7 @@ function AnnouncementsScroll() {
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   cursor: 'pointer',
-                                  color: '#34d399',
+                                  color: ann.priority === 'critical' ? '#ef4444' : '#60a5fa',
                                   transition: 'all 0.2s',
                                   position: 'absolute',
                                   top: 10,
