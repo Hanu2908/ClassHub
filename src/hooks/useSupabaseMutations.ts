@@ -644,3 +644,45 @@ export function useUpdateSubject() {
     },
   });
 }
+
+export function useUpdateGlobalResource() {
+  const qc = useQueryClient();
+  const { userId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      subjectCode: string;
+      subjectName: string;
+      semester: string;
+      branch: string;
+      accentColor: string;
+      syllabusUrl: string;
+      notesUrl: string;
+      pyqsUrl: string;
+      practiceUrl: string;
+      labUrl: string;
+    }) => {
+      const { error } = await supabase
+        .from('global_resources' as any)
+        .update({
+          subject_code: input.subjectCode,
+          subject_name: input.subjectName,
+          semester: input.semester,
+          branch: input.branch,
+          accent_color: input.accentColor,
+          syllabus_url: input.syllabusUrl,
+          notes_url: input.notesUrl,
+          pyqs_url: input.pyqsUrl,
+          practice_url: input.practiceUrl,
+          lab_url: input.labUrl,
+          updated_by: userId!,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq('id', input.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['global_resources'] }),
+  });
+}
+

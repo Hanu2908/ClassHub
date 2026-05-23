@@ -175,18 +175,16 @@ export default function ProfilePage() {
               <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
-            <a
+            <button
               id="resource-hub-btn"
-              href="https://resource-hub-drab.vercel.app/"
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={() => navigate('/app/resource-hub')}
               className="list-row"
-              style={{ textDecoration: 'none', color: 'inherit', borderRadius: 0 }}
+              style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 0 }}
             >
               <ExternalLink size={18} color="var(--status-safe)" />
               <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>Resource Hub</span>
               <ChevronRight size={16} color="var(--text-muted)" />
-            </a>
+            </button>
           </div>
         </div>
 

@@ -19,6 +19,7 @@ const AttendancePage = lazy(() => import('./pages/app/AttendancePage'));
 const CRCommandPage = lazy(() => import('./pages/app/CRCommandPage'));
 const ManageSubjectsPage = lazy(() => import('./pages/app/ManageSubjectsPage'));
 const PDFViewerPage = lazy(() => import('./pages/app/PDFViewerPage'));
+const ResourceHubPage = lazy(() => import('./pages/app/ResourceHubPage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -104,6 +105,7 @@ export default function App() {
             <Route path="/app/schedule" element={<RequireAuth><RequireHub><SchedulePage /></RequireHub></RequireAuth>} />
             <Route path="/app/polls" element={<RequireAuth><RequireHub><PollsPage /></RequireHub></RequireAuth>} />
             <Route path="/app/profile" element={<RequireAuth><RequireHub><ProfilePage /></RequireHub></RequireAuth>} />
+            <Route path="/app/resource-hub" element={<RequireAuth><RequireHub><ResourceHubPage /></RequireHub></RequireAuth>} />
             <Route path="/app/announcements" element={<RequireAuth><RequireHub><AnnouncementsPage /></RequireHub></RequireAuth>} />
             <Route path="/app/assignments" element={<RequireAuth><RequireHub><AssignmentsPage /></RequireHub></RequireAuth>} />
             <Route path="/app/attendance" element={<RequireAuth><RequireHub><AttendancePage /></RequireHub></RequireAuth>} />

@@ -670,3 +670,87 @@ export function useSectionAttendance() {
   });
 }
 
+export interface GlobalResource {
+  id: string;
+  subjectCode: string;
+  subjectName: string;
+  semester: string;
+  branch: string;
+  accentColor: string;
+  syllabusUrl: string;
+  notesUrl: string;
+  pyqsUrl: string;
+  practiceUrl: string;
+  labUrl: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+export interface GlobalPYQ {
+  id: string;
+  semester: string;
+  year: string;
+  url: string;
+  isLatest: boolean;
+  createdAt: string;
+}
+
+export function useGlobalResources() {
+  const { isAuthenticated } = useAuthContext();
+  return useQuery<GlobalResource[]>({
+    queryKey: ['global_resources'],
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('global_resources' as any)
+        .select('*')
+        .order('subject_code', { ascending: true }) as any;
+      
+      if (error) throw error;
+      
+      return (data ?? []).map((r: any) => ({
+        id: r.id,
+        subjectCode: r.subject_code,
+        subjectName: r.subject_name,
+        semester: r.semester,
+        branch: r.branch,
+        accentColor: r.accent_color ?? '#8B5CF6',
+        syllabusUrl: r.syllabus_url ?? '',
+        notesUrl: r.notes_url ?? '',
+        pyqsUrl: r.pyqs_url ?? '',
+        practiceUrl: r.practice_url ?? '',
+        labUrl: r.lab_url ?? '',
+        updatedAt: r.updated_at,
+        updatedBy: r.updated_by,
+      }));
+    },
+  });
+}
+
+export function useGlobalPYQs() {
+  const { isAuthenticated } = useAuthContext();
+  return useQuery<GlobalPYQ[]>({
+    queryKey: ['global_pyqs'],
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('global_pyqs' as any)
+        .select('*')
+        .order('year', { ascending: false }) as any;
+      
+      if (error) throw error;
+      
+      return (data ?? []).map((p: any) => ({
+        id: p.id,
+        semester: p.semester,
+        year: p.year,
+        url: p.url,
+        isLatest: p.is_latest,
+        createdAt: p.created_at,
+      }));
+    },
+  });
+}
+
