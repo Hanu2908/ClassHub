@@ -28,7 +28,7 @@ const customTheme = {
   textMeta: '#6060A0',
   accent: '#8B5CF6', // Electric violet
   statusLive: '#4ADE80',
-  fontDisplay: "'Bebas Neue', cursive", // RESTORED cursive fallback strictly!
+  fontDisplay: "'Bebas Neue', sans-serif", // Intended bold condensed block style!
   fontMono: "'IBM Plex Mono', monospace",
 };
 
