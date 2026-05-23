@@ -1,8 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Edit2, Loader2, Search } from 'lucide-react';
+import { ChevronLeft, Edit2, Loader2, Search, Plus, Trash2 } from 'lucide-react';
 import { useGlobalResources, useGlobalPYQs, type GlobalResource } from '../../hooks/useSupabaseQuery';
-import { useUpdateGlobalResource } from '../../hooks/useSupabaseMutations';
+import { 
+  useUpdateGlobalResource, 
+  useCreateGlobalResource, 
+  useDeleteGlobalResource,
+  useCreateGlobalPYQ,
+  useDeleteGlobalPYQ 
+} from '../../hooks/useSupabaseMutations';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -22,7 +28,7 @@ const customTheme = {
   textMeta: '#6060A0',
   accent: '#8B5CF6', // Electric violet
   statusLive: '#4ADE80',
-  fontDisplay: "'Bebas Neue', cursive, sans-serif",
+  fontDisplay: "'Bebas Neue', cursive", // RESTORED cursive fallback strictly!
   fontMono: "'IBM Plex Mono', monospace",
 };
 
@@ -34,7 +40,12 @@ export default function ResourceHubPage() {
   // ── Database Queries & Mutations ──
   const { data: rawResources = [], isLoading: loadingResources } = useGlobalResources();
   const { data: rawPYQs = [], isLoading: loadingPYQs } = useGlobalPYQs();
+  
   const updateResourceMutation = useUpdateGlobalResource();
+  const createResourceMutation = useCreateGlobalResource();
+  const deleteResourceMutation = useDeleteGlobalResource();
+  const createPYQMutation = useCreateGlobalPYQ();
+  const deletePYQMutation = useDeleteGlobalPYQ();
 
   // ── States ──
   const [selectedSemester, setSelectedSemester] = useState<string>('Semester II');
@@ -42,8 +53,13 @@ export default function ResourceHubPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // ── Edit BottomSheet state ──
+  // ── Edit/Add Subject BottomSheet state ──
   const [editingResource, setEditingResource] = useState<GlobalResource | null>(null);
+  const [editCode, setEditCode] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editSem, setEditSem] = useState('Semester II');
+  const [editBranch, setEditBranch] = useState('ALL');
+  const [editAccent, setEditAccent] = useState('#8B5CF6');
   const [editSyllabus, setEditSyllabus] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editPYQs, setEditPYQs] = useState('');
@@ -51,9 +67,21 @@ export default function ResourceHubPage() {
   const [editLab, setEditLab] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Set initial form states on edit open
+  // ── Add PYQ BottomSheet state ──
+  const [isAddingPYQ, setIsAddingPYQ] = useState(false);
+  const [pyqSem, setPyqSem] = useState('Semester II');
+  const [pyqYear, setPyqYear] = useState('');
+  const [pyqUrl, setPyqUrl] = useState('');
+  const [pyqLatest, setPyqLatest] = useState(false);
+
+  // Set form states on edit open
   const handleOpenEdit = (res: GlobalResource) => {
     setEditingResource(res);
+    setEditCode(res.subjectCode);
+    setEditName(res.subjectName);
+    setEditSem(res.semester);
+    setEditBranch(res.branch);
+    setEditAccent(res.accentColor);
     setEditSyllabus(res.syllabusUrl);
     setEditNotes(res.notesUrl);
     setEditPYQs(res.pyqsUrl);
@@ -61,30 +89,136 @@ export default function ResourceHubPage() {
     setEditLab(res.labUrl);
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
+  // Set form states on adding a new subject
+  const handleOpenAddSubject = () => {
+    setEditingResource({
+      id: 'new',
+      subjectCode: '',
+      subjectName: '',
+      semester: 'Semester II',
+      branch: 'ALL',
+      accentColor: '#8B5CF6',
+      syllabusUrl: '',
+      notesUrl: '',
+      pyqsUrl: '',
+      practiceUrl: '',
+      labUrl: '',
+      updatedAt: null,
+      updatedBy: null
+    });
+    setEditCode('');
+    setEditName('');
+    setEditSem('Semester II');
+    setEditBranch('ALL');
+    setEditAccent('#8B5CF6');
+    setEditSyllabus('');
+    setEditNotes('');
+    setEditPYQs('');
+    setEditPractice('');
+    setEditLab('');
+  };
+
+  const handleSaveSubject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingResource) return;
+    
+    if (!editCode.trim() || !editName.trim()) {
+      showToast('Subject Code and Name are required', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await updateResourceMutation.mutateAsync({
-        id: editingResource.id,
-        subjectCode: editingResource.subjectCode,
-        subjectName: editingResource.subjectName,
-        semester: editingResource.semester,
-        branch: editingResource.branch,
-        accentColor: editingResource.accentColor,
-        syllabusUrl: editSyllabus,
-        notesUrl: editNotes,
-        pyqsUrl: editPYQs,
-        practiceUrl: editPractice,
-        labUrl: editLab,
-      });
-      showToast('Vault folder updated successfully', 'success');
+      if (editingResource.id === 'new') {
+        // Create new global subject
+        await createResourceMutation.mutateAsync({
+          subjectCode: editCode,
+          subjectName: editName,
+          semester: editSem,
+          branch: editBranch,
+          accentColor: editAccent,
+          syllabusUrl: editSyllabus,
+          notesUrl: editNotes,
+          pyqsUrl: editPYQs,
+          practiceUrl: editPractice,
+          labUrl: editLab,
+        });
+        showToast('Subject created successfully', 'success');
+      } else {
+        // Update existing global subject
+        await updateResourceMutation.mutateAsync({
+          id: editingResource.id,
+          subjectCode: editCode,
+          subjectName: editName,
+          semester: editSem,
+          branch: editBranch,
+          accentColor: editAccent,
+          syllabusUrl: editSyllabus,
+          notesUrl: editNotes,
+          pyqsUrl: editPYQs,
+          practiceUrl: editPractice,
+          labUrl: editLab,
+        });
+        showToast('Subject vault updated successfully', 'success');
+      }
       setEditingResource(null);
     } catch (err: any) {
-      showToast(`Update failed: ${err.message}`, 'error');
+      showToast(`Action failed: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteSubject = async () => {
+    if (!editingResource || editingResource.id === 'new') return;
+    if (!confirm(`Are you sure you want to permanently delete ${editingResource.subjectName}?`)) return;
+    
+    setIsSubmitting(true);
+    try {
+      await deleteResourceMutation.mutateAsync(editingResource.id);
+      showToast('Subject deleted successfully', 'success');
+      setEditingResource(null);
+    } catch (err: any) {
+      showToast(`Delete failed: ${err.message}`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreatePYQ = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pyqYear.trim() || !pyqUrl.trim()) {
+      showToast('Year and PDF Drive link are required', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createPYQMutation.mutateAsync({
+        semester: pyqSem,
+        year: pyqYear,
+        url: pyqUrl,
+        isLatest: pyqLatest,
+      });
+      showToast('PYQ exam paper added', 'success');
+      setIsAddingPYQ(false);
+      setPyqYear('');
+      setPyqUrl('');
+      setPyqLatest(false);
+    } catch (err: any) {
+      showToast(`Failed to add PYQ: ${err.message}`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeletePYQ = async (id: string, year: string) => {
+    if (!confirm(`Are you sure you want to delete the ${year} paper?`)) return;
+    try {
+      await deletePYQMutation.mutateAsync(id);
+      showToast('PYQ paper deleted successfully', 'success');
+    } catch (err: any) {
+      showToast(`Failed to delete PYQ: ${err.message}`, 'error');
     }
   };
 
@@ -115,6 +249,7 @@ export default function ResourceHubPage() {
 
   const semestersList = ['Semester I', 'Semester II', 'Semester III', 'Semester IV', 'ALL'];
   const branchesList = ['ALL', 'IT', 'CSE', 'ME', 'EC'];
+  const accentColors = ['#8B5CF6', '#f5c518', '#00d4ff', '#ff6b6b', '#a8ff78', '#ff9500', '#c0c0c0', '#70e000'];
 
   return (
     <div style={{
@@ -339,17 +474,44 @@ export default function ResourceHubPage() {
             {/* 📚 1. SUBJECTS VAULT */}
             <section style={{ marginBottom: '32px' }}>
               <div style={{
-                fontFamily: customTheme.fontMono,
-                fontSize: '11px',
-                fontWeight: 600,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: customTheme.textMeta,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 marginBottom: '14px',
-                borderLeft: `2.5px solid ${customTheme.accent}`,
-                paddingLeft: '8px'
               }}>
-                RESOURCE VAULT — {filteredResources.length} Subjects
+                <div style={{
+                  fontFamily: customTheme.fontMono,
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: customTheme.textMeta,
+                  borderLeft: `2.5px solid ${customTheme.accent}`,
+                  paddingLeft: '8px'
+                }}>
+                  RESOURCE VAULT — {filteredResources.length} Subjects
+                </div>
+                
+                {/* Admin Add Subject Button */}
+                {isAdmin && (
+                  <button
+                    onClick={handleOpenAddSubject}
+                    style={{
+                      background: 'none',
+                      border: `1px solid ${customTheme.accent}`,
+                      color: customTheme.accent,
+                      fontFamily: customTheme.fontMono,
+                      fontSize: '10px',
+                      padding: '3px 8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Plus size={10} /> [ ADD SUBJECT ]
+                  </button>
+                )}
               </div>
 
               {filteredResources.length === 0 ? (
@@ -409,7 +571,7 @@ export default function ResourceHubPage() {
                           </div>
                         </div>
 
-                        {/* Admin Action (Option B) */}
+                        {/* Admin Edit Button */}
                         {isAdmin && (
                           <button
                             onClick={() => handleOpenEdit(subject)}
@@ -517,17 +679,44 @@ export default function ResourceHubPage() {
               paddingTop: '24px',
             }}>
               <div style={{
-                fontFamily: customTheme.fontMono,
-                fontSize: '11px',
-                fontWeight: 600,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: customTheme.textMeta,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 marginBottom: '4px',
-                borderLeft: `2.5px solid ${customTheme.accent}`,
-                paddingLeft: '8px'
               }}>
-                PREVIOUS YEAR PAPERS (AUTONOMOUS)
+                <div style={{
+                  fontFamily: customTheme.fontMono,
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: customTheme.textMeta,
+                  borderLeft: `2.5px solid ${customTheme.accent}`,
+                  paddingLeft: '8px'
+                }}>
+                  PREVIOUS YEAR PAPERS (AUTONOMOUS)
+                </div>
+                
+                {/* Admin Add PYQ Button */}
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsAddingPYQ(true)}
+                    style={{
+                      background: 'none',
+                      border: `1px solid ${customTheme.accent}`,
+                      color: customTheme.accent,
+                      fontFamily: customTheme.fontMono,
+                      fontSize: '10px',
+                      padding: '3px 8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Plus size={10} /> [ ADD PYQ ]
+                  </button>
+                )}
               </div>
               <p style={{
                 fontSize: '12px',
@@ -551,11 +740,8 @@ export default function ResourceHubPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {rawPYQs.map(paper => (
-                    <a
+                    <div
                       key={paper.id}
-                      href={paper.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -564,19 +750,21 @@ export default function ResourceHubPage() {
                         borderRadius: '6px',
                         border: `1px solid ${customTheme.borderFaint}`,
                         background: 'rgba(255,255,255,0.02)',
-                        textDecoration: 'none',
                         transition: 'all 0.12s',
                       }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = customTheme.accent;
-                        e.currentTarget.style.background = 'rgba(139,92,246,0.05)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = customTheme.borderFaint;
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                      }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <a
+                        href={paper.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          textDecoration: 'none',
+                          flex: 1
+                        }}
+                      >
                         <div style={{
                           width: '32px',
                           height: '32px',
@@ -613,9 +801,32 @@ export default function ResourceHubPage() {
                           </div>
                           <span style={{ fontSize: '11px', color: customTheme.textDim }}>{paper.semester}</span>
                         </div>
-                      </div>
-                      <span style={{ fontSize: '11px', color: customTheme.textDim }}>↗ Open PDF</span>
-                    </a>
+                      </a>
+
+                      {/* Admin Delete PYQ Button */}
+                      {isAdmin ? (
+                        <button
+                          onClick={() => handleDeletePYQ(paper.id, paper.year)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'rgba(255,255,255,0.2)',
+                            padding: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'color 0.1s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.2)'}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: customTheme.textDim }}>↗ Open PDF</span>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
@@ -636,37 +847,162 @@ export default function ResourceHubPage() {
         )}
       </main>
 
-      {/* ── EDIT BOTTOM SHEET (OPTION B ADMIN ONLY) ── */}
+      {/* ── ADD/EDIT SUBJECT BOTTOM SHEET (OPTION B ADMIN ONLY) ── */}
       {isAdmin && editingResource && (
         <BottomSheet
           open={!!editingResource}
           onClose={() => setEditingResource(null)}
-          title={`Edit ${editingResource.subjectName} Vault`}
+          title={editingResource.id === 'new' ? 'Add New Subject Vault' : `Edit ${editingResource.subjectName} Vault`}
         >
-          <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <form onSubmit={handleSaveSubject} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <p style={{
               fontSize: '11px',
               color: 'var(--text-secondary)',
               fontFamily: customTheme.fontMono,
-              lineHeight: 1.4
+              lineHeight: 1.4,
+              marginBottom: '6px'
             }}>
-              Paste Google Drive folder or PDF viewer links. Clear the field to hide the folder button from students.
+              {editingResource.id === 'new' 
+                ? 'Create a new global subject entry. Fill in the code, name, branch and links below.' 
+                : 'Paste Google Drive folder or PDF viewer links. Clear the field to hide the folder button from students.'}
             </p>
 
+            {/* Render Subject Code and Name fields for editing/adding */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                  Subject Code *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="CSUL201"
+                  value={editCode}
+                  onChange={(e) => setEditCode(e.target.value)}
+                  style={{
+                    fontSize: '12px',
+                    fontFamily: customTheme.fontMono,
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 10px',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                  Subject Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="OOP / C++"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  style={{
+                    fontSize: '12px',
+                    fontFamily: customTheme.fontMono,
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 10px',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Semester, Branch and Color Pickers */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                  Semester *
+                </label>
+                <select
+                  value={editSem}
+                  onChange={(e) => setEditSem(e.target.value)}
+                  style={{
+                    fontSize: '12px',
+                    fontFamily: customTheme.fontMono,
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 10px',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {semestersList.filter(s => s !== 'ALL').map(sem => (
+                    <option key={sem} value={sem}>{sem}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                  Branch *
+                </label>
+                <input
+                  type="text"
+                  placeholder="ALL or CSE/IT/IOT"
+                  value={editBranch}
+                  onChange={(e) => setEditBranch(e.target.value)}
+                  style={{
+                    fontSize: '12px',
+                    fontFamily: customTheme.fontMono,
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 10px',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Accent Color Border Glow Picker */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                Border Glow Theme Color
+              </label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                {accentColors.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setEditAccent(c)}
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: c,
+                      border: editAccent === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                      boxShadow: editAccent === c ? '0 0 8px #fff' : 'none',
+                      cursor: 'pointer',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Dynamic Folders Grid Link Inputs */}
             {[
               { label: 'Syllabus Drive Link', val: editSyllabus, setVal: setEditSyllabus },
               { label: 'Lecture Notes Link', val: editNotes, setVal: setEditNotes },
-              { label: 'PYQ Folders Link', val: editPYQs, setVal: setEditPYQs },
+              { label: 'PYQs Folder Link', val: editPYQs, setVal: setEditPYQs },
               { label: 'Practice Questions Link', val: editPractice, setVal: setEditPractice },
               { label: 'Lab Manual Link', val: editLab, setVal: setEditLab }
             ].map((field, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                   {field.label}
                 </label>
                 <input
                   type="url"
-                  className="input"
                   placeholder="https://drive.google.com/..."
                   value={field.val}
                   onChange={(e) => field.setVal(e.target.value)}
@@ -677,13 +1013,174 @@ export default function ResourceHubPage() {
                     background: 'var(--bg-elevated)',
                     border: '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-md)',
-                    padding: '10px 12px',
+                    padding: '8px 10px',
                     color: 'var(--text-primary)',
                     outline: 'none',
                   }}
                 />
               </div>
             ))}
+
+            {/* Actions Panel */}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="t-button"
+                style={{
+                  flex: 2,
+                  padding: '12px',
+                  background: 'var(--accent-primary)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontFamily: customTheme.fontMono,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : 'Save Changes'}
+              </button>
+
+              {/* Show delete button only when editing an existing subject */}
+              {editingResource.id !== 'new' && (
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleDeleteSubject}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontFamily: customTheme.fontMono,
+                  }}
+                >
+                  Delete
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ flex: 1, fontFamily: customTheme.fontMono }}
+                onClick={() => setEditingResource(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </BottomSheet>
+      )}
+
+      {/* ── ADD PYQ BOTTOM SHEET (OPTION B ADMIN ONLY) ── */}
+      {isAdmin && isAddingPYQ && (
+        <BottomSheet
+          open={isAddingPYQ}
+          onClose={() => setIsAddingPYQ(false)}
+          title="Add PYQ Question Paper"
+        >
+          <form onSubmit={handleCreatePYQ} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <p style={{
+              fontSize: '11px',
+              color: 'var(--text-secondary)',
+              fontFamily: customTheme.fontMono,
+              lineHeight: 1.4
+            }}>
+              Add a combined PDF paper for the End-Term examinations.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                Semester *
+              </label>
+              <select
+                value={pyqSem}
+                onChange={(e) => setPyqSem(e.target.value)}
+                style={{
+                  fontSize: '12px',
+                  fontFamily: customTheme.fontMono,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 12px',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                {semestersList.filter(s => s !== 'ALL').map(sem => (
+                  <option key={sem} value={sem}>{sem}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                Exam Year *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="2025"
+                value={pyqYear}
+                onChange={(e) => setPyqYear(e.target.value)}
+                style={{
+                  fontSize: '12px',
+                  fontFamily: customTheme.fontMono,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 12px',
+                  color: 'var(--text-primary)',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                PDF Drive Link *
+              </label>
+              <input
+                type="url"
+                required
+                placeholder="https://drive.google.com/file/d/..."
+                value={pyqUrl}
+                onChange={(e) => setPyqUrl(e.target.value)}
+                style={{
+                  fontSize: '12px',
+                  fontFamily: customTheme.fontMono,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 12px',
+                  color: 'var(--text-primary)',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+              <input
+                type="checkbox"
+                id="pyq-latest-check"
+                checked={pyqLatest}
+                onChange={(e) => setPyqLatest(e.target.checked)}
+                style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+              />
+              <label htmlFor="pyq-latest-check" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono, cursor: 'pointer' }}>
+                Mark as "Latest" paper
+              </label>
+            </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
               <button
@@ -706,13 +1203,13 @@ export default function ResourceHubPage() {
                   gap: '6px'
                 }}
               >
-                {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : 'Save Changes'}
+                {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : 'Add PYQ'}
               </button>
               <button
                 type="button"
                 className="btn-secondary"
                 style={{ flex: 1, fontFamily: customTheme.fontMono }}
-                onClick={() => setEditingResource(null)}
+                onClick={() => setIsAddingPYQ(false)}
               >
                 Cancel
               </button>
