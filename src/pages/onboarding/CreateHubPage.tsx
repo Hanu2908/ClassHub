@@ -6,7 +6,7 @@ import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 
 const classRollRegex = /^\d{2}$/;
-const uniRollRegex = /^[0-9]{2}[A-Z]{2,5}[0-9]{3,5}$/;
+const uniRollRegex = /^[0-9]{2}[A-Z]{5}[0-9]{3}$/;
 
 function randomAlpha(n: number) {
   return Array.from({ length: n }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]).join('');

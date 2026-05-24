@@ -6,7 +6,7 @@ import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 
 const classRollRegex = /^\d{2}$/;
-const uniRollRegex = /^[0-9]{2}[A-Z]{2,5}[0-9]{3,5}$/;
+const uniRollRegex = /^[0-9]{2}[A-Z]{5}[0-9]{3}$/;
 const hubCodeRegex = /^[A-Z0-9]{2}[A-Z]{4}$/;
 
 interface FormErrors {

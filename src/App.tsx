@@ -49,6 +49,15 @@ function RequireHub({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ── No Hub guard — blocks already-onboarded users from onboarding routes ──
+function RequireNoHub({ children }: { children: React.ReactNode }) {
+  const authUser = useAppStore(s => s.authUser);
+  if (authUser?.sectionId) {
+    return <Navigate to="/app/home" replace />;
+  }
+  return <>{children}</>;
+}
+
 // ── Public route — skip login if already authed ──
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const session = useAppStore(s => s.session);
@@ -96,9 +105,9 @@ export default function App() {
             <Route path="/" element={<PublicRoute><SignIn /></PublicRoute>} />
 
             {/* Onboarding — needs auth but no hub yet */}
-            <Route path="/onboarding/choice" element={<RequireAuth><ChoicePage /></RequireAuth>} />
-            <Route path="/onboarding/join" element={<RequireAuth><JoinHubPage /></RequireAuth>} />
-            <Route path="/onboarding/create" element={<RequireAuth><CreateHubPage /></RequireAuth>} />
+            <Route path="/onboarding/choice" element={<RequireAuth><RequireNoHub><ChoicePage /></RequireNoHub></RequireAuth>} />
+            <Route path="/onboarding/join" element={<RequireAuth><RequireNoHub><JoinHubPage /></RequireNoHub></RequireAuth>} />
+            <Route path="/onboarding/create" element={<RequireAuth><RequireNoHub><CreateHubPage /></RequireNoHub></RequireAuth>} />
 
             {/* App shell — needs auth + hub */}
             <Route path="/app/home" element={<RequireAuth><RequireHub><DashboardPage /></RequireHub></RequireAuth>} />
