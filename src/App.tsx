@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './components/AuthProvider';
 import { useAppStore, type BeforeInstallPromptEvent } from './store/appStore';
 import { ToastContainer } from './components/Toast';
@@ -104,6 +105,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Analytics />
         <ToastContainer />
         <Suspense fallback={
           <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
