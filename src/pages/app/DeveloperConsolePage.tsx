@@ -84,9 +84,12 @@ export default function DeveloperConsolePage() {
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
-        // Count unique user keys active on presence channel
-        const count = Object.keys(state).length;
-        setOnlineCount(count);
+        // Count total active socket connections/sessions across all user keys
+        let totalConnections = 0;
+        Object.values(state).forEach((presences: any) => {
+          totalConnections += presences.length;
+        });
+        setOnlineCount(totalConnections);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -104,14 +107,16 @@ export default function DeveloperConsolePage() {
 
   // 2. High-precision DB Latency Ping
   const pingDatabase = async () => {
+    if (!authUser?.id) return;
     setPinging(true);
     const start = performance.now();
     try {
-      // Lightweight remote table head count to measure query roundtrip
+      // Primary-key index lookup on current user is highly optimized (< 1ms in Postgres)
       const { error } = await supabase
         .from('users')
-        .select('id', { count: 'exact', head: true })
-        .limit(1);
+        .select('id')
+        .eq('id', authUser.id)
+        .single();
 
       if (error) throw error;
       const end = performance.now();
