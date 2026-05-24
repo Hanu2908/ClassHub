@@ -20,6 +20,7 @@ const CRCommandPage = lazy(() => import('./pages/app/CRCommandPage'));
 const ManageSubjectsPage = lazy(() => import('./pages/app/ManageSubjectsPage'));
 const PDFViewerPage = lazy(() => import('./pages/app/PDFViewerPage'));
 const ResourceHubPage = lazy(() => import('./pages/app/ResourceHubPage'));
+const DeveloperConsolePage = lazy(() => import('./pages/app/DeveloperConsolePage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,15 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function RequireHub({ children }: { children: React.ReactNode }) {
   const authUser = useAppStore(s => s.authUser);
   if (!authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
+  return <>{children}</>;
+}
+
+// ── Developer guard — requires developer role ──
+function RequireDeveloper({ children }: { children: React.ReactNode }) {
+  const authUser = useAppStore(s => s.authUser);
+  if ((authUser?.role as string) !== 'developer') {
+    return <Navigate to="/app/home" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -119,8 +129,9 @@ export default function App() {
             <Route path="/app/assignments" element={<RequireAuth><RequireHub><AssignmentsPage /></RequireHub></RequireAuth>} />
             <Route path="/app/attendance" element={<RequireAuth><RequireHub><AttendancePage /></RequireHub></RequireAuth>} />
             <Route path="/app/cr-command" element={<RequireAuth><RequireHub><CRCommandPage /></RequireHub></RequireAuth>} />
-            <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><ManageSubjectsPage /></RequireHub></RequireAuth>} />
+            <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireDeveloper><ManageSubjectsPage /></RequireDeveloper></RequireHub></RequireAuth>} />
             <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><PDFViewerPage /></RequireHub></RequireAuth>} />
+            <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><DeveloperConsolePage /></RequireDeveloper></RequireHub></RequireAuth>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

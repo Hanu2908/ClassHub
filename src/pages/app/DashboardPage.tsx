@@ -10,6 +10,7 @@ import { useAcknowledge } from '../../hooks/useSupabaseMutations';
 import { showToast } from '../../components/Toast';
 import { isPushSupported, getPushPermission, subscribeToPush } from '../../lib/pushNotifications';
 import { AttachmentCard } from '../../components/AttachmentCard';
+import { FeedbackSheet } from '../../components/FeedbackSheet';
 
 
 // ── Schedule helpers ──
@@ -1424,6 +1425,7 @@ export default function DashboardPage() {
   const { data: polls = [] } = usePolls();
   const [showNotifs, setShowNotifs] = useState(false);
   const [isDiagnoseOpen, setIsDiagnoseOpen] = useState(false);
+  const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
   const navigate = useNavigate();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 440);
@@ -2044,11 +2046,29 @@ export default function DashboardPage() {
         <AnnouncementsScroll />
         <PollBanner />
         <AssignmentsScroll />
+
+        {/* Footnote Report Link */}
+        <div style={{ textAlign: 'center', padding: '24px 0 16px', opacity: 0.4 }}>
+          <button
+            onClick={() => setShowFeedbackSheet(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              font: '10px var(--font-mono)',
+              color: 'var(--text-muted)',
+              letterSpacing: '0.05em',
+            }}
+          >
+            [ REPORT BUG ]
+          </button>
+        </div>
       </main>
 
       {showNotifs ? <NotificationSheet onClose={() => setShowNotifs(false)} /> : null}
 
       <NavBar />
+      <FeedbackSheet open={showFeedbackSheet} onClose={() => setShowFeedbackSheet(false)} />
     </div>
   );
 }

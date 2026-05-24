@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { useSection } from '../../hooks/useSupabaseQuery';
 import { supabase } from '../../lib/supabase';
 import { isPushSupported, getPushPermission, hasActiveSubscription, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
+import { FeedbackSheet } from '../../components/FeedbackSheet';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
 
   // Check push subscription state on mount and sync with global profile setting
   useEffect(() => {
@@ -223,6 +225,18 @@ export default function ProfilePage() {
         <div>
           <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>TOOLS</p>
           <div className="card" style={{ padding: 0 }}>
+            {(displayRole as string) === 'developer' && (
+              <button
+                id="dev-console-btn"
+                onClick={() => navigate('/app/dev-console')}
+                className="list-row"
+                style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }}
+              >
+                <AlertTriangle size={18} color="#C084FC" />
+                <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>Developer Console</span>
+                <ChevronRight size={16} color="var(--text-muted)" />
+              </button>
+            )}
             <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }} onClick={() => showToast('CGPA Calculator coming soon!', 'info')}>
               <Calculator size={18} color="var(--accent-primary)" />
               <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
@@ -297,6 +311,18 @@ export default function ProfilePage() {
                   boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
                 }} />
               </div>
+            </div>
+
+            {/* Feedback & Bug Trigger */}
+            <div
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', borderTop: '1px solid var(--border-default)' }}
+              onClick={() => setShowFeedbackSheet(true)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <MessageSquare size={16} color="var(--text-secondary)" />
+                <span className="t-body" style={{ color: 'var(--text-primary)' }}>Send Feedback / Report Bug</span>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
             </div>
           </div>
         </div>
@@ -382,6 +408,7 @@ export default function ProfilePage() {
       </main>
 
       <NavBar />
+      <FeedbackSheet open={showFeedbackSheet} onClose={() => setShowFeedbackSheet(false)} />
     </div>
   );
 }
