@@ -1,6 +1,22 @@
 import { supabase } from './supabase';
+import { useAppStore } from '../store/appStore';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
+
+/** Get serviceWorker registration with a 3-second timeout to prevent hangs in Dev mode */
+async function getSWRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (!isPushSupported()) return null;
+  try {
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Service Worker ready timeout')), 3000))
+    ]);
+    return reg;
+  } catch (err) {
+    console.warn('[Push] Service worker not ready or timed out:', err);
+    return null;
+  }
+}
 
 /** Check if push is supported in this browser */
 export function isPushSupported(): boolean {
@@ -33,7 +49,8 @@ export async function subscribeToPush(): Promise<boolean> {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return false;
 
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await getSWRegistration();
+    if (!reg) return false;
     const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
@@ -67,7 +84,17 @@ export async function subscribeToPush(): Promise<boolean> {
       return false;
     }
 
-    // Removed notifications_enabled since it does not exist in schema
+    // Set notifications_enabled = true in DB
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ notifications_enabled: true })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('[Push] Failed to update user profile notifications state:', updateError);
+    } else {
+      useAppStore.getState().refreshProfile();
+    }
 
     return true;
   } catch (err) {
@@ -79,7 +106,8 @@ export async function subscribeToPush(): Promise<boolean> {
 /** Unsubscribe from push + remove from DB */
 export async function unsubscribeFromPush(): Promise<void> {
   try {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await getSWRegistration();
+    if (!reg) return;
     const sub = await reg.pushManager.getSubscription();
 
     if (sub) {
@@ -90,7 +118,19 @@ export async function unsubscribeFromPush(): Promise<void> {
         .eq('endpoint', endpoint);
     }
 
-    // Removed notifications_enabled since it does not exist in schema
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ notifications_enabled: false })
+        .eq('id', user.id);
+      
+      if (updateError) {
+        console.error('[Push] Failed to update user profile notifications state:', updateError);
+      } else {
+        useAppStore.getState().refreshProfile();
+      }
+    }
   } catch (err) {
     console.error('[Push] Unsubscribe failed:', err);
   }
@@ -109,7 +149,8 @@ export async function ensurePushSubscription(): Promise<void> {
     if (Notification.permission !== 'granted') return;
     if (!VAPID_PUBLIC_KEY) return;
 
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await getSWRegistration();
+    if (!reg) return;
     const sub = await reg.pushManager.getSubscription();
     if (!sub) return; // User hasn't subscribed — nothing to heal
 

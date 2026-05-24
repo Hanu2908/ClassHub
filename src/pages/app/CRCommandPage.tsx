@@ -375,6 +375,7 @@ function ClassAttendance() {
 
   // Stateful filtering and sorting
   const [filter, setFilter] = useState<'all' | 'below_75' | 'above_75'>('all');
+  const [commuteFilter, setCommuteFilter] = useState<'all' | 'ds' | 'hostel'>('all');
   const [sortBy, setSortBy] = useState<'roll' | 'attendance_asc' | 'attendance_desc'>('roll');
 
   // Map each member with their attendance aggregate
@@ -401,15 +402,26 @@ function ClassAttendance() {
     m => m.overallPercentage !== null && m.overallPercentage >= 75
   ).length;
 
+  const dsCount = membersWithAttendance.filter(m => m.dayScholar === true).length;
+  const hostelCount = membersWithAttendance.filter(m => m.dayScholar === false).length;
+
   // Filter members
   const filteredMembers = membersWithAttendance.filter(m => {
+    let matchesAttendance = true;
     if (filter === 'below_75') {
-      return m.overallPercentage !== null && m.overallPercentage < 75;
+      matchesAttendance = m.overallPercentage !== null && m.overallPercentage < 75;
+    } else if (filter === 'above_75') {
+      matchesAttendance = m.overallPercentage !== null && m.overallPercentage >= 75;
     }
-    if (filter === 'above_75') {
-      return m.overallPercentage !== null && m.overallPercentage >= 75;
+
+    let matchesCommute = true;
+    if (commuteFilter === 'ds') {
+      matchesCommute = m.dayScholar === true;
+    } else if (commuteFilter === 'hostel') {
+      matchesCommute = m.dayScholar === false;
     }
-    return true;
+
+    return matchesAttendance && matchesCommute;
   });
 
   // Sort members
@@ -497,84 +509,145 @@ function ClassAttendance() {
           {/* Interactive Controls & Filters */}
           <div style={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
+            flexDirection: 'column',
+            gap: 12,
             marginBottom: 12,
-            flexWrap: 'wrap'
           }}>
-            {/* Filter Pills */}
-            <div className="carousel" style={{ display: 'flex', gap: 6, margin: 0, paddingBottom: 0 }}>
-              <button
-                onClick={() => setFilter('all')}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              flexWrap: 'wrap'
+            }}>
+              {/* Filter Pills */}
+              <div className="carousel" style={{ display: 'flex', gap: 6, margin: 0, paddingBottom: 0 }}>
+                <button
+                  onClick={() => setFilter('all')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: filter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                    background: filter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
+                    color: filter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                >
+                  All ({members.length})
+                </button>
+                <button
+                  onClick={() => setFilter('below_75')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: filter === 'below_75' ? '1px solid var(--status-critical)' : '1px solid var(--border-default)',
+                    background: filter === 'below_75' ? 'rgba(248, 113, 113, 0.15)' : 'transparent',
+                    color: filter === 'below_75' ? 'var(--status-critical)' : 'var(--text-secondary)',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                >
+                  Below 75% ({criticalCount})
+                </button>
+                <button
+                  onClick={() => setFilter('above_75')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: filter === 'above_75' ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
+                    background: filter === 'above_75' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
+                    color: filter === 'above_75' ? 'var(--status-safe)' : 'var(--text-secondary)',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                >
+                  75%+ ({safeCount})
+                </button>
+              </div>
+
+              {/* Sort Picker */}
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as 'roll' | 'attendance_asc' | 'attendance_desc')}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: filter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                  background: filter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
-                  color: filter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  padding: '6px 10px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-primary)',
                   fontSize: 12,
-                  fontWeight: 500,
+                  outline: 'none',
                   cursor: 'pointer',
                   transition: 'all var(--transition-fast)'
                 }}
               >
-                All ({members.length})
-              </button>
-              <button
-                onClick={() => setFilter('below_75')}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: filter === 'below_75' ? '1px solid var(--status-critical)' : '1px solid var(--border-default)',
-                  background: filter === 'below_75' ? 'rgba(248, 113, 113, 0.15)' : 'transparent',
-                  color: filter === 'below_75' ? 'var(--status-critical)' : 'var(--text-secondary)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                Below 75% ({criticalCount})
-              </button>
-              <button
-                onClick={() => setFilter('above_75')}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: filter === 'above_75' ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
-                  background: filter === 'above_75' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
-                  color: filter === 'above_75' ? 'var(--status-safe)' : 'var(--text-secondary)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                75%+ ({safeCount})
-              </button>
+                <option value="roll">Sort: Roll No</option>
+                <option value="attendance_asc">Sort: Low % First</option>
+                <option value="attendance_desc">Sort: High % First</option>
+              </select>
             </div>
 
-            {/* Sort Picker */}
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as 'roll' | 'attendance_asc' | 'attendance_desc')}
-              style={{
-                padding: '6px 10px',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)',
-                fontSize: 12,
-                outline: 'none',
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)'
-              }}
-            >
-              <option value="roll">Sort: Roll No</option>
-              <option value="attendance_asc">Sort: Low % First</option>
-              <option value="attendance_desc">Sort: High % First</option>
-            </select>
+            {/* Commuter Filter Pills */}
+            <div style={{ display: 'flex', gap: 6, margin: 0, paddingBottom: 0 }}>
+              <button
+                type="button"
+                onClick={() => setCommuteFilter('all')}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: commuteFilter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                  background: commuteFilter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
+                  color: commuteFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
+                }}
+              >
+                All Status
+              </button>
+              <button
+                type="button"
+                onClick={() => setCommuteFilter('ds')}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: commuteFilter === 'ds' ? '1px solid #60A5FA' : '1px solid var(--border-default)',
+                  background: commuteFilter === 'ds' ? 'rgba(96, 165, 250, 0.15)' : 'transparent',
+                  color: commuteFilter === 'ds' ? '#60A5FA' : 'var(--text-secondary)',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
+                }}
+              >
+                🚌 DS ({dsCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCommuteFilter('hostel')}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: commuteFilter === 'hostel' ? '1px solid #8B5CF6' : '1px solid var(--border-default)',
+                  background: commuteFilter === 'hostel' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                  color: commuteFilter === 'hostel' ? '#8B5CF6' : 'var(--text-secondary)',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
+                }}
+              >
+                🏠 Hostel ({hostelCount})
+              </button>
+            </div>
           </div>
 
           {/* Members List Container */}
@@ -624,8 +697,26 @@ function ClassAttendance() {
                     <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{st.name}</p>
-                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>{st.universityRoll ?? st.email}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{st.name}</p>
+                      <span style={{
+                        fontSize: '9px',
+                        fontWeight: 600,
+                        padding: '1.5px 5px',
+                        borderRadius: 4,
+                        letterSpacing: '0.02em',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        background: st.dayScholar ? 'rgba(96, 165, 250, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                        color: st.dayScholar ? '#60A5FA' : '#a78bfa',
+                        border: st.dayScholar ? '1px solid rgba(96, 165, 250, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)',
+                        userSelect: 'none',
+                      }}>
+                        {st.dayScholar ? 'DS 🚌' : 'Hostel 🏠'}
+                      </span>
+                    </div>
+                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>{st.universityRoll ?? st.email}</p>
                   </div>
 
                   {pct === null ? (

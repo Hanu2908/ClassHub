@@ -1517,8 +1517,16 @@ export default function DashboardPage() {
   const [showPushCTA, setShowPushCTA] = useState(() => {
     if (!isPushSupported()) return false;
     if (sessionStorage.getItem('dismissed_push_cta') === 'true') return false;
-    return getPushPermission() !== 'granted';
+    // Don't show if they already have notifications enabled and permission granted
+    return !authUser?.notificationsEnabled || getPushPermission() !== 'granted';
   });
+
+  // Auto-dismiss CTA if notifications get enabled elsewhere (e.g. ProfilePage)
+  useEffect(() => {
+    if (authUser?.notificationsEnabled && getPushPermission() === 'granted') {
+      setShowPushCTA(false);
+    }
+  }, [authUser?.notificationsEnabled]);
 
   const activeCritical = useMemo(() => {
     const dismissedSet = new Set(dismissedAnnouncements);

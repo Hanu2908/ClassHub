@@ -19,12 +19,14 @@ export default function ProfilePage() {
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
 
-  // Check push subscription state on mount
+  // Check push subscription state on mount and sync with global profile setting
   useEffect(() => {
     if (isPushSupported()) {
-      hasActiveSubscription().then(setNotificationsOn);
+      hasActiveSubscription().then((active) => {
+        setNotificationsOn(active && !!authUser?.notificationsEnabled);
+      });
     }
-  }, []);
+  }, [authUser?.notificationsEnabled]);
 
   const pushSupported = isPushSupported();
   const pushBlocked = pushSupported && getPushPermission() === 'denied';
@@ -106,6 +108,43 @@ export default function ProfilePage() {
     }
   };
 
+  const handleToggleCommuterStatus = async () => {
+    if (!authUser) return;
+    const isDemoMode = import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true';
+    const nextStatus = !authUser.dayScholar;
+
+    if (isDemoMode) {
+      // Offline/Demo bypass: write directly to local Zustand store
+      useAppStore.setState((s) => {
+        if (!s.authUser) return s;
+        const updatedAuth = { ...s.authUser, dayScholar: nextStatus };
+        return {
+          authUser: updatedAuth,
+          user: s.user ? { ...s.user } : null
+        };
+      });
+      showToast(`Status updated to ${nextStatus ? 'Day Scholar' : 'Hosteler'}! [Demo]`, 'success');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ day_scholar: nextStatus })
+        .eq('id', authUser.id);
+
+      if (error) {
+        throw new Error(error.message || 'Database update failed');
+      }
+
+      await useAppStore.getState().refreshProfile();
+      showToast(`Status updated to ${nextStatus ? 'Day Scholar' : 'Hosteler'}!`, 'success');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`Failed to update status: ${msg}`, 'error');
+    }
+  };
+
   return (
     <div className="page-shell">
       <header style={{
@@ -151,6 +190,20 @@ export default function ProfilePage() {
               { label: 'Section', value: sectionName },
               { label: 'Institution', value: institution },
               { label: 'University Roll', value: universityRoll },
+              { 
+                label: 'Status', 
+                value: authUser?.dayScholar ? 'DS 🚌' : 'Hostel 🏠', 
+                action: (
+                  <button 
+                    id="toggle-commute-status" 
+                    onClick={handleToggleCommuterStatus} 
+                    className="t-label" 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Change
+                  </button>
+                )
+              },
             ].map((row, i, arr) => (
               <div key={row.label} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',

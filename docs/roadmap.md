@@ -18,6 +18,7 @@ gantt
     Class Birthday Calendar & Cards     :      des5, 2026-06-20, 15d
     section Phase 2: Exam Tools & Mobile
     Night Before Exam Panic Mode        :      des6, 2026-07-01, 20d
+    Personalized Timings & Commute Hub  :      des12, 2026-07-05, 20d
     Canteen Run Coordinator (Deferred)  :      des7, 2026-07-15, 15d
     PWA Web Share Target Integration    :      des8, 2026-07-20, 25d
     section Phase 3: Analytics & Memories
@@ -64,7 +65,14 @@ To drive high daily engagement and turn ClassHub into a core part of the section
   - The dashboard UI shifts to an intense, high-aesthetic dark-red theme with a prominent, ticking countdown clock.
   - Tapping a **"My Checklist"** button opens a bottom-sheet allowing each student to create, persist, and check off their personal to-do study list (`personal_exam_tasks` table) for that specific subject.
 
-### 5. Section Memory: Interactive Semester Timeline (Phase 3)
+### 5. Personalized Commute & Timings Portal (Phase 2)
+* **Goal:** Customize scheduling resources according to a student's commuter/residential lifestyle status.
+* **Mechanism:**
+  - A tabbed **Timings & Commute** panel is added under the Schedule Page.
+  - **Day Scholars** get integrated college bus timetables, route map links, and real-time departure countdown alerts.
+  - **Hostelers** get mess dining hours (Breakfast/Lunch/Dinner) with mess notifications and hostel gate curfew countdown trackers.
+
+### 6. Section Memory: Interactive Semester Timeline (Phase 3)
 * **Goal:** A nostalgic, rolling history log that documents the section's semester.
 * **Mechanism:**
   - Housed in a premium sub-page within the student's **Profile Page**.

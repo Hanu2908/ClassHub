@@ -549,6 +549,7 @@ export interface SectionMember {
   universityRoll: string | null;
   role: 'student' | 'cr';
   avatarUrl: string | null;
+  dayScholar: boolean;
 }
 
 export function useSectionMembers() {
@@ -560,7 +561,7 @@ export function useSectionMembers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, section_roll, university_roll, role, avatar_url')
+        .select('id, name, email, section_roll, university_roll, role, avatar_url, day_scholar')
         .eq('section_id', sectionId!)
         .order('section_roll')
         .limit(200); // safeguard: avoid extremely large member lists on the dashboard
@@ -573,6 +574,7 @@ export function useSectionMembers() {
         universityRoll: u.university_roll,
         role: u.role as 'student' | 'cr',
         avatarUrl: u.avatar_url,
+        dayScholar: u.day_scholar,
       }));
     },
   });

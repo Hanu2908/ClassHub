@@ -33,6 +33,7 @@ export default function JoinHubPage() {
   const [hubCode, setHubCode] = useState('');
   const [classRoll, setClassRoll] = useState('');
   const [universityRoll, setUniversityRoll] = useState('');
+  const [dayScholar, setDayScholar] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +56,7 @@ export default function JoinHubPage() {
       // Join = student role
       setRole('student');
       if (authUser) {
-        setAuthUser({ ...authUser, role: 'student', sectionId: 'demo-section' });
+        setAuthUser({ ...authUser, role: 'student', sectionId: 'demo-section', dayScholar });
       }
       setHub({
         hubCode: hubCode,
@@ -78,6 +79,15 @@ export default function JoinHubPage() {
       });
 
       if (error) throw error;
+
+      // Update day_scholar status in profile
+      const { data: { user: authUserObj } } = await supabase.auth.getUser();
+      if (authUserObj) {
+        await supabase
+          .from('users')
+          .update({ day_scholar: dayScholar })
+          .eq('id', authUserObj.id);
+      }
 
       // Refresh profile from backend so route guard sees new sectionId
       await refreshProfile();
@@ -201,6 +211,64 @@ export default function JoinHubPage() {
           <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
             e.g. 25ESKCX089
           </p>
+        </div>
+
+        {/* Commuter Status (Day Scholar vs. Hosteler) */}
+        <div>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+            Commuter Status <span style={{ color: 'var(--status-critical)' }}>*</span>
+          </label>
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            padding: 4,
+            gap: 4
+          }}>
+            <button
+              type="button"
+              onClick={() => setDayScholar(true)}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: dayScholar ? 'var(--accent-primary)' : 'transparent',
+                color: dayScholar ? '#fff' : 'var(--text-secondary)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span>🚌</span> Day Scholar
+            </button>
+            <button
+              type="button"
+              onClick={() => setDayScholar(false)}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: !dayScholar ? 'var(--accent-primary)' : 'transparent',
+                color: !dayScholar ? '#fff' : 'var(--text-secondary)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span>🏠</span> Hosteler
+            </button>
+          </div>
         </div>
 
         <button
