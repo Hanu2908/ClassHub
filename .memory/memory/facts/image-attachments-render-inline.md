@@ -1,0 +1,1 @@
+ClassHub image attachments render inline previews through `src/components/AttachmentCard.tsx` using Supabase Storage signed URLs. PDF and non-image attachments remain open/download actions.

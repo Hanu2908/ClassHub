@@ -1,0 +1,24 @@
+{
+  "body_path": "memory/project.md",
+  "content_hash": "sha256:27a95d8a77825925bf9540db2aa8407ac5918dce8b9310dcf28049c1fe1f9c97",
+  "created_at": "2026-05-24T14:19:38+05:30",
+  "evidence": [],
+  "facets": {
+    "category": "project-description"
+  },
+  "id": "project.classhub-1",
+  "scope": {
+    "branch": null,
+    "kind": "project",
+    "project": "project.classhub-1",
+    "task": null
+  },
+  "source": {
+    "kind": "system"
+  },
+  "status": "active",
+  "tags": [],
+  "title": "Classhub 1",
+  "type": "project",
+  "updated_at": "2026-05-24T14:19:38+05:30"
+}

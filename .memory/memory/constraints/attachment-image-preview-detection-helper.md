@@ -1,0 +1,1 @@
+Use `src/lib/utils/attachments.ts::isPreviewableImage` to decide whether an attachment should render as an inline image preview; it accepts image MIME types and common image filename extensions for uploads with missing MIME metadata.

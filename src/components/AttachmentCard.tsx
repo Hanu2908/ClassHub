@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, FileText, FileImage, FileCode, File, Loader2 } from 'lucide-react';
+import { Download, FileText, FileImage, FileCode, File, Loader2, ImageOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Attachment } from '../store/appStore';
+import { isPreviewableImage } from '../lib/utils/attachments';
 
 interface AttachmentCardProps {
   attachment: Attachment;
@@ -12,6 +13,46 @@ interface AttachmentCardProps {
 export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) {
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
+  const [previewState, setPreviewState] = useState<{
+    storagePath: string;
+    url: string | null;
+    error: boolean;
+  }>({ storagePath: '', url: null, error: false });
+
+  const isImage = isPreviewableImage(attachment.fileType, attachment.filename);
+  const hasCurrentPreviewState = previewState.storagePath === attachment.storagePath;
+  const previewUrl = isImage && hasCurrentPreviewState ? previewState.url : null;
+  const previewError = isImage && hasCurrentPreviewState ? previewState.error : false;
+  const previewLoading = isImage && !hasCurrentPreviewState;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isImage) {
+      return;
+    }
+
+    supabase.storage
+      .from('attachments')
+      .createSignedUrl(attachment.storagePath, 300)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data?.signedUrl) {
+          setPreviewState({ storagePath: attachment.storagePath, url: null, error: true });
+          return;
+        }
+        setPreviewState({ storagePath: attachment.storagePath, url: data.signedUrl, error: false });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[AttachmentCard] Failed to load image preview:', err);
+        setPreviewState({ storagePath: attachment.storagePath, url: null, error: true });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [attachment.storagePath, isImage]);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -68,8 +109,8 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
       className="attachment-card"
       style={{
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        flexDirection: 'column',
+        alignItems: 'stretch',
         padding: '10px 14px',
         background: 'rgba(255, 255, 255, 0.03)',
         border: '1px solid rgba(255, 255, 255, 0.06)',
@@ -90,55 +131,100 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
         e.currentTarget.style.transform = 'none';
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-        {getFileIcon(attachment.fileType)}
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-          <span 
-            className="t-body-medium"
-            style={{ 
-              color: 'var(--text-primary)', 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap' 
-            }}
-          >
-            {attachment.filename}
-          </span>
-          <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
-            {formatSize(attachment.fileSize)}
-          </span>
+      {isImage && (
+        <div
+          style={{
+            width: '100%',
+            aspectRatio: '16 / 9',
+            minHeight: 150,
+            maxHeight: 260,
+            borderRadius: 'var(--radius-md)',
+            overflow: 'hidden',
+            background: 'rgba(10, 12, 20, 0.65)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {previewUrl && !previewError ? (
+            <img
+              src={previewUrl}
+              alt={attachment.filename}
+              loading="lazy"
+              onError={() => setPreviewState({ storagePath: attachment.storagePath, url: null, error: true })}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
+              {previewLoading ? <Loader2 className="animate-spin" size={20} /> : <ImageOff size={22} />}
+              <span className="t-mono-sm">
+                {previewLoading ? 'Loading preview' : 'Preview unavailable'}
+              </span>
+            </div>
+          )}
         </div>
-      </div>
-      <button
-        type="button"
-        disabled={downloading}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: '6px',
-          color: 'var(--text-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          borderRadius: '50%',
-          transition: 'all var(--transition-fast)'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-          e.currentTarget.style.color = 'var(--accent-primary)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'none';
-          e.currentTarget.style.color = 'var(--text-secondary)';
-        }}
-      >
-        {downloading ? (
-          <Loader2 className="animate-spin" size={16} />
-        ) : (
-          <Download size={16} />
-        )}
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+          {getFileIcon(attachment.fileType)}
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+            <span 
+              className="t-body-medium"
+              style={{ 
+                color: 'var(--text-primary)', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                whiteSpace: 'nowrap' 
+              }}
+            >
+              {attachment.filename}
+            </span>
+            <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
+              {formatSize(attachment.fileSize)}
+              {isImage ? ' - Tap to open full image' : ''}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={downloading}
+          aria-label={`Open ${attachment.filename}`}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '6px',
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            borderRadius: '50%',
+            transition: 'all var(--transition-fast)',
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+            e.currentTarget.style.color = 'var(--accent-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'none';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
+        >
+          {downloading ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : (
+            <Download size={16} />
+          )}
       </button>
+      </div>
     </div>
   );
 }

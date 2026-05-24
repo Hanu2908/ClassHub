@@ -69,3 +69,16 @@ export function getFileCategory(fileType: string): 'pdf' | 'image' | 'spreadshee
   if (t.startsWith('text/')) return 'text';
   return 'other';
 }
+
+/**
+ * Returns true when a stored attachment can be rendered as an inline image.
+ * Falls back to filename extension because mobile uploads can omit MIME type.
+ */
+export function isPreviewableImage(fileType: string, filename: string): boolean {
+  const t = fileType.toLowerCase();
+  const name = filename.toLowerCase();
+  return (
+    t.startsWith('image/') ||
+    /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|webp)$/.test(name)
+  );
+}

@@ -4,6 +4,7 @@ import {
   isFileTooLarge,
   buildStoragePath,
   getFileCategory,
+  isPreviewableImage,
   MAX_FILE_SIZE_MB,
   MAX_FILE_SIZE_BYTES,
   MAX_FILE_COUNT,
@@ -118,6 +119,23 @@ describe("getFileCategory", () => {
 });
 
 // ── Constants ────────────────────────────────────────────────────────────────
+
+describe("isPreviewableImage", () => {
+  it("accepts image MIME types", () => {
+    expect(isPreviewableImage("image/png", "upload.bin")).toBe(true);
+    expect(isPreviewableImage("image/webp", "upload")).toBe(true);
+  });
+
+  it("accepts image extensions when MIME type is missing", () => {
+    expect(isPreviewableImage("", "notice.JPG")).toBe(true);
+    expect(isPreviewableImage("application/octet-stream", "photo.heic")).toBe(true);
+  });
+
+  it("rejects non-image attachments", () => {
+    expect(isPreviewableImage("application/pdf", "notes.pdf")).toBe(false);
+    expect(isPreviewableImage("text/plain", "notes.txt")).toBe(false);
+  });
+});
 
 describe("attachment constants", () => {
   it("MAX_FILE_SIZE_MB is 10", () => {
