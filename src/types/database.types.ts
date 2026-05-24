@@ -717,6 +717,7 @@ export type Database = {
           day_scholar: boolean
           email: string
           id: string
+          is_developer: boolean
           name: string
           notifications_enabled: boolean
           role: Database["public"]["Enums"]["user_role"]
@@ -731,6 +732,7 @@ export type Database = {
           day_scholar?: boolean
           email: string
           id: string
+          is_developer?: boolean
           name: string
           notifications_enabled?: boolean
           role?: Database["public"]["Enums"]["user_role"]
@@ -745,6 +747,7 @@ export type Database = {
           day_scholar?: boolean
           email?: string
           id?: string
+          is_developer?: boolean
           name?: string
           notifications_enabled?: boolean
           role?: Database["public"]["Enums"]["user_role"]

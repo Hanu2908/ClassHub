@@ -29,6 +29,7 @@ export interface AuthUser {
   universityRoll: string | null;
   dayScholar: boolean;
   notificationsEnabled: boolean;
+  isDeveloper: boolean;
 }
 
 export interface HubInfo {
@@ -308,7 +309,7 @@ export const useAppStore = create<AppState>()(
         if (!user) return;
         const { data, error } = await supabase
           .from('users')
-          .select('id, name, email, avatar_url, role, section_id, section_roll, university_roll, day_scholar, notifications_enabled')
+          .select('id, name, email, avatar_url, role, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer')
           .eq('id', user.id)
           .single();
         if (error || !data) return;
@@ -323,6 +324,7 @@ export const useAppStore = create<AppState>()(
           universityRoll: data.university_roll,
           dayScholar: data.day_scholar,
           notificationsEnabled: data.notifications_enabled,
+          isDeveloper: data.is_developer ?? false,
         };
         set({
           authUser: profile,

@@ -225,7 +225,7 @@ export default function ProfilePage() {
         <div>
           <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>TOOLS</p>
           <div className="card" style={{ padding: 0 }}>
-            {(displayRole as string) === 'developer' && (
+            {authUser?.isDeveloper && (
               <button
                 id="dev-console-btn"
                 onClick={() => navigate('/app/dev-console')}

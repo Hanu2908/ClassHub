@@ -53,7 +53,7 @@ function RequireHub({ children }: { children: React.ReactNode }) {
 // ── Developer guard — requires developer role ──
 function RequireDeveloper({ children }: { children: React.ReactNode }) {
   const authUser = useAppStore(s => s.authUser);
-  if ((authUser?.role as string) !== 'developer') {
+  if (!authUser?.isDeveloper) {
     return <Navigate to="/app/home" replace />;
   }
   return <>{children}</>;

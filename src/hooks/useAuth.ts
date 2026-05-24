@@ -26,6 +26,7 @@ export function useAuth() {
       universityRoll: null,
       dayScholar: true,
       notificationsEnabled: false,
+      isDeveloper: false,
     } satisfies AuthUser) : null),
     [isDemoMode, store.authUser, store.role]
   );
