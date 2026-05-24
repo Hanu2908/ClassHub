@@ -170,7 +170,7 @@ export default function ProfilePage() {
         <div>
           <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>TOOLS</p>
           <div className="card" style={{ padding: 0 }}>
-            <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }} onClick={() => showToast('CGPA Calculator coming soon!', 'info')}>
+            <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }} onClick={() => navigate('/app/gpa')}>
               <Calculator size={18} color="var(--accent-primary)" />
               <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
               <ChevronRight size={16} color="var(--text-muted)" />
