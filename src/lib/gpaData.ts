@@ -1,5 +1,5 @@
 // ── SKIT Jaipur Autonomous — Marks to Grade Mapping (CBCS) ───────────────────
-// Source: Standard autonomous university grading under RTU CBCS
+// Source: SKIT Jaipur Autonomous Scheme 2024-25 (official scheme tables)
 export interface GradeEntry {
   label:   string;  // O, A+, A, B+, B, C, P, F
   minMark: number;  // minimum marks (inclusive) to earn this grade
@@ -9,14 +9,14 @@ export interface GradeEntry {
 }
 
 export const GRADE_SCALE: GradeEntry[] = [
-  { label: 'O',  minMark: 90, point: 10, color: '#10B981', desc: 'Outstanding'  },
-  { label: 'A+', minMark: 80, point:  9, color: '#8B5CF6', desc: 'Excellent'    },
-  { label: 'A',  minMark: 70, point:  8, color: '#6366F1', desc: 'Very Good'    },
-  { label: 'B+', minMark: 60, point:  7, color: '#0EA5E9', desc: 'Good'         },
-  { label: 'B',  minMark: 50, point:  6, color: '#14B8A6', desc: 'Above Average'},
-  { label: 'C',  minMark: 45, point:  5, color: '#F59E0B', desc: 'Average'      },
-  { label: 'P',  minMark: 40, point:  4, color: '#FB923C', desc: 'Pass'         },
-  { label: 'F',  minMark:  0, point:  0, color: '#EF4444', desc: 'Fail'         },
+  { label: 'O',  minMark: 90, point: 10, color: '#4ADE80', desc: 'Outstanding'  },
+  { label: 'A+', minMark: 80, point:  9, color: '#818CF8', desc: 'Excellent'    },
+  { label: 'A',  minMark: 70, point:  8, color: '#60A5FA', desc: 'Very Good'    },
+  { label: 'B+', minMark: 60, point:  7, color: '#67E8F9', desc: 'Good'         },
+  { label: 'B',  minMark: 50, point:  6, color: '#34D399', desc: 'Above Average'},
+  { label: 'C',  minMark: 45, point:  5, color: '#FCD34D', desc: 'Average'      },
+  { label: 'P',  minMark: 40, point:  4, color: '#F97316', desc: 'Pass'         },
+  { label: 'F',  minMark:  0, point:  0, color: '#F87171', desc: 'Fail'         },
 ];
 
 /** Returns the grade entry for a given marks (0–100). */
@@ -40,7 +40,7 @@ export function marksToColor(marks: number | null): string {
 export interface SubjectRow {
   id:      string;
   name:    string;
-  credits: number;    // 1–6
+  credits: number;    // 0.5–6
   marks:   number | null;  // 0–100 total marks, null = not entered
 }
 
@@ -89,228 +89,651 @@ export function getTotalCredits(subjects: SubjectRow[]): number {
 
 // ── Chart theme ───────────────────────────────────────────────────────────────
 export const chartTheme = {
-  grid:    'rgba(255,255,255,0.05)',
-  text:    '#8B93A8',
+  grid:    'rgba(255,255,255,0.045)',
+  text:    '#6B7280',
   tooltip: {
-    bg:     '#1A1D27',
-    border: 'rgba(255,255,255,0.08)',
-    text:   '#F0F2F8',
+    bg:     '#161824',
+    border: 'rgba(255,255,255,0.1)',
+    text:   '#E5E7EB',
   },
 };
 
-// ── Default subjects — SKIT Autonomous CSE S1 (from actual marksheet) ─────────
-export type Branch = 'CSE' | 'CSE-AI' | 'IT' | 'ECE' | 'EE' | 'ME' | 'CE';
+// ── Branch type ───────────────────────────────────────────────────────────────
+export type Branch = 'CSE' | 'CSE-AI' | 'CSE-DS' | 'CSE-IOT' | 'IT' | 'ECE' | 'EE' | 'ME' | 'CE';
 
 interface DefaultSubject {
   name:    string;
   credits: number;
 }
 
-// CSE S1 — based on actual SKIT Jaipur autonomous marksheet provided
-const CSE_SUBJECTS: Record<number, DefaultSubject[]> = {
-  1: [
-    { name: 'Engineering Mathematics-I',                     credits: 4 },
-    { name: 'Computational Thinking & Programming',          credits: 4 },
-    { name: 'Engineering Physics',                           credits: 3 },
-    { name: 'Communication Skills',                          credits: 2 },
-    { name: 'Basic Electrical & Electronics Engineering',    credits: 4 },
-    { name: 'Essence of Indian Traditional Knowledge',       credits: 1 },
-    { name: 'C Programming Lab',                             credits: 2 },
-    { name: 'Computer Aided Engineering Graphics',           credits: 2 },
-    { name: 'Engineering Physics Lab',                       credits: 1 },
-    { name: 'Language Lab',                                  credits: 1 },
-    { name: 'Basic Electrical & Electronics Lab',            credits: 1 },
-    { name: 'SODECA: Sports I',                              credits: 1 },
-  ],
-  2: [
-    { name: 'Engineering Mathematics-II',                    credits: 4 },
-    { name: 'Data Structures',                               credits: 4 },
-    { name: 'Chemistry',                                     credits: 3 },
-    { name: 'Environmental Studies',                         credits: 2 },
-    { name: 'Digital Electronics',                           credits: 3 },
-    { name: 'Python Programming',                            credits: 3 },
-    { name: 'Data Structures Lab',                           credits: 2 },
-    { name: 'Chemistry Lab',                                 credits: 1 },
-    { name: 'Python Lab',                                    credits: 1 },
-    { name: 'SODECA: Sports II',                             credits: 1 },
-  ],
-  3: [
-    { name: 'Engineering Mathematics-III',                   credits: 4 },
-    { name: 'Object Oriented Programming (Java)',            credits: 4 },
-    { name: 'Computer Organization & Architecture',          credits: 3 },
-    { name: 'Discrete Mathematics',                          credits: 3 },
-    { name: 'Operating Systems',                             credits: 3 },
-    { name: 'OOP Lab (Java)',                                credits: 2 },
-    { name: 'OS Lab',                                        credits: 2 },
-    { name: 'SODECA: Sports III',                            credits: 1 },
-  ],
-  4: [
-    { name: 'Theory of Computation',                         credits: 4 },
-    { name: 'Design & Analysis of Algorithms',               credits: 4 },
-    { name: 'Database Management Systems',                   credits: 4 },
-    { name: 'Microprocessors & Interfaces',                  credits: 3 },
-    { name: 'Software Engineering',                          credits: 3 },
-    { name: 'DBMS Lab',                                      credits: 2 },
-    { name: 'Microprocessors Lab',                           credits: 2 },
-  ],
+// ─────────────────────────────────────────────────────────────────────────────
+// SEMESTER 1 — Common for ALL branches
+// Source: SKIT Autonomous Scheme 2024-25, Sem I
+// Credits: L+T for theory, P/2 for labs (CBCS standard)
+// NOTE: 0-credit audit/soft-skills courses removed as they don't affect CGPA
+// ─────────────────────────────────────────────────────────────────────────────
+const SEM1_COMMON: DefaultSubject[] = [
+  { name: 'Engineering Mathematics-I',                           credits: 4   }, // 3L+1T
+  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   }, // 3L+1T
+  { name: 'Communication Skills / Universal Human Values',       credits: 2   }, // 2L
+  { name: 'Computational Thinking and Programming',              credits: 2   }, // 2L
+  { name: 'Basic Electrical & Electronics Engineering',          credits: 2   }, // 2L (EEUL101 for CSE/IT/DS/AI/IOT/ME/CE)
+  { name: 'Engineering Physics / Chemistry Lab',                 credits: 1   }, // 2P
+  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   }, // 2P
+  { name: 'C Programming Lab',                                   credits: 1   }, // 2P
+  { name: 'Basic EE Lab / Manufacturing Practice Workshop',      credits: 1   }, // 2P
+  { name: 'Computer Aided Engineering Graphics',                 credits: 1.5 }, // 3P
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 20 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEMESTER 1 — EE / ECE variant
+// CEUL101 Basic Civil Engineering replaces EEUL101
+// ─────────────────────────────────────────────────────────────────────────────
+const SEM1_EE_ECE: DefaultSubject[] = [
+  { name: 'Engineering Mathematics-I',                           credits: 4   },
+  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   },
+  { name: 'Communication Skills / Universal Human Values',       credits: 2   },
+  { name: 'Computational Thinking and Programming',              credits: 2   },
+  { name: 'Basic Civil Engineering',                             credits: 2   }, // CEUL101 for EE/ECE
+  { name: 'Engineering Physics / Chemistry Lab',                 credits: 1   },
+  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   },
+  { name: 'C Programming Lab',                                   credits: 1   },
+  { name: 'Basic Civil Engineering Lab / Manufacturing Practice',credits: 1   },
+  { name: 'Computer Aided Engineering Graphics',                 credits: 1.5 },
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 20 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEMESTER 2 — Common for ALL branches
+// Source: SKIT Autonomous Scheme 2024-25, Sem II
+// ─────────────────────────────────────────────────────────────────────────────
+const SEM2_COMMON: DefaultSubject[] = [
+  { name: 'Engineering Mathematics-II',                          credits: 4   }, // 3L+1T
+  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   }, // 3L+1T
+  { name: 'Communication Skills / Universal Human Values',       credits: 2   }, // 2L
+  { name: 'Innovation & Entrepreneurship',                       credits: 1   }, // 1L
+  { name: 'Problem Solving using Object Oriented Paradigm',      credits: 2   }, // 2L
+  { name: 'Basic Electrical & Electronics Engineering',          credits: 2   }, // 2L
+  { name: 'Engineering Physics / Chemistry Lab',                 credits: 1   }, // 2P
+  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   }, // 2P
+  { name: 'Object Oriented Programming Lab',                     credits: 1   }, // 2P
+  { name: 'Basic EE Lab / Manufacturing Practice Workshop',      credits: 1   }, // 2P
+  { name: 'Computer Aided Engineering Graphics',                 credits: 1.5 }, // 3P
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 21 credits
+];
+
+const SEM2_EE_ECE: DefaultSubject[] = [
+  { name: 'Engineering Mathematics-II',                          credits: 4   },
+  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   },
+  { name: 'Communication Skills / Universal Human Values',       credits: 2   },
+  { name: 'Innovation & Entrepreneurship',                       credits: 1   },
+  { name: 'Problem Solving using Object Oriented Paradigm',      credits: 2   },
+  { name: 'Basic Civil Engineering',                             credits: 2   },
+  { name: 'Engineering Physics / Chemistry Lab',                 credits: 1   },
+  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   },
+  { name: 'Object Oriented Programming Lab',                     credits: 1   },
+  { name: 'Basic Civil Engineering Lab / Manufacturing Practice',credits: 1   },
+  { name: 'Computer Aided Engineering Graphics',                 credits: 1.5 },
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 21 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSE — Semester 3 & 4
+// Source: SKIT Autonomous Scheme 2024-25, CSE Year II
+// ─────────────────────────────────────────────────────────────────────────────
+const CSE_S3: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   }, // 1L (HSMC)
+  { name: 'Statistics and Probability Theory',                   credits: 3   }, // 3L (BSC)
+  { name: 'Data Structures and Algorithms',                      credits: 4   }, // 3L+1T (PCC)
+  { name: 'Operating System',                                    credits: 3   }, // 3L (PCC)
+  { name: 'Software Engineering and Project Management',         credits: 3   }, // 3L (PCC)
+  { name: 'Digital Electronics',                                 credits: 3   }, // 3L (ESC)
+  { name: 'Data Structures and Algorithms Lab',                  credits: 1.5 }, // 3P (PCC)
+  { name: 'Programming in Java Lab',                             credits: 1.5 }, // 3P (PCC)
+  { name: 'Software Engineering Lab',                            credits: 1.5 }, // 3P (PCC)
+  { name: 'Digital Electronics Lab',                             credits: 1.5 }, // 3P (PCC)
+  { name: 'Industrial Training',                                 credits: 1   }, // PSIT
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 24.5 credits
+];
+
+const CSE_S4: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   }, // 1L (HSMC)
+  { name: 'Discrete Mathematics and Linear Algebra',             credits: 3   }, // 3L (BSC)
+  { name: 'Database Management System',                          credits: 3   }, // 3L (PCC)
+  { name: 'Theory of Computation',                               credits: 3   }, // 3L (PCC)
+  { name: 'Computer Networks',                                   credits: 3   }, // 3L (PCC)
+  { name: 'Artificial Intelligence',                             credits: 2   }, // 2L (PCC)
+  { name: 'Computer Architecture and Microprocessor',            credits: 2   }, // 2L (ESC)
+  { name: 'Database Systems Lab',                                credits: 1.5 }, // 3P (PCC)
+  { name: 'Network Programming Lab',                             credits: 1.5 }, // 3P (PCC)
+  { name: 'Microprocessor Lab',                                  credits: 1.5 }, // 3P (PCC)
+  { name: 'Data Analytics and Visualization Lab',                credits: 1.5 }, // 3P (PCC)
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 23.5 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSE-AI — S3/S4 same structure as CSE (shares course codes: CAUL301, etc.)
+// ─────────────────────────────────────────────────────────────────────────────
+const CSE_AI_S3: DefaultSubject[] = CSE_S3; // Same as CSE S3 per shared course codes
+const CSE_AI_S4: DefaultSubject[] = CSE_S4; // Same as CSE S4
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSE-DS (Data Science) — Semester 3 & 4
+// Source: SKIT Autonomous Scheme 2024-25, DS Year II
+// ─────────────────────────────────────────────────────────────────────────────
+const CSE_DS_S3: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Statistics and Probability Theory',                   credits: 3   },
+  { name: 'Data Structures and Algorithms',                      credits: 4   }, // 3L+1T
+  { name: 'Foundation of Data Science',                          credits: 3   },
+  { name: 'Software Engineering and Project Management',         credits: 3   },
+  { name: 'Digital Electronics',                                 credits: 3   },
+  { name: 'Data Structures and Algorithms Lab',                  credits: 1.5 },
+  { name: 'Programming in Java Lab',                             credits: 1.5 },
+  { name: 'Python for Data Science Lab',                         credits: 1.5 },
+  { name: 'Digital Electronics Lab',                             credits: 1.5 },
+  { name: 'Industrial Training',                                 credits: 1   },
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 24.5 credits
+];
+
+const CSE_DS_S4: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Discrete Mathematics and Linear Algebra',             credits: 3   },
+  { name: 'Database Management System',                          credits: 3   },
+  { name: 'Full Stack Development',                              credits: 2   },
+  { name: 'Computer Network',                                    credits: 3   },
+  { name: 'Operating System',                                    credits: 3   },
+  { name: 'Computer Architecture and Microprocessor',            credits: 2   },
+  { name: 'Database Systems Lab',                                credits: 1.5 },
+  { name: 'Full Stack Development Lab',                          credits: 1.5 },
+  { name: 'Microprocessor Lab',                                  credits: 1.5 },
+  { name: 'R-Programming for Data Science',                      credits: 1.5 },
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 23.5 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSE-IOT (Internet of Things) — Semester 3 & 4
+// Source: SKIT Autonomous Scheme 2024-25, IOT Year II
+// ─────────────────────────────────────────────────────────────────────────────
+const CSE_IOT_S3: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Statistics and Probability Theory',                   credits: 3   },
+  { name: 'Data Structures and Algorithms',                      credits: 4   }, // 3L+1T
+  { name: 'Electronic System for IoT',                           credits: 3   },
+  { name: 'Software Engineering and Project Management',         credits: 3   },
+  { name: 'Digital Electronics',                                 credits: 3   },
+  { name: 'Data Structures and Algorithms Lab',                  credits: 1.5 },
+  { name: 'Programming in Java Lab',                             credits: 1.5 },
+  { name: 'Electronic System for IoT Lab',                       credits: 1.5 },
+  { name: 'Digital Electronics Lab',                             credits: 1.5 },
+  { name: 'Industrial Training',                                 credits: 1   },
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 24.5 credits
+];
+
+const CSE_IOT_S4: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Discrete Mathematics and Linear Algebra',             credits: 3   },
+  { name: 'Database Management System',                          credits: 3   },
+  { name: 'Data Analytics for IoT',                              credits: 2   },
+  { name: 'Computer Networks',                                   credits: 3   },
+  { name: 'Operating System',                                    credits: 3   },
+  { name: 'Computer Architecture and Microprocessor',            credits: 2   },
+  { name: 'Database Systems Lab',                                credits: 1.5 },
+  { name: 'Network Programming Lab',                             credits: 1.5 },
+  { name: 'Microprocessor Lab',                                  credits: 1.5 },
+  { name: 'Data Analytics and Visualization Lab',                credits: 1.5 },
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 23.5 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IT — Semester 3 & 4
+// Source: SKIT Autonomous Scheme 2024-25, IT Year II
+// ─────────────────────────────────────────────────────────────────────────────
+const IT_S3: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Statistics and Probability Theory',                   credits: 3   },
+  { name: 'Data Structures and Algorithms',                      credits: 4   }, // 3L+1T
+  { name: 'Operating System',                                    credits: 3   },
+  { name: 'Software Engineering and Project Management',         credits: 3   },
+  { name: 'Digital Electronics',                                 credits: 3   },
+  { name: 'Data Structures and Algorithms Lab',                  credits: 1.5 },
+  { name: 'Programming in Java Lab',                             credits: 1.5 },
+  { name: 'Software Engineering Lab',                            credits: 1.5 },
+  { name: 'Digital Electronics Lab',                             credits: 1.5 },
+  { name: 'Industrial Training',                                 credits: 1   },
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 24.5 credits
+];
+
+const IT_S4: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Discrete Mathematics and Linear Algebra',             credits: 3   },
+  { name: 'Database Management System',                          credits: 3   },
+  { name: 'Theory of Computation',                               credits: 3   },
+  { name: 'Computer Networks',                                   credits: 3   },
+  { name: 'Artificial Intelligence',                             credits: 2   },
+  { name: 'Computer Architecture and Microprocessor',            credits: 2   },
+  { name: 'Database Systems Lab',                                credits: 1.5 },
+  { name: 'Network Programming Lab',                             credits: 1.5 },
+  { name: 'Web Development Lab',                                 credits: 1.5 },
+  { name: 'Data Analytics and Visualization Lab',                credits: 1.5 },
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 23.5 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECE — Semester 3 & 4
+// Source: SKIT Autonomous Scheme 2024-25, ECE Year II
+// ─────────────────────────────────────────────────────────────────────────────
+const ECE_S3: DefaultSubject[] = [
+  { name: 'Linear Algebra and Numerical Analysis',               credits: 4   }, // 3L+1T (BSC)
+  { name: 'Technical Communication / Managerial Economics',      credits: 1   }, // 1L (HSMC)
+  { name: 'Electronic Devices and Circuits',                     credits: 3   }, // 3L (PCC)
+  { name: 'Digital System Design',                               credits: 3   }, // 3L (PCC)
+  { name: 'Circuit Theory',                                      credits: 4   }, // 3L+1T (PCC)
+  { name: 'Data Structure and Algorithm',                        credits: 2   }, // 2L (ESC)
+  { name: 'Electronics Devices Lab',                             credits: 1.5 }, // 3P (PCC)
+  { name: 'Digital System Design Lab',                           credits: 1.5 }, // 3P (PCC)
+  { name: 'Circuit Simulation and PCB Design Lab',               credits: 2   }, // 4P (PCC)
+  { name: 'Data Structure and Algorithm Lab',                    credits: 1   }, // 2P (ESC)
+  { name: 'Industry Training',                                   credits: 1   }, // PSIT
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 24.5 credits
+];
+
+const ECE_S4: DefaultSubject[] = [
+  { name: 'Probability and Stochastic Process',                  credits: 2   }, // 2L (BSC)
+  { name: 'Analog Electronics',                                  credits: 3   }, // 3L (PCC)
+  { name: 'Signals and Systems',                                 credits: 3   }, // 3L (PCC)
+  { name: 'Analog and Digital Communication',                    credits: 3   }, // 3L (PCC)
+  { name: 'Microprocessor and Microcontroller',                  credits: 3   }, // 3L (PCC)
+  { name: 'Electronics Measurement and Instrumentation',         credits: 2   }, // 2L (ESC)
+  { name: 'Technical Communication / Managerial Economics',      credits: 1   }, // 1L (HSMC)
+  { name: 'Analog Electronics Lab',                              credits: 1.5 }, // 3P (PCC)
+  { name: 'Python Programming Lab',                              credits: 1   }, // 2P (PCC)
+  { name: 'Analog and Digital Communication Lab',                credits: 1.5 }, // 3P (PCC)
+  { name: 'Microprocessor and Microcontroller Lab',              credits: 1   }, // 2P (PCC)
+  { name: 'Electronics Measurement and Instrumentation Lab',     credits: 1   }, // 2P (ESC)
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 23.5 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EE — Semester 3 & 4
+// Source: SKIT Autonomous Scheme 2024-25, EE Year II
+// ─────────────────────────────────────────────────────────────────────────────
+const EE_S3: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Advanced Engineering Mathematics-I',                  credits: 3   }, // 3L (BSC)
+  { name: 'Electrical Measurement & Instrumentation',            credits: 3   }, // 3L (PCC)
+  { name: 'Generation of Electrical Power',                      credits: 2   }, // 2L (ESC)
+  { name: 'Circuit Analysis-I',                                  credits: 3   }, // 3L (PCC)
+  { name: 'Analog Electronics',                                  credits: 2   }, // 2L (ESC)
+  { name: 'Electrical Machine-I',                                credits: 3   }, // 3L (PCC)
+  { name: 'Analog Electronics Lab',                              credits: 1.5 }, // 3P (PCC)
+  { name: 'Electrical Machine Lab-I',                            credits: 1.5 }, // 3P (PCC)
+  { name: 'Computer Programming Lab (C++)',                      credits: 1.5 }, // 3P (ESC)
+  { name: 'Electrical Circuit Design Lab',                       credits: 1.5 }, // 3P (PCC)
+  { name: 'Industrial Training',                                 credits: 1   }, // PSIT
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 24.5 credits
+];
+
+const EE_S4: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Advanced Engineering Mathematics-III',                credits: 3   }, // 3L (BSC)
+  { name: 'Circuit Analysis-II',                                 credits: 3   }, // 3L (PCC)
+  { name: 'Signal and Systems',                                  credits: 2   }, // 2L (PCC)
+  { name: 'Electrical Machine-II',                               credits: 3   }, // 3L (PCC)
+  { name: 'Power Electronics',                                   credits: 3   }, // 3L (PCC)
+  { name: 'Digital Electronics',                                 credits: 2   }, // 2L (PCC)
+  { name: 'Electrical Machine Lab-II',                           credits: 1.5 }, // 3P (PCC)
+  { name: 'MATLAB Programming Lab',                              credits: 1.5 }, // 3P (PCC)
+  { name: 'Digital Electronics Lab',                             credits: 1.5 }, // 3P (PCC)
+  { name: 'Electrical Measurement Lab',                          credits: 1.5 }, // 3P (ESC)
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 23.5 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ME — Semester 3 & 4
+// Source: SKIT Autonomous Scheme 2024-25, ME Year II
+// ─────────────────────────────────────────────────────────────────────────────
+const ME_S3: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Higher Engineering Mathematics',                      credits: 3   }, // 3L (BSC)
+  { name: 'Engineering Mechanics',                               credits: 3   }, // 2L+1T (ESC)
+  { name: 'Engineering Thermodynamics',                          credits: 3   }, // 3L (PCC)
+  { name: 'Mechanics of Solids',                                 credits: 4   }, // 3L+1T (PCC)
+  { name: 'Materials Science and Engineering',                   credits: 3   }, // 3L (PCC)
+  { name: 'Basic Mechanical Engineering Lab',                    credits: 1.5 }, // 3P (PCC)
+  { name: 'Computer Aided Design Lab',                           credits: 1.5 }, // 3P (PCC)
+  { name: 'Materials Testing Lab',                               credits: 1.5 }, // 3P (PCC)
+  { name: 'Programming using MATLAB',                            credits: 1.5 }, // 3P (PCC)
+  { name: 'Industrial Training',                                 credits: 1   }, // PSIT
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 24.5 credits
+];
+
+const ME_S4: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Data Analytics',                                      credits: 3   }, // 3L (BSC)
+  { name: 'Digital Electronics',                                 credits: 2   }, // 2L (ESC)
+  { name: 'Fluid Mechanics and Fluid Machines',                  credits: 4   }, // 3L+1T (PCC)
+  { name: 'Manufacturing Processes',                             credits: 3   }, // 3L (PCC)
+  { name: 'Theory of Machines',                                  credits: 4   }, // 3L+1T (PCC)
+  { name: 'Digital Electronics Lab',                             credits: 1   }, // 2P (ESC)
+  { name: 'Fluid Mechanics and Hydraulic Machines Lab',          credits: 1.5 }, // 3P (PCC)
+  { name: 'Production Engineering Lab',                          credits: 2   }, // 4P (PCC)
+  { name: 'Theory of Machines Lab',                              credits: 1.5 }, // 3P (PCC)
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 23.5 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CE — Semester 3 & 4
+// Source: SKIT Autonomous Scheme 2024-25, CE Year II
+// ─────────────────────────────────────────────────────────────────────────────
+const CE_S3: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Advanced Engineering Mathematics-I',                  credits: 4   }, // 3L+1T (BSC)
+  { name: 'Strength of Materials',                               credits: 4   }, // 3L+1T (PCC)
+  { name: 'Surveying',                                           credits: 3   }, // 3L (PCC)
+  { name: 'Building Materials and Construction',                 credits: 3   }, // 3L (PCC)
+  { name: 'Engineering Geology',                                 credits: 2   }, // 2L (ESC)
+  { name: 'Surveying Lab',                                       credits: 1.5 }, // 3P (PCC)
+  { name: 'Professional Development Lab',                        credits: 1   }, // 2P (PCC)
+  { name: 'Geology Lab',                                         credits: 1   }, // 2P (ESC)
+  { name: 'Building Planning and Drafting Lab-I',                credits: 1.5 }, // 3P (ESC)
+  { name: 'Building Material Testing Lab',                       credits: 1   }, // 2P (PCC)
+  { name: 'Industrial Training',                                 credits: 1   }, // PSIT
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 24.5 credits
+];
+
+const CE_S4: DefaultSubject[] = [
+  { name: 'Managerial Economics & Financial Accounting / Technical Communication', credits: 1   },
+  { name: 'Advanced Engineering Mathematics-II',                 credits: 3   }, // 3L (BSC)
+  { name: 'Structural Analysis-I',                               credits: 3   }, // 3L (PCC)
+  { name: 'Fluid Mechanics and Hydraulic Engineering',           credits: 4   }, // 3L+1T (PCC)
+  { name: 'Concrete Technology',                                 credits: 3   }, // 3L (ESC)
+  { name: 'Environmental Engineering',                           credits: 3   }, // 3L (PCC)
+  { name: 'Fluid Mechanics and Hydraulic Engineering Lab',       credits: 1   }, // 2P (PCC)
+  { name: 'Concrete Lab',                                        credits: 1.5 }, // 3P (ESC)
+  { name: 'Building Planning and Drafting Lab-II',               credits: 1.5 }, // 3P (PCC)
+  { name: 'Environmental Engineering Lab',                       credits: 1   }, // 2P (PCC)
+  { name: 'Structural Engineering Lab',                          credits: 1   }, // 2P (PCC)
+  { name: 'SODECA',                                              credits: 0.5 },
+  // Total: 23.5 credits
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEMESTERS 5-8 — Placeholder (official scheme for Year 3-4 not yet available)
+// These will be updated when official scheme is shared
+// ─────────────────────────────────────────────────────────────────────────────
+const CSE_UPPER: Record<number, DefaultSubject[]> = {
   5: [
-    { name: 'Compiler Design',                               credits: 4 },
-    { name: 'Computer Networks',                             credits: 4 },
-    { name: 'Web Technologies',                              credits: 3 },
-    { name: 'Artificial Intelligence',                       credits: 3 },
-    { name: 'Information Security',                          credits: 3 },
-    { name: 'Networks Lab',                                  credits: 2 },
-    { name: 'Web Tech Lab',                                  credits: 2 },
+    { name: 'Compiler Design',                  credits: 4 },
+    { name: 'Web Technologies',                 credits: 3 },
+    { name: 'Information Security',             credits: 3 },
+    { name: 'Open Elective-I',                  credits: 3 },
+    { name: 'Program Elective-I',               credits: 3 },
+    { name: 'Networks Lab',                     credits: 1.5 },
+    { name: 'Web Tech Lab',                     credits: 1.5 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
   6: [
-    { name: 'Machine Learning',                              credits: 4 },
-    { name: 'Cloud Computing',                               credits: 3 },
-    { name: 'Mobile Application Development',               credits: 3 },
-    { name: 'Big Data Analytics',                            credits: 3 },
-    { name: 'Elective-I',                                    credits: 3 },
-    { name: 'ML Lab',                                        credits: 2 },
-    { name: 'Minor Project',                                 credits: 2 },
+    { name: 'Machine Learning',                 credits: 4 },
+    { name: 'Cloud Computing',                  credits: 3 },
+    { name: 'Mobile Application Development',   credits: 3 },
+    { name: 'Program Elective-II',              credits: 3 },
+    { name: 'Open Elective-II',                 credits: 3 },
+    { name: 'ML Lab',                           credits: 1.5 },
+    { name: 'Minor Project',                    credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
   7: [
-    { name: 'Deep Learning',                                 credits: 4 },
-    { name: 'Internet of Things',                            credits: 3 },
-    { name: 'Distributed Systems',                           credits: 3 },
-    { name: 'Elective-II',                                   credits: 3 },
-    { name: 'Elective-III',                                  credits: 3 },
-    { name: 'Major Project Part-I',                          credits: 4 },
+    { name: 'Program Elective-III',             credits: 3 },
+    { name: 'Program Elective-IV',              credits: 3 },
+    { name: 'Open Elective-III',                credits: 3 },
+    { name: 'Major Project Part-I',             credits: 4 },
+    { name: 'Seminar',                          credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
   8: [
-    { name: 'Major Project Part-II',                         credits: 10 },
-    { name: 'Industrial Training',                           credits:  4 },
-    { name: 'Seminar',                                       credits:  2 },
-    { name: 'Elective-IV',                                   credits:  3 },
+    { name: 'Major Project Part-II',            credits: 10 },
+    { name: 'Industrial Training / Internship', credits: 4  },
+    { name: 'Program Elective-V',               credits: 3  },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
 };
 
-const CSE_AI_SUBJECTS: Record<number, DefaultSubject[]> = {
-  ...CSE_SUBJECTS,
-  3: [
-    { name: 'Engineering Mathematics-III',    credits: 4 },
-    { name: 'Data Structures',                credits: 4 },
-    { name: 'Python Programming',             credits: 3 },
-    { name: 'Probability & Statistics',       credits: 3 },
-    { name: 'AI Fundamentals',                credits: 3 },
-    { name: 'Python Lab',                     credits: 2 },
-    { name: 'AI Lab',                         credits: 2 },
-  ],
+const ECE_UPPER: Record<number, DefaultSubject[]> = {
   5: [
-    { name: 'Machine Learning',               credits: 4 },
-    { name: 'Computer Vision',                credits: 4 },
-    { name: 'Natural Language Processing',    credits: 3 },
-    { name: 'Deep Learning',                  credits: 4 },
-    { name: 'AI Ethics',                      credits: 2 },
-    { name: 'ML Lab',                         credits: 2 },
-  ],
-};
-
-const IT_SUBJECTS: Record<number, DefaultSubject[]> = {
-  ...CSE_SUBJECTS,
-  5: [
-    { name: 'Information Security',           credits: 4 },
-    { name: 'Web Development',                credits: 4 },
-    { name: 'Network Administration',         credits: 3 },
-    { name: 'Database Administration',        credits: 3 },
-    { name: 'IT Project Management',          credits: 3 },
-    { name: 'Networks Lab',                   credits: 2 },
-  ],
-};
-
-const ECE_SUBJECTS: Record<number, DefaultSubject[]> = {
-  1: CSE_SUBJECTS[1],
-  2: CSE_SUBJECTS[2],
-  3: [
-    { name: 'Engineering Mathematics-III',    credits: 4 },
-    { name: 'Signals & Systems',              credits: 4 },
-    { name: 'Network Analysis',               credits: 3 },
-    { name: 'Electronic Devices',             credits: 3 },
-    { name: 'Analog Electronics',             credits: 3 },
-    { name: 'Digital Electronics',            credits: 3 },
-    { name: 'Electronics Lab',                credits: 2 },
-  ],
-  4: [
-    { name: 'Communication Systems',          credits: 4 },
-    { name: 'Microprocessors',                credits: 4 },
-    { name: 'Electromagnetic Theory',         credits: 3 },
-    { name: 'Control Systems',                credits: 3 },
-    { name: 'VLSI Design',                    credits: 3 },
-    { name: 'VLSI Lab',                       credits: 2 },
-  ],
-  5: [
-    { name: 'Digital Signal Processing',      credits: 4 },
-    { name: 'Wireless Communication',         credits: 4 },
-    { name: 'Optical Fiber Communication',    credits: 3 },
-    { name: 'Embedded Systems',               credits: 3 },
-    { name: 'Microwave Engineering',          credits: 3 },
-    { name: 'DSP Lab',                        credits: 2 },
+    { name: 'Digital Signal Processing',        credits: 4 },
+    { name: 'Wireless Communication',           credits: 4 },
+    { name: 'Optical Fiber Communication',      credits: 3 },
+    { name: 'Embedded Systems',                 credits: 3 },
+    { name: 'Program Elective-I',               credits: 3 },
+    { name: 'DSP Lab',                          credits: 1.5 },
+    { name: 'Embedded Systems Lab',             credits: 1.5 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
   6: [
-    { name: 'Mobile Communication',           credits: 4 },
-    { name: 'IoT & Applications',             credits: 3 },
-    { name: 'Elective-I',                     credits: 3 },
-    { name: 'Signal Processing Lab',          credits: 2 },
-    { name: 'Minor Project',                  credits: 2 },
+    { name: 'VLSI Design',                      credits: 4 },
+    { name: 'Microwave Engineering',            credits: 3 },
+    { name: 'IoT & Applications',               credits: 3 },
+    { name: 'Program Elective-II',              credits: 3 },
+    { name: 'Open Elective-I',                  credits: 3 },
+    { name: 'VLSI Lab',                         credits: 1.5 },
+    { name: 'Minor Project',                    credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
   7: [
-    { name: '5G Technology',                  credits: 3 },
-    { name: 'Image Processing',               credits: 3 },
-    { name: 'Elective-II',                    credits: 3 },
-    { name: 'Major Project Part-I',           credits: 4 },
+    { name: '5G Technology & Applications',     credits: 3 },
+    { name: 'Program Elective-III',             credits: 3 },
+    { name: 'Open Elective-II',                 credits: 3 },
+    { name: 'Major Project Part-I',             credits: 4 },
+    { name: 'Seminar',                          credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
-  8: CSE_SUBJECTS[8],
+  8: [
+    { name: 'Major Project Part-II',            credits: 10 },
+    { name: 'Industrial Training / Internship', credits: 4  },
+    { name: 'Program Elective-IV',              credits: 3  },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
 };
 
-const GENERIC_UPPER: Record<number, DefaultSubject[]> = {
-  3: [
-    { name: 'Engineering Mathematics-III',    credits: 4 },
-    { name: 'Core Subject-I',                 credits: 4 },
-    { name: 'Core Subject-II',                credits: 3 },
-    { name: 'Core Subject-III',               credits: 3 },
-    { name: 'Core Lab-I',                     credits: 2 },
-    { name: 'Core Lab-II',                    credits: 2 },
-  ],
-  4: [
-    { name: 'Core Subject-IV',                credits: 4 },
-    { name: 'Core Subject-V',                 credits: 4 },
-    { name: 'Core Subject-VI',                credits: 3 },
-    { name: 'Core Lab-III',                   credits: 2 },
-    { name: 'Elective-I',                     credits: 3 },
-  ],
+const EE_UPPER: Record<number, DefaultSubject[]> = {
   5: [
-    { name: 'Core Subject-VII',               credits: 4 },
-    { name: 'Core Subject-VIII',              credits: 4 },
-    { name: 'Core Subject-IX',                credits: 3 },
-    { name: 'Elective-II',                    credits: 3 },
-    { name: 'Minor Project',                  credits: 2 },
+    { name: 'Control Systems',                  credits: 4 },
+    { name: 'Power Systems-I',                  credits: 4 },
+    { name: 'Switchgear & Protection',          credits: 3 },
+    { name: 'Program Elective-I',               credits: 3 },
+    { name: 'Open Elective-I',                  credits: 3 },
+    { name: 'Control Systems Lab',              credits: 1.5 },
+    { name: 'Power Systems Lab',                credits: 1.5 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
   6: [
-    { name: 'Core Subject-X',                 credits: 4 },
-    { name: 'Core Subject-XI',                credits: 3 },
-    { name: 'Elective-III',                   credits: 3 },
-    { name: 'Core Lab-IV',                    credits: 2 },
-    { name: 'Major Project Part-I',           credits: 3 },
+    { name: 'Power Systems-II',                 credits: 4 },
+    { name: 'High Voltage Engineering',         credits: 3 },
+    { name: 'Utilization of Electrical Energy', credits: 3 },
+    { name: 'Program Elective-II',              credits: 3 },
+    { name: 'Open Elective-II',                 credits: 3 },
+    { name: 'HV Lab',                           credits: 1.5 },
+    { name: 'Minor Project',                    credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
   7: [
-    { name: 'Advanced Topic-I',               credits: 4 },
-    { name: 'Elective-IV',                    credits: 3 },
-    { name: 'Elective-V',                     credits: 3 },
-    { name: 'Major Project Part-II',          credits: 4 },
+    { name: 'Renewable Energy Systems',         credits: 3 },
+    { name: 'Program Elective-III',             credits: 3 },
+    { name: 'Open Elective-III',                credits: 3 },
+    { name: 'Major Project Part-I',             credits: 4 },
+    { name: 'Seminar',                          credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
   ],
-  8: CSE_SUBJECTS[8],
+  8: [
+    { name: 'Major Project Part-II',            credits: 10 },
+    { name: 'Industrial Training / Internship', credits: 4  },
+    { name: 'Program Elective-IV',              credits: 3  },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
 };
 
+const ME_UPPER: Record<number, DefaultSubject[]> = {
+  5: [
+    { name: 'Heat Transfer',                    credits: 4 },
+    { name: 'Machine Design',                   credits: 4 },
+    { name: 'Industrial Engineering',           credits: 3 },
+    { name: 'Program Elective-I',               credits: 3 },
+    { name: 'Open Elective-I',                  credits: 3 },
+    { name: 'Heat Transfer Lab',                credits: 1.5 },
+    { name: 'Machine Design Lab',               credits: 1.5 },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
+  6: [
+    { name: 'Refrigeration & Air Conditioning', credits: 4 },
+    { name: 'Metrology & Quality Control',      credits: 3 },
+    { name: 'Finite Element Method',            credits: 3 },
+    { name: 'Program Elective-II',              credits: 3 },
+    { name: 'Open Elective-II',                 credits: 3 },
+    { name: 'RAC Lab',                          credits: 1.5 },
+    { name: 'Minor Project',                    credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
+  7: [
+    { name: 'Robotics and Automation',          credits: 3 },
+    { name: 'Program Elective-III',             credits: 3 },
+    { name: 'Open Elective-III',                credits: 3 },
+    { name: 'Major Project Part-I',             credits: 4 },
+    { name: 'Seminar',                          credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
+  8: [
+    { name: 'Major Project Part-II',            credits: 10 },
+    { name: 'Industrial Training / Internship', credits: 4  },
+    { name: 'Program Elective-IV',              credits: 3  },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
+};
+
+const CE_UPPER: Record<number, DefaultSubject[]> = {
+  5: [
+    { name: 'Structural Analysis-II',           credits: 4 },
+    { name: 'Foundation Engineering',           credits: 3 },
+    { name: 'Transportation Engineering',       credits: 3 },
+    { name: 'Program Elective-I',               credits: 3 },
+    { name: 'Open Elective-I',                  credits: 3 },
+    { name: 'Structural Analysis Lab',          credits: 1.5 },
+    { name: 'Transportation Lab',               credits: 1.5 },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
+  6: [
+    { name: 'Design of Steel Structures',       credits: 4 },
+    { name: 'Quantity Surveying',               credits: 3 },
+    { name: 'Water Resource Engineering',       credits: 3 },
+    { name: 'Program Elective-II',              credits: 3 },
+    { name: 'Open Elective-II',                 credits: 3 },
+    { name: 'Hydraulics Lab',                   credits: 1.5 },
+    { name: 'Minor Project',                    credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
+  7: [
+    { name: 'Project Planning & Management',    credits: 3 },
+    { name: 'Program Elective-III',             credits: 3 },
+    { name: 'Open Elective-III',                credits: 3 },
+    { name: 'Major Project Part-I',             credits: 4 },
+    { name: 'Seminar',                          credits: 2 },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
+  8: [
+    { name: 'Major Project Part-II',            credits: 10 },
+    { name: 'Industrial Training / Internship', credits: 4  },
+    { name: 'Program Elective-IV',              credits: 3  },
+    { name: 'SODECA',                           credits: 0.5 },
+  ],
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUBJECTS_DATA — full map: Branch → Semester → Subjects
+// ─────────────────────────────────────────────────────────────────────────────
 export const SUBJECTS_DATA: Record<Branch, Record<number, DefaultSubject[]>> = {
-  'CSE':    CSE_SUBJECTS,
-  'CSE-AI': CSE_AI_SUBJECTS,
-  'IT':     IT_SUBJECTS,
-  'ECE':    ECE_SUBJECTS,
-  'EE':     { 1: CSE_SUBJECTS[1], 2: CSE_SUBJECTS[2], ...GENERIC_UPPER },
-  'ME':     { 1: CSE_SUBJECTS[1], 2: CSE_SUBJECTS[2], ...GENERIC_UPPER },
-  'CE':     { 1: CSE_SUBJECTS[1], 2: CSE_SUBJECTS[2], ...GENERIC_UPPER },
+  'CSE': {
+    1: SEM1_COMMON,
+    2: SEM2_COMMON,
+    3: CSE_S3,
+    4: CSE_S4,
+    ...CSE_UPPER,
+  },
+  'CSE-AI': {
+    1: SEM1_COMMON,
+    2: SEM2_COMMON,
+    3: CSE_AI_S3,
+    4: CSE_AI_S4,
+    ...CSE_UPPER,
+  },
+  'CSE-DS': {
+    1: SEM1_COMMON,
+    2: SEM2_COMMON,
+    3: CSE_DS_S3,
+    4: CSE_DS_S4,
+    ...CSE_UPPER,
+  },
+  'CSE-IOT': {
+    1: SEM1_COMMON,
+    2: SEM2_COMMON,
+    3: CSE_IOT_S3,
+    4: CSE_IOT_S4,
+    ...CSE_UPPER,
+  },
+  'IT': {
+    1: SEM1_COMMON,
+    2: SEM2_COMMON,
+    3: IT_S3,
+    4: IT_S4,
+    ...CSE_UPPER,
+  },
+  'ECE': {
+    1: SEM1_EE_ECE,
+    2: SEM2_EE_ECE,
+    3: ECE_S3,
+    4: ECE_S4,
+    ...ECE_UPPER,
+  },
+  'EE': {
+    1: SEM1_EE_ECE,
+    2: SEM2_EE_ECE,
+    3: EE_S3,
+    4: EE_S4,
+    ...EE_UPPER,
+  },
+  'ME': {
+    1: SEM1_COMMON,
+    2: SEM2_COMMON,
+    3: ME_S3,
+    4: ME_S4,
+    ...ME_UPPER,
+  },
+  'CE': {
+    1: SEM1_COMMON,
+    2: SEM2_COMMON,
+    3: CE_S3,
+    4: CE_S4,
+    ...CE_UPPER,
+  },
 };
 
-export const BRANCHES: Branch[] = ['CSE', 'CSE-AI', 'IT', 'ECE', 'EE', 'ME', 'CE'];
+export const BRANCHES: Branch[] = ['CSE', 'CSE-AI', 'CSE-DS', 'CSE-IOT', 'IT', 'ECE', 'EE', 'ME', 'CE'];

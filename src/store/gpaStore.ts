@@ -14,6 +14,7 @@ interface GPAState {
   activeSemester: number;
   semesters:      { [sem: number]: SemesterData };
   manualHistory:  { [sem: number]: number }; // user-entered previous sem CGPA
+  targetCgpa:     number | null; // User's goal
 
   // Actions
   setActiveBranch:   (branch: Branch) => void;
@@ -24,6 +25,7 @@ interface GPAState {
   resetSemester:     (sem: number) => void;
   lockSemester:      (sem: number, locked: boolean) => void;
   setManualHistory:  (sem: number, cgpa: number | null) => void;
+  setTargetCgpa:     (cgpa: number | null) => void;
 
   // Computed selectors
   getSGPA:              (sem: number) => number;
@@ -55,12 +57,27 @@ export const useGPAStore = create<GPAState>()(
         1: makeDefaultSemester('CSE', 1),
       },
       manualHistory: {},
+      targetCgpa: null,
 
       setActiveBranch: (branch) => {
+        // Rebuild every semester's subject list for the new branch.
+        // We keep entered marks keyed by old subject index so switching back
+        // doesn't lose data, but the subject names & credits are always from
+        // the new branch template.
         const existing = get().semesters;
         const next: { [s: number]: SemesterData } = {};
         for (let s = 1; s <= 8; s++) {
-          next[s] = existing[s] ?? makeDefaultSemester(branch, s);
+          const fresh = makeDefaultSemester(branch, s);
+          const old   = existing[s];
+          if (!old) { next[s] = fresh; continue; }
+          // Preserve marks by index position so students keep their entered data
+          next[s] = {
+            locked: old.locked,
+            subjects: fresh.subjects.map((sub, i) => ({
+              ...sub,
+              marks: old.subjects[i]?.marks ?? null,
+            })),
+          };
         }
         set({ activeBranch: branch, semesters: next });
       },
@@ -160,6 +177,8 @@ export const useGPAStore = create<GPAState>()(
         });
       },
 
+      setTargetCgpa: (cgpa) => set({ targetCgpa: cgpa }),
+
       getSGPA: (sem) => computeSGPA(get().semesters[sem]?.subjects ?? []),
 
       getCGPA: () => computeCGPA(get().semesters, get().manualHistory),
@@ -210,6 +229,7 @@ export const useGPAStore = create<GPAState>()(
         activeSemester: state.activeSemester,
         semesters:      state.semesters,
         manualHistory:  state.manualHistory,
+        targetCgpa:     state.targetCgpa,
       }),
     }
   )

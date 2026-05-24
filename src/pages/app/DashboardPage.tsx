@@ -1556,9 +1556,14 @@ export default function DashboardPage() {
       {/* Header */}
       <header style={pageHeaderStyle}>
         <div>
-          <p className="t-mono" style={{ color: 'var(--accent-primary)', marginBottom: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            ClassHub
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <p className="t-mono" style={{ color: 'var(--accent-primary)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+              ClassHub
+            </p>
+            <span style={{ fontSize: 9, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent-primary)', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 6, padding: '2px 6px', letterSpacing: '0.04em' }}>
+              BETA
+            </span>
+          </div>
           <h1 className="t-feature" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             Hey, {firstName} 👋
           </h1>
