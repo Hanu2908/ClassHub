@@ -46,17 +46,18 @@ export function useCreateAnnouncement() {
       if (error) throw error;
 
       if (input.priority === 'critical' && data?.id) {
-        supabase.functions.invoke('send-critical-announcement', {
-          body: { announcementId: data.id },
-        }).then(({ data, error: funcError }) => {
+        try {
+          const { data: pushData, error: funcError } = await supabase.functions.invoke('send-critical-announcement', {
+            body: { announcementId: data.id },
+          });
           if (funcError) {
             console.warn('Failed to broadcast critical announcement notification:', funcError);
           } else {
-            console.log('Push notification result:', data);
+            console.log('Push notification result:', pushData);
           }
-        }).catch((err) => {
+        } catch (err) {
           console.warn('Error invoking send-critical-announcement function:', err);
-        });
+        }
       }
 
       return data?.id;
@@ -215,21 +216,22 @@ export function useUpdateAssignment() {
 
       // 3. Optional class push notifications
       if (input.notifyClass && sectionId) {
-        supabase.functions.invoke('send-custom-notification', {
-          body: {
-            title: `Assignment Updated: ${input.title}`,
-            body: `The assignment details or deadline have been modified. Please review.`,
-            sectionId: sectionId
-          }
-        }).then(({ data, error: funcError }) => {
+        try {
+          const { data: pushData, error: funcError } = await supabase.functions.invoke('send-custom-notification', {
+            body: {
+              title: `Assignment Updated: ${input.title}`,
+              body: `The assignment details or deadline have been modified. Please review.`,
+              sectionId: sectionId
+            }
+          });
           if (funcError) {
             console.warn('Failed to send class update push notifications:', funcError);
           } else {
-            console.log('Custom update push notification sent:', data);
+            console.log('Custom update push notification sent:', pushData);
           }
-        }).catch(err => {
+        } catch (err) {
           console.warn('Error invoking send-custom-notification function:', err);
-        });
+        }
       }
 
       return input.id;
@@ -644,3 +646,138 @@ export function useUpdateSubject() {
     },
   });
 }
+
+export function useUpdateGlobalResource() {
+  const qc = useQueryClient();
+  const { userId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      subjectCode: string;
+      subjectName: string;
+      semester: string;
+      branch: string;
+      accentColor: string;
+      syllabusUrl: string;
+      notesUrl: string;
+      pyqsUrl: string;
+      practiceUrl: string;
+      labUrl: string;
+    }) => {
+      const { error } = await supabase
+        .from('global_resources' as any)
+        .update({
+          subject_code: input.subjectCode,
+          subject_name: input.subjectName,
+          semester: input.semester,
+          branch: input.branch,
+          accent_color: input.accentColor,
+          syllabus_url: input.syllabusUrl,
+          notes_url: input.notesUrl,
+          pyqs_url: input.pyqsUrl,
+          practice_url: input.practiceUrl,
+          lab_url: input.labUrl,
+          updated_by: userId!,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq('id', input.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['global_resources'] }),
+  });
+}
+
+export function useCreateGlobalResource() {
+  const qc = useQueryClient();
+  const { userId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (input: {
+      subjectCode: string;
+      subjectName: string;
+      semester: string;
+      branch: string;
+      accentColor: string;
+      syllabusUrl: string;
+      notesUrl: string;
+      pyqsUrl: string;
+      practiceUrl: string;
+      labUrl: string;
+    }) => {
+      const { error } = await supabase
+        .from('global_resources' as any)
+        .insert({
+          subject_code: input.subjectCode,
+          subject_name: input.subjectName,
+          semester: input.semester,
+          branch: input.branch,
+          accent_color: input.accentColor,
+          syllabus_url: input.syllabusUrl,
+          notes_url: input.notesUrl,
+          pyqs_url: input.pyqsUrl,
+          practice_url: input.practiceUrl,
+          lab_url: input.labUrl,
+          updated_by: userId!,
+          updated_at: new Date().toISOString(),
+        } as any);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['global_resources'] }),
+  });
+}
+
+export function useDeleteGlobalResource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('global_resources' as any)
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['global_resources'] }),
+  });
+}
+
+export function useCreateGlobalPYQ() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      semester: string;
+      year: string;
+      url: string;
+      isLatest: boolean;
+    }) => {
+      const { error } = await supabase
+        .from('global_pyqs' as any)
+        .insert({
+          semester: input.semester,
+          year: input.year,
+          url: input.url,
+          is_latest: input.isLatest,
+        } as any);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['global_pyqs'] }),
+  });
+}
+
+export function useDeleteGlobalPYQ() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('global_pyqs' as any)
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['global_pyqs'] }),
+  });
+}
+

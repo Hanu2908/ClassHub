@@ -20,6 +20,8 @@ const CRCommandPage = lazy(() => import('./pages/app/CRCommandPage'));
 const ManageSubjectsPage = lazy(() => import('./pages/app/ManageSubjectsPage'));
 const PDFViewerPage = lazy(() => import('./pages/app/PDFViewerPage'));
 const GPACalculatorPage = lazy(() => import('./pages/app/GPACalculatorPage'));
+const ResourceHubPage = lazy(() => import('./pages/app/ResourceHubPage'));
+const DeveloperConsolePage = lazy(() => import('./pages/app/DeveloperConsolePage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -46,6 +48,24 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function RequireHub({ children }: { children: React.ReactNode }) {
   const authUser = useAppStore(s => s.authUser);
   if (!authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
+  return <>{children}</>;
+}
+
+// ── Developer guard — requires developer role ──
+function RequireDeveloper({ children }: { children: React.ReactNode }) {
+  const authUser = useAppStore(s => s.authUser);
+  if (!authUser?.isDeveloper) {
+    return <Navigate to="/app/home" replace />;
+  }
+  return <>{children}</>;
+}
+
+// ── No Hub guard — blocks already-onboarded users from onboarding routes ──
+function RequireNoHub({ children }: { children: React.ReactNode }) {
+  const authUser = useAppStore(s => s.authUser);
+  if (authUser?.sectionId) {
+    return <Navigate to="/app/home" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -96,22 +116,24 @@ export default function App() {
             <Route path="/" element={<PublicRoute><SignIn /></PublicRoute>} />
 
             {/* Onboarding — needs auth but no hub yet */}
-            <Route path="/onboarding/choice" element={<RequireAuth><ChoicePage /></RequireAuth>} />
-            <Route path="/onboarding/join" element={<RequireAuth><JoinHubPage /></RequireAuth>} />
-            <Route path="/onboarding/create" element={<RequireAuth><CreateHubPage /></RequireAuth>} />
+            <Route path="/onboarding/choice" element={<RequireAuth><RequireNoHub><ChoicePage /></RequireNoHub></RequireAuth>} />
+            <Route path="/onboarding/join" element={<RequireAuth><RequireNoHub><JoinHubPage /></RequireNoHub></RequireAuth>} />
+            <Route path="/onboarding/create" element={<RequireAuth><RequireNoHub><CreateHubPage /></RequireNoHub></RequireAuth>} />
 
             {/* App shell — needs auth + hub */}
             <Route path="/app/home" element={<RequireAuth><RequireHub><DashboardPage /></RequireHub></RequireAuth>} />
             <Route path="/app/schedule" element={<RequireAuth><RequireHub><SchedulePage /></RequireHub></RequireAuth>} />
             <Route path="/app/polls" element={<RequireAuth><RequireHub><PollsPage /></RequireHub></RequireAuth>} />
             <Route path="/app/profile" element={<RequireAuth><RequireHub><ProfilePage /></RequireHub></RequireAuth>} />
+            <Route path="/app/resource-hub" element={<RequireAuth><RequireHub><ResourceHubPage /></RequireHub></RequireAuth>} />
             <Route path="/app/announcements" element={<RequireAuth><RequireHub><AnnouncementsPage /></RequireHub></RequireAuth>} />
             <Route path="/app/assignments" element={<RequireAuth><RequireHub><AssignmentsPage /></RequireHub></RequireAuth>} />
             <Route path="/app/attendance" element={<RequireAuth><RequireHub><AttendancePage /></RequireHub></RequireAuth>} />
             <Route path="/app/cr-command" element={<RequireAuth><RequireHub><CRCommandPage /></RequireHub></RequireAuth>} />
-            <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><ManageSubjectsPage /></RequireHub></RequireAuth>} />
+            <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireDeveloper><ManageSubjectsPage /></RequireDeveloper></RequireHub></RequireAuth>} />
             <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><PDFViewerPage /></RequireHub></RequireAuth>} />
             <Route path="/app/gpa" element={<RequireAuth><RequireHub><GPACalculatorPage /></RequireHub></RequireAuth>} />
+            <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><DeveloperConsolePage /></RequireDeveloper></RequireHub></RequireAuth>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

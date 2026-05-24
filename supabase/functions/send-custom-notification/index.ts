@@ -42,6 +42,7 @@ Deno.serve(async (req: Request) => {
 
     // Send pushes + log events in batches with fault isolation
     const staleIds: string[] = [];
+    const notificationEvents: any[] = [];
     let sent = 0;
     let failed = 0;
 
@@ -58,8 +59,8 @@ Deno.serve(async (req: Request) => {
         staleIds.push(subRecord.endpoint);
       }
 
-      // Log event in notification_events with correct column name and enum value
-      await serviceClient.from("notification_events").insert({
+      // Collect event in notification_events with correct column name and enum value
+      notificationEvents.push({
         section_id: sectionId,
         recipient_id: subRecord.user_id,
         actor_id: user.id,
@@ -74,6 +75,11 @@ Deno.serve(async (req: Request) => {
 
       return result;
     });
+
+    // Batch insert notification events
+    if (notificationEvents.length > 0) {
+      await serviceClient.from("notification_events").insert(notificationEvents);
+    }
 
     // Cleanup stale subscriptions
     if (staleIds.length > 0) {

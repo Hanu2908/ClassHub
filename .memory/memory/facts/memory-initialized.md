@@ -1,0 +1,1 @@
+Memory was initialized for ClassHub in .memory on 2026-05-24; future agents should use `memory load <task>` before non-trivial work.

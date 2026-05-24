@@ -3,9 +3,15 @@ import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { registerSW } from 'virtual:pwa-register'
+import { inject } from '@vercel/analytics'
+import { injectSpeedInsights } from '@vercel/speed-insights'
 import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
+
+// Initialize Vercel edge telemetry
+inject();
+injectSpeedInsights();
 
 // Register the PWA service worker automatically in production
 if (import.meta.env.PROD) {

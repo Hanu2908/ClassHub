@@ -6,7 +6,7 @@ import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 
 const classRollRegex = /^\d{2}$/;
-const uniRollRegex = /^[0-9]{2}[A-Z]{2,5}[0-9]{3,5}$/;
+const uniRollRegex = /^[0-9]{2}[A-Z]{5}[0-9]{3}$/;
 
 function randomAlpha(n: number) {
   return Array.from({ length: n }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]).join('');
@@ -31,6 +31,7 @@ export default function CreateHubPage() {
   const [hubName, setHubName] = useState('');
   const [classRoll, setClassRoll] = useState('');
   const [universityRoll, setUniversityRoll] = useState('');
+  const [dayScholar, setDayScholar] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export default function CreateHubPage() {
       // Creator = CR role
       setRole('cr');
       if (authUser) {
-        setAuthUser({ ...authUser, role: 'cr', sectionId: 'demo-section' });
+        setAuthUser({ ...authUser, role: 'cr', sectionId: 'demo-section', dayScholar });
       }
       setHub({
         hubCode: inviteCode,
@@ -86,6 +87,15 @@ export default function CreateHubPage() {
       // Use the invite_code from the returned section
       const returnedCode = data?.invite_code ?? inviteCode;
       setGeneratedCode(returnedCode);
+
+      // Update day_scholar status in profile
+      const { data: { user: authUserObj } } = await supabase.auth.getUser();
+      if (authUserObj) {
+        await supabase
+          .from('users')
+          .update({ day_scholar: dayScholar })
+          .eq('id', authUserObj.id);
+      }
 
       // Refresh profile from backend so route guard sees new sectionId + CR role
       await refreshProfile();
@@ -208,6 +218,64 @@ export default function CreateHubPage() {
           <input id="cr-uni-roll-input" className={`input mono${errors.universityRoll ? ' input-error' : ''}`} placeholder="25ESKCX089" maxLength={12}
             value={universityRoll} onChange={e => setUniversityRoll(e.target.value.toUpperCase())} />
           <FieldError msg={errors.universityRoll} />
+        </div>
+
+        {/* Commuter Status (Day Scholar vs. Hosteler) */}
+        <div>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+            Commuter Status <span style={{ color: 'var(--status-critical)' }}>*</span>
+          </label>
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            padding: 4,
+            gap: 4
+          }}>
+            <button
+              type="button"
+              onClick={() => setDayScholar(true)}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: dayScholar ? 'var(--accent-primary)' : 'transparent',
+                color: dayScholar ? '#fff' : 'var(--text-secondary)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span>🚌</span> Day Scholar
+            </button>
+            <button
+              type="button"
+              onClick={() => setDayScholar(false)}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: !dayScholar ? 'var(--accent-primary)' : 'transparent',
+                color: !dayScholar ? '#fff' : 'var(--text-secondary)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span>🏠</span> Hosteler
+            </button>
+          </div>
         </div>
 
         <button id="create-hub-btn" type="submit" className="btn-primary" disabled={loading} style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>

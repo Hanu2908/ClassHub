@@ -25,6 +25,8 @@ export function useAuth() {
       sectionRoll: null,
       universityRoll: null,
       dayScholar: true,
+      notificationsEnabled: false,
+      isDeveloper: false,
     } satisfies AuthUser) : null),
     [isDemoMode, store.authUser, store.role]
   );

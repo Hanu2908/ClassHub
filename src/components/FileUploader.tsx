@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, X, Paperclip } from 'lucide-react';
+import { isPreviewableImage } from '../lib/utils/attachments';
 
 interface FileUploaderProps {
   files: File[];
@@ -196,7 +197,7 @@ export function FileUploader({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                <Paperclip size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                <SelectedFilePreview key={`${file.name}-${file.size}-${file.lastModified}`} file={file} />
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
                   <span 
                     className="t-caption"
@@ -246,5 +247,36 @@ export function FileUploader({
         </div>
       )}
     </div>
+  );
+}
+
+function SelectedFilePreview({ file }: { file: File }) {
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const isImage = isPreviewableImage(file.type, file.name);
+  const previewUrl = useMemo(() => (isImage ? URL.createObjectURL(file) : null), [file, isImage]);
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  if (!isImage || !previewUrl || previewFailed) {
+    return <Paperclip size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />;
+  }
+
+  return (
+    <img
+      src={previewUrl}
+      alt=""
+      onError={() => setPreviewFailed(true)}
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: 'var(--radius-sm)',
+        objectFit: 'cover',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: 'rgba(255, 255, 255, 0.04)',
+        flexShrink: 0,
+      }}
+    />
   );
 }

@@ -1,0 +1,1 @@
+`src/components/FileUploader.tsx` shows local thumbnails for selected image files before posting announcements or assignments; non-image selected files still show the paperclip row.

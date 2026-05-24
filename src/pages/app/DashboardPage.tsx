@@ -1,6 +1,6 @@
 import { useState, useMemo, type CSSProperties, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, MessageSquare, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper, BarChart2, ClipboardList, Activity, Clock, Paperclip, ChevronLeft, ChevronRight, CheckCircle2, Download, Award, Calendar } from 'lucide-react';
+import { Bell, MessageSquare, AlertTriangle, Megaphone, BookOpen, Cpu, BookMarked, X, Coffee, PartyPopper, BarChart2, ClipboardList, Activity, Clock, Paperclip, ChevronLeft, ChevronRight, CheckCircle2, Award, Calendar } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type ScheduleSlot, type Attachment } from '../../store/appStore';
@@ -9,6 +9,8 @@ import { useSection, useAnnouncements, useAssignments, usePolls, useSchedule, us
 import { useAcknowledge } from '../../hooks/useSupabaseMutations';
 import { showToast } from '../../components/Toast';
 import { isPushSupported, getPushPermission, subscribeToPush } from '../../lib/pushNotifications';
+import { AttachmentCard } from '../../components/AttachmentCard';
+import { FeedbackSheet } from '../../components/FeedbackSheet';
 
 
 // ── Schedule helpers ──
@@ -118,7 +120,7 @@ function WidgetSkeleton({ height = 80 }: { height?: number }) {
 
 // ── Notification sheet ──────────────────────────────────────────────────────
 function NotificationSheet({ onClose }: { onClose: () => void }) {
-  const { notifications, markAllNotificationsRead, clearNotification } = useAppStore();
+  const { notifications, markAllNotificationsRead, clearNotification, clearAllNotifications } = useAppStore();
 
   const [now] = useState(() => Date.now());
   const visibleNotifications = useMemo(() => notifications.filter(n => {
@@ -144,14 +146,15 @@ function NotificationSheet({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             <button
-              onClick={markAllNotificationsRead} className="t-label" style={{ background: 'none',
+              onClick={() => clearAllNotifications(visibleNotifications.map(n => n.id))} className="t-label" style={{ background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                color: 'var(--accent-primary)',
+                color: '#ef4444',
                 padding: '0 0 12px',
-                display: 'block' }}
+                display: 'block',
+                fontWeight: 600 }}
             >
-              Mark all as read
+              Clear all
             </button>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {visibleNotifications.map(n => (
@@ -309,15 +312,17 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-              <span
-                className="t-badge" style={{ color: '#ef4444',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase' }}
-              >
-                CRITICAL ALERT {items.length > 1 ? `(${activeIndex + 1}/${items.length})` : ''}
-              </span>
-            </div>
+            {items.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <span
+                  className="t-badge" style={{ color: '#ef4444',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase' }}
+                >
+                  {`${activeIndex + 1} of ${items.length}`}
+                </span>
+              </div>
+            )}
             <p
               className="truncate t-subtitle" style={{ color: 'var(--text-primary)',
                 margin: 0,
@@ -820,7 +825,10 @@ function AnnouncementsScroll() {
   return (
     <section>
       <div className="section-header">
-        <span className="section-title">Announcements</span>
+        <span className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          Announcements
+          {visible.some(ann => !ann.isAcknowledged) && <span className="pulse-unread-dot" title="New announcements waiting" />}
+        </span>
         <button className="section-link" onClick={() => navigate('/app/announcements')}>View all →</button>
       </div>
 
@@ -902,11 +910,11 @@ function AnnouncementsScroll() {
                     className={`card card-solid-charcoal ${ann.priority === 'critical' ? 'card-critical-solid' : 'card-general-solid'}`}
                     style={{ 
                       width: '100%', 
-                      height: '124px', 
+                      height: '148px', 
                       display: 'flex', 
                       flexDirection: 'column', 
                       justifyContent: 'space-between',
-                      padding: '12px',
+                      padding: '16px',
                       textAlign: 'left',
                       position: 'relative',
                       borderWidth: '1px',
@@ -951,31 +959,50 @@ function AnnouncementsScroll() {
                                   }
                                 }}
                                 style={{
-                                  background: 'rgba(52, 211, 153, 0.12)',
-                                  border: '1px solid rgba(52, 211, 153, 0.35)',
+                                  background: ann.priority === 'critical' 
+                                    ? 'rgba(239, 68, 68, 0.12)' 
+                                    : 'rgba(96, 165, 250, 0.12)',
+                                  border: ann.priority === 'critical' 
+                                    ? '1px solid rgba(239, 68, 68, 0.35)' 
+                                    : '1px solid rgba(96, 165, 250, 0.35)',
                                   borderRadius: '50%',
-                                  width: 26,
-                                  height: 26,
+                                  width: 36,
+                                  height: 36,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   cursor: 'pointer',
-                                  color: '#34d399',
+                                  color: ann.priority === 'critical' ? '#ef4444' : '#60a5fa',
                                   transition: 'all 0.2s',
                                   position: 'absolute',
-                                  top: 12,
-                                  right: 12,
+                                  top: 10,
+                                  right: 10,
                                   zIndex: 10,
                                 }}
                                 title="Quick Acknowledge"
                               >
-                                <CheckCircle2 size={14} />
+                                <CheckCircle2 size={20} />
                               </button>
                             )}
                           </div>
-                          <p className="t-button" style={{ fontSize: '14px', color: 'var(--text-primary)', marginBottom: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontWeight: 600, lineHeight: 1.3 }}>
+                          <p className="t-button" style={{ fontSize: '14px', color: 'var(--text-primary)', marginBottom: 2, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontWeight: 600, lineHeight: 1.3 }}>
                             {ann.title}
                           </p>
+                          {ann.body && (
+                            <p className="t-body" style={{
+                              fontSize: '12px',
+                              color: 'var(--text-secondary)',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              lineHeight: 1.4,
+                              marginTop: 4,
+                              opacity: 0.85
+                            }}>
+                              {ann.body}
+                            </p>
+                          )}
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -999,7 +1026,7 @@ function AnnouncementsScroll() {
 
           {/* Chevrons and Dot Indicators */}
           {visible.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 4 }}>
               <button 
                 onClick={() => {
                   setSwipeDirection('right');
@@ -1116,23 +1143,7 @@ function AnnouncementsScroll() {
                 <span className="t-caption" style={{ color: 'var(--text-muted)' }}>Attachments ({selectedAnn.attachments.length})</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {selectedAnn.attachments.map((att: Attachment) => (
-                    <a 
-                      key={att.id} 
-                      href={att.storagePath}
-                      download={att.filename}
-                      className="drawer-attachment-card"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Paperclip size={16} color="var(--accent-primary)" />
-                        <div style={{ textAlign: 'left' }}>
-                          <p className="t-mono-sm" style={{ color: 'var(--text-primary)', margin: 0, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{att.filename}</p>
-                          <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>{(att.fileSize / 1024).toFixed(1)} KB</p>
-                        </div>
-                      </div>
-                      <Download size={16} color="var(--text-secondary)" />
-                    </a>
+                    <AttachmentCard key={att.id} attachment={att} />
                   ))}
                 </div>
               </div>
@@ -1414,6 +1425,7 @@ export default function DashboardPage() {
   const { data: polls = [] } = usePolls();
   const [showNotifs, setShowNotifs] = useState(false);
   const [isDiagnoseOpen, setIsDiagnoseOpen] = useState(false);
+  const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
   const navigate = useNavigate();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 440);
@@ -1507,8 +1519,16 @@ export default function DashboardPage() {
   const [showPushCTA, setShowPushCTA] = useState(() => {
     if (!isPushSupported()) return false;
     if (sessionStorage.getItem('dismissed_push_cta') === 'true') return false;
-    return getPushPermission() !== 'granted';
+    // Don't show if they already have notifications enabled and permission granted
+    return !authUser?.notificationsEnabled || getPushPermission() !== 'granted';
   });
+
+  // Auto-dismiss CTA if notifications get enabled elsewhere (e.g. ProfilePage)
+  useEffect(() => {
+    if (authUser?.notificationsEnabled && getPushPermission() === 'granted') {
+      setShowPushCTA(false);
+    }
+  }, [authUser?.notificationsEnabled]);
 
   const activeCritical = useMemo(() => {
     const dismissedSet = new Set(dismissedAnnouncements);
@@ -2026,11 +2046,29 @@ export default function DashboardPage() {
         <AnnouncementsScroll />
         <PollBanner />
         <AssignmentsScroll />
+
+        {/* Footnote Report Link */}
+        <div style={{ textAlign: 'center', padding: '24px 0 16px', opacity: 0.4 }}>
+          <button
+            onClick={() => setShowFeedbackSheet(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              font: '10px var(--font-mono)',
+              color: 'var(--text-muted)',
+              letterSpacing: '0.05em',
+            }}
+          >
+            [ REPORT BUG ]
+          </button>
+        </div>
       </main>
 
       {showNotifs ? <NotificationSheet onClose={() => setShowNotifs(false)} /> : null}
 
       <NavBar />
+      <FeedbackSheet open={showFeedbackSheet} onClose={() => setShowFeedbackSheet(false)} />
     </div>
   );
 }

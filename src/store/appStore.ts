@@ -28,6 +28,8 @@ export interface AuthUser {
   sectionRoll: string | null;
   universityRoll: string | null;
   dayScholar: boolean;
+  notificationsEnabled: boolean;
+  isDeveloper: boolean;
 }
 
 export interface HubInfo {
@@ -256,6 +258,7 @@ interface AppState {
   addNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void;
   markAllNotificationsRead: () => Promise<void>;
   clearNotification: (id: string) => Promise<void>;
+  clearAllNotifications: (ids: string[]) => Promise<void>;
 
   signOut: () => void;
 }
@@ -306,7 +309,7 @@ export const useAppStore = create<AppState>()(
         if (!user) return;
         const { data, error } = await supabase
           .from('users')
-          .select('id, name, email, avatar_url, role, section_id, section_roll, university_roll, day_scholar')
+          .select('id, name, email, avatar_url, role, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer')
           .eq('id', user.id)
           .single();
         if (error || !data) return;
@@ -320,6 +323,8 @@ export const useAppStore = create<AppState>()(
           sectionRoll: data.section_roll,
           universityRoll: data.university_roll,
           dayScholar: data.day_scholar,
+          notificationsEnabled: data.notifications_enabled,
+          isDeveloper: data.is_developer ?? false,
         };
         set({
           authUser: profile,
@@ -379,6 +384,23 @@ export const useAppStore = create<AppState>()(
 
         set((s) => ({
           notifications: s.notifications.filter((n) => n.id !== id),
+        }));
+      },
+      clearAllNotifications: async (ids) => {
+        if (ids.length === 0) return;
+        const nowStr = new Date().toISOString();
+        const { error } = await supabase
+          .from('notification_events')
+          .update({ read_at: nowStr })
+          .in('id', ids);
+
+        if (error) {
+          console.error('Failed to clear all notifications in DB:', error);
+        }
+
+        const idSet = new Set(ids);
+        set((s) => ({
+          notifications: s.notifications.filter((n) => !idSet.has(n.id)),
         }));
       },
 
