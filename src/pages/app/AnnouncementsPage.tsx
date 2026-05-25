@@ -823,7 +823,7 @@ export default function AnnouncementsPage() {
             const lbl = deadlineLabel(ann.deadline);
 
             return (
-              <article key={ann.id} className="card announcement-card-layer" style={{
+              <article key={ann.id} className="card announcement-feed-card" style={{
                 borderLeft: isCritical ? '4px solid var(--status-critical)' : undefined,
                 background: isCritical ? 'var(--status-critical-bg)' : undefined,
                 animation: 'fadeSlideUp 0.35s ease both',

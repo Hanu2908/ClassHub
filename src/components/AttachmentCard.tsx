@@ -161,31 +161,11 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
 
   // Determine standard preview styling based on image loading & orientation states
   const getImagePreviewStyle = (): React.CSSProperties => {
-    const common: React.CSSProperties = {
-      width: '100%',
-      display: 'block'
-    };
-
-    if (orientation === 'portrait') {
-      return {
-        ...common,
-        maxHeight: '400px',
-        height: 'auto',
-        objectFit: 'contain'
-      };
-    } else if (orientation === 'landscape') {
-      return {
-        ...common,
-        maxHeight: '280px',
-        height: 'auto',
-        objectFit: 'contain'
-      };
-    }
-    
     return {
-      ...common,
+      width: '100%',
       height: '100%',
-      objectFit: 'cover'
+      objectFit: 'contain',
+      display: 'block'
     };
   };
 
@@ -227,8 +207,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
           <div 
             style={{
               width: '100%',
-              minHeight: orientation ? 'auto' : '120px',
-              maxHeight: orientation === 'portrait' ? 400 : 280,
+              height: orientation === 'portrait' ? '360px' : (orientation === 'landscape' ? '220px' : '200px'),
               borderRadius: 'var(--radius-md)',
               overflow: 'hidden',
               background: 'rgba(10, 12, 20, 0.65)',
@@ -236,7 +215,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all var(--transition-base)',
+              transition: 'height 0.24s cubic-bezier(0.25, 1, 0.5, 1)',
             }}
           >
             {previewState.url && !previewState.error ? (
