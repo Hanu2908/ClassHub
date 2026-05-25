@@ -1,13 +1,23 @@
 {
   "body_path": "memory/facts/image-attachments-render-inline.md",
-  "content_hash": "sha256:abca11b3cc99fa35f6b7dc54be92d4128fd7250ff7eaa2a181cce5edc00719ca",
+  "content_hash": "sha256:cc62250e76a45f93ac92d33991bb9d045a11e48adac0f82e669046568e5fb0d5",
   "created_at": "2026-05-24T14:30:45+05:30",
-  "evidence": [],
+  "evidence": [
+    {
+      "id": "src/components/AttachmentCard.tsx",
+      "kind": "file"
+    },
+    {
+      "id": "src/index.css",
+      "kind": "file"
+    }
+  ],
   "facets": {
     "applies_to": [
-      "src/components/AttachmentCard.tsx"
+      "src/components/AttachmentCard.tsx",
+      "src/index.css"
     ],
-    "category": "debugging-fact"
+    "category": "product-feature"
   },
   "id": "fact.image-attachments-render-inline",
   "scope": {
@@ -27,5 +37,5 @@
   ],
   "title": "Image attachments render inline",
   "type": "fact",
-  "updated_at": "2026-05-24T14:30:45+05:30"
+  "updated_at": "2026-05-25T16:28:04+05:30"
 }

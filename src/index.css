@@ -2816,7 +2816,7 @@ animation: slideUp 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05);
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-base), border-color var(--transition-base), transform var(--transition-base);
 }
 
 .drawer-attachment-card:hover {

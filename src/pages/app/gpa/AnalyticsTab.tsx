@@ -202,7 +202,7 @@ export default function AnalyticsTab() {
                 padAngle={2}
                 cornerRadius={3}
                 activeOuterRadiusOffset={4}
-                colors={({ data }: { data: { color: string } }) => data.color}
+                colors={({ data }: any) => data.color}
                 borderWidth={0}
                 enableArcLabels={false}
                 enableArcLinkLabels={false}

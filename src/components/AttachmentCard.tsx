@@ -30,8 +30,8 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
   });
   const [showZoomModal, setShowZoomModal] = useState(false);
   
-  // Dynamic image layout properties
-  const [orientation, setOrientation] = useState<'portrait' | 'landscape' | null>(null);
+  // GPU animation tracking state
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   // Intersection Observer elements
   const cardRef = useRef<HTMLDivElement>(null);
@@ -154,16 +154,12 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { naturalWidth, naturalHeight } = e.currentTarget;
-    setOrientation(naturalHeight >= naturalWidth ? 'portrait' : 'landscape');
-  };
-
-  // Determine standard preview styling based on image loading & orientation states
+  // Determine standard preview styling based on image loading
   const getImagePreviewStyle = (): React.CSSProperties => {
     return {
       width: '100%',
-      height: '100%',
+      height: 'auto',
+      maxHeight: '380px',
       objectFit: 'contain',
       display: 'block'
     };
@@ -184,7 +180,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
           border: isImage ? 'none' : '1px solid rgba(255, 255, 255, 0.06)',
           borderRadius: 'var(--radius-md)',
           cursor: 'pointer',
-          transition: 'all var(--transition-fast)',
+          transition: 'background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast)',
           userSelect: 'none',
           gap: isImage ? '0' : '12px'
         }}
@@ -207,17 +203,37 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
           <div 
             style={{
               width: '100%',
-              height: orientation === 'portrait' ? '360px' : (orientation === 'landscape' ? '220px' : '200px'),
+              height: isImageLoaded ? 'auto' : '200px',
+              minHeight: isImageLoaded ? 'unset' : '200px',
               borderRadius: 'var(--radius-md)',
               overflow: 'hidden',
-              background: 'rgba(10, 12, 20, 0.65)',
+              background: 'rgba(10, 12, 20, 0.55)',
               border: '1px solid rgba(255, 255, 255, 0.06)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'height 0.24s cubic-bezier(0.25, 1, 0.5, 1)',
+              position: 'relative'
             }}
           >
+            {/* Absolute-positioned loader centered inside the container */}
+            {(previewState.loading || (previewState.url && !isImageLoaded && !previewState.error)) && (
+              <div style={{ 
+                position: 'absolute',
+                inset: 0,
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                gap: 8, 
+                color: 'var(--text-secondary)',
+                background: 'rgba(10, 12, 20, 0.55)',
+                zIndex: 1
+              }}>
+                <Loader2 className="animate-spin" size={20} />
+                <span className="t-mono-sm">Loading preview…</span>
+              </div>
+            )}
+
             {previewState.url && !previewState.error ? (
               <img 
                 src={previewState.url} 
@@ -225,15 +241,21 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
                 loading="lazy"
                 decoding="async"
                 fetchPriority="low"
-                onLoad={handleImageLoad}
+                onLoad={() => setIsImageLoaded(true)}
                 onError={() => setPreviewState({ url: null, error: true, loading: false })}
-                style={getImagePreviewStyle()}
+                style={{
+                  ...getImagePreviewStyle(),
+                  opacity: isImageLoaded ? 1 : 0,
+                  transition: 'opacity 0.22s ease-in-out'
+                }}
               />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', padding: '24px 0' }}>
-                {previewState.loading ? <Loader2 className="animate-spin" size={20} /> : <ImageOff size={22} />}
-                <span className="t-mono-sm">{previewState.loading ? 'Loading preview' : 'Preview unavailable'}</span>
-              </div>
+              !previewState.loading && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
+                  <ImageOff size={22} />
+                  <span className="t-mono-sm">Preview unavailable</span>
+                </div>
+              )
             )}
           </div>
         ) : (
@@ -263,7 +285,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
                 justifyContent: 'center',
                 cursor: 'pointer',
                 borderRadius: '50%',
-                transition: 'all var(--transition-fast)',
+                transition: 'background-color var(--transition-fast), color var(--transition-fast)',
                 flexShrink: 0,
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
