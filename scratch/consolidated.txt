@@ -1,0 +1,85 @@
+**Locked:** Delete = **in-app confirm**, **adaptive** — bottom sheet on small screens, centered dialog from **`640px`+**, shared copy, focus trap, Escape, Cancel focused first.
+
+---
+
+## Consolidated design — Option C quality gate
+
+Does this match what you want before we write the spec?
+
+### Scope
+
+- **In:** Audit **HIGH + MED** for Announcements, `AttachmentCard` / image viewer, GPA Calculator (UI + bundle split). **Vitest** `gpaCalculations.test.ts`. **Manual smoke checklist** at the end.
+- **Out:** Playwright, GSAP, Supabase image transforms, new features outside audit fixes.
+
+### Decisions (locked)
+
+| Topic | Choice |
+|--------|--------|
+| GSAP | No this sprint; optional later for onboarding only |
+| E2E | No Playwright; Vitest + manual checklist |
+| Ship order | Images/announcements → tests → GPA split/UI → checklist |
+| Thumbnails | IO + signed-URL cache; full-res in modal (no transforms) |
+| SGPA label | “Current semester SGPA” + **Partial** badge |
+| GPA bundle | Lazy tabs + dynamic chart/export imports + **prefetch on tab hover** |
+| Announcements layout | Stack ≤**640px** |
+| Feed images | **Contain**, orientation-aware caps, skeleton/min-height |
+| Delete | **Always confirm**, adaptive sheet/dialog |
+| GPA math | No formula changes; tests guard regressions |
+
+### Phase 1 — Images & announcements
+
+**`AttachmentCard` / `ImageZoomModal`**
+
+- Fetch signed URL only when **visible** (`IntersectionObserver`); optional `Map` cache by `storagePath`
+- Extract + **`React.lazy`** zoom modal; **ref-based** pan/zoom; remove **`backdrop-filter`**
+- Portal, body scroll lock, **Escape**, focus trap, close `aria-label`
+- `memo(AttachmentCard)`; feed cards **`content-visibility: auto`**
+- Feed preview: contain + orientation caps (above)
+
+**`AnnouncementsPage`**
+
+- Stack card ≤640px; ack column full-width
+- Ack tracker → **`<button>`** + `aria-label`
+- Sort menu: menu roles, Escape/outside click, **`:focus-visible`**
+- Delete → adaptive confirm (above)
+- P1 a11y: search `aria-label`, delete `aria-label`, deadline `htmlFor`/`id` where quick
+
+### Phase 2 — Tests
+
+**`tests/unit/gpaCalculations.test.ts`**
+
+- Grade boundaries: 39/40, 89/90, etc.
+- SGPA weighted example
+- CGPA across semesters + **manual 20cr** proxy
+- Partial semester exclusion
+
+### Phase 3 — GPA UI & bundle
+
+- Tab **`React.lazy`**; charts/html2canvas only in Analytics/Report/Goals via **`import()`**
+- Prefetch next tab chunk on **hover/focus**
+- WAI-ARIA tabs; OCR modal focus trap + Escape
+- **`:focus-visible`** on key controls (reduce inline-only focus)
+- OCR **MED:** `revokeObjectURL`, downscale before Tesseract; shared pdf.js loader (optional if low cost)
+
+### Phase 4 — Manual smoke checklist (doc in spec)
+
+1. Announcements: scroll feed → image loads when visible → zoom → Escape  
+2. Delete announcement → confirm → cancel works  
+3. GPA: marks → SGPA/CGPA vs known fixture; partial badge shows  
+4. Tab hover → Analytics opens without long blank stall  
+5. `npm test` + `npm run build` (chunk sizes noted)
+
+### Success criteria
+
+- `npm test` green; new GPA tests pass  
+- First GPA **Calculator** visit: no ~900 KB single chunk (verify build output)  
+- Announcements scroll: fewer upfront Storage calls  
+- No regressions in SGPA/CGPA math (tests + existing `gpaData.ts` rules)
+
+---
+
+**Approve this design?**
+
+Reply **yes** (or list edits). On **yes**, the next step is the written spec at `docs/superpowers/specs/2026-05-25-option-c-quality-gate-design.md`, then the implementation plan — no code until you’ve reviewed that spec.
+
+[REDACTED]

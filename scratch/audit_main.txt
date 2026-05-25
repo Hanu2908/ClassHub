@@ -1,0 +1,12 @@
+Two background reviews are running:
+
+1. **Full audit** — Announcement page UI, GPA Calculator UI, GPA logic (formulas, percentage, overall architecture), grill-me skill search  
+2. **Performance focus** — Image preview and in-app image viewer (bundle, lazy load, re-renders, CLS/jank)
+
+**Brainstorming note:** Per the brainstorming skill, no implementation changes will be made until we present a design and you approve it. This pass is **audit and recommendations only**; after the reports land we can turn the top fixes into a short design spec if you want to proceed.
+
+**Grill-me:** Once the audit agent reports the skill install path, I’ll run the **grill-me** interview with you in the next turn (that part needs your answers interactively).
+
+You’ll get a consolidated summary when both agents finish — including P0/P1 issues, GPA logic verdict, image perf fixes, and how to install grill-me.
+
+[REDACTED]
