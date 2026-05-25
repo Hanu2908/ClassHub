@@ -11,6 +11,70 @@ import { showToast } from '../../components/Toast';
 import { isPushSupported, getPushPermission, subscribeToPush } from '../../lib/pushNotifications';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
+
+export const prefetchAnnouncementsData = (queryClient: any, sectionId: string | null | undefined, userId: string | null | undefined) => {
+  if (!sectionId || !userId) return;
+
+  queryClient.prefetchQuery({
+    queryKey: ['announcements', sectionId, userId, 0, 100],
+    queryFn: async () => {
+      const { data: anns, error: annErr } = await supabase
+        .from('announcements')
+        .select(`
+          id, title, message_content, priority, deadline_at, created_at,
+          attachments (id, filename, file_size, file_type, storage_path)
+        `)
+        .eq('section_id', sectionId!)
+        .order('created_at', { ascending: false })
+        .range(0, 99);
+      if (annErr) throw annErr;
+
+      let ackIds: string[] = [];
+      if (userId && Array.isArray(anns) && anns.length > 0) {
+        const announcementIds = anns.map(a => a.id);
+        const { data: acks, error: ackErr } = await supabase
+          .from('acknowledgments')
+          .select('announcement_id')
+          .eq('user_id', userId)
+          .in('announcement_id', announcementIds);
+        if (ackErr) throw ackErr;
+        ackIds = (acks ?? []).map(a => a.announcement_id);
+      }
+
+      return (anns ?? []).map(a => ({
+        id: a.id,
+        title: a.title,
+        body: a.message_content,
+        priority: a.priority as 'critical' | 'general',
+        deadline: a.deadline_at,
+        postedAt: a.created_at,
+        isAcknowledged: ackIds.includes(a.id),
+        attachments: ((a.attachments as any) ?? []).map((att: any) => ({
+          id: att.id,
+          filename: att.filename,
+          fileSize: att.file_size,
+          fileType: att.file_type,
+          storagePath: att.storage_path,
+        })),
+      }));
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  queryClient.prefetchQuery({
+    queryKey: ['section_acknowledgments', sectionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('acknowledgments')
+        .select('announcement_id, user_id, acknowledged_at');
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+};
 
 
 // ── Schedule helpers ──
@@ -196,6 +260,12 @@ interface CriticalCarouselProps {
 }
 
 function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
+  const queryClient = useQueryClient();
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+  const userId = authUser?.id;
+  const prefetchAnnouncements = () => prefetchAnnouncementsData(queryClient, sectionId, userId);
+
   const [activeIndex, setActiveIndex] = useState(0);
   const navigate = useNavigate();
 
@@ -279,6 +349,8 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
           cursor: 'pointer',
         }}
         onClick={() => navigate('/app/announcements')}
+        onMouseEnter={prefetchAnnouncements}
+        onTouchStart={prefetchAnnouncements}
       >
         {/* Pulsating glowing neon border overlay */}
         <div
@@ -692,6 +764,12 @@ function linkify(text: string): React.ReactNode {
 
 // ── Announcements scroll ─────────────────────────────────────────────────────
 function AnnouncementsScroll() {
+  const queryClient = useQueryClient();
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+  const userId = authUser?.id;
+  const prefetchAnnouncements = () => prefetchAnnouncementsData(queryClient, sectionId, userId);
+
   const navigate = useNavigate();
   const acknowledgeMutation = useAcknowledge();
 
@@ -829,7 +907,14 @@ function AnnouncementsScroll() {
           Announcements
           {visible.some(ann => !ann.isAcknowledged) && <span className="pulse-unread-dot" title="New announcements waiting" />}
         </span>
-        <button className="section-link" onClick={() => navigate('/app/announcements')}>View all →</button>
+        <button 
+          className="section-link" 
+          onClick={() => navigate('/app/announcements')}
+          onMouseEnter={prefetchAnnouncements}
+          onTouchStart={prefetchAnnouncements}
+        >
+          View all →
+        </button>
       </div>
 
       {visible.length === 0 ? (
@@ -1325,6 +1410,12 @@ function AssignmentsScroll() {
 
 // ── CR Dashboard Station ──
 function CRDashboardStation() {
+  const queryClient = useQueryClient();
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+  const userId = authUser?.id;
+  const prefetchAnnouncements = () => prefetchAnnouncementsData(queryClient, sectionId, userId);
+
   const navigate = useNavigate();
   const { data: section } = useSection();
 
@@ -1393,6 +1484,8 @@ function CRDashboardStation() {
 
           <button 
             onClick={() => navigate('/app/announcements', { state: { openCreate: true } })}
+            onMouseEnter={prefetchAnnouncements}
+            onTouchStart={prefetchAnnouncements}
             className="btn-tactile-cr glow-violet"
             aria-label="Post a new announcement"
           >
@@ -1416,7 +1509,12 @@ function CRDashboardStation() {
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
   const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+  const userId = authUser?.id;
+  const prefetchAnnouncements = () => prefetchAnnouncementsData(queryClient, sectionId, userId);
+
   const notifications = useAppStore(s => s.notifications);
   const role = useAppStore(s => s.role);
   const { data: announcements = [] } = useAnnouncements({ limit: 50 });
@@ -1582,7 +1680,14 @@ export default function DashboardPage() {
               </span>
             )}
           </button>
-          <button id="announcements-btn" aria-label="Announcements" onClick={() => navigate('/app/announcements')} style={iconButtonStyle}>
+          <button 
+            id="announcements-btn" 
+            aria-label="Announcements" 
+            onClick={() => navigate('/app/announcements')} 
+            onMouseEnter={prefetchAnnouncements}
+            onTouchStart={prefetchAnnouncements}
+            style={iconButtonStyle}
+          >
             <MessageSquare size={20} />
           </button>
         </div>
@@ -1970,6 +2075,8 @@ export default function DashboardPage() {
                         {outstandingCounts.announcements > 0 && (
                           <button 
                             onClick={() => navigate('/app/announcements')}
+                            onMouseEnter={prefetchAnnouncements}
+                            onTouchStart={prefetchAnnouncements}
                             className="hurdle-shortcut-btn glow-violet"
                             title={`${outstandingCounts.announcements} unread announcements`}
                             style={{ position: 'relative' }}
@@ -2038,7 +2145,15 @@ export default function DashboardPage() {
 
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => navigate('/app/assignments')} className="hurdle-shortcut-btn" title="Assignments"><ClipboardList size={13} /></button>
-                    <button onClick={() => navigate('/app/announcements')} className="hurdle-shortcut-btn" title="Announcements"><Megaphone size={13} /></button>
+                    <button 
+                      onClick={() => navigate('/app/announcements')} 
+                      onMouseEnter={prefetchAnnouncements}
+                      onTouchStart={prefetchAnnouncements}
+                      className="hurdle-shortcut-btn" 
+                      title="Announcements"
+                    >
+                      <Megaphone size={13} />
+                    </button>
                     <button onClick={() => navigate('/app/polls')} className="hurdle-shortcut-btn" title="Polls"><BarChart2 size={13} /></button>
                   </div>
                 </div>

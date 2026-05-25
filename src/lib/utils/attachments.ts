@@ -51,7 +51,7 @@ export function buildStoragePath(
   parentType: 'announcement' | 'assignment',
   parentId: string,
   filename: string,
-): string {
+ ): string {
   const ts = Date.now();
   const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
   return `${sectionId}/${parentType}/${parentId}/${ts}_${sanitized}`;
@@ -60,8 +60,8 @@ export function buildStoragePath(
 /**
  * Returns a file category label from its MIME type or filename extension.
  */
-export function getFileCategory(fileType: string): 'pdf' | 'image' | 'spreadsheet' | 'code' | 'text' | 'other' {
-  const t = fileType.toLowerCase();
+export function getFileCategory(fileType: string | undefined | null): 'pdf' | 'image' | 'spreadsheet' | 'code' | 'text' | 'other' {
+  const t = (fileType || '').toLowerCase();
   if (t.includes('pdf')) return 'pdf';
   if (t.startsWith('image/')) return 'image';
   if (t.includes('csv') || t.includes('sheet') || t.includes('excel')) return 'spreadsheet';
@@ -74,9 +74,9 @@ export function getFileCategory(fileType: string): 'pdf' | 'image' | 'spreadshee
  * Returns true when a stored attachment can be rendered as an inline image.
  * Falls back to filename extension because mobile uploads can omit MIME type.
  */
-export function isPreviewableImage(fileType: string, filename: string): boolean {
-  const t = fileType.toLowerCase();
-  const name = filename.toLowerCase();
+export function isPreviewableImage(fileType: string | undefined | null, filename: string | undefined | null): boolean {
+  const t = (fileType || '').toLowerCase();
+  const name = (filename || '').toLowerCase();
   return (
     t.startsWith('image/') ||
     /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|webp)$/.test(name)

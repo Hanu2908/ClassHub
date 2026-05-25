@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Bell, Users, Award, Coffee, Calendar, Megaphone } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { createPortal } from 'react-dom';
+
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useAnnouncements, useSectionMembers, type SectionMember } from '../../hooks/useSupabaseQuery';
+import { useAnnouncements, useSectionMembers } from '../../hooks/useSupabaseQuery';
 import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useSupabaseMutations';
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
@@ -16,159 +16,11 @@ import { supabase } from '../../lib/supabase';
 import { buildStoragePath } from '../../lib/utils/attachments';
 import { AnnouncementsSkeleton } from '../../components/LoadingSkeletons';
 
+const DeleteConfirmationModal = lazy(() => import('../../components/DeleteConfirmationModal'));
+const AcksTrackingSheet = lazy(() => import('../../components/AcksTrackingSheet'));
+
 type Filter = 'all' | 'critical' | 'general';
-
-interface DeleteConfirmationProps {
-  onClose: () => void;
-  onConfirm: () => void;
-}
-
-function DeleteConfirmationModal({ onClose, onConfirm }: DeleteConfirmationProps) {
-  const cancelBtnRef = useRef<HTMLButtonElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Autofocus Cancel first
-  useEffect(() => {
-    cancelBtnRef.current?.focus();
-  }, [isMobile]);
-
-  // Escape key down listener for desktop modal
-  useEffect(() => {
-    if (isMobile) return;
-    const handleKeys = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'Tab' && containerRef.current) {
-        const focusable = containerRef.current.querySelectorAll('button');
-        const first = focusable[0] as HTMLElement;
-        const last = focusable[focusable.length - 1] as HTMLElement;
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            last.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === last) {
-            first.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeys);
-    return () => window.removeEventListener('keydown', handleKeys);
-  }, [isMobile, onClose]);
-
-  const messageText = (
-    <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, margin: 0 }}>
-      Are you sure you want to delete this announcement? This will permanently remove the announcement and all associated read receipts and acknowledgment tracking data. This action <strong style={{ color: 'var(--status-critical)' }}>cannot be undone</strong>.
-    </p>
-  );
-
-  if (isMobile) {
-    return (
-      <BottomSheet onClose={onClose} title="Confirm Deletion">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 24 }}>
-          {messageText}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button
-              ref={cancelBtnRef}
-              onClick={onClose}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer',
-                transition: 'background var(--transition-fast)'
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
-                background: 'var(--status-critical)', border: 'none',
-                color: '#fff', fontWeight: 600, cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(248, 113, 113, 0.2)',
-                transition: 'background var(--transition-fast)'
-              }}
-            >
-              Delete Announcement
-            </button>
-          </div>
-        </div>
-      </BottomSheet>
-    );
-  }
-
-  return createPortal(
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.85)',
-        padding: 20
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        ref={containerRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-delete-title"
-        style={{
-          background: '#161824', border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 16, width: '100%', maxWidth: 440, overflow: 'hidden',
-          boxShadow: '0 12px 48px rgba(0,0,0,0.6)'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
-          <span id="confirm-delete-title" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Confirm Deletion</span>
-          <button onClick={onClose} aria-label="Close dialog" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
-            <X size={16} />
-          </button>
-        </div>
-        <div style={{ padding: 20 }}>
-          <div style={{ marginBottom: 20 }}>
-            {messageText}
-          </div>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-            <button
-              ref={cancelBtnRef}
-              onClick={onClose}
-              style={{
-                padding: '8px 16px', borderRadius: 8,
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer'
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              style={{
-                padding: '8px 16px', borderRadius: 8,
-                background: 'var(--status-critical)', border: 'none',
-                color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(248, 113, 113, 0.2)'
-              }}
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
+type ChannelTab = 'active' | 'exams' | 'schedule' | 'campus';
 
 function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   const createAnn = useCreateAnnouncement();
@@ -321,202 +173,7 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-interface SectionAck {
-  announcement_id: string;
-  user_id: string;
-  acknowledged_at: string;
-}
 
-interface AcksTrackingSheetProps {
-  announcement: Announcement;
-  onClose: () => void;
-  sectionAcks: SectionAck[];
-  members: SectionMember[];
-}
-
-function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: AcksTrackingSheetProps) {
-  const [activeTab, setActiveTab] = useState<'acknowledged' | 'pending'>('acknowledged');
-  const [studentSearch, setStudentSearch] = useState('');
-  const [nudgingIds, setNudgingIds] = useState<Set<string>>(new Set());
-  const [isNudgingAll, setIsNudgingAll] = useState(false);
-
-  // Filter out CR accounts to get students list
-  const totalStudents = members.filter(m => m.role === 'student');
-  
-  // Find which students acknowledged this announcement
-  const announcementAcks = sectionAcks.filter(a => a.announcement_id === announcement.id);
-  const ackedUserIds = new Set(announcementAcks.map(a => a.user_id));
-
-  const ackedStudents = totalStudents.filter(m => ackedUserIds.has(m.id));
-  const pendingStudents = totalStudents.filter(m => !ackedUserIds.has(m.id));
-
-  // Fuzzy filter by name or class roll
-  const filterList = (list: SectionMember[]) => {
-    return list.filter(m => 
-      m.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
-      (m.classRoll && m.classRoll.toLowerCase().includes(studentSearch.toLowerCase()))
-    );
-  };
-
-  const filteredAcked = filterList(ackedStudents);
-  const filteredPending = filterList(pendingStudents);
-
-  const handleNudgeSingle = async (studentId: string, studentName: string) => {
-    setNudgingIds(prev => {
-      const next = new Set(prev);
-      next.add(studentId);
-      return next;
-    });
-    try {
-      const { error } = await supabase.functions.invoke('nudge-unacknowledged', {
-        body: { announcementId: announcement.id, studentId }
-      });
-      if (error) throw error;
-      showToast(`Nudge sent to ${studentName}`, 'success');
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to send nudge', 'error');
-    } finally {
-      setNudgingIds(prev => {
-        const next = new Set(prev);
-        next.delete(studentId);
-        return next;
-      });
-    }
-  };
-
-  const handleNudgeAll = async () => {
-    if (pendingStudents.length === 0) {
-      showToast('All students have already acknowledged', 'info');
-      return;
-    }
-    setIsNudgingAll(true);
-    try {
-      const { error } = await supabase.functions.invoke('nudge-unacknowledged', {
-        body: { announcementId: announcement.id }
-      });
-      if (error) throw error;
-      showToast(`Nudge sent to all unacknowledged students (${pendingStudents.length})`, 'success');
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to send bulk nudge', 'error');
-    } finally {
-      setIsNudgingAll(false);
-    }
-  };
-
-  return (
-    <BottomSheet onClose={onClose} title="Acknowledgment Status">
-      <div style={{ paddingBottom: 24 }}>
-        <div style={{ marginBottom: 12 }}>
-          <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
-            {announcement.title}
-          </h3>
-          <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>
-            Acknowledgment tracking: <strong style={{ color: 'var(--status-announcement)' }}>{ackedStudents.length} / {totalStudents.length} acknowledged</strong>
-          </p>
-        </div>
-
-        {/* Dynamic Search Bar */}
-        <div style={{ position: 'relative', marginBottom: 16 }}>
-          <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          <input className="t-body" 
-            type="text" 
-            placeholder="Search students..." 
-            value={studentSearch} 
-            onChange={e => setStudentSearch(e.target.value)} 
-            aria-label="Search student reading receipts"
-            style={{
-              width: '100%', padding: '10px 12px 10px 36px', boxSizing: 'border-box',
-              background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-              outline: 'none',
-            }}
-          />
-        </div>
-
-        {/* Slide tabs */}
-        <div className="sheet-tabs-container">
-          <button 
-            className={`sheet-tab-button${activeTab === 'acknowledged' ? ' active' : ''}`}
-            onClick={() => setActiveTab('acknowledged')}
-          >
-            Acknowledged ({ackedStudents.length})
-          </button>
-          <button 
-            className={`sheet-tab-button${activeTab === 'pending' ? ' active' : ''}`}
-            onClick={() => setActiveTab('pending')}
-          >
-            Pending ({pendingStudents.length})
-          </button>
-        </div>
-
-        {/* Nudge All Button for critical announcements */}
-        {activeTab === 'pending' && announcement.priority === 'critical' && pendingStudents.length > 0 && (
-          <button
-            onClick={handleNudgeAll}
-            disabled={isNudgingAll} className="t-subtitle" style={{ width: '100%', padding: '10px 14px', marginBottom: 16,
-              background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)',
-              borderRadius: 'var(--radius-md)', cursor: 'pointer',
-              color: 'var(--status-announcement)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              transition: 'all var(--transition-fast)' }}
-          >
-            {isNudgingAll ? <Loader size={14} className="spin" /> : <Bell size={14} />}
-            Nudge All Unacknowledged ({pendingStudents.length})
-          </button>
-        )}
-
-        {/* Students List */}
-        <div style={{ maxHeight: '280px', overflowY: 'auto', paddingRight: 4 }} className="custom-scrollbar">
-          {(activeTab === 'acknowledged' ? filteredAcked : filteredPending).length === 0 ? (
-            <div className="t-body" style={{ textAlign: 'center', padding: '30px 20px', color: 'var(--text-muted)' }}>
-              No students found.
-            </div>
-          ) : (
-            (activeTab === 'acknowledged' ? filteredAcked : filteredPending).map(student => (
-              <div key={student.id} className="student-ack-row">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.05)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
-                    overflow: 'hidden', flexShrink: 0
-                  }}>
-                    {student.avatarUrl ? (
-                      <img src={student.avatarUrl} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      student.name.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div>
-                    <div className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{student.name}</div>
-                    <div className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
-                      {student.classRoll || 'No Roll'} • {student.email}
-                    </div>
-                  </div>
-                </div>
-                {activeTab === 'pending' && announcement.priority === 'critical' && (
-                  <button 
-                    onClick={() => handleNudgeSingle(student.id, student.name)}
-                    className="btn-nudge-single"
-                    disabled={nudgingIds.has(student.id)}
-                    title={`Nudge ${student.name}`}
-                  >
-                    {nudgingIds.has(student.id) ? (
-                      <Loader size={14} className="spin" />
-                    ) : (
-                      <Bell size={14} />
-                    )}
-                  </button>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </BottomSheet>
-  );
-}
 
 interface CategoryInfo {
   name: string;
@@ -578,10 +235,107 @@ function getAnnouncementCategory(title: string, priority: 'critical' | 'general'
   };
 }
 
+type AnnouncementWithAck = Announcement & { isAcknowledged: boolean };
+
+interface GroupedAnnouncements {
+  thisWeek: AnnouncementWithAck[];
+  lastWeek: AnnouncementWithAck[];
+  older: AnnouncementWithAck[];
+}
+
+function groupByTimeline(items: AnnouncementWithAck[], nowTimestamp: number): GroupedAnnouncements {
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  const SEVEN_DAYS = 7 * ONE_DAY;
+  const FOURTEEN_DAYS = 14 * ONE_DAY;
+
+  const thisWeek: AnnouncementWithAck[] = [];
+  const lastWeek: AnnouncementWithAck[] = [];
+  const older: AnnouncementWithAck[] = [];
+
+  items.forEach(item => {
+    const itemTime = new Date(item.postedAt).getTime();
+    const diff = nowTimestamp - itemTime;
+
+    if (diff < SEVEN_DAYS) {
+      thisWeek.push(item);
+    } else if (diff < FOURTEEN_DAYS) {
+      lastWeek.push(item);
+    } else {
+      older.push(item);
+    }
+  });
+
+  return { thisWeek, lastWeek, older };
+}
+
+function TimelineSection({ title, count }: { title: string; count: number }) {
+  return (
+    <div style={{
+      position: 'sticky',
+      top: '150px',
+      zIndex: 10,
+      background: 'rgba(13, 15, 20, 0.95)',
+      backdropFilter: 'blur(12px)',
+      padding: '10px 16px',
+      margin: '0 -16px 8px -16px',
+      borderBottom: '1px solid var(--border-default)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    }}>
+      <span className="t-label" style={{ 
+        color: 'var(--text-primary)', 
+        fontWeight: 600, 
+        letterSpacing: '0.05em',
+        fontSize: '11px',
+        textTransform: 'uppercase'
+      }}>
+        {title}
+      </span>
+      <span className="t-mono-sm" style={{
+        background: 'var(--bg-elevated)',
+        color: 'var(--text-muted)',
+        padding: '2px 8px',
+        borderRadius: '10px',
+        fontSize: '10px',
+        fontWeight: 500,
+      }}>
+        {count} {count === 1 ? 'announcement' : 'announcements'}
+      </span>
+    </div>
+  );
+}
+
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [filter, setFilter] = useState<Filter>('all');
+  const [activeTab, setActiveTab] = useState<ChannelTab>('active');
+  const [layoutMode, setLayoutMode] = useState<'timeline' | 'feed'>(() => {
+    try {
+      return (localStorage.getItem('classhub_announcements_layout_mode') as 'timeline' | 'feed') || 'timeline';
+    } catch {
+      return 'timeline';
+    }
+  });
+
+  const [justAckedIds, setJustAckedIds] = useState<Set<string>>(() => new Set());
+
+  // Clear justAckedIds when the tab changes to let the feed refresh
+  useEffect(() => {
+    setJustAckedIds(new Set());
+  }, [activeTab]);
+
+  const toggleLayoutMode = () => {
+    const next = layoutMode === 'timeline' ? 'feed' : 'timeline';
+    setLayoutMode(next);
+    try {
+      localStorage.setItem('classhub_announcements_layout_mode', next);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const [showCreate, setShowCreate] = useState(location.state?.openCreate || false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -656,38 +410,103 @@ export default function AnnouncementsPage() {
   // Auto-expiry: hide items past deadline + 2 days
   const visible = announcements.filter(a => !isExpired(a.deadline));
 
+  const criticalCounts = useMemo(() => {
+    const counts = { active: 0, exams: 0, schedule: 0, campus: 0 };
+    visible.forEach(a => {
+      if (a.priority === 'critical' && !a.isAcknowledged) {
+        counts.active++;
+        
+        const categoryInfo = getAnnouncementCategory(a.title, a.priority);
+        const categoryName = categoryInfo.name;
+        const lowerTitle = (a.title || '').toLowerCase();
+        
+        // Check exams
+        const hasExamKeywords = lowerTitle.includes('exam') || lowerTitle.includes('test') || lowerTitle.includes('quiz') || lowerTitle.includes('midterm') || lowerTitle.includes('practical') || lowerTitle.includes('mst') || lowerTitle.includes('assessment') || lowerTitle.includes('viva');
+        if (categoryName === 'Academic Exam' || (categoryName === 'Critical Alert' && hasExamKeywords)) {
+          counts.exams++;
+        }
+        
+        // Check schedule
+        const hasScheduleKeywords = lowerTitle.includes('schedule') || lowerTitle.includes('class') || lowerTitle.includes('timing') || lowerTitle.includes('timetable') || lowerTitle.includes('slot') || lowerTitle.includes('rescheduled') || lowerTitle.includes('postponed');
+        if (categoryName === 'Schedule Change' || (categoryName === 'Critical Alert' && hasScheduleKeywords)) {
+          counts.schedule++;
+        }
+        
+        // Check campus
+        const isGeneralOrHoliday = categoryName === 'Campus Holiday' || categoryName === 'General Announcement';
+        const isCriticalGeneral = categoryName === 'Critical Alert' && !hasExamKeywords && !hasScheduleKeywords;
+        if (isGeneralOrHoliday || isCriticalGeneral) {
+          counts.campus++;
+        }
+      }
+    });
+    return counts;
+  }, [visible]);
+
   // Pure rendering date timestamp initialized once on mount to keep rendering pure
   const [now] = useState(() => Date.now());
 
-  const filtered = visible.filter(a => {
-    const matchesFilter = filter === 'all' ? true : a.priority === filter;
-    const matchesSearch = searchQuery.trim() === '' || 
-      a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      a.body.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
-  }).sort((a, b) => {
-    if (sortBy === 'priority') {
-      if (a.priority === 'critical' && b.priority !== 'critical') return -1;
-      if (b.priority === 'critical' && a.priority !== 'critical') return 1;
-      return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
-    } else if (sortBy === 'deadline') {
-      const getDeadlineScore = (deadline: string | null) => {
-        if (!deadline) return Infinity;
-        const time = new Date(deadline).getTime();
-        if (time < now) return Infinity - 1; // Expired close to last
-        return time; // Future closest deadline first
-      };
-      const scoreA = getDeadlineScore(a.deadline);
-      const scoreB = getDeadlineScore(b.deadline);
-      if (scoreA !== scoreB) {
-        return scoreA - scoreB;
+  const filtered = useMemo(() => {
+    return visible.filter(a => {
+      // 1. Tab-based channel filter:
+      const categoryInfo = getAnnouncementCategory(a.title, a.priority);
+      const categoryName = categoryInfo.name;
+      const lowerTitle = (a.title || '').toLowerCase();
+      
+      let matchesTab = false;
+      if (activeTab === 'active') {
+        matchesTab = !a.isAcknowledged || justAckedIds.has(a.id);
+      } else if (activeTab === 'exams') {
+        const hasExamKeywords = lowerTitle.includes('exam') || lowerTitle.includes('test') || lowerTitle.includes('quiz') || lowerTitle.includes('midterm') || lowerTitle.includes('practical') || lowerTitle.includes('mst') || lowerTitle.includes('assessment') || lowerTitle.includes('viva');
+        matchesTab = categoryName === 'Academic Exam' || (categoryName === 'Critical Alert' && hasExamKeywords);
+      } else if (activeTab === 'schedule') {
+        const hasScheduleKeywords = lowerTitle.includes('schedule') || lowerTitle.includes('class') || lowerTitle.includes('timing') || lowerTitle.includes('timetable') || lowerTitle.includes('slot') || lowerTitle.includes('rescheduled') || lowerTitle.includes('postponed');
+        matchesTab = categoryName === 'Schedule Change' || (categoryName === 'Critical Alert' && hasScheduleKeywords);
+      } else if (activeTab === 'campus') {
+        const hasExamKeywords = lowerTitle.includes('exam') || lowerTitle.includes('test') || lowerTitle.includes('quiz') || lowerTitle.includes('midterm') || lowerTitle.includes('practical') || lowerTitle.includes('mst') || lowerTitle.includes('assessment') || lowerTitle.includes('viva');
+        const hasScheduleKeywords = lowerTitle.includes('schedule') || lowerTitle.includes('class') || lowerTitle.includes('timing') || lowerTitle.includes('timetable') || lowerTitle.includes('slot') || lowerTitle.includes('rescheduled') || lowerTitle.includes('postponed');
+        const isGeneralOrHoliday = categoryName === 'Campus Holiday' || categoryName === 'General Announcement';
+        const isCriticalGeneral = categoryName === 'Critical Alert' && !hasExamKeywords && !hasScheduleKeywords;
+        matchesTab = isGeneralOrHoliday || isCriticalGeneral;
       }
-      return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
-    } else {
-      // Default: 'newest'
-      return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
-    }
-  });
+
+      // 2. Urgency nested sub-filter:
+      const matchesFilter = filter === 'all' ? true : a.priority === filter;
+
+      // 3. Search query:
+      const matchesSearch = searchQuery.trim() === '' || 
+        a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        a.body.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchesTab && matchesFilter && matchesSearch;
+    }).sort((a, b) => {
+      if (sortBy === 'priority') {
+        if (a.priority === 'critical' && b.priority !== 'critical') return -1;
+        if (b.priority === 'critical' && a.priority !== 'critical') return 1;
+        return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
+      } else if (sortBy === 'deadline') {
+        const getDeadlineScore = (deadline: string | null) => {
+          if (!deadline) return Infinity;
+          const time = new Date(deadline).getTime();
+          if (time < now) return Infinity - 1; // Expired close to last
+          return time; // Future closest deadline first
+        };
+        const scoreA = getDeadlineScore(a.deadline);
+        const scoreB = getDeadlineScore(b.deadline);
+        if (scoreA !== scoreB) {
+          return scoreA - scoreB;
+        }
+        return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
+      } else {
+        // Default: 'newest'
+        return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
+      }
+    });
+  }, [visible, activeTab, filter, searchQuery, sortBy, now]);
+
+  const groupedAnnouncements = useMemo(() => {
+    return groupByTimeline(filtered, now);
+  }, [filtered, now]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -700,6 +519,11 @@ export default function AnnouncementsPage() {
     try {
       await ackMutation.mutateAsync(id);
       showToast('Acknowledged ✓', 'success');
+      setJustAckedIds(prev => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
     } catch { showToast('Failed to acknowledge', 'error'); }
   };
 
@@ -710,6 +534,7 @@ export default function AnnouncementsPage() {
         background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--border-default)', padding: '16px 20px 12px',
       }}>
+        {/* Title Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <button id="ann-back-btn" onClick={() => navigate('/app/home')}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }}
@@ -720,63 +545,143 @@ export default function AnnouncementsPage() {
             <Megaphone size={18} color="var(--accent-primary)" />
             <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Announcements</h1>
           </div>
-          
-          {/* Sorting Dropdown Trigger */}
-          <div className="sort-dropdown-container" ref={sortContainerRef}>
-            <button
-              onClick={() => {
-                setShowSortDropdown(!showSortDropdown);
-                setShowSearch(false);
-              }}
-              className={`header-action-btn${(showSortDropdown || sortBy !== 'newest') ? ' active' : ''}`}
-              style={{ marginRight: 4 }}
-              aria-label="Sort Options"
-            >
-              <ArrowUpDown size={18} />
-            </button>
-            {showSortDropdown && (
-              <div className="sort-dropdown-menu" role="menu" aria-label="Sort Options Menu">
-                <button
-                  role="menuitem"
-                  className={`sort-dropdown-item${sortBy === 'newest' ? ' active' : ''}`}
-                  onClick={() => { setSortBy('newest'); setShowSortDropdown(false); }}
-                >
-                  <span>Newest First</span>
-                </button>
-                <button
-                  role="menuitem"
-                  className={`sort-dropdown-item${sortBy === 'priority' ? ' active' : ''}`}
-                  onClick={() => { setSortBy('priority'); setShowSortDropdown(false); }}
-                >
-                  <span>Priority First</span>
-                </button>
-                <button
-                  role="menuitem"
-                  className={`sort-dropdown-item${sortBy === 'deadline' ? ' active' : ''}`}
-                  onClick={() => { setSortBy('deadline'); setShowSortDropdown(false); }}
-                >
-                  <span>Closest Deadline</span>
-                </button>
-              </div>
-            )}
+        </div>
+
+        {/* Row 1: Channel Tabs (horizontal scrolling) */}
+        <div className="filter-tabs" style={{ marginBottom: 12, paddingBottom: 2 }}>
+          {(['active', 'exams', 'schedule', 'campus'] as ChannelTab[]).map(t => {
+            let label = 'Active Feed';
+            let icon = null;
+            if (t === 'exams') { label = 'Exams'; icon = <Award size={13} />; }
+            else if (t === 'schedule') { label = 'Schedule'; icon = <Calendar size={13} />; }
+            else if (t === 'campus') { label = 'Campus'; icon = <Coffee size={13} />; }
+            else { label = 'Active Feed'; icon = <Megaphone size={13} />; }
+
+            const criticalCount = criticalCounts[t];
+
+            return (
+              <button
+                key={t}
+                id={`channel-tab-${t}`}
+                className={`filter-tab${activeTab === t ? ' active' : ''}`}
+                onClick={() => setActiveTab(t)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                {icon}
+                <span>{label}</span>
+                {criticalCount > 0 && (
+                  <span style={{ 
+                    background: 'var(--status-critical)', 
+                    color: '#fff', 
+                    fontSize: '9px', 
+                    fontWeight: 700, 
+                    padding: '1px 5px', 
+                    borderRadius: '8px',
+                    marginLeft: '2px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 8px var(--status-critical)',
+                  }}>
+                    {criticalCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Row 2: Sub-filters, Layout Toggle, Sorting, Search Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          {/* Sub-filters (All / Critical / General) */}
+          <div className="filter-tabs" style={{ margin: 0, paddingBottom: 0 }}>
+            {(['all', 'critical', 'general'] as Filter[]).map(f => (
+              <button
+                key={f}
+                id={`ann-filter-${f}`}
+                className={`filter-tab${filter === f ? ' active' : ''}`}
+                onClick={() => setFilter(f)}
+                style={{ textTransform: 'capitalize', padding: '6px 12px', fontSize: '11px' }}
+              >
+                {f}
+              </button>
+            ))}
           </div>
 
-          {/* Search Toggle Button */}
-          <button
-            onClick={() => {
-              setShowSearch(!showSearch);
-              setShowSortDropdown(false);
-              if (showSearch) setSearchQuery(''); // Clear search on collapse
-            }}
-            className={`header-action-btn${(showSearch || searchQuery) ? ' active' : ''}`}
-            aria-label="Toggle Search"
-          >
-            <Search size={18} />
-          </button>
+          {/* Header Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Layout Mode Toggle */}
+            <button
+              onClick={toggleLayoutMode}
+              className={`header-action-btn${layoutMode === 'feed' ? ' active' : ''}`}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all var(--transition-fast)'
+              }}
+              aria-label={`Switch to ${layoutMode === 'timeline' ? 'Feed' : 'Timeline'} Mode`}
+              title={`Switch to ${layoutMode === 'timeline' ? 'Feed' : 'Timeline'} Mode`}
+            >
+              {layoutMode === 'timeline' ? <LayoutList size={18} /> : <CalendarDays size={18} />}
+            </button>
+
+            {/* Sorting Dropdown Trigger */}
+            <div className="sort-dropdown-container" ref={sortContainerRef}>
+              <button
+                onClick={() => {
+                  setShowSortDropdown(!showSortDropdown);
+                  setShowSearch(false);
+                }}
+                className={`header-action-btn${(showSortDropdown || sortBy !== 'newest') ? ' active' : ''}`}
+                aria-label="Sort Options"
+              >
+                <ArrowUpDown size={18} />
+              </button>
+              {showSortDropdown && (
+                <div className="sort-dropdown-menu" role="menu" aria-label="Sort Options Menu">
+                  <button
+                    role="menuitem"
+                    className={`sort-dropdown-item${sortBy === 'newest' ? ' active' : ''}`}
+                    onClick={() => { setSortBy('newest'); setShowSortDropdown(false); }}
+                  >
+                    <span>Newest First</span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    className={`sort-dropdown-item${sortBy === 'priority' ? ' active' : ''}`}
+                    onClick={() => { setSortBy('priority'); setShowSortDropdown(false); }}
+                  >
+                    <span>Priority First</span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    className={`sort-dropdown-item${sortBy === 'deadline' ? ' active' : ''}`}
+                    onClick={() => { setSortBy('deadline'); setShowSortDropdown(false); }}
+                  >
+                    <span>Closest Deadline</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Search Toggle Button */}
+            <button
+              onClick={() => {
+                setShowSearch(!showSearch);
+                setShowSortDropdown(false);
+                if (showSearch) setSearchQuery(''); // Clear search on collapse
+              }}
+              className={`header-action-btn${(showSearch || searchQuery) ? ' active' : ''}`}
+              aria-label="Toggle Search"
+            >
+              <Search size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Collapsible Search Bar Container */}
-        <div className={`search-bar-container${showSearch || searchQuery ? ' open' : ''}`}>
+        <div className={`search-bar-container${showSearch || searchQuery ? ' open' : ''}`} style={{ marginTop: 8 }}>
           <div className="search-input-wrapper">
             <Search size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
             <input
@@ -802,23 +707,27 @@ export default function AnnouncementsPage() {
             )}
           </div>
         </div>
-
-        <div className="filter-tabs">
-          {(['all', 'critical', 'general'] as Filter[]).map(f => (
-            <button key={f} id={`ann-filter-${f}`} className={`filter-tab${filter === f ? ' active' : ''}`}
-              onClick={() => setFilter(f)} style={{ textTransform: 'capitalize' }}>
-              {f}
-            </button>
-          ))}
-        </div>
       </header>
 
       <main className="page-content">
-        {isLoading ? (
-          <AnnouncementsSkeleton />
-        ) : filtered.length === 0
-          ? <EmptyState icon={<Inbox size={36} color="var(--text-muted)" />} title="Nothing here" subtitle="No announcements found" />
-          : filtered.map(ann => {
+        {(() => {
+          if (isLoading) {
+            return <AnnouncementsSkeleton />;
+          }
+          if (filtered.length === 0) {
+            if (activeTab === 'active' && searchQuery.trim() === '') {
+              return (
+                <EmptyState 
+                  icon={<CheckCircle2 size={36} color="var(--status-safe)" style={{ filter: 'drop-shadow(0 0 8px rgba(52,201,123,0.35))' }} />} 
+                  title="All Caught Up! ⚡" 
+                  subtitle="You've acknowledged all active announcements in your hub." 
+                />
+              );
+            }
+            return <EmptyState icon={<Inbox size={36} color="var(--text-muted)" />} title="Nothing here" subtitle="No announcements found" />;
+          }
+
+          const renderCard = (ann: Announcement & { isAcknowledged: boolean }) => {
             const isCritical = ann.priority === 'critical';
             const isAcked = ann.isAcknowledged;
             const bdg = deadlineBadgeClass(ann.deadline);
@@ -945,8 +854,37 @@ export default function AnnouncementsPage() {
                 </div>
               </article>
             );
-          })
-        }
+          };
+
+          if (layoutMode === 'timeline') {
+            const { thisWeek, lastWeek, older } = groupedAnnouncements;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {thisWeek.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <TimelineSection title="This Week" count={thisWeek.length} />
+                    {thisWeek.map(renderCard)}
+                  </div>
+                )}
+                {lastWeek.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <TimelineSection title="Last Week" count={lastWeek.length} />
+                    {lastWeek.map(renderCard)}
+                  </div>
+                )}
+                {older.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <TimelineSection title="Older" count={older.length} />
+                    {older.map(renderCard)}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Feed Mode
+          return filtered.map(renderCard);
+        })()}
       </main>
 
       <CROnly>
@@ -955,29 +893,38 @@ export default function AnnouncementsPage() {
         </button>
       </CROnly>
 
-      {showCreate && <CreateAnnouncementSheet onClose={() => setShowCreate(false)} />}
+      {showCreate && (
+        <CreateAnnouncementSheet 
+          onClose={() => {
+            setShowCreate(false);
+            setActiveTab('active');
+          }} 
+        />
+      )}
       
-      {trackingAnnouncement && (
-        <AcksTrackingSheet 
-          announcement={trackingAnnouncement} 
-          onClose={() => setTrackingAnnouncement(null)}
-          sectionAcks={sectionAcks}
-          members={members}
-        />
-      )}
+      <Suspense fallback={null}>
+        {trackingAnnouncement && (
+          <AcksTrackingSheet 
+            announcement={trackingAnnouncement} 
+            onClose={() => setTrackingAnnouncement(null)}
+            sectionAcks={sectionAcks}
+            members={members}
+          />
+        )}
 
-      {/* Adaptive confirmation dialog / bottom-sheet for CR deletions */}
-      {pendingDeleteId && (
-        <DeleteConfirmationModal
-          onClose={() => setPendingDeleteId(null)}
-          onConfirm={async () => {
-            if (pendingDeleteId) {
-              await handleDelete(pendingDeleteId);
-              setPendingDeleteId(null);
-            }
-          }}
-        />
-      )}
+        {/* Adaptive confirmation dialog / bottom-sheet for CR deletions */}
+        {pendingDeleteId && (
+          <DeleteConfirmationModal
+            onClose={() => setPendingDeleteId(null)}
+            onConfirm={async () => {
+              if (pendingDeleteId) {
+                await handleDelete(pendingDeleteId);
+                setPendingDeleteId(null);
+              }
+            }}
+          />
+        )}
+      </Suspense>
 
       <NavBar />
     </div>
