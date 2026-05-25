@@ -105,7 +105,7 @@ export function MultiDonut({ segments, size = 72, strokeWidth = 8 }: MultiDonutP
 }
 
 // Skeleton shimmer block
-interface SkeletonProps { width?: string; height?: number; style?: React.CSSProperties; }
+interface SkeletonProps { width?: string | number; height?: string | number; style?: React.CSSProperties; }
 export function Skeleton({ width = '100%', height = 16, style }: SkeletonProps) {
   return <div className="skeleton" style={{ width, height, ...style }} />;
 }

@@ -14,6 +14,7 @@ import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
 import { buildStoragePath } from '../../lib/utils/attachments';
+import { AnnouncementsSkeleton } from '../../components/LoadingSkeletons';
 
 type Filter = 'all' | 'critical' | 'general';
 
@@ -632,7 +633,7 @@ export default function AnnouncementsPage() {
     };
 
     document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('touchstart', handleOutside);
+    document.addEventListener('touchstart', handleOutside, { passive: true });
     window.addEventListener('keydown', handleKeys);
 
     return () => {
@@ -715,7 +716,10 @@ export default function AnnouncementsPage() {
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1 }}>Announcements</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+            <Megaphone size={18} color="var(--accent-primary)" />
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Announcements</h1>
+          </div>
           
           {/* Sorting Dropdown Trigger */}
           <div className="sort-dropdown-container" ref={sortContainerRef}>
@@ -811,9 +815,7 @@ export default function AnnouncementsPage() {
 
       <main className="page-content">
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <Loader size={24} color="var(--accent-primary)" className="spin" />
-          </div>
+          <AnnouncementsSkeleton />
         ) : filtered.length === 0
           ? <EmptyState icon={<Inbox size={36} color="var(--text-muted)" />} title="Nothing here" subtitle="No announcements found" />
           : filtered.map(ann => {

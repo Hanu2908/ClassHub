@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
@@ -9,6 +9,7 @@ import { showToast } from '../../components/Toast';
 import { useSchedule, useSubjects } from '../../hooks/useSupabaseQuery';
 import { useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSupabaseMutations';
 import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS } from '../../lib/scheduleUtils';
+import { ScheduleSkeleton } from '../../components/LoadingSkeletons';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 type ScheduleDay = typeof DAYS[number];
@@ -713,7 +714,10 @@ export default function SchedulePage() {
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1 }}>Schedule</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+            <Calendar size={18} color="var(--accent-primary)" />
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Schedule</h1>
+          </div>
 
           {/* Legend toggle */}
           <button
@@ -808,11 +812,7 @@ export default function SchedulePage() {
           }}
         >
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-              <div style={{ display: 'inline-block' }}>
-                <Loader size={24} color="var(--accent-primary)" className="spin" />
-              </div>
-            </div>
+            <ScheduleSkeleton />
           ) : classes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
               <div className="schedule-empty-icon">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, Loader, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -12,6 +12,7 @@ import { useCreateAssignment, useDeleteAssignment, useUpdateAssignment, useSubmi
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
+import { AssignmentsSkeleton } from '../../components/LoadingSkeletons';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
@@ -738,7 +739,10 @@ export default function AssignmentsPage() {
           <button id="assign-back-btn" onClick={() => navigate('/app/home')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }} aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Assignments</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ClipboardList size={18} color="var(--accent-primary)" />
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Assignments</h1>
+          </div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 12px', gap: 12 }}>
@@ -910,7 +914,7 @@ export default function AssignmentsPage() {
 
       <main className="page-content">
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}><Loader size={24} color="var(--accent-primary)" className="spin" /></div>
+          <AssignmentsSkeleton />
         ) : sorted.length === 0
           ? <EmptyState icon={<PartyPopper size={36} color="var(--text-muted)" />} title="All clear!" subtitle="No assignments in this category" />
           : sorted.map(a => {

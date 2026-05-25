@@ -76,7 +76,7 @@ export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
     rAFRef.current = requestAnimationFrame(() => {
       rAFRef.current = null;
       if (imgRef.current) {
-        imgRef.current.style.transform = `translate(${posRef.current.x}px, ${posRef.current.y}px) scale(${scaleRef.current})`;
+        imgRef.current.style.transform = `translate3d(${posRef.current.x}px, ${posRef.current.y}px, 0) scale(${scaleRef.current})`;
         imgRef.current.style.cursor = scaleRef.current > 1 
           ? (isDraggingRef.current ? 'grabbing' : 'grab') 
           : 'zoom-in';
@@ -121,6 +121,9 @@ export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
       x: e.clientX - posRef.current.x,
       y: e.clientY - posRef.current.y
     };
+    if (imgRef.current) {
+      imgRef.current.style.transition = 'none';
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     scheduleUpdate();
   };
@@ -138,6 +141,9 @@ export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
   const handlePointerUp = (e: React.PointerEvent<HTMLImageElement>) => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
+    if (imgRef.current) {
+      imgRef.current.style.transition = 'transform 0.16s cubic-bezier(0.25, 1, 0.5, 1)';
+    }
     e.currentTarget.releasePointerCapture(e.pointerId);
     scheduleUpdate();
   };
@@ -246,11 +252,12 @@ export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
           maxWidth: '100vw',
           maxHeight: '100vh',
           objectFit: 'contain',
-          transform: `translate(${posRef.current.x}px, ${posRef.current.y}px) scale(${scaleRef.current})`,
+          transform: `translate3d(${posRef.current.x}px, ${posRef.current.y}px, 0) scale(${scaleRef.current})`,
           transition: 'transform 0.16s cubic-bezier(0.25, 1, 0.5, 1)',
           cursor: currentScale > 1 ? 'grab' : 'zoom-in',
           userSelect: 'none',
-          WebkitUserSelect: 'none'
+          WebkitUserSelect: 'none',
+          willChange: 'transform'
         }}
       />
 

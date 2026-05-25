@@ -6,6 +6,7 @@ import {
 import { useSubjects, useMutateSubjects } from '../../hooks/useSupabaseQuery';
 import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
+import { ManageSubjectsSkeleton } from '../../components/LoadingSkeletons';
 
 // ── Gradient Generator ────────────────────────────────────────────────────────
 // Generates a deterministic, vibrant CSS gradient from a string (e.g. subject code)
@@ -125,9 +126,12 @@ export default function ManageSubjectsPage() {
             <ArrowLeft size={22} />
           </button>
           <div>
-            <h1 className="t-page-title" style={{ color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
-              Curriculum
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BookOpen size={18} color="var(--accent-primary)" />
+              <h1 className="t-page-title" style={{ color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
+                Curriculum
+              </h1>
+            </div>
             <p className="t-mono" style={{ color: '#71717a', margin: 0 }}>
               {subjects.length} Subjects Total
             </p>
@@ -149,7 +153,7 @@ export default function ManageSubjectsPage() {
       {/* Main Content */}
       <main style={{ padding: '24px 20px' }}>
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#71717a' }}>Loading subjects...</div>
+          <ManageSubjectsSkeleton />
         ) : subjects.length === 0 ? (
           <div style={{ 
             textAlign: 'center', padding: '60px 20px', 

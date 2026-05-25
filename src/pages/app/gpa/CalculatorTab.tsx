@@ -249,6 +249,15 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
   const scanTriggerRef = useRef<HTMLLabelElement>(null);
   const reviewModalRef = useRef<HTMLDivElement>(null);
 
+  // Terminate Tesseract worker on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (ocrWorker) {
+        ocrWorker.terminate();
+      }
+    };
+  }, [ocrWorker]);
+
   // Initialize Tesseract worker dynamically
   const initOcrWorker = async () => {
     if (ocrWorker) return ocrWorker;
@@ -277,6 +286,8 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
       const script = document.createElement('script');
       script.id = 'pdfjs-library-cdn';
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.integrity = 'sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn4I1slHydcbZK34nLaR3cAeYSJshoxIOq3mjEf7xJE8YWIUHMn+oCQ==';
+      script.crossOrigin = 'anonymous';
       script.async = true;
       script.onload = () => {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';

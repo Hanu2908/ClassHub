@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, AlertTriangle, BarChart2, Trash2, Loader, X, Circle, CircleDot, Square, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Plus, AlertTriangle, BarChart2, Trash2, X, Circle, CircleDot, Square, CheckSquare } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
@@ -9,6 +9,7 @@ import { showToast } from '../../components/Toast';
 import { usePolls, useActionablePollVotes } from '../../hooks/useSupabaseQuery';
 import { useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/useSupabaseMutations';
 import { BottomSheet } from '../../components/BottomSheet';
+import { PollsSkeleton } from '../../components/LoadingSkeletons';
 
 type PollTab = 'active' | 'closed';
 
@@ -565,9 +566,7 @@ export default function PollsPage() {
 
       <main className="page-content">
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <Loader size={24} color="var(--accent-primary)" className="spin" />
-          </div>
+          <PollsSkeleton />
         ) : filtered.length === 0
           ? <EmptyState icon={<BarChart2 size={36} color="var(--text-muted)" />} title="No polls here" subtitle="Check back later" />
           : filtered.map(p => <PollCard key={p.id} poll={p} onDelete={handleDelete} />)

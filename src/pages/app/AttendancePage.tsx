@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, Loader, Edit3,
+  ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, Edit3,
   TrendingUp, TrendingDown, Target, Info, ChevronDown, ChevronUp,
   BarChart3, PieChart, Calendar, Plus, Minus, Calculator,
-  Crown, Trophy, Sparkles, Flame, BookOpen, Clock
+  Crown, Trophy, Sparkles, Flame, BookOpen, Clock, UserCheck
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing } from '../../components/Shared';
@@ -14,6 +13,7 @@ import type { AttendanceSubject } from '../../store/appStore';
 import { useAppStore } from '../../store/appStore';
 import { useAttendance, useSchedule } from '../../hooks/useSupabaseQuery';
 import { useBulkUpsertAttendance, useEnsureSubjects, useUpdateSubject } from '../../hooks/useSupabaseMutations';
+import { AttendanceSkeleton } from '../../components/LoadingSkeletons';
 
 import { parseERPAttendance } from '../../lib/utils/attendance';
 import type { ParsedSubject } from '../../lib/utils/attendance';
@@ -555,7 +555,10 @@ export default function AttendancePage() {
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Attendance</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <UserCheck size={18} color="var(--accent-primary)" />
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Attendance</h1>
+          </div>
         </div>
         <button className="t-label" id="update-erp-btn" onClick={() => setErpOpen(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', color: 'var(--accent-primary)', cursor: 'pointer' }}>
@@ -565,9 +568,7 @@ export default function AttendancePage() {
 
       <main className="page-content" style={{ gap: 20 }}>
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <Loader size={24} color="var(--accent-primary)" className="spin" />
-          </div>
+          <AttendanceSkeleton />
         ) : (
           <>
             {/* Top Level Premium 4-Column Zenith Stats Grid */}

@@ -15,6 +15,7 @@ import type { SectionInfo } from '../../hooks/useSupabaseQuery';
 import { useCRToggleSubmission } from '../../hooks/useSupabaseMutations';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
+import { SubmissionsSkeleton } from '../../components/LoadingSkeletons';
 
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
@@ -231,9 +232,7 @@ function SubmissionTracker() {
               {/* Student list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
                 {isLoading ? (
-                  <p className="t-body" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
-                    Loading submissions...
-                  </p>
+                  <SubmissionsSkeleton />
                 ) : filtered.length === 0 ? (
                   <p className="t-body" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
                     No students in this list

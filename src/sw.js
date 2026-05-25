@@ -1,6 +1,7 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { NetworkFirst, CacheFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
 
 // Clean up old outdated caches from previous builds
 cleanupOutdatedCaches();
@@ -10,17 +11,17 @@ precacheAndRoute(self.__WB_MANIFEST || []);
 
 // ── Runtime Caching Rules ──
 
-// Bypass Supabase API completely — always fetch fresh from network
-registerRoute(
-  ({ url }) => url.hostname.includes("supabase"),
-  new NetworkFirst()
-);
-
 // Cache-first strategy for runtime image requests (avatars, attachments, dynamic assets)
 registerRoute(
   ({ request }) => request.destination === 'image',
   new CacheFirst({
     cacheName: 'classhub-images-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days max age
+      }),
+    ],
   })
 );
 
