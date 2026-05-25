@@ -2824,3 +2824,35 @@ animation: slideUp 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05);
   border-color: rgba(255, 255, 255, 0.1);
   transform: translateY(-1px);
 }
+
+/* ── Option C Quality Gate Optimization Styling ── */
+.announcement-card-layer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
+}
+
+@media (max-width: 639px) {
+  .announcement-card-content {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  
+  .announcement-card-right {
+    width: 100% !important;
+    align-items: stretch !important;
+    min-width: 0 !important;
+    margin-top: 12px;
+  }
+
+  .announcement-card-right .btn-ack-btn,
+  .announcement-card-right .tracker-pill,
+  .announcement-card-right .btn-del-ann {
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+

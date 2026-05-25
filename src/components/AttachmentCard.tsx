@@ -1,118 +1,115 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, FileText, FileImage, FileCode, File, Loader2, ImageOff, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Download, FileText, FileImage, FileCode, File, Loader2, ImageOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Attachment } from '../store/appStore';
 import { isPreviewableImage } from '../lib/utils/attachments';
+
+// Module-level cache to deduplicate signed URLs across AttachmentCards
+interface CachedUrl {
+  url: string;
+  expiresAt: number;
+}
+const signedUrlCache = new Map<string, CachedUrl>();
 
 interface AttachmentCardProps {
   attachment: Attachment;
   pageNumber?: string;
 }
 
-function ImageZoomModal({ url, onClose }: { url: string; onClose: () => void }) {
-  const [scale, setScale] = useState(1);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    setScale(s => Math.min(Math.max(1, s - e.deltaY * 0.01), 5));
-  };
+// Lazy load the ImageZoomModal component
+const ImageZoomModal = React.lazy(() => import('./ImageZoomModal'));
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (scale <= 1) return;
-    setIsDragging(true);
-    setStartPos({ x: e.clientX - pos.x, y: e.clientY - pos.y });
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    setPos({ x: e.clientX - startPos.x, y: e.clientY - startPos.y });
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-  };
-
-  return (
-    <div 
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(8px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        touchAction: 'none'
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onWheel={handleWheel}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-    >
-      <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', padding: 8, color: '#fff', cursor: 'pointer' }}>
-        <X size={24} />
-      </button>
-      <div style={{ position: 'absolute', bottom: 30, display: 'flex', gap: 16, background: 'rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: 20, zIndex: 10 }}>
-        <button onClick={() => setScale(s => Math.max(1, s - 0.5))} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><ZoomOut size={20} /></button>
-        <button onClick={() => { setScale(1); setPos({x:0, y:0}); }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>RESET</button>
-        <button onClick={() => setScale(s => Math.min(5, s + 0.5))} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><ZoomIn size={20} /></button>
-      </div>
-      <img 
-        src={url} 
-        alt="Fullscreen Preview"
-        style={{
-          maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain',
-          transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`,
-          transition: isDragging ? 'none' : 'transform 0.2s',
-          cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in'
-        }}
-        draggable={false}
-        onClick={() => { if (scale === 1) setScale(2); }}
-      />
-    </div>
-  );
-}
-
-export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) {
+export const AttachmentCard = React.memo(function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) {
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
-  const [previewState, setPreviewState] = useState<{ storagePath: string; url: string | null; error: boolean; }>({ storagePath: '', url: null, error: false });
+  const [previewState, setPreviewState] = useState<{ url: string | null; error: boolean; loading: boolean }>({
+    url: null,
+    error: false,
+    loading: false
+  });
   const [showZoomModal, setShowZoomModal] = useState(false);
+  
+  // Dynamic image layout properties
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape' | null>(null);
+
+  // Intersection Observer elements
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   const isImage = isPreviewableImage(attachment.fileType, attachment.filename);
-  const hasCurrentPreviewState = previewState.storagePath === attachment.storagePath;
-  const previewUrl = isImage && hasCurrentPreviewState ? previewState.url : null;
-  const previewError = isImage && hasCurrentPreviewState ? previewState.error : false;
-  const previewLoading = isImage && !hasCurrentPreviewState;
 
+  // 1. Intersection Observer hook to observe when card enters viewport
   useEffect(() => {
-    let cancelled = false;
     if (!isImage) return;
+
+    const currentEl = cardRef.current;
+    if (!currentEl) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            observer.unobserve(entry.target); // Unobserve after first intersection
+          }
+        });
+      },
+      { rootMargin: '200px', threshold: 0 }
+    );
+
+    observer.observe(currentEl);
+    return () => {
+      if (currentEl) {
+        observer.unobserve(currentEl);
+      }
+    };
+  }, [isImage]);
+
+  // 2. signedUrl Cache and fetcher gated by visibility
+  useEffect(() => {
+    if (!isImage || !isVisible) return;
+
+    let cancelled = false;
+
+    // Check module cache first
+    const cached = signedUrlCache.get(attachment.storagePath);
+    if (cached && cached.expiresAt > Date.now()) {
+      setPreviewState({ url: cached.url, error: false, loading: false });
+      return;
+    }
+
+    setPreviewState(prev => ({ ...prev, loading: true }));
 
     supabase.storage.from('attachments').createSignedUrl(attachment.storagePath, 3600)
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error || !data?.signedUrl) {
-          setPreviewState({ storagePath: attachment.storagePath, url: null, error: true });
+          setPreviewState({ url: null, error: true, loading: false });
         } else {
-          setPreviewState({ storagePath: attachment.storagePath, url: data.signedUrl, error: false });
+          // Set to module cache (3500 seconds TTL slightly before 3600 seconds token expiry)
+          signedUrlCache.set(attachment.storagePath, {
+            url: data.signedUrl,
+            expiresAt: Date.now() + 3500 * 1000
+          });
+          setPreviewState({ url: data.signedUrl, error: false, loading: false });
         }
       })
       .catch(() => {
         if (cancelled) return;
-        setPreviewState({ storagePath: attachment.storagePath, url: null, error: true });
+        setPreviewState({ url: null, error: true, loading: false });
       });
 
-    return () => { cancelled = true; };
-  }, [attachment.storagePath, isImage]);
+    return () => {
+      cancelled = true;
+    };
+  }, [attachment.storagePath, isImage, isVisible]);
 
   const handleCardClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (isImage && previewUrl) {
+    if (isImage && previewState.url) {
       setShowZoomModal(true);
       return;
     }
@@ -157,13 +154,51 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    setOrientation(naturalHeight >= naturalWidth ? 'portrait' : 'landscape');
+  };
+
+  // Determine standard preview styling based on image loading & orientation states
+  const getImagePreviewStyle = (): React.CSSProperties => {
+    const common: React.CSSProperties = {
+      width: '100%',
+      display: 'block'
+    };
+
+    if (orientation === 'portrait') {
+      return {
+        ...common,
+        maxHeight: '400px',
+        height: 'auto',
+        objectFit: 'contain'
+      };
+    } else if (orientation === 'landscape') {
+      return {
+        ...common,
+        maxHeight: '280px',
+        height: 'auto',
+        objectFit: 'contain'
+      };
+    }
+    
+    return {
+      ...common,
+      height: '100%',
+      objectFit: 'cover'
+    };
+  };
+
   return (
     <>
       <div 
+        ref={cardRef}
         onClick={handleCardClick}
         className="attachment-card"
         style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
           padding: isImage ? '0' : '10px 14px',
           background: isImage ? 'transparent' : 'rgba(255, 255, 255, 0.03)',
           border: isImage ? 'none' : '1px solid rgba(255, 255, 255, 0.06)',
@@ -189,22 +224,36 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
         }}
       >
         {isImage ? (
-          <div style={{
-            width: '100%', aspectRatio: '9 / 16',
-            maxHeight: 400,
-            borderRadius: 'var(--radius-md)', overflow: 'hidden',
-            background: 'rgba(10, 12, 20, 0.65)', border: '1px solid rgba(255, 255, 255, 0.06)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {previewUrl && !previewError ? (
-              <img src={previewUrl} alt={attachment.filename} loading="lazy"
-                onError={() => setPreviewState({ storagePath: attachment.storagePath, url: null, error: true })}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          <div 
+            style={{
+              width: '100%',
+              minHeight: orientation ? 'auto' : '120px',
+              maxHeight: orientation === 'portrait' ? 400 : 280,
+              borderRadius: 'var(--radius-md)',
+              overflow: 'hidden',
+              background: 'rgba(10, 12, 20, 0.65)',
+              border: '1px solid rgba(255, 255, 255, 0.06)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all var(--transition-base)',
+            }}
+          >
+            {previewState.url && !previewState.error ? (
+              <img 
+                src={previewState.url} 
+                alt={attachment.filename} 
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+                onLoad={handleImageLoad}
+                onError={() => setPreviewState({ url: null, error: true, loading: false })}
+                style={getImagePreviewStyle()}
               />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
-                {previewLoading ? <Loader2 className="animate-spin" size={20} /> : <ImageOff size={22} />}
-                <span className="t-mono-sm">{previewLoading ? 'Loading preview' : 'Preview unavailable'}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', padding: '24px 0' }}>
+                {previewState.loading ? <Loader2 className="animate-spin" size={20} /> : <ImageOff size={22} />}
+                <span className="t-mono-sm">{previewState.loading ? 'Loading preview' : 'Preview unavailable'}</span>
               </div>
             )}
           </div>
@@ -222,11 +271,21 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
               </div>
             </div>
             <button
-              type="button" disabled={downloading} aria-label={`Download ${attachment.filename}`}
+              type="button" 
+              disabled={downloading} 
+              aria-label={`Download ${attachment.filename}`}
               style={{
-                background: 'none', border: 'none', padding: '6px', color: 'var(--text-secondary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                borderRadius: '50%', transition: 'all var(--transition-fast)', flexShrink: 0,
+                background: 'none',
+                border: 'none',
+                padding: '6px',
+                color: 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                borderRadius: '50%',
+                transition: 'all var(--transition-fast)',
+                flexShrink: 0,
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
@@ -237,9 +296,15 @@ export function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) 
         )}
       </div>
 
-      {showZoomModal && previewUrl && (
-        <ImageZoomModal url={previewUrl} onClose={() => setShowZoomModal(false)} />
+      {showZoomModal && previewState.url && (
+        <React.Suspense fallback={
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)' }}>
+            <Loader2 className="animate-spin" color="#fff" size={32} />
+          </div>
+        }>
+          <ImageZoomModal url={previewState.url} onClose={() => setShowZoomModal(false)} />
+        </React.Suspense>
       )}
     </>
   );
-}
+});

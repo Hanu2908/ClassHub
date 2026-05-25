@@ -60,24 +60,29 @@ export const useGPAStore = create<GPAState>()(
       targetCgpa: null,
 
       setActiveBranch: (branch) => {
-        // Rebuild every semester's subject list for the new branch.
-        // We keep entered marks keyed by old subject index so switching back
-        // doesn't lose data, but the subject names & credits are always from
-        // the new branch template.
         const existing = get().semesters;
         const next: { [s: number]: SemesterData } = {};
         for (let s = 1; s <= 8; s++) {
-          const fresh = makeDefaultSemester(branch, s);
-          const old   = existing[s];
-          if (!old) { next[s] = fresh; continue; }
-          // Preserve marks by index position so students keep their entered data
-          next[s] = {
-            locked: old.locked,
-            subjects: fresh.subjects.map((sub, i) => ({
-              ...sub,
-              marks: old.subjects[i]?.marks ?? null,
-            })),
-          };
+          const old = existing[s];
+          if (!old) {
+            next[s] = makeDefaultSemester(branch, s);
+            continue;
+          }
+          // Safety Safeguard: Keep existing semesters 100% intact if:
+          // 1. The semester is locked.
+          // 2. The semester has any marks entered.
+          // 3. The number of subjects differs from the default template (custom rows).
+          const defaultCount = SUBJECTS_DATA[branch]?.[s]?.length ?? 0;
+          const isCustomOrActive =
+            old.locked ||
+            old.subjects.some(sub => sub.marks !== null) ||
+            old.subjects.length !== defaultCount;
+
+          if (isCustomOrActive) {
+            next[s] = old;
+          } else {
+            next[s] = makeDefaultSemester(branch, s);
+          }
         }
         set({ activeBranch: branch, semesters: next });
       },

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Bell, Users, Award, Coffee, Calendar, Megaphone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { createPortal } from 'react-dom';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
@@ -15,6 +16,158 @@ import { supabase } from '../../lib/supabase';
 import { buildStoragePath } from '../../lib/utils/attachments';
 
 type Filter = 'all' | 'critical' | 'general';
+
+interface DeleteConfirmationProps {
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+function DeleteConfirmationModal({ onClose, onConfirm }: DeleteConfirmationProps) {
+  const cancelBtnRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Autofocus Cancel first
+  useEffect(() => {
+    cancelBtnRef.current?.focus();
+  }, [isMobile]);
+
+  // Escape key down listener for desktop modal
+  useEffect(() => {
+    if (isMobile) return;
+    const handleKeys = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'Tab' && containerRef.current) {
+        const focusable = containerRef.current.querySelectorAll('button');
+        const first = focusable[0] as HTMLElement;
+        const last = focusable[focusable.length - 1] as HTMLElement;
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            last.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === last) {
+            first.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeys);
+    return () => window.removeEventListener('keydown', handleKeys);
+  }, [isMobile, onClose]);
+
+  const messageText = (
+    <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+      Are you sure you want to delete this announcement? This will permanently remove the announcement and all associated read receipts and acknowledgment tracking data. This action <strong style={{ color: 'var(--status-critical)' }}>cannot be undone</strong>.
+    </p>
+  );
+
+  if (isMobile) {
+    return (
+      <BottomSheet onClose={onClose} title="Confirm Deletion">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 24 }}>
+          {messageText}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              ref={cancelBtnRef}
+              onClick={onClose}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer',
+                transition: 'background var(--transition-fast)'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
+                background: 'var(--status-critical)', border: 'none',
+                color: '#fff', fontWeight: 600, cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(248, 113, 113, 0.2)',
+                transition: 'background var(--transition-fast)'
+              }}
+            >
+              Delete Announcement
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
+    );
+  }
+
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.85)',
+        padding: 20
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-delete-title"
+        style={{
+          background: '#161824', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 16, width: '100%', maxWidth: 440, overflow: 'hidden',
+          boxShadow: '0 12px 48px rgba(0,0,0,0.6)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
+          <span id="confirm-delete-title" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Confirm Deletion</span>
+          <button onClick={onClose} aria-label="Close dialog" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
+            <X size={16} />
+          </button>
+        </div>
+        <div style={{ padding: 20 }}>
+          <div style={{ marginBottom: 20 }}>
+            {messageText}
+          </div>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button
+              ref={cancelBtnRef}
+              onClick={onClose}
+              style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: 'var(--status-critical)', border: 'none',
+                color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(248, 113, 113, 0.2)'
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   const createAnn = useCreateAnnouncement();
@@ -88,8 +241,9 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
     <BottomSheet onClose={onClose} title="Post Announcement">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 20 }}>
         <div>
-          <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
+          <label htmlFor="composer-title" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
           <input 
+            id="composer-title"
             style={inputStyle} 
             className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
             placeholder="e.g. End Semester Exam Schedule" 
@@ -98,8 +252,9 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div>
-          <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
+          <label htmlFor="composer-body" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
           <textarea 
+            id="composer-body"
             style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} 
             className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
             placeholder="Details of the announcement…" 
@@ -110,8 +265,9 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
         
         <div style={{ display: 'flex', gap: 10 }}>
           <div style={{ flex: 1 }}>
-            <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Priority</label>
+            <label htmlFor="composer-priority" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Priority</label>
             <select 
+              id="composer-priority"
               style={inputStyle} 
               className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
               value={priority} 
@@ -129,13 +285,17 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
             <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Set a deadline</span>
           </label>
           {hasDeadline && (
-            <input 
-              type="datetime-local" 
-              style={inputStyle} 
-              className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
-              value={deadlineDate} 
-              onChange={e => setDeadlineDate(e.target.value)} 
-            />
+            <div>
+              <label htmlFor="composer-deadline" className="sr-only">Deadline Date</label>
+              <input 
+                id="composer-deadline"
+                type="datetime-local" 
+                style={inputStyle} 
+                className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
+                value={deadlineDate} 
+                onChange={e => setDeadlineDate(e.target.value)} 
+              />
+            </div>
           )}
         </div>
 
@@ -262,6 +422,7 @@ function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: Acks
             placeholder="Search students..." 
             value={studentSearch} 
             onChange={e => setStudentSearch(e.target.value)} 
+            aria-label="Search student reading receipts"
             style={{
               width: '100%', padding: '10px 12px 10px 36px', boxSizing: 'border-box',
               background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
@@ -426,6 +587,9 @@ export default function AnnouncementsPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'priority' | 'deadline'>('newest');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [trackingAnnouncement, setTrackingAnnouncement] = useState<Announcement | null>(null);
+  
+  // Pending delete target state for confirmation dialog
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const role = useAppStore(s => s.role);
   const authUser = useAppStore(s => s.authUser);
@@ -434,6 +598,9 @@ export default function AnnouncementsPage() {
   const { data: announcements = [], isLoading } = useAnnouncements();
   const deleteAnn = useDeleteAnnouncement();
   const ackMutation = useAcknowledge();
+
+  // Sort dropdown reference for click outside dismissed behaviour
+  const sortContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch section members to compute stats & nudge lists
   const { data: members = [] } = useSectionMembers();
@@ -450,6 +617,30 @@ export default function AnnouncementsPage() {
       return data ?? [];
     }
   });
+
+  // Handle click outside and Escape key dismissals for sorting dropdown
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      if (showSortDropdown && sortContainerRef.current && !sortContainerRef.current.contains(e.target as Node)) {
+        setShowSortDropdown(false);
+      }
+    };
+    const handleKeys = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showSortDropdown) {
+        setShowSortDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    window.addEventListener('keydown', handleKeys);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+      window.removeEventListener('keydown', handleKeys);
+    };
+  }, [showSortDropdown]);
 
   // Filter out CRs to count students
   const totalStudents = members.filter(m => m.role === 'student');
@@ -527,7 +718,7 @@ export default function AnnouncementsPage() {
           <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1 }}>Announcements</h1>
           
           {/* Sorting Dropdown Trigger */}
-          <div className="sort-dropdown-container">
+          <div className="sort-dropdown-container" ref={sortContainerRef}>
             <button
               onClick={() => {
                 setShowSortDropdown(!showSortDropdown);
@@ -540,20 +731,23 @@ export default function AnnouncementsPage() {
               <ArrowUpDown size={18} />
             </button>
             {showSortDropdown && (
-              <div className="sort-dropdown-menu">
+              <div className="sort-dropdown-menu" role="menu" aria-label="Sort Options Menu">
                 <button
+                  role="menuitem"
                   className={`sort-dropdown-item${sortBy === 'newest' ? ' active' : ''}`}
                   onClick={() => { setSortBy('newest'); setShowSortDropdown(false); }}
                 >
                   <span>Newest First</span>
                 </button>
                 <button
+                  role="menuitem"
                   className={`sort-dropdown-item${sortBy === 'priority' ? ' active' : ''}`}
                   onClick={() => { setSortBy('priority'); setShowSortDropdown(false); }}
                 >
                   <span>Priority First</span>
                 </button>
                 <button
+                  role="menuitem"
                   className={`sort-dropdown-item${sortBy === 'deadline' ? ' active' : ''}`}
                   onClick={() => { setSortBy('deadline'); setShowSortDropdown(false); }}
                 >
@@ -587,7 +781,7 @@ export default function AnnouncementsPage() {
               placeholder="Search announcements..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              aria-label="Search field"
+              aria-label="Search announcements"
             />
             {searchQuery && (
               <button
@@ -629,7 +823,7 @@ export default function AnnouncementsPage() {
             const lbl = deadlineLabel(ann.deadline);
 
             return (
-              <article key={ann.id} className="card" style={{
+              <article key={ann.id} className="card announcement-card-layer" style={{
                 borderLeft: isCritical ? '4px solid var(--status-critical)' : undefined,
                 background: isCritical ? 'var(--status-critical-bg)' : undefined,
                 animation: 'fadeSlideUp 0.35s ease both',
@@ -688,7 +882,7 @@ export default function AnnouncementsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button
                           id={`del-ann-${ann.id}`}
-                          onClick={() => handleDelete(ann.id)}
+                          onClick={() => setPendingDeleteId(ann.id)}
                           className="btn-del-ann"
                           style={{
                             background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
@@ -696,6 +890,7 @@ export default function AnnouncementsPage() {
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0,
                           }}
+                          aria-label="Delete announcement"
                           title="Delete announcement"
                         >
                           <Trash2 size={14} color="var(--status-critical)" />
@@ -704,14 +899,16 @@ export default function AnnouncementsPage() {
                     )}
 
                     {role === 'cr' && (
-                      <div 
+                      <button 
+                        type="button"
                         className="tracker-pill"
                         onClick={() => setTrackingAnnouncement(ann)}
+                        aria-label={`View read receipts: ${ackCountsMap[ann.id] || 0} of ${totalStudentsCount} acknowledged`}
                         title="View read receipts"
                       >
                         <Users size={12} />
                         <span>{ackCountsMap[ann.id] || 0}/{totalStudentsCount} ✓</span>
-                      </div>
+                      </button>
                     )}
 
                     <div className="t-label" style={{ width: '100%', marginTop: 'auto' }}>
@@ -764,6 +961,19 @@ export default function AnnouncementsPage() {
           onClose={() => setTrackingAnnouncement(null)}
           sectionAcks={sectionAcks}
           members={members}
+        />
+      )}
+
+      {/* Adaptive confirmation dialog / bottom-sheet for CR deletions */}
+      {pendingDeleteId && (
+        <DeleteConfirmationModal
+          onClose={() => setPendingDeleteId(null)}
+          onConfirm={async () => {
+            if (pendingDeleteId) {
+              await handleDelete(pendingDeleteId);
+              setPendingDeleteId(null);
+            }
+          }}
         />
       )}
 
