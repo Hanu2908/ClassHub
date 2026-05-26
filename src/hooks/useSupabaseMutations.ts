@@ -45,7 +45,7 @@ export function useCreateAnnouncement() {
 
       if (error) throw error;
 
-      if (input.priority === 'critical' && data?.id) {
+      if (data?.id) {
         try {
           const { data: pushData, error: funcError } = await supabase.functions.invoke('send-critical-announcement', {
             body: { announcementId: data.id },
@@ -136,6 +136,21 @@ export function useCreateAssignment() {
           }))
         );
         if (setErr) throw setErr;
+      }
+
+      // Trigger push notification broadcast to all section members
+      if (sectionId) {
+        try {
+          await supabase.functions.invoke('send-custom-notification', {
+            body: {
+              title: `📝 New Assignment: ${input.title}`,
+              body: `A new assignment has been posted. Due: ${new Date(input.dueDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`,
+              sectionId: sectionId
+            }
+          });
+        } catch (err) {
+          console.warn('Failed to send push notification for new assignment:', err);
+        }
       }
 
       return assignment.id;

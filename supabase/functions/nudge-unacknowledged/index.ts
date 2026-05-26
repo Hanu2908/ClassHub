@@ -27,7 +27,6 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (announcementError || !announcement) throw new Error("Announcement not found");
-    if (announcement.priority !== "critical") throw new Error("Only critical announcements can be nudged");
     if (!studentId && announcement.nudge_sent) throw new Error("Nudge already sent");
 
     let unacknowledgedIds: string[] = [];

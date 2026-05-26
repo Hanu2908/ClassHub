@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (announcementError || !announcement) throw new Error("Announcement not found");
-    if (announcement.priority !== "critical") throw new Error("Only critical announcements trigger this function");
 
     // Get all push subscriptions for users in this section using single joined query
     const { data: subscriptions, error: subError } = await serviceClient

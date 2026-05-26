@@ -15,8 +15,11 @@ import {
   ChevronUp, 
   Trash2, 
   FileText,
-  User
+  User,
+  Bell,
+  ShieldAlert
 } from 'lucide-react';
+import { subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
 
 interface FeedbackReport {
   id: string;
@@ -56,6 +59,14 @@ export default function DeveloperConsolePage() {
   const [dbLatency, setDbLatency] = useState<number | '—'>('—');
   const [pinging, setPinging] = useState(false);
   const [pwaStatus, setPwaStatus] = useState<{ active: boolean; cacheCount: number }>({ active: false, cacheCount: 0 });
+
+  // Web Push Diagnostics states
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+  const [swRegistered, setSwRegistered] = useState(false);
+  const [dbSubscribed, setDbSubscribed] = useState(false);
+  const [activeEndpoint, setActiveEndpoint] = useState('');
+  const [sendingTestPush, setSendingTestPush] = useState(false);
 
   // Bug reports state
   const [reports, setReports] = useState<FeedbackReport[]>([]);
@@ -130,7 +141,73 @@ export default function DeveloperConsolePage() {
     }
   };
 
-  // 3. Service Worker Cache Integrity Audit
+  // 3. Web Push Audit
+  const refreshPushDiagnostics = async () => {
+    try {
+      const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+      setPushSupported(supported);
+      if (!supported) return;
+
+      setPushPermission(Notification.permission);
+
+      const regs = await navigator.serviceWorker.getRegistrations();
+      const activeSW = regs.find(r => !!r.active);
+      setSwRegistered(!!activeSW);
+
+      if (activeSW) {
+        const sub = await activeSW.pushManager.getSubscription();
+        setDbSubscribed(!!sub);
+        if (sub) {
+          setActiveEndpoint(sub.endpoint);
+        } else {
+          setActiveEndpoint('');
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to audit push diagnostics:', err);
+    }
+  };
+
+  const handleTestSubscribe = async () => {
+    const success = await subscribeToPush();
+    if (success) {
+      showToast('Successfully subscribed to Web Push!', 'success');
+    } else {
+      showToast('Subscription failed. Verify notification permissions.', 'error');
+    }
+    refreshPushDiagnostics();
+  };
+
+  const handleTestUnsubscribe = async () => {
+    await unsubscribeFromPush();
+    showToast('Successfully unsubscribed from Web Push.', 'info');
+    refreshPushDiagnostics();
+  };
+
+  const handleTriggerTestPush = async () => {
+    if (!authUser?.sectionId) return;
+    setSendingTestPush(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-custom-notification', {
+        body: {
+          title: '🚨 Dev Push Diagnosis Success',
+          body: `Transmission successful! Tested by ${authUser.name} on ${new Date().toLocaleTimeString('en-IN', { timeStyle: 'short' })}`,
+          sectionId: authUser.sectionId,
+        },
+      });
+
+      if (error) throw error;
+      showToast('Broadcast test push triggered successfully!', 'success');
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('[Test Push Error]', error);
+      showToast(error.message || 'Failed to trigger test push broadcast', 'error');
+    } finally {
+      setSendingTestPush(false);
+    }
+  };
+
+  // 4. Service Worker Cache Integrity Audit
   useEffect(() => {
     const checkPWA = async () => {
       try {
@@ -147,6 +224,7 @@ export default function DeveloperConsolePage() {
     };
     checkPWA();
     pingDatabase();
+    refreshPushDiagnostics();
   }, []);
 
   // 4. Fetch Feedback Reports
@@ -357,6 +435,129 @@ export default function DeveloperConsolePage() {
               {pwaStatus.active ? 'INTEGRITY: ACTIVE' : 'INTEGRITY: ERROR'}
             </span>
           </div>
+        </div>
+
+        {/* Bento Row 2: Developer Push Notification Diagnostics (Self-Removing console card) */}
+        <div className="card" style={{ padding: '16px 20px', marginBottom: 20, border: '1px dashed var(--accent-violet, #8B5CF6)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <Bell size={20} color="#8B5CF6" />
+            <h3 style={{ margin: 0, font: '600 14px var(--font-display)', color: 'var(--text-primary)' }}>
+              Web Push Notification Diagnostics
+            </h3>
+            <span style={{ fontSize: 9, background: 'rgba(139, 92, 246, 0.1)', color: '#A78BFA', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)' }}>
+              DEV ONLY
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 16, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>SUPPORTED:</span>{' '}
+              <span style={{ color: pushSupported ? '#10B981' : 'var(--status-critical)' }}>
+                {pushSupported ? 'YES' : 'NO'}
+              </span>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>PERMISSION:</span>{' '}
+              <span style={{ color: pushPermission === 'granted' ? '#10B981' : pushPermission === 'denied' ? 'var(--status-critical)' : '#FBBF24' }}>
+                {pushPermission.toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>SW REGISTERED:</span>{' '}
+              <span style={{ color: swRegistered ? '#10B981' : 'var(--status-critical)' }}>
+                {swRegistered ? 'YES' : 'NO'}
+              </span>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>DB SUBSCRIBED:</span>{' '}
+              <span style={{ color: dbSubscribed ? '#10B981' : 'var(--status-critical)' }}>
+                {dbSubscribed ? 'YES' : 'NO'}
+              </span>
+            </div>
+          </div>
+
+          {activeEndpoint && (
+            <div style={{ marginBottom: 16 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 10, fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 4 }}>
+                ACTIVE DEVICE ENDPOINT:
+              </span>
+              <div style={{
+                background: 'rgba(0,0,0,0.3)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 6,
+                padding: '6px 10px',
+                fontSize: 9,
+                fontFamily: 'var(--font-mono)',
+                color: '#38BDF8',
+                wordBreak: 'break-all'
+              }}>
+                {activeEndpoint}
+              </div>
+            </div>
+          )}
+
+          {/* Diagnosis Operations */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {!dbSubscribed ? (
+              <button
+                onClick={handleTestSubscribe}
+                style={{
+                  background: '#8B5CF6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '8px 16px',
+                  font: '600 11px var(--font-mono)',
+                  cursor: 'pointer'
+                }}
+              >
+                1. Subscribe Device
+              </button>
+            ) : (
+              <button
+                onClick={handleTestUnsubscribe}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-primary)',
+                  borderRadius: 6,
+                  padding: '8px 16px',
+                  font: '600 11px var(--font-mono)',
+                  cursor: 'pointer'
+                }}
+              >
+                Disable Subscription
+              </button>
+            )}
+
+            <button
+              onClick={handleTriggerTestPush}
+              disabled={!dbSubscribed || sendingTestPush}
+              style={{
+                background: !dbSubscribed ? 'rgba(255,255,255,0.02)' : 'rgba(16, 185, 129, 0.1)',
+                border: !dbSubscribed ? '1px solid var(--border-default)' : '1px solid rgba(16, 185, 129, 0.3)',
+                color: !dbSubscribed ? 'var(--text-muted)' : '#34D399',
+                borderRadius: 6,
+                padding: '8px 16px',
+                font: '600 11px var(--font-mono)',
+                cursor: !dbSubscribed ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              {sendingTestPush ? 'Broadcasting…' : '2. Broadcast Test Push'}
+            </button>
+          </div>
+          
+          {!dbSubscribed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
+              <ShieldAlert size={12} color="var(--status-warning)" />
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                You must subscribe this device before triggering a test push broadcast.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Filters Header */}
