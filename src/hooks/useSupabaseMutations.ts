@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
 import type { Database } from '../types/database.types';
+import { enqueueAction } from '../lib/offlineSync';
 
 type SlotType = Database['public']['Enums']['slot_type'];
 type SubjectIdCode = { id: string; code: string };
@@ -82,11 +83,47 @@ export function useAcknowledge() {
   const { userId } = useAuthContext();
   return useMutation({
     mutationFn: async (announcementId: string) => {
-      const { error } = await supabase.from('acknowledgments').insert({
-        announcement_id: announcementId,
-        user_id: userId!,
-      });
-      if (error) throw error;
+      if (!navigator.onLine) {
+        if (import.meta.env.DEV) {
+          console.log('[OfflineSync] Network offline. Enqueuing acknowledgment.');
+        }
+        await enqueueAction('acknowledge', { announcementId, userId: userId! });
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then((reg) => {
+            if ('sync' in reg) {
+              return (reg as any).sync.register('sync-offline-actions');
+            }
+          }).catch((err) => console.warn('[OfflineSync] Sync registration failed:', err));
+        }
+        return; // Optimistic success
+      }
+
+      try {
+        const { error } = await supabase.from('acknowledgments').insert({
+          announcement_id: announcementId,
+          user_id: userId!,
+        });
+        if (error) {
+          throw error;
+        }
+      } catch (err: any) {
+        const isNetworkErr = err.message?.includes('Failed to fetch') || err.name === 'TypeError';
+        if (isNetworkErr) {
+          if (import.meta.env.DEV) {
+            console.warn('[OfflineSync] Mutation failed due to network error. Enqueuing acknowledgment:', err);
+          }
+          await enqueueAction('acknowledge', { announcementId, userId: userId! });
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then((reg) => {
+              if ('sync' in reg) {
+                return (reg as any).sync.register('sync-offline-actions');
+              }
+            }).catch((syncErr) => console.warn('[OfflineSync] Sync registration failed:', syncErr));
+          }
+          return; // Optimistic success
+        }
+        throw err;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['announcements'] });
@@ -375,62 +412,93 @@ export function useVotePoll() {
       allowMultiple: boolean;
       isSelected: boolean;
     }) => {
-      const isAnonymous = input.pollType === 'general' || input.pollType === 'anonymous';
-      let token: string | null = null;
-      if (isAnonymous) {
-        const { data, error } = await supabase.rpc('calculate_anonymous_token', {
-          user_id: userId!,
-          poll_id: input.pollId
-        });
-        if (error) throw error;
-        token = data;
-      }
+      const executeMutation = async () => {
+        const isAnonymous = input.pollType === 'general' || input.pollType === 'anonymous';
+        let token: string | null = null;
+        if (isAnonymous) {
+          const { data, error } = await supabase.rpc('calculate_anonymous_token', {
+            user_id: userId!,
+            poll_id: input.pollId
+          });
+          if (error) throw error;
+          token = data;
+        }
 
-      if (input.allowMultiple) {
-        // Multi-select poll: toggle option
-        if (input.isSelected) {
-          // Toggle OFF: delete the specific vote for this option
-          const deleteQuery = supabase.from('votes').delete().eq('option_id', input.optionId);
+        if (input.allowMultiple) {
+          if (input.isSelected) {
+            const deleteQuery = supabase.from('votes').delete().eq('option_id', input.optionId);
+            if (isAnonymous) {
+              deleteQuery.eq('anonymous_token', token!);
+            } else {
+              deleteQuery.eq('student_id', userId!);
+            }
+            const { error } = await deleteQuery;
+            if (error) throw error;
+          } else {
+            const { error } = await supabase.from('votes').insert({
+              poll_id: input.pollId,
+              option_id: input.optionId,
+              student_id: isAnonymous ? null : userId!,
+              anonymous_token: token,
+            });
+            if (error) throw error;
+          }
+        } else {
+          const deleteQuery = supabase.from('votes').delete().eq('poll_id', input.pollId);
           if (isAnonymous) {
             deleteQuery.eq('anonymous_token', token!);
           } else {
             deleteQuery.eq('student_id', userId!);
           }
-          const { error } = await deleteQuery;
-          if (error) throw error;
-        } else {
-          // Toggle ON: insert the vote for this option
-          const { error } = await supabase.from('votes').insert({
-            poll_id: input.pollId,
-            option_id: input.optionId,
-            student_id: isAnonymous ? null : userId!,
-            anonymous_token: token,
-          });
-          if (error) throw error;
-        }
-      } else {
-        // Single-select poll: change or cast vote
-        // First delete any existing vote on this poll for this user
-        const deleteQuery = supabase.from('votes').delete().eq('poll_id', input.pollId);
-        if (isAnonymous) {
-          deleteQuery.eq('anonymous_token', token!);
-        } else {
-          deleteQuery.eq('student_id', userId!);
-        }
-        const { error: delErr } = await deleteQuery;
-        if (delErr) throw delErr;
+          const { error: delErr } = await deleteQuery;
+          if (delErr) throw delErr;
 
-        // If they were toggling OFF the already selected option, we are done.
-        // If they clicked a DIFFERENT option (isSelected was false), we insert the new vote.
-        if (!input.isSelected) {
-          const { error } = await supabase.from('votes').insert({
-            poll_id: input.pollId,
-            option_id: input.optionId,
-            student_id: isAnonymous ? null : userId!,
-            anonymous_token: token,
-          });
-          if (error) throw error;
+          if (!input.isSelected) {
+            const { error } = await supabase.from('votes').insert({
+              poll_id: input.pollId,
+              option_id: input.optionId,
+              student_id: isAnonymous ? null : userId!,
+              anonymous_token: token,
+            });
+            if (error) throw error;
+          }
         }
+      };
+
+      if (!navigator.onLine) {
+        if (import.meta.env.DEV) {
+          console.log('[OfflineSync] Network offline. Enqueuing poll vote.');
+        }
+        await enqueueAction('vote', { ...input, userId: userId! });
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then((reg) => {
+            if ('sync' in reg) {
+              return (reg as any).sync.register('sync-offline-actions');
+            }
+          }).catch((err) => console.warn('[OfflineSync] Sync registration failed:', err));
+        }
+        return; // Optimistic success
+      }
+
+      try {
+        await executeMutation();
+      } catch (err: any) {
+        const isNetworkErr = err.message?.includes('Failed to fetch') || err.name === 'TypeError';
+        if (isNetworkErr) {
+          if (import.meta.env.DEV) {
+            console.warn('[OfflineSync] Vote failed due to network error. Enqueuing vote:', err);
+          }
+          await enqueueAction('vote', { ...input, userId: userId! });
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then((reg) => {
+              if ('sync' in reg) {
+                return (reg as any).sync.register('sync-offline-actions');
+              }
+            }).catch((syncErr) => console.warn('[OfflineSync] Sync registration failed:', syncErr));
+          }
+          return; // Optimistic success
+        }
+        throw err;
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['polls'] }),

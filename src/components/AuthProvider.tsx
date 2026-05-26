@@ -6,8 +6,9 @@ import { useAppStore, type AuthUser, type DbNotification } from '../store/appSto
 import { queryClient } from '../lib/queryClient';
 import { showToast } from '../components/Toast';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
-import InstallPwaBanner from './InstallPwaBanner';
 import { ensurePushSubscription } from '../lib/pushNotifications';
+import { saveSession, clearSession, playbackOfflineActionsClient } from '../lib/offlineSync';
+import InstallPwaBanner from './InstallPwaBanner';
 
 const SKIT_DOMAIN = '@skit.ac.in';
 
@@ -89,6 +90,7 @@ async function handleSession(
   }
 
   store.setSession(session);
+  saveSession(session.access_token, user.id);
   // Try to fetch the backend profile; retry a few times in case of eventual consistency
   let profile = await fetchProfile(user.id);
   if (!profile) {
@@ -205,6 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           // Set session IMMEDIATELY so route guards don't redirect to login
           store.setSession(session);
+          saveSession(session.access_token, session.user.id);
           setTimeout(() => {
             handleSession(session.user, session, _navigateFn ?? undefined).catch(err => {
               console.error('[Auth] Error inside async getInitialSession handleSession background task:', err);
@@ -256,8 +259,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           store.setAuthUser(null);
           store.setAuthLoading(false);
           queryClient.clear();
+          clearSession();
         } else if (event === 'TOKEN_REFRESHED' && session) {
           store.setSession(session);
+          saveSession(session.access_token, session.user.id);
         }
       } catch (err) {
         console.error('[Auth] Error in onAuthStateChange callback for event:', event, err);
@@ -459,6 +464,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [authUserId, setNotifications]);
+
+  // Listen for returning online to trigger manual sync of any queued offline mutations
+  useEffect(() => {
+    const handleOnline = () => {
+      if (import.meta.env.DEV) {
+        console.log('[OfflineSync] Browser returned online. Triggering queued actions playback...');
+      }
+      playbackOfflineActionsClient().catch((err) => {
+        console.error('[OfflineSync] Failed to process online action queue playback:', err);
+      });
+      // Notify Service Worker to run sync if supported
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'SYNC_ACTIONS' });
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    // Also trigger on mount just in case there are pending items from last session
+    if (navigator.onLine) {
+      playbackOfflineActionsClient().catch((err) => {
+        console.error('[OfflineSync] Initial online action queue playback failed:', err);
+      });
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
 
   return (
     <>

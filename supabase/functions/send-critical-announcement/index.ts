@@ -47,6 +47,12 @@ Deno.serve(async (req) => {
         title: announcement.title,
         body: announcement.message_content,
         url: `/app/announcements?highlight=${announcement.id}`,
+        tag: "announcements",
+        type: "announcement",
+        announcementId: announcement.id,
+        actions: [
+          { action: "ack", title: "👍 Acknowledge" }
+        ]
       });
 
       if (result.ok) {

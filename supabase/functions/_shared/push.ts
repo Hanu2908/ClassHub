@@ -4,6 +4,10 @@ type PushPayload = {
   title: string;
   body: string;
   url?: string;
+  tag?: string;
+  type?: string;
+  announcementId?: string;
+  actions?: Array<{ action: string; title: string; icon?: string }>;
 };
 
 export async function sendWebPush(

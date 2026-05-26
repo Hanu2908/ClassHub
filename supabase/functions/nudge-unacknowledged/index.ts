@@ -81,6 +81,12 @@ Deno.serve(async (req: Request) => {
         title: notifTitle,
         body: notifBody,
         url: `/app/announcements?highlight=${announcement.id}`,
+        tag: `nudge-${announcement.id}`,
+        type: "nudge",
+        announcementId: announcement.id,
+        actions: [
+          { action: "ack", title: "👍 Acknowledge" }
+        ]
       });
 
       if (result.ok) {
