@@ -72,6 +72,8 @@ Deno.serve(async (req: Request) => {
     const notifTitle = `Assignment due: ${assignment.title}`;
     const notifBody = `Due ${new Date(assignment.due_date).toLocaleString()}`;
 
+    const loggedUserIds = new Set<string>();
+
     await processBatched(subscriptions ?? [], async (sub) => {
       const result = await sendWebPush(sub, {
         title: notifTitle,
@@ -86,19 +88,22 @@ Deno.serve(async (req: Request) => {
         staleEndpoints.push(sub.endpoint);
       }
 
-      notificationEvents.push({
-        section_id: profile.section_id,
-        recipient_id: sub.user_id,
-        actor_id: user.id,
-        kind: "assignment_reminder",
-        status: result.ok ? "sent" : "failed",
-        target_table: "assignments",
-        target_id: assignment.id,
-        title: notifTitle,
-        body: notifBody,
-        error_message: result.error,
-        sent_at: result.ok ? new Date().toISOString() : null,
-      });
+      if (!loggedUserIds.has(sub.user_id)) {
+        loggedUserIds.add(sub.user_id);
+        notificationEvents.push({
+          section_id: profile.section_id,
+          recipient_id: sub.user_id,
+          actor_id: user.id,
+          kind: "assignment_reminder",
+          status: result.ok ? "sent" : "failed",
+          target_table: "assignments",
+          target_id: assignment.id,
+          title: notifTitle,
+          body: notifBody,
+          error_message: result.error,
+          sent_at: result.ok ? new Date().toISOString() : null,
+        });
+      }
 
       return result;
     });

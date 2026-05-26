@@ -76,6 +76,8 @@ Deno.serve(async (req: Request) => {
     const notifTitle = `Reminder: ${announcement.title}`;
     const notifBody = "Please acknowledge this critical ClassHub notice.";
 
+    const loggedUserIds = new Set<string>();
+
     await processBatched(subscriptions ?? [], async (sub) => {
       const result = await sendWebPush(sub, {
         title: notifTitle,
@@ -96,19 +98,22 @@ Deno.serve(async (req: Request) => {
         staleEndpoints.push(sub.endpoint);
       }
 
-      notificationEvents.push({
-        section_id: profile.section_id,
-        recipient_id: sub.user_id,
-        actor_id: user.id,
-        kind: "ack_nudge",
-        status: result.ok ? "sent" : "failed",
-        target_table: "announcements",
-        target_id: announcement.id,
-        title: notifTitle,
-        body: notifBody,
-        error_message: result.error,
-        sent_at: result.ok ? new Date().toISOString() : null,
-      });
+      if (!loggedUserIds.has(sub.user_id)) {
+        loggedUserIds.add(sub.user_id);
+        notificationEvents.push({
+          section_id: profile.section_id,
+          recipient_id: sub.user_id,
+          actor_id: user.id,
+          kind: "ack_nudge",
+          status: result.ok ? "sent" : "failed",
+          target_table: "announcements",
+          target_id: announcement.id,
+          title: notifTitle,
+          body: notifBody,
+          error_message: result.error,
+          sent_at: result.ok ? new Date().toISOString() : null,
+        });
+      }
 
       return result;
     });

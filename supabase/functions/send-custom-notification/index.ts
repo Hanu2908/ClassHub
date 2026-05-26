@@ -46,6 +46,8 @@ Deno.serve(async (req: Request) => {
     let sent = 0;
     let failed = 0;
 
+    const loggedUserIds = new Set<string>();
+
     await processBatched(subscriptions ?? [], async (subRecord) => {
       const result = await sendWebPush(subRecord, {
         title,
@@ -60,7 +62,8 @@ Deno.serve(async (req: Request) => {
       }
 
       // Collect event in notification_events with correct column name and enum value
-      if (!skipDbInsert) {
+      if (!skipDbInsert && !loggedUserIds.has(subRecord.user_id)) {
+        loggedUserIds.add(subRecord.user_id);
         notificationEvents.push({
           section_id: sectionId,
           recipient_id: subRecord.user_id,
