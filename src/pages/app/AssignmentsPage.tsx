@@ -12,6 +12,7 @@ import { useCreateAssignment, useDeleteAssignment, useUpdateAssignment, useSubmi
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
+import { uploadAttachment } from '../../lib/utils/uploadAttachment';
 import { AssignmentsSkeleton } from '../../components/LoadingSkeletons';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
@@ -151,24 +152,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
       if (parentId && files.length > 0) {
         if (!sectionId || !userId) throw new Error('Missing section context or user context');
         for (const file of files) {
-          const path = `${sectionId}/assignments/${parentId}/${file.name}`;
-          const { error: uploadErr } = await supabase.storage
-            .from('attachments')
-            .upload(path, file, { cacheControl: '3600', upsert: true });
-          if (uploadErr) throw uploadErr;
-
-          const { error: dbErr } = await supabase
-            .from('attachments')
-            .insert({
-              section_id: sectionId,
-              assignment_id: parentId,
-              storage_path: path,
-              filename: file.name,
-              file_size: file.size,
-              file_type: file.type,
-              uploaded_by: userId,
-            });
-          if (dbErr) throw dbErr;
+          await uploadAttachment({ file, sectionId, parentType: 'assignment', parentId, userId });
         }
       }
 

@@ -13,7 +13,7 @@ import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '..
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
-import { buildStoragePath } from '../../lib/utils/attachments';
+import { uploadAttachment } from '../../lib/utils/uploadAttachment';
 import { AnnouncementsSkeleton } from '../../components/LoadingSkeletons';
 
 const DeleteConfirmationModal = lazy(() => import('../../components/DeleteConfirmationModal'));
@@ -58,24 +58,7 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
       if (parentId && files.length > 0) {
         if (!sectionId || !userId) throw new Error('Missing section context or user context');
         for (const file of files) {
-          const path = buildStoragePath(sectionId, 'announcement', parentId, file.name);
-          const { error: uploadErr } = await supabase.storage
-            .from('attachments')
-            .upload(path, file, { cacheControl: '3600', upsert: false });
-          if (uploadErr) throw uploadErr;
-
-          const { error: dbErr } = await supabase
-            .from('attachments')
-            .insert({
-              section_id: sectionId,
-              announcement_id: parentId,
-              storage_path: path,
-              filename: file.name,
-              file_size: file.size,
-              file_type: file.type,
-              uploaded_by: userId,
-            });
-          if (dbErr) throw dbErr;
+          await uploadAttachment({ file, sectionId, parentType: 'announcement', parentId, userId });
         }
       }
 
@@ -323,6 +306,7 @@ export default function AnnouncementsPage() {
 
   // Clear justAckedIds when the tab changes to let the feed refresh
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setJustAckedIds(new Set());
   }, [activeTab]);
 
@@ -550,8 +534,8 @@ export default function AnnouncementsPage() {
         {/* Row 1: Channel Tabs (horizontal scrolling) */}
         <div className="filter-tabs" style={{ marginBottom: 12, paddingBottom: 2 }}>
           {(['active', 'exams', 'schedule', 'campus'] as ChannelTab[]).map(t => {
-            let label = 'Active Feed';
-            let icon = null;
+            let label: string;
+            let icon: React.ReactNode;
             if (t === 'exams') { label = 'Exams'; icon = <Award size={13} />; }
             else if (t === 'schedule') { label = 'Schedule'; icon = <Calendar size={13} />; }
             else if (t === 'campus') { label = 'Campus'; icon = <Coffee size={13} />; }

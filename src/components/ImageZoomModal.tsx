@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom';
 import { X, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface ImageZoomModalProps {
-  url: string;
+  thumbUrl: string;    // Shown immediately (already cached by card)
+  fullUrl: string;     // Loaded in background, swapped when ready
   onClose: () => void;
 }
 
-export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
+export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoomModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -21,6 +22,32 @@ export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
 
   // Sync state just for rendering controls (e.g. enabling/disabling zoom buttons)
   const [currentScale, setCurrentScale] = useState(1);
+
+  // Progressive loading: start with thumb, swap to full when ready
+  const [displayUrl, setDisplayUrl] = useState(thumbUrl);
+  const [isFullLoaded, setIsFullLoaded] = useState(thumbUrl === fullUrl);
+
+  // Preload full-resolution image in the background
+  useEffect(() => {
+    if (thumbUrl === fullUrl) {
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      setDisplayUrl(fullUrl);
+      setIsFullLoaded(true);
+    };
+    img.onerror = () => {
+      // Keep showing thumbnail — no error state needed
+    };
+    img.src = fullUrl;
+
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [thumbUrl, fullUrl]);
 
   // Lock scrolling on document.body
   useEffect(() => {
@@ -232,7 +259,7 @@ export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
       {/* Centered Image */}
       <img
         ref={imgRef}
-        src={url}
+        src={displayUrl}
         alt="Expanded view with zoom support"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -252,6 +279,7 @@ export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
           maxWidth: '100vw',
           maxHeight: '100vh',
           objectFit: 'contain',
+          // eslint-disable-next-line react-hooks/refs
           transform: `translate3d(${posRef.current.x}px, ${posRef.current.y}px, 0) scale(${scaleRef.current})`,
           transition: 'transform 0.16s cubic-bezier(0.25, 1, 0.5, 1)',
           cursor: currentScale > 1 ? 'grab' : 'zoom-in',
@@ -333,6 +361,20 @@ export default function ImageZoomModal({ url, onClose }: ImageZoomModalProps) {
         >
           <ZoomIn size={18} />
         </button>
+
+        {/* HD loading indicator */}
+        {!isFullLoaded && thumbUrl !== fullUrl && (
+          <span style={{
+            fontSize: 9,
+            fontWeight: 600,
+            fontFamily: 'var(--font-mono)',
+            color: 'rgba(255,255,255,0.45)',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+          }}>
+            HD…
+          </span>
+        )}
       </div>
     </div>,
     document.body

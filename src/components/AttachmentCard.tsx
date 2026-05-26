@@ -1,16 +1,21 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, FileText, FileImage, FileCode, File, Loader2, ImageOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Attachment } from '../store/appStore';
 import { isPreviewableImage } from '../lib/utils/attachments';
+import { getThumbPath, decodeAtReducedResolution } from '../lib/utils/imageResize';
 
-// Module-level cache to deduplicate signed URLs across AttachmentCards
-interface CachedUrl {
-  url: string;
+// ── Module-level cache ─────────────────────────────────────────────────────────
+// Deduplicates signed URL requests across AttachmentCard instances.
+
+interface CachedUrls {
+  thumbUrl: string;    // Thumbnail URL (or original URL if no thumbnail exists)
+  fullUrl: string;     // Original full-resolution URL
+  hasThumb: boolean;   // True when a real thumbnail was found
   expiresAt: number;
 }
-const signedUrlCache = new Map<string, CachedUrl>();
+const signedUrlCache = new Map<string, CachedUrls>();
 
 interface AttachmentCardProps {
   attachment: Attachment;
@@ -23,8 +28,16 @@ const ImageZoomModal = React.lazy(() => import('./ImageZoomModal'));
 export const AttachmentCard = React.memo(function AttachmentCard({ attachment, pageNumber }: AttachmentCardProps) {
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
-  const [previewState, setPreviewState] = useState<{ url: string | null; error: boolean; loading: boolean }>({
-    url: null,
+  const [previewState, setPreviewState] = useState<{
+    thumbUrl: string | null;
+    fullUrl: string | null;
+    hasThumb: boolean;
+    error: boolean;
+    loading: boolean;
+  }>({
+    thumbUrl: null,
+    fullUrl: null,
+    hasThumb: false,
     error: false,
     loading: false
   });
@@ -32,6 +45,10 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
   
   // GPU animation tracking state
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+
+  // Option D: downscaled object URL for legacy images (no thumbnail)
+  const downscaledUrlRef = useRef<string | null>(null);
+  const [cardDisplayUrl, setCardDisplayUrl] = useState<string | null>(null);
 
   // Intersection Observer elements
   const cardRef = useRef<HTMLDivElement>(null);
@@ -66,7 +83,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     };
   }, [isImage]);
 
-  // 2. signedUrl Cache and fetcher gated by visibility
+  // 2. Two-tier signed URL fetcher: thumbnail first, fallback to original
   useEffect(() => {
     if (!isImage || !isVisible) return;
 
@@ -75,41 +92,101 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     // Check module cache first
     const cached = signedUrlCache.get(attachment.storagePath);
     if (cached && cached.expiresAt > Date.now()) {
-      setPreviewState({ url: cached.url, error: false, loading: false });
+      setPreviewState({
+        thumbUrl: cached.thumbUrl,
+        fullUrl: cached.fullUrl,
+        hasThumb: cached.hasThumb,
+        error: false,
+        loading: false,
+      });
+      setCardDisplayUrl(cached.thumbUrl);
       return;
     }
 
     setPreviewState(prev => ({ ...prev, loading: true }));
 
-    supabase.storage.from('attachments').createSignedUrl(attachment.storagePath, 3600)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error || !data?.signedUrl) {
-          setPreviewState({ url: null, error: true, loading: false });
-        } else {
-          // Set to module cache (3500 seconds TTL slightly before 3600 seconds token expiry)
-          signedUrlCache.set(attachment.storagePath, {
-            url: data.signedUrl,
-            expiresAt: Date.now() + 3500 * 1000
-          });
-          setPreviewState({ url: data.signedUrl, error: false, loading: false });
-        }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setPreviewState({ url: null, error: true, loading: false });
-      });
+    const fetchUrls = async () => {
+      const expiresAt = Date.now() + 3500 * 1000; // Slightly before 3600s token expiry
+
+      // Step 1: Try to get thumbnail signed URL
+      const thumbPath = getThumbPath(attachment.storagePath);
+      const { data: thumbData, error: thumbError } = await supabase.storage
+        .from('attachments')
+        .createSignedUrl(thumbPath, 3600);
+
+      if (cancelled) return;
+
+      // Step 2: Get the original URL (always needed for modal / fallback)
+      const { data: fullData, error: fullError } = await supabase.storage
+        .from('attachments')
+        .createSignedUrl(attachment.storagePath, 3600);
+
+      if (cancelled) return;
+
+      if (fullError || !fullData?.signedUrl) {
+        // Can't even get the original — error state
+        setPreviewState({ thumbUrl: null, fullUrl: null, hasThumb: false, error: true, loading: false });
+        return;
+      }
+
+      const fullUrl = fullData.signedUrl;
+      const hasThumb = !thumbError && !!thumbData?.signedUrl;
+      const thumbUrl = hasThumb ? thumbData!.signedUrl : fullUrl;
+
+      // Cache result
+      signedUrlCache.set(attachment.storagePath, { thumbUrl, fullUrl, hasThumb, expiresAt });
+
+      setPreviewState({ thumbUrl, fullUrl, hasThumb, error: false, loading: false });
+      setCardDisplayUrl(thumbUrl);
+    };
+
+    fetchUrls().catch(() => {
+      if (!cancelled) {
+        setPreviewState({ thumbUrl: null, fullUrl: null, hasThumb: false, error: true, loading: false });
+      }
+    });
 
     return () => {
       cancelled = true;
     };
   }, [attachment.storagePath, isImage, isVisible]);
 
-  const handleCardClick = async (e: React.MouseEvent) => {
+  // 3. Option D: decode-time downscale for legacy images (no thumbnail found)
+  useEffect(() => {
+    if (!isImageLoaded || previewState.hasThumb || !previewState.fullUrl) return;
+    // Only apply when card is showing the full-res original (no thumb available)
+    if (previewState.thumbUrl !== previewState.fullUrl) return;
+
+    let cancelled = false;
+
+    decodeAtReducedResolution(previewState.fullUrl).then((downscaledUrl) => {
+      if (cancelled) return;
+      // Only swap if we got a different (downscaled) URL
+      if (downscaledUrl !== previewState.fullUrl) {
+        downscaledUrlRef.current = downscaledUrl;
+        setCardDisplayUrl(downscaledUrl);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isImageLoaded, previewState.hasThumb, previewState.fullUrl, previewState.thumbUrl]);
+
+  // Cleanup downscaled object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (downscaledUrlRef.current) {
+        URL.revokeObjectURL(downscaledUrlRef.current);
+      }
+    };
+  }, []);
+
+  const handleCardClick = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (isImage && previewState.url) {
+    if (isImage && previewState.thumbUrl) {
       setShowZoomModal(true);
       return;
     }
@@ -135,7 +212,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     } finally {
       setDownloading(false);
     }
-  };
+  }, [isImage, previewState.thumbUrl, downloading, attachment, pageNumber, navigate]);
 
   const getFileIcon = (type: string) => {
     const t = type.toLowerCase();
@@ -216,7 +293,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
             }}
           >
             {/* Absolute-positioned loader centered inside the container */}
-            {(previewState.loading || (previewState.url && !isImageLoaded && !previewState.error)) && (
+            {(previewState.loading || (cardDisplayUrl && !isImageLoaded && !previewState.error)) && (
               <div style={{ 
                 position: 'absolute',
                 inset: 0,
@@ -234,15 +311,15 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
               </div>
             )}
 
-            {previewState.url && !previewState.error ? (
+            {cardDisplayUrl && !previewState.error ? (
               <img 
-                src={previewState.url} 
+                src={cardDisplayUrl} 
                 alt={attachment.filename} 
                 loading="lazy"
                 decoding="async"
                 fetchPriority="low"
                 onLoad={() => setIsImageLoaded(true)}
-                onError={() => setPreviewState({ url: null, error: true, loading: false })}
+                onError={() => setPreviewState(prev => ({ ...prev, error: true }))}
                 style={{
                   ...getImagePreviewStyle(),
                   opacity: isImageLoaded ? 1 : 0,
@@ -297,13 +374,17 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
         )}
       </div>
 
-      {showZoomModal && previewState.url && (
+      {showZoomModal && previewState.thumbUrl && (
         <React.Suspense fallback={
           <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)' }}>
             <Loader2 className="animate-spin" color="#fff" size={32} />
           </div>
         }>
-          <ImageZoomModal url={previewState.url} onClose={() => setShowZoomModal(false)} />
+          <ImageZoomModal
+            thumbUrl={previewState.thumbUrl}
+            fullUrl={previewState.fullUrl || previewState.thumbUrl}
+            onClose={() => setShowZoomModal(false)}
+          />
         </React.Suspense>
       )}
     </>
