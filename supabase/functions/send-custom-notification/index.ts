@@ -11,9 +11,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
 
   try {
-    const { title, body, sectionId } = await req.json();
+    const { title, body, sectionId, skipDbInsert } = await req.json();
 
-    console.log(`[send-custom-notification] Request:`, { title, body, sectionId });
+    console.log(`[send-custom-notification] Request:`, { title, body, sectionId, skipDbInsert });
 
     if (!title || !body || !sectionId) {
       return new Response(JSON.stringify({ error: "Missing title, body, or sectionId" }), {
@@ -60,18 +60,20 @@ Deno.serve(async (req: Request) => {
       }
 
       // Collect event in notification_events with correct column name and enum value
-      notificationEvents.push({
-        section_id: sectionId,
-        recipient_id: subRecord.user_id,
-        actor_id: user.id,
-        kind: "custom",
-        status: result.ok ? "sent" : "failed",
-        target_table: "announcements",
-        title,
-        body,
-        error_message: result.error,
-        sent_at: result.ok ? new Date().toISOString() : null,
-      });
+      if (!skipDbInsert) {
+        notificationEvents.push({
+          section_id: sectionId,
+          recipient_id: subRecord.user_id,
+          actor_id: user.id,
+          kind: "custom",
+          status: result.ok ? "sent" : "failed",
+          target_table: "announcements",
+          title,
+          body,
+          error_message: result.error,
+          sent_at: result.ok ? new Date().toISOString() : null,
+        });
+      }
 
       return result;
     });

@@ -182,7 +182,8 @@ export function useCreateAssignment() {
             body: {
               title: `📝 New Assignment: ${input.title}`,
               body: `A new assignment has been posted. Due: ${new Date(input.dueDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`,
-              sectionId: sectionId
+              sectionId: sectionId,
+              skipDbInsert: true
             }
           });
         } catch (err) {
@@ -273,7 +274,8 @@ export function useUpdateAssignment() {
             body: {
               title: `Assignment Updated: ${input.title}`,
               body: `The assignment details or deadline have been modified. Please review.`,
-              sectionId: sectionId
+              sectionId: sectionId,
+              skipDbInsert: true
             }
           });
           if (funcError) {
