@@ -12,7 +12,7 @@ import { useCreateAssignment, useDeleteAssignment, useUpdateAssignment, useSubmi
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
-import { uploadAttachment } from '../../lib/utils/uploadAttachment';
+import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { AssignmentsSkeleton } from '../../components/LoadingSkeletons';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
@@ -68,6 +68,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const [files, setFiles] = useState<File[]>([]);
   const [hasSets, setHasSets] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Step 2 fields
   const [totalStudents, setTotalStudents] = useState('');
@@ -77,7 +78,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const reset = () => {
     setStep(1); setTitle(''); setSubjectId(''); setCustomSubjectName('');
     setDueDate(''); setDescription(''); setFiles([]); setHasSets(false);
-    setTotalStudents(''); setGroupSize(''); setSets([]);
+    setTotalStudents(''); setGroupSize(''); setSets([]); setUploadProgress(0);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -151,8 +152,17 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
 
       if (parentId && files.length > 0) {
         if (!sectionId || !userId) throw new Error('Missing section context or user context');
-        for (const file of files) {
-          await uploadAttachment({ file, sectionId, parentType: 'assignment', parentId, userId });
+        
+        const uploadResult = await uploadAttachments(files, {
+          sectionId,
+          parentType: 'assignment',
+          parentId,
+          userId,
+          onProgress: () => setUploadProgress(prev => prev + 1),
+        });
+
+        if (uploadResult.failed.length > 0) {
+          showToast(`${uploadResult.failed.length} file(s) failed to upload`, 'warning');
         }
       }
 
@@ -162,6 +172,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
       showToast(err instanceof Error ? err.message : 'Failed to publish', 'error');
     } finally {
       setIsPublishing(false);
+      setUploadProgress(0);
     }
   };
 
@@ -232,7 +243,13 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
             <button className="btn-secondary" style={{ flex: 1 }} onClick={handleClose}>Cancel</button>
             {hasSets
               ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate || (subjectId === 'other' && !customSubjectName.trim())) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
-              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={pending}>{pending ? 'Publishing…' : 'Publish'}</button>
+              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={pending}>
+                  {pending 
+                    ? (uploadProgress > 0 && files.length > 0
+                      ? `Uploading (${uploadProgress}/${files.length})…`
+                      : 'Publishing…')
+                    : 'Publish'}
+                </button>
             }
           </div>
         </div>
@@ -322,8 +339,14 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
           </button>
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(1)}>← Back</button>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish}>Publish Assignment</button>
+            <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(1)} disabled={pending}>← Back</button>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={pending}>
+              {pending 
+                ? (uploadProgress > 0 && files.length > 0
+                  ? `Uploading (${uploadProgress}/${files.length})…`
+                  : 'Publishing…')
+                : 'Publish Assignment'}
+            </button>
           </div>
         </div>
       )}

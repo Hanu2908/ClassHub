@@ -13,7 +13,7 @@ import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '..
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
-import { uploadAttachment } from '../../lib/utils/uploadAttachment';
+import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { AnnouncementsSkeleton } from '../../components/LoadingSkeletons';
 
 const DeleteConfirmationModal = lazy(() => import('../../components/DeleteConfirmationModal'));
@@ -35,6 +35,7 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   const [deadlineDate, setDeadlineDate] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isPosting, setIsPosting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -57,8 +58,17 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
 
       if (parentId && files.length > 0) {
         if (!sectionId || !userId) throw new Error('Missing section context or user context');
-        for (const file of files) {
-          await uploadAttachment({ file, sectionId, parentType: 'announcement', parentId, userId });
+        
+        const uploadResult = await uploadAttachments(files, {
+          sectionId,
+          parentType: 'announcement',
+          parentId,
+          userId,
+          onProgress: () => setUploadProgress(prev => prev + 1),
+        });
+
+        if (uploadResult.failed.length > 0) {
+          showToast(`${uploadResult.failed.length} file(s) failed to upload`, 'warning');
         }
       }
 
@@ -68,6 +78,7 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
       showToast(err instanceof Error ? err.message : 'Failed to post', 'error');
     } finally {
       setIsPosting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -149,7 +160,11 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
             transition: 'all var(--transition-fast)' }}
         >
           {pending && <Loader size={14} className="spin" />}
-          {pending ? 'Posting…' : 'Post Announcement'}
+          {pending 
+            ? (uploadProgress > 0 && files.length > 0
+              ? `Uploading (${uploadProgress}/${files.length})…`
+              : 'Posting…')
+            : 'Post Announcement'}
         </button>
       </div>
     </BottomSheet>
