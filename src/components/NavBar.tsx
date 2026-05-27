@@ -1,14 +1,14 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
-import { Home, Calendar, BarChart2, User, ShieldCheck, ClipboardCheck } from 'lucide-react';
+import { Home, Calendar, Megaphone, User, ShieldCheck, ClipboardCheck } from 'lucide-react';
 
-// When role=cr: replace Polls tab with CR Command tab
+// When role=cr: replace Announcements tab with CR Command tab
 const STUDENT_TABS = [
-  { id: 'home',       label: 'Home',       icon: Home,           path: '/app/home' },
-  { id: 'schedule',   label: 'Schedule',   icon: Calendar,       path: '/app/schedule' },
-  { id: 'polls',      label: 'Polls',      icon: BarChart2,      path: '/app/polls' },
-  { id: 'attendance', label: 'Attendance', icon: ClipboardCheck, path: '/app/attendance' },
-  { id: 'profile',    label: 'Profile',    icon: User,           path: '/app/profile' },
+  { id: 'home',          label: 'Home',         icon: Home,          path: '/app/home' },
+  { id: 'schedule',      label: 'Schedule',     icon: Calendar,      path: '/app/schedule' },
+  { id: 'announcements', label: 'Notices',      icon: Megaphone,     path: '/app/announcements' },
+  { id: 'attendance',    label: 'Attendance',   icon: ClipboardCheck, path: '/app/attendance' },
+  { id: 'profile',       label: 'Profile',      icon: User,          path: '/app/profile' },
 ] as const;
 
 const CR_TABS = [

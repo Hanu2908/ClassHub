@@ -52,6 +52,7 @@ Deno.serve(async (req: Request) => {
       const result = await sendWebPush(subRecord, {
         title,
         body,
+        url: '/app/home',
       });
 
       if (result.ok) {

@@ -341,9 +341,24 @@ export default function AnnouncementsPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'priority' | 'deadline'>('newest');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [trackingAnnouncement, setTrackingAnnouncement] = useState<Announcement | null>(null);
-  
   // Pending delete target state for confirmation dialog
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [highlightId] = useState<string | null>(() => new URLSearchParams(location.search).get('highlight'));
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  // Clear highlight param from URL without navigation, then scroll to card
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = setTimeout(() => {
+      if (highlightRef.current) {
+        highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      // Clear the param from URL bar without re-render
+      window.history.replaceState({}, '', location.pathname);
+    }, 400);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId]);
 
   const role = useAppStore(s => s.role);
   const authUser = useAppStore(s => s.authUser);
@@ -732,13 +747,22 @@ export default function AnnouncementsPage() {
             const bdg = deadlineBadgeClass(ann.deadline);
             const lbl = deadlineLabel(ann.deadline);
 
+            const isHighlighted = highlightId === ann.id;
             return (
-              <article key={ann.id} className="card announcement-feed-card" style={{
-                borderLeft: isCritical ? '4px solid var(--status-critical)' : undefined,
-                background: isCritical ? 'var(--status-critical-bg)' : undefined,
-                animation: 'fadeSlideUp 0.35s ease both',
-                padding: '16px',
-              }}>
+              <article
+                key={ann.id}
+                ref={isHighlighted ? highlightRef : null}
+                className="card announcement-feed-card"
+                style={{
+                  borderLeft: isCritical ? '4px solid var(--status-critical)' : undefined,
+                  background: isCritical ? 'var(--status-critical-bg)' : undefined,
+                  animation: 'fadeSlideUp 0.35s ease both',
+                  padding: '16px',
+                  outline: isHighlighted ? '2px solid var(--accent-primary)' : undefined,
+                  outlineOffset: isHighlighted ? '2px' : undefined,
+                  boxShadow: isHighlighted ? '0 0 0 4px rgba(74,158,255,0.15)' : undefined,
+                }}
+              >
                 <div className="announcement-card-content">
                   {/* Left balanced column (75%) */}
                   <div className="announcement-card-left">

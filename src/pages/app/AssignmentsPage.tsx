@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
@@ -638,6 +638,7 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AssignmentsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const role = useAppStore(s => s.role);
   const authUser = useAppStore(s => s.authUser);
   const classRoll = authUser?.sectionRoll ?? '17';
@@ -654,6 +655,21 @@ export default function AssignmentsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [now] = useState(() => Date.now());
+  const [highlightId] = useState<string | null>(() => new URLSearchParams(location.search).get('highlight'));
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  // Scroll to highlighted assignment when data loads
+  useEffect(() => {
+    if (!highlightId || !assignments.length) return;
+    const timer = setTimeout(() => {
+      if (highlightRef.current) {
+        highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      window.history.replaceState({}, '', location.pathname);
+    }, 400);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, assignments]);
 
   const handleFilterChange = (f: Filter) => {
     setFilter(f);
@@ -948,8 +964,19 @@ export default function AssignmentsPage() {
               lbl = 'Tomorrow';
             }
 
+            const isHighlighted = highlightId === a.id;
             return (
-              <article key={a.id} className="card" style={{ animation: 'fadeSlideUp 0.35s ease both' }}>
+              <article
+                key={a.id}
+                ref={isHighlighted ? highlightRef : null}
+                className="card"
+                style={{
+                  animation: 'fadeSlideUp 0.35s ease both',
+                  outline: isHighlighted ? '2px solid var(--accent-primary)' : undefined,
+                  outlineOffset: isHighlighted ? '2px' : undefined,
+                  boxShadow: isHighlighted ? '0 0 0 4px rgba(74,158,255,0.15)' : undefined,
+                }}
+              >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {getSubjectIcon(a.subject)}

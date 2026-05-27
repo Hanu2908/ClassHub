@@ -235,7 +235,7 @@ interface AppState {
   hub: HubInfo | null;
 
   // UI
-  activeTab: 'home' | 'schedule' | 'polls' | 'profile' | 'cr-command' | 'attendance';
+  activeTab: 'home' | 'schedule' | 'polls' | 'profile' | 'cr-command' | 'attendance' | 'announcements';
   deferredPrompt: BeforeInstallPromptEvent | null;
 
   // In-app notifications (client-only)

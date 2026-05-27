@@ -184,6 +184,7 @@ function WidgetSkeleton({ height = 80 }: { height?: number }) {
 
 // ── Notification sheet ──────────────────────────────────────────────────────
 function NotificationSheet({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
   const { notifications, markAllNotificationsRead, clearNotification, clearAllNotifications } = useAppStore();
 
   const [now] = useState(() => Date.now());
@@ -198,6 +199,26 @@ function NotificationSheet({ onClose }: { onClose: () => void }) {
       markAllNotificationsRead();
     }
   }, [notifications, markAllNotificationsRead]);
+
+  // Deep-link: map target_table + target_id to a URL
+  function getNotificationUrl(n: import('../../store/appStore').AppNotification): string | null {
+    const id = n.target_id;
+    const table = n.target_table ?? n.kind;
+    if (!table) return null;
+    if (table === 'polls') return id ? `/app/polls?highlight=${id}` : '/app/polls';
+    if (table === 'assignments') return id ? `/app/assignments?highlight=${id}` : '/app/assignments';
+    if (table === 'announcements') return id ? `/app/announcements?highlight=${id}` : '/app/announcements';
+    if (table === 'timetable_slots') return '/app/schedule';
+    return null;
+  }
+
+  function handleNotificationClick(n: import('../../store/appStore').AppNotification) {
+    const url = getNotificationUrl(n);
+    if (url) {
+      onClose();
+      navigate(url);
+    }
+  }
 
   return (
     <BottomSheet onClose={onClose} title="Notifications">
@@ -221,30 +242,37 @@ function NotificationSheet({ onClose }: { onClose: () => void }) {
               Clear all
             </button>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {visibleNotifications.map(n => (
-                <div key={n.id} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 10,
-                  padding: '12px 14px',
-                  background: n.read ? 'var(--bg-elevated)' : 'rgba(74,158,255,0.07)',
-                  border: `1px solid ${n.read ? 'var(--border-default)' : 'rgba(74,158,255,0.2)'}`,
-                  borderRadius: 'var(--radius-md)',
-                }}>
-                  {!n.read ? (
-                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent-primary)', flexShrink: 0, marginTop: 4 }} />
-                  ) : null}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p className="t-subtitle" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{n.title}</p>
-                    <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>{n.body}</p>
-                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</p>
-                  </div>
-                  <button
-                    onClick={() => clearNotification(n.id)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}
+              {visibleNotifications.map(n => {
+                const hasLink = !!getNotificationUrl(n);
+                return (
+                  <div key={n.id} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    padding: '12px 14px',
+                    background: n.read ? 'var(--bg-elevated)' : 'rgba(74,158,255,0.07)',
+                    border: `1px solid ${n.read ? 'var(--border-default)' : 'rgba(74,158,255,0.2)'}`,
+                    borderRadius: 'var(--radius-md)',
+                    cursor: hasLink ? 'pointer' : 'default',
+                    transition: 'background 0.15s',
+                  }}
+                  onClick={() => handleNotificationClick(n)}
                   >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
+                    {!n.read ? (
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent-primary)', flexShrink: 0, marginTop: 4 }} />
+                    ) : null}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p className="t-subtitle" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{n.title}</p>
+                      <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>{n.body}</p>
+                      <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); clearNotification(n.id); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
@@ -1680,15 +1708,8 @@ export default function DashboardPage() {
               </span>
             )}
           </button>
-          <button 
-            id="announcements-btn" 
-            aria-label="Announcements" 
-            onClick={() => navigate('/app/announcements')} 
-            onMouseEnter={prefetchAnnouncements}
-            onTouchStart={prefetchAnnouncements}
-            style={iconButtonStyle}
-          >
-            <MessageSquare size={20} />
+          <button id="polls-btn" aria-label="Polls" onClick={() => navigate('/app/polls')} style={iconButtonStyle}>
+            <BarChart2 size={20} />
           </button>
         </div>
       </header>

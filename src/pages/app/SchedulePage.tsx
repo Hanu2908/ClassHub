@@ -130,7 +130,7 @@ function AddSlotSheet({ day, existingSlots, onClose }: AddSlotSheetProps) {
       setEndTime(calculateEndTime(nextStart, type));
       // Room & teacher remembered, subject cleared for next pick
       setSubjectId('');
-    } catch { showToast('Failed to add slot', 'error'); }
+    } catch (err: any) { showToast(`Failed to add slot: ${err.message || 'Unknown'}`, 'error'); }
   };
 
   return (
@@ -995,8 +995,8 @@ export default function SchedulePage() {
                     try {
                       await deleteSlotMutation.mutateAsync(slotToDelete.id);
                       showToast('Class successfully removed', 'info');
-                    } catch {
-                      showToast('Failed to remove class', 'error');
+                    } catch (err: any) {
+                      showToast(`Failed to remove class: ${err.message || 'Unknown'}`, 'error');
                     }
                     setSlotToDelete(null);
                   }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, AlertTriangle, BarChart2, Trash2, X, Circle, CircleDot, Square, CheckSquare } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
@@ -6,7 +6,7 @@ import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { usePolls, useActionablePollVotes } from '../../hooks/useSupabaseQuery';
+import { usePolls, useActionablePollVotes, useSchedule } from '../../hooks/useSupabaseQuery';
 import { useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/useSupabaseMutations';
 import { BottomSheet } from '../../components/BottomSheet';
 import { PollsSkeleton } from '../../components/LoadingSkeletons';
@@ -35,6 +35,7 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
   );
 
   const isClosed = poll.status === 'closed';
+  const isMassBunkPoll = poll.options.length === 2 && poll.options.some(o => o.text === 'Ditch & Chill');
 
   const handleVote = async (optId: string, isSelected: boolean) => {
     if (isClosed) return;
@@ -147,15 +148,43 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
                       </div>
                       {showResults && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span className="t-mono" style={{ color: 'var(--accent-primary)' }}>{pct}%</span>
+                          <span className="t-mono" style={{ color: isMassBunkPoll && opt.text === 'Ditch & Chill' && pct >= 60 ? 'var(--status-critical)' : 'var(--accent-primary)' }}>{pct}%</span>
                           <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>({opt.votes})</span>
                         </div>
                       )}
                     </div>
                     {showResults && (
-                      <div style={{ height: 4, background: 'var(--bg-base)', borderRadius: 2, overflow: 'hidden', marginLeft: 23 }}>
-                        <div className="vote-bar-fill" style={{ width: `${pct}%` }} />
+                      <div style={{ 
+                        height: isMassBunkPoll && opt.text === 'Ditch & Chill' ? 6 : 4, 
+                        background: 'var(--bg-base)', 
+                        borderRadius: 3, 
+                        overflow: 'hidden', 
+                        marginLeft: 23,
+                        marginTop: isMassBunkPoll && opt.text === 'Ditch & Chill' ? 4 : 0
+                      }}>
+                        <div 
+                          className="vote-bar-fill" 
+                          style={{ 
+                            width: `${pct}%`,
+                            background: isMassBunkPoll && opt.text === 'Ditch & Chill' 
+                              ? (pct >= 60 ? 'linear-gradient(90deg, #ff4444, #ff0055)' : 'linear-gradient(90deg, #ffb547, #ff8c00)') 
+                              : undefined,
+                            transition: 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s ease-out'
+                          }} 
+                        />
                       </div>
+                    )}
+                    {showResults && isMassBunkPoll && opt.text === 'Ditch & Chill' && (
+                       <p className="t-mono-sm" style={{ 
+                         marginLeft: 23, marginTop: 8, 
+                         color: pct >= 60 ? 'var(--status-critical)' : 'var(--status-warning)',
+                         fontWeight: pct >= 60 ? 600 : 400
+                       }}>
+                         {pct < 21 ? "Low energy... are we really going to sit through this?" :
+                          pct < 41 ? "Building momentum. Grab your friends." :
+                          pct < 60 ? "Right on the edge! Need a few more rebels." :
+                          "BUNK IS ON! Cancel the alarms, we are staying in."}
+                       </p>
                     )}
                   </div>
                 </button>
@@ -252,6 +281,27 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const { data: schedule } = useSchedule();
+  const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+  const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const todaysClasses = ((schedule as any || {})[DAY_MAP[todayStr] ?? 1] || []).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
+
+  const applyMassBunkTemplate = (className: string, classStartTime: string) => {
+    setQuestion(`Are we bunking ${className} today?`);
+    setPollType('actionable');
+    setOptions(['Ditch & Chill', 'Front Bench Energy']);
+    setAllowMultiple(false);
+    
+    const now = new Date();
+    const [h, m] = classStartTime.split(':').map(Number);
+    const classTime = new Date(now);
+    classTime.setHours(h, m, 0, 0);
+    
+    // If class already started or is in past, default to 1 hour
+    const diffHours = (classTime.getTime() - now.getTime()) / 3600000;
+    setExpiryHours(diffHours > 0 ? diffHours.toFixed(1) : '1');
+  };
+
   const handleAddOption = () => {
     if (options.length >= 6) {
       showToast('Maximum 6 options allowed', 'warning');
@@ -322,6 +372,38 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
   return (
     <BottomSheet onClose={onClose} title="Create Poll">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 24 }}>
+        
+        {/* Mass Bunk Template Quick Picks */}
+        {todaysClasses.length > 0 && (
+          <div style={{ marginBottom: 4 }}>
+            <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
+              ⚡ Quick Templates (Today's Classes)
+            </label>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+              {todaysClasses.map((c: any) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => applyMassBunkTemplate(c.subject, c.startTime)}
+                  style={{
+                    background: 'rgba(251, 191, 36, 0.1)',
+                    border: '1px solid rgba(251, 191, 36, 0.3)',
+                    color: 'var(--status-warning)',
+                    padding: '6px 12px',
+                    borderRadius: 100,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Mass Bunk: {c.subject}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Question */}
         <div>
           <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
@@ -513,12 +595,31 @@ export default function PollsPage() {
   const [showCreateSheet, setShowCreateSheet] = useState(() => Boolean(location.state?.openCreate));
   const { data: polls = [], isLoading } = usePolls();
   const deletePollMutation = useDeletePoll();
+  
+  const [highlightId] = useState<string | null>(() => new URLSearchParams(location.search).get('highlight'));
+  const highlightRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (location.state?.openCreate) {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  // Clear highlight param from URL without navigation, then scroll to card
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = setTimeout(() => {
+      if (highlightRef.current) {
+        highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Remove ?highlight from URL visually
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('highlight');
+        window.history.replaceState({}, '', newUrl.toString());
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [highlightId]);
 
   // Auto-expiry: hide polls gone past closesAt + 2 days
   const [now] = useState(Date.now);
@@ -569,7 +670,22 @@ export default function PollsPage() {
           <PollsSkeleton />
         ) : filtered.length === 0
           ? <EmptyState icon={<BarChart2 size={36} color="var(--text-muted)" />} title="No polls here" subtitle="Check back later" />
-          : filtered.map(p => <PollCard key={p.id} poll={p} onDelete={handleDelete} />)
+          : filtered.map(p => {
+              const isHighlighted = highlightId === p.id;
+              return (
+                <div 
+                  key={p.id}
+                  ref={isHighlighted ? highlightRef : null}
+                  style={isHighlighted ? { 
+                    boxShadow: '0 0 0 2px var(--accent-primary)',
+                    borderRadius: 'var(--radius-lg)',
+                    transition: 'box-shadow 0.5s ease-out'
+                  } : {}}
+                >
+                  <PollCard poll={p} onDelete={handleDelete} />
+                </div>
+              );
+            })
         }
       </main>
 

@@ -1,14 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { DoorOpen, PlusCircle, ChevronRight } from 'lucide-react';
 
-const ClassHubLogo = () => (
-  <svg viewBox="0 0 52 52" fill="none" style={{ width: 52, height: 52 }}>
-    <path d="M26 4L47 16V40L26 52L5 40V16L26 4Z" stroke="var(--accent-primary)" strokeWidth="1.5" fill="var(--accent-primary-glow)" />
-    <path d="M26 14L39 21.5V36.5L26 44L13 36.5V21.5L26 14Z" stroke="rgba(74,158,255,0.3)" strokeWidth="0.75" fill="none" />
-    <circle cx="26" cy="26" r="3" fill="var(--accent-primary)" />
-  </svg>
-);
-
 export default function ChoicePage() {
   const navigate = useNavigate();
 
@@ -33,7 +25,9 @@ export default function ChoicePage() {
         {/* Logo + title */}
         <div style={{ textAlign: 'center', marginBottom: 48 }} className="stagger-1">
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <ClassHubLogo />
+            <div className="logo-wrap">
+              <img src="/app_icon.svg" alt="ClassHub" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
           </div>
           <h1 className="text-display" style={{ marginBottom: 8 }}>ClassHub</h1>
           <p className="t-body" style={{ color: 'var(--text-secondary)' }}>

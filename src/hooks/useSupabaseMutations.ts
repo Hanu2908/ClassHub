@@ -387,6 +387,15 @@ export function useCreatePoll() {
         }))
       );
       if (optErr) throw optErr;
+
+      // Fire push notifications to section members (best-effort — don't block on failure)
+      try {
+        await supabase.functions.invoke('send-new-poll-notification', {
+          body: { pollId: poll.id },
+        });
+      } catch {
+        // Non-critical: push failure should not block poll creation
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['polls'] }),
   });
@@ -523,9 +532,9 @@ export function useUpsertScheduleSlot() {
       type?: string;
       teacher?: string;
     }) => {
+      if (!sectionId || !userId) throw new Error('Not authenticated');
       const row = {
-        ...(input.id ? { id: input.id } : {}),
-        section_id: sectionId!,
+        section_id: sectionId,
         subject_id: input.subjectId,
         day_of_week: input.dayOfWeek,
         start_time: input.startTime,
@@ -533,10 +542,23 @@ export function useUpsertScheduleSlot() {
         room: input.room ?? null,
         type: (input.type?.toLowerCase() ?? 'lecture') as SlotType,
         teacher: input.teacher ?? null,
-        created_by: userId!,
+        created_by: userId,
       };
-      const { error } = await supabase.from('timetable_slots').upsert(row);
-      if (error) throw error;
+
+      if (input.id) {
+        // Update existing slot
+        const { error } = await supabase
+          .from('timetable_slots')
+          .update(row)
+          .eq('id', input.id);
+        if (error) throw error;
+      } else {
+        // Insert new slot
+        const { error } = await supabase
+          .from('timetable_slots')
+          .insert(row);
+        if (error) throw error;
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
   });
