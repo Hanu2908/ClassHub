@@ -280,6 +280,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
   const [expiryHours, setExpiryHours] = useState('24');
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
 
   const { data: schedule } = useSchedule();
   const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'short' });
@@ -370,39 +371,112 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <BottomSheet onClose={onClose} title="Create Poll">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 24 }}>
-        
-        {/* Mass Bunk Template Quick Picks */}
-        {todaysClasses.length > 0 && (
-          <div style={{ marginBottom: 4 }}>
-            <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
-              ⚡ Quick Templates (Today's Classes)
-            </label>
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-              {todaysClasses.map((c: any) => (
+    <BottomSheet 
+      onClose={onClose} 
+      title={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', position: 'relative' }}>
+          <span style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>Create Poll</span>
+          <div>
+            <button
+              id="bunk-template-btn"
+              type="button"
+              onClick={() => setShowTemplateDropdown(prev => !prev)}
+              style={{
+                background: 'rgba(251, 191, 36, 0.12)',
+                border: '1px solid rgba(251, 191, 36, 0.4)',
+                color: 'var(--status-warning)',
+                padding: '5px 10px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.2s',
+              }}
+            >
+              <span>⚡ Bunk Template</span>
+            </button>
+            {showTemplateDropdown && (
+              <div style={{
+                position: 'absolute',
+                top: '32px',
+                right: '0px',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                zIndex: 1000,
+                width: '200px',
+                padding: '6px 0',
+              }}>
+                {todaysClasses.length > 0 ? (
+                  <>
+                    <div style={{ padding: '6px 12px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border-default)' }}>
+                      Select Today's Class:
+                    </div>
+                    {todaysClasses.map((c: any) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          applyMassBunkTemplate(c.subject, c.startTime);
+                          setShowTemplateDropdown(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-primary)',
+                          padding: '8px 12px',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                      >
+                        {c.subject} ({c.startTime})
+                      </button>
+                    ))}
+                    <div style={{ borderTop: '1px solid var(--border-default)', margin: '4px 0' }} />
+                  </>
+                ) : (
+                  <div style={{ padding: '6px 12px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    No classes scheduled today
+                  </div>
+                )}
                 <button
-                  key={c.id}
                   type="button"
-                  onClick={() => applyMassBunkTemplate(c.subject, c.startTime)}
-                  style={{
-                    background: 'rgba(251, 191, 36, 0.1)',
-                    border: '1px solid rgba(251, 191, 36, 0.3)',
-                    color: 'var(--status-warning)',
-                    padding: '6px 12px',
-                    borderRadius: 100,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                    cursor: 'pointer',
+                  onClick={() => {
+                    applyMassBunkTemplate('Class', '12:00');
+                    setShowTemplateDropdown(false);
                   }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--status-warning)',
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                 >
-                  Mass Bunk: {c.subject}
+                  Apply Generic Template
                 </button>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 24 }}>
 
         {/* Question */}
         <div>
