@@ -376,11 +376,18 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', position: 'relative' }}>
           <span style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>Create Poll</span>
-          <div>
+          <div
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               id="bunk-template-btn"
               type="button"
-              onClick={() => setShowTemplateDropdown(prev => !prev)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTemplateDropdown(prev => !prev);
+              }}
               style={{
                 background: 'rgba(251, 191, 36, 0.12)',
                 border: '1px solid rgba(251, 191, 36, 0.4)',
@@ -396,7 +403,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
                 transition: 'all 0.2s',
               }}
             >
-              <span>⚡ Bunk Template</span>
+              <span>Mass Bunk</span>
             </button>
             {showTemplateDropdown && (
               <div style={{
