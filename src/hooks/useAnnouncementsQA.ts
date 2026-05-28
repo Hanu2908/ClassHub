@@ -96,7 +96,7 @@ export function useAnnouncementReactions(announcementId: string) {
           announcement_id,
           user_id,
           emoji,
-          users:user_id (name)
+          users (name)
         `)
         .eq('announcement_id', announcementId);
 
@@ -129,7 +129,7 @@ export function useAnnouncementComments(announcementId: string) {
           content,
           is_verified,
           created_at,
-          users:author_id (name, section_roll, role)
+          users (name, section_roll, role)
         `)
         .eq('announcement_id', announcementId)
         .order('created_at', { ascending: true });
