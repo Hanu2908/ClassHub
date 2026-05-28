@@ -10,6 +10,7 @@ import { useAppStore, isExpired, type Announcement, type Attachment } from '../.
 import { showToast } from '../../components/Toast';
 import { useAnnouncements, useSectionMembers } from '../../hooks/useSupabaseQuery';
 import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useSupabaseMutations';
+import { AnnouncementReactions, AnnouncementCommentTrigger, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
@@ -346,6 +347,25 @@ export default function AnnouncementsPage() {
   const [highlightId] = useState<string | null>(() => new URLSearchParams(location.search).get('highlight'));
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
+  // Q&A Comments Drawer States
+  const [openCommentsAnnId, setOpenCommentsAnnId] = useState<string | null>(null);
+  const [focusCommentId, setFocusCommentId] = useState<string | null>(null);
+
+  // Parse deep-linking Q&A parameters on mount/location change
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const expandQA = params.get('expand_qa') === 'true';
+    const commentId = params.get('focus_comment');
+
+    if (id && expandQA) {
+      setOpenCommentsAnnId(id);
+      if (commentId) {
+        setFocusCommentId(commentId);
+      }
+    }
+  }, [location.search]);
+
   // Clear highlight param from URL without navigation, then scroll to card
   useEffect(() => {
     if (!highlightId) return;
@@ -516,7 +536,7 @@ export default function AnnouncementsPage() {
         return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
       }
     });
-  }, [visible, activeTab, filter, searchQuery, sortBy, now]);
+  }, [visible, activeTab, filter, searchQuery, sortBy, now, justAckedIds]);
 
   const groupedAnnouncements = useMemo(() => {
     return groupByTimeline(filtered, now);
@@ -875,6 +895,25 @@ export default function AnnouncementsPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Q&A & Emoji Reactions Card Footer */}
+                <div style={{
+                  marginTop: '14px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid var(--border-default)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  flexWrap: 'wrap'
+                }}>
+                  <AnnouncementReactions announcementId={ann.id} />
+                  
+                  <AnnouncementCommentTrigger 
+                    announcementId={ann.id} 
+                    onOpenComments={() => setOpenCommentsAnnId(ann.id)} 
+                  />
+                </div>
               </article>
             );
           };
@@ -948,6 +987,25 @@ export default function AnnouncementsPage() {
           />
         )}
       </Suspense>
+
+      {openCommentsAnnId && (
+        <AnnouncementCommentsDrawer
+          announcementId={openCommentsAnnId}
+          focusCommentId={focusCommentId}
+          onClose={() => {
+            setOpenCommentsAnnId(null);
+            setFocusCommentId(null);
+            // Clear URL search params without page reload
+            const params = new URLSearchParams(window.location.search);
+            params.delete('id');
+            params.delete('expand_qa');
+            params.delete('focus_comment');
+            const newSearch = params.toString();
+            const newPath = window.location.pathname + (newSearch ? `?${newSearch}` : '');
+            window.history.replaceState({}, '', newPath);
+          }}
+        />
+      )}
 
       <NavBar />
     </div>
