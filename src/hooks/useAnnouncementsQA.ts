@@ -46,8 +46,9 @@ export function useAnnouncementQARealtime(announcementId: string) {
   useEffect(() => {
     if (!announcementId) return;
 
+    const uniqueId = Math.random().toString(36).slice(2, 9);
     const channel = supabase
-      .channel(`announcement-qa-realtime-${announcementId}`)
+      .channel(`announcement-qa-realtime-${announcementId}-${uniqueId}`)
       .on(
         'postgres_changes',
         {
