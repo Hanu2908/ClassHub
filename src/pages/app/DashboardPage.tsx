@@ -874,7 +874,7 @@ function AnnouncementsScroll() {
     
     if (priority === 'critical' || t.includes('urgent') || t.includes('attention') || t.includes('alert') || t.includes('important')) {
       return {
-        name: 'Critical Alert',
+        name: 'Immediate Alert',
         icon: <AlertTriangle size={14} color="#f87171" />,
         color: '#f87171',
         bgColor: 'rgba(239, 68, 68, 0.08)',

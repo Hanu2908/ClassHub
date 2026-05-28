@@ -122,7 +122,7 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
               onChange={e => setPriority(e.target.value as 'general' | 'critical')}
             >
               <option value="general">General</option>
-              <option value="critical">Critical</option>
+              <option value="critical">Immediate</option>
             </select>
           </div>
         </div>
@@ -187,7 +187,7 @@ function getAnnouncementCategory(title: string, priority: 'critical' | 'general'
   
   if (priority === 'critical' || t.includes('urgent') || t.includes('attention') || t.includes('alert') || t.includes('important')) {
     return {
-      name: 'Critical Alert',
+      name: 'Immediate Alert',
       icon: <AlertTriangle size={14} color="#f87171" />,
       color: '#f87171',
       bgColor: 'rgba(239, 68, 68, 0.08)',
@@ -768,19 +768,19 @@ export default function AnnouncementsPage() {
         
         // Check exams
         const hasExamKeywords = lowerTitle.includes('exam') || lowerTitle.includes('test') || lowerTitle.includes('quiz') || lowerTitle.includes('midterm') || lowerTitle.includes('practical') || lowerTitle.includes('mst') || lowerTitle.includes('assessment') || lowerTitle.includes('viva');
-        if (categoryName === 'Academic Exam' || (categoryName === 'Critical Alert' && hasExamKeywords)) {
+        if (categoryName === 'Academic Exam' || (categoryName === 'Immediate Alert' && hasExamKeywords)) {
           counts.exams++;
         }
         
         // Check schedule
         const hasScheduleKeywords = lowerTitle.includes('schedule') || lowerTitle.includes('class') || lowerTitle.includes('timing') || lowerTitle.includes('timetable') || lowerTitle.includes('slot') || lowerTitle.includes('rescheduled') || lowerTitle.includes('postponed');
-        if (categoryName === 'Schedule Change' || (categoryName === 'Critical Alert' && hasScheduleKeywords)) {
+        if (categoryName === 'Schedule Change' || (categoryName === 'Immediate Alert' && hasScheduleKeywords)) {
           counts.schedule++;
         }
         
         // Check campus
         const isGeneralOrHoliday = categoryName === 'Campus Holiday' || categoryName === 'General Announcement';
-        const isCriticalGeneral = categoryName === 'Critical Alert' && !hasExamKeywords && !hasScheduleKeywords;
+        const isCriticalGeneral = categoryName === 'Immediate Alert' && !hasExamKeywords && !hasScheduleKeywords;
         if (isGeneralOrHoliday || isCriticalGeneral) {
           counts.campus++;
         }
@@ -804,15 +804,15 @@ export default function AnnouncementsPage() {
         matchesTab = !a.isAcknowledged || justAckedIds.has(a.id);
       } else if (activeTab === 'exams') {
         const hasExamKeywords = lowerTitle.includes('exam') || lowerTitle.includes('test') || lowerTitle.includes('quiz') || lowerTitle.includes('midterm') || lowerTitle.includes('practical') || lowerTitle.includes('mst') || lowerTitle.includes('assessment') || lowerTitle.includes('viva');
-        matchesTab = categoryName === 'Academic Exam' || (categoryName === 'Critical Alert' && hasExamKeywords);
+        matchesTab = categoryName === 'Academic Exam' || (categoryName === 'Immediate Alert' && hasExamKeywords);
       } else if (activeTab === 'schedule') {
         const hasScheduleKeywords = lowerTitle.includes('schedule') || lowerTitle.includes('class') || lowerTitle.includes('timing') || lowerTitle.includes('timetable') || lowerTitle.includes('slot') || lowerTitle.includes('rescheduled') || lowerTitle.includes('postponed');
-        matchesTab = categoryName === 'Schedule Change' || (categoryName === 'Critical Alert' && hasScheduleKeywords);
+        matchesTab = categoryName === 'Schedule Change' || (categoryName === 'Immediate Alert' && hasScheduleKeywords);
       } else if (activeTab === 'campus') {
         const hasExamKeywords = lowerTitle.includes('exam') || lowerTitle.includes('test') || lowerTitle.includes('quiz') || lowerTitle.includes('midterm') || lowerTitle.includes('practical') || lowerTitle.includes('mst') || lowerTitle.includes('assessment') || lowerTitle.includes('viva');
         const hasScheduleKeywords = lowerTitle.includes('schedule') || lowerTitle.includes('class') || lowerTitle.includes('timing') || lowerTitle.includes('timetable') || lowerTitle.includes('slot') || lowerTitle.includes('rescheduled') || lowerTitle.includes('postponed');
         const isGeneralOrHoliday = categoryName === 'Campus Holiday' || categoryName === 'General Announcement';
-        const isCriticalGeneral = categoryName === 'Critical Alert' && !hasExamKeywords && !hasScheduleKeywords;
+        const isCriticalGeneral = categoryName === 'Immediate Alert' && !hasExamKeywords && !hasScheduleKeywords;
         matchesTab = isGeneralOrHoliday || isCriticalGeneral;
       }
 
@@ -949,7 +949,7 @@ export default function AnnouncementsPage() {
                 onClick={() => setFilter(f)}
                 style={{ textTransform: 'capitalize', padding: '6px 12px', fontSize: '11px' }}
               >
-                {f}
+                {f === 'critical' ? 'immediate' : f}
               </button>
             ))}
           </div>

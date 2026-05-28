@@ -1177,8 +1177,8 @@ export default function CRCommandPage() {
               <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Announcement</span>
             </button>
             <button className="card" onClick={() => setShowNotifSheet(true)} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
-              <Bell size={16} color="var(--status-critical)" />
-              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Notification</span>
+              <AlertTriangle size={16} color="var(--status-critical)" />
+              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Flash Post</span>
             </button>
             <button className="card" onClick={() => navigate('/app/assignments', { state: { openCreate: true } })} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <ClipboardList size={16} color="var(--status-safe)" />
