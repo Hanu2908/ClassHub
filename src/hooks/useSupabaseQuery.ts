@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
@@ -405,6 +406,52 @@ export function usePolls() {
       });
     },
   });
+}
+
+export function usePollsRealtime(sectionId: string | null) {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (!sectionId) return;
+
+    const uniqueId = Math.random().toString(36).slice(2, 9);
+    const channel = supabase
+      .channel(`polls-realtime-${sectionId}-${uniqueId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'polls',
+          filter: `section_id=eq.${sectionId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ['polls', sectionId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'votes',
+        },
+        (payload: any) => {
+          qc.invalidateQueries({ queryKey: ['polls', sectionId] });
+          if (payload.new && payload.new.poll_id) {
+            qc.invalidateQueries({ queryKey: ['actionable_poll_votes', payload.new.poll_id] });
+          }
+          if (payload.old && payload.old.poll_id) {
+            qc.invalidateQueries({ queryKey: ['actionable_poll_votes', payload.old.poll_id] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [sectionId, qc]);
 }
 
 export interface ActionablePollVote {

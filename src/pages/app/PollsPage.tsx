@@ -6,7 +6,7 @@ import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { usePolls, useActionablePollVotes, useSchedule } from '../../hooks/useSupabaseQuery';
+import { usePolls, useActionablePollVotes, useSchedule, usePollsRealtime, useSectionMembers } from '../../hooks/useSupabaseQuery';
 import { useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/useSupabaseMutations';
 import { BottomSheet } from '../../components/BottomSheet';
 import { PollsSkeleton } from '../../components/LoadingSkeletons';
@@ -21,7 +21,7 @@ function timeLeft(iso: string): string {
   return days > 0 ? `Closes in ${days}d ${hrs}h` : `Closes in ${hrs}h`;
 }
 
-function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => void }) {
+function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id: string) => void; totalStudents: number }) {
   const role = useAppStore(s => s.role);
   const voteMutation = useVotePoll();
   const userVotes = poll.userVotes ?? (poll.userVote ? [poll.userVote] : []);
@@ -36,6 +36,10 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
 
   const isClosed = poll.status === 'closed';
   const isMassBunkPoll = poll.options.length === 2 && poll.options.some(o => o.text === 'Ditch & Chill');
+
+  const ditchOpt = poll.options.find(o => o.text === 'Ditch & Chill');
+  const ditchVotes = ditchOpt ? ditchOpt.votes : 0;
+  const ditchPct = isMassBunkPoll ? Math.min(100, Math.round((ditchVotes / totalStudents) * 100)) : 0;
 
   const handleVote = async (optId: string, isSelected: boolean) => {
     if (isClosed) return;
@@ -53,8 +57,38 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
     }
   };
 
+  const cardStyle: React.CSSProperties = isMassBunkPoll && ditchPct >= 60 ? {
+    animation: 'massBunkGlow 3s infinite ease-in-out',
+    border: '1px solid rgba(239, 68, 68, 0.45)',
+    marginBottom: 0
+  } : { marginBottom: 0 };
+
   return (
-    <div className="card" style={{ marginBottom: 0 }}>
+    <div className="card" style={cardStyle}>
+      {isMassBunkPoll && ditchPct >= 60 && (
+        <style>{`
+          @keyframes massBunkGlow {
+            0% {
+              box-shadow: 0 0 12px rgba(239, 68, 68, 0.25), inset 0 0 6px rgba(239, 68, 68, 0.1);
+              border-color: rgba(239, 68, 68, 0.35);
+            }
+            50% {
+              box-shadow: 0 0 24px rgba(239, 68, 68, 0.55), inset 0 0 12px rgba(239, 68, 68, 0.25);
+              border-color: rgba(239, 68, 68, 0.7);
+            }
+            100% {
+              box-shadow: 0 0 12px rgba(239, 68, 68, 0.25), inset 0 0 6px rgba(239, 68, 68, 0.1);
+              border-color: rgba(239, 68, 68, 0.35);
+            }
+          }
+          @keyframes pulseWarning {
+            0% { opacity: 0.95; }
+            50% { opacity: 1; transform: scale(1.005); }
+            100% { opacity: 0.95; }
+          }
+        `}</style>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
           {poll.type === 'actionable' && (
@@ -118,7 +152,10 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
       {(!showWarning || warningAccepted || isClosed || userVotes.length > 0) && (
         <div className="vote-bar-wrap">
           {poll.options.map(opt => {
-            const pct = poll.voterCount && poll.voterCount > 0 ? Math.min(100, Math.round((opt.votes / poll.voterCount) * 100)) : 0;
+            const pct = isMassBunkPoll
+              ? Math.min(100, Math.round((opt.votes / totalStudents) * 100))
+              : (poll.voterCount && poll.voterCount > 0 ? Math.min(100, Math.round((opt.votes / poll.voterCount) * 100)) : 0);
+            
             const isSelected = userVotes.includes(opt.id);
             const hasVoted = userVotes.length > 0 || isClosed;
             const showResults = hasVoted || role === 'cr';
@@ -128,6 +165,9 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
               : (isSelected ? CircleDot : Circle);
 
             const optVoters = voterVotes.filter(v => v.optionId === opt.id);
+
+            const hue = 35 + Math.min(1, pct / 60) * 85;
+            const progressColor = `hsl(${hue}, 85%, 50%)`;
 
             return (
               <div key={opt.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -167,9 +207,9 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
                           style={{ 
                             width: `${pct}%`,
                             background: isMassBunkPoll && opt.text === 'Ditch & Chill' 
-                              ? (pct >= 60 ? 'linear-gradient(90deg, #ff4444, #ff0055)' : 'linear-gradient(90deg, #ffb547, #ff8c00)') 
+                              ? `linear-gradient(90deg, hsl(35, 85%, 50%), ${progressColor})`
                               : undefined,
-                            transition: 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s ease-out'
+                            transition: 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.8s ease'
                           }} 
                         />
                       </div>
@@ -201,7 +241,7 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: 'var(--text-secondary)',                        display: 'flex',
+                        color: 'var(--text-secondary)',                        display: 'flex',
                         alignItems: 'center',
                         gap: 4,
                         padding: '2px 0',
@@ -265,8 +305,25 @@ function PollCard({ poll, onDelete }: { poll: Poll; onDelete: (id: string) => vo
         </div>
       )}
 
+      {isMassBunkPoll && ditchPct >= 60 && (
+        <div style={{
+          marginTop: 14,
+          padding: '10px 14px',
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          borderRadius: 'var(--radius-md)',
+          display: 'flex',
+          alignItems: 'center',
+          animation: 'pulseWarning 2.5s infinite ease-in-out'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--status-critical)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            🚨 MASS BUNK IN EFFECT — Stay Safe. (60% section-wide threshold crossed: {ditchVotes} of {totalStudents} members)
+          </span>
+        </div>
+      )}
+
       <p className="t-mono-sm t-body" style={{ color: 'var(--text-muted)', marginTop: 12 }}>
-        {poll.voterCount ?? 0} voted
+        {poll.voterCount ?? 0} voted {isMassBunkPoll ? `(out of ${totalStudents} total members)` : ''}
       </p>
     </div>
   );
@@ -284,8 +341,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
 
   const { data: schedule } = useSchedule();
   const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-  const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  const todaysClasses = ((schedule as any || {})[DAY_MAP[todayStr] ?? 1] || []).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
+  const todaysClasses = (schedule?.[todayStr] || []).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
 
   const applyMassBunkTemplate = (className: string, classStartTime: string) => {
     setQuestion(`Are we bunking ${className} today?`);
@@ -674,8 +730,46 @@ export default function PollsPage() {
   const location = useLocation();
   const [tab, setTab] = useState<PollTab>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(() => Boolean(location.state?.openCreate));
+  
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId ?? null;
+  const role = useAppStore(s => s.role);
+  usePollsRealtime(sectionId);
+
   const { data: polls = [], isLoading } = usePolls();
   const deletePollMutation = useDeletePoll();
+  const createPoll = useCreatePoll();
+
+  const { data: schedule } = useSchedule();
+  const { data: members = [] } = useSectionMembers();
+  const totalStudents = members.length || 1;
+
+  const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+  const todaysClasses = (schedule?.[todayStr] || []).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
+
+  const handleQuickBunk = async (className: string, classStartTime: string) => {
+    try {
+      const now = new Date();
+      const [h, m] = classStartTime.split(':').map(Number);
+      const classTime = new Date(now);
+      classTime.setHours(h, m, 0, 0);
+      
+      const diffHours = (classTime.getTime() - now.getTime()) / 3600000;
+      const expiresAt = new Date(now.getTime() + (diffHours > 0 ? diffHours : 1) * 3600000).toISOString();
+
+      await createPoll.mutateAsync({
+        question: `Are we bunking ${className} today?`,
+        pollType: 'actionable',
+        expiresAt,
+        options: ['Ditch & Chill', 'Front Bench Energy'],
+        allowMultiple: false,
+      });
+
+      showToast(`🚨 Bunk poll launched for ${className}!`, 'success');
+    } catch (err: any) {
+      showToast(err instanceof Error ? err.message : 'Failed to launch bunk poll', 'error');
+    }
+  };
   
   const [highlightId] = useState<string | null>(() => new URLSearchParams(location.search).get('highlight'));
   const highlightRef = useRef<HTMLDivElement | null>(null);
@@ -747,6 +841,135 @@ export default function PollsPage() {
       </header>
 
       <main className="page-content">
+        {role === 'cr' && (
+          <div 
+            className="card" 
+            style={{ 
+              marginBottom: 20, 
+              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(13, 15, 20, 0.4) 100%)',
+              borderColor: 'rgba(251, 191, 36, 0.2)',
+              boxShadow: 'inset 0 0 12px rgba(251, 191, 36, 0.03)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <AlertTriangle size={15} color="var(--status-warning)" />
+              <span className="t-mono-sm font-semibold" style={{ color: 'var(--status-warning)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10.5px' }}>
+                Timetabled Mass Bunks Today
+              </span>
+            </div>
+            
+            {todaysClasses.length > 0 ? (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }} className="no-scrollbar">
+                {todaysClasses.map((c: any) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleQuickBunk(c.subject, c.startTime)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 14px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-pill)',
+                      color: 'var(--text-primary)',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all var(--transition-fast)',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(251, 191, 36, 0.1)';
+                      e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+                      e.currentTarget.style.color = 'var(--status-warning)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                      e.currentTarget.style.borderColor = 'var(--border-default)';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    }}
+                  >
+                    <span>{c.subject}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>({c.startTime})</span>
+                    <Plus size={11} />
+                  </button>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={() => handleQuickBunk('Class', '12:00')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    background: 'rgba(251, 191, 36, 0.05)',
+                    border: '1px dashed rgba(251, 191, 36, 0.3)',
+                    borderRadius: 'var(--radius-pill)',
+                    color: 'var(--status-warning)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all var(--transition-fast)',
+                    outline: 'none',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.12)';
+                    e.currentTarget.style.borderStyle = 'solid';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.05)';
+                    e.currentTarget.style.borderStyle = 'dashed';
+                  }}
+                >
+                  <span>Custom Bunk</span>
+                  <Plus size={11} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                  No classes on schedule today.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleQuickBunk('Class', '12:00')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 12px',
+                    background: 'rgba(251, 191, 36, 0.08)',
+                    border: '1px solid rgba(251, 191, 36, 0.3)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--status-warning)',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.15)';
+                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.5)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(251, 191, 36, 0.08)';
+                    e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.3)';
+                  }}
+                >
+                  <span>Launch Custom Bunk</span>
+                  <Plus size={11} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {isLoading ? (
           <PollsSkeleton />
         ) : filtered.length === 0
@@ -763,7 +986,7 @@ export default function PollsPage() {
                     transition: 'box-shadow 0.5s ease-out'
                   } : {}}
                 >
-                  <PollCard poll={p} onDelete={handleDelete} />
+                  <PollCard poll={p} onDelete={handleDelete} totalStudents={totalStudents} />
                 </div>
               );
             })
