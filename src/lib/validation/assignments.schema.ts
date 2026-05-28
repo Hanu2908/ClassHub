@@ -10,11 +10,11 @@ const SetSchema = z.object({
 });
 
 export const assignmentSchema = z.object({
-  title: z.string(),
+  title: z.string().min(1, 'Title is required').max(200, 'Title is too long'),
   subjectId: z.string().uuid(),
   dueDate: z.string(),
-  sets: z.array(SetSchema).min(1),
-}).refine(data => !hasOverlappingRanges(data.sets.map(s => ({ rollStart: s.rollStart, rollEnd: s.rollEnd }))), {
+  sets: z.array(SetSchema).optional(),
+}).refine(data => !data.sets || data.sets.length === 0 || !hasOverlappingRanges(data.sets.map(s => ({ rollStart: s.rollStart, rollEnd: s.rollEnd }))), {
   message: 'Assignment sets must not overlap',
   path: ['sets'],
 });

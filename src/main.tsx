@@ -8,6 +8,31 @@ import { injectSpeedInsights } from '@vercel/speed-insights'
 import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
+import { reportAutomatedCrash } from './lib/crashTelemetry'
+
+// ── Global Error & Promise Rejection Telemetry Listeners ─────────────────────
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    // Ignore cross-origin third-party script loads which lack actionable traces
+    if (event.message === 'Script error.') return;
+
+    reportAutomatedCrash({
+      title: `Global Error: ${event.message}`,
+      error: event.error || new Error(event.message),
+    });
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const error = event.reason instanceof Error 
+      ? event.reason 
+      : new Error(typeof event.reason === 'string' ? event.reason : 'Unhandled Promise Rejection');
+
+    reportAutomatedCrash({
+      title: `Global Promise Rejection: ${error.message}`,
+      error,
+    });
+  });
+}
 
 // Initialize Vercel edge telemetry
 inject();

@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
 import type { Database } from '../types/database.types';
 import { enqueueAction } from '../lib/offlineSync';
+import { assignmentSchema } from '../lib/validation/assignments.schema';
+import { pollSchema } from '../lib/validation/polls.schema';
+import { timetableSlotSchema } from '../lib/validation/timetable.schema';
 
 type SlotType = Database['public']['Enums']['slot_type'];
 type SubjectIdCode = { id: string; code: string };
@@ -136,7 +139,7 @@ export function useAcknowledge() {
 
 export function useCreateAssignment() {
   const qc = useQueryClient();
-  const { sectionId, userId } = useAuthContext();
+  const { sectionId, userId, role } = useAuthContext();
   return useMutation({
     mutationFn: async (input: {
       title: string;
@@ -145,15 +148,34 @@ export function useCreateAssignment() {
       dueDate: string;
       sets?: { label: string; description: string; rollStart: number; rollEnd: number; pdfUrl?: string | null; pageNumbers?: string | null }[];
     }) => {
+      // 1. Enforce strict CR authorization check
+      if (role !== 'cr') {
+        throw new Error('Unauthorized: Only Class Representatives can create assignments');
+      }
+
+      // 2. Enforce strict Zod schema validation
+      const validated = assignmentSchema.parse({
+        title: input.title.trim(),
+        subjectId: input.subjectId,
+        dueDate: input.dueDate,
+        sets: input.sets ? input.sets.map(s => ({
+          label: s.label,
+          rollStart: s.rollStart,
+          rollEnd: s.rollEnd,
+          description: s.description,
+          pdfUrl: s.pdfUrl ?? undefined,
+        })) : undefined,
+      });
+
       const { data: assignment, error } = await supabase
         .from('assignments')
         .insert({
           section_id: sectionId!,
           created_by: userId!,
-          title: input.title,
-          description: input.description ?? null,
-          subject_id: input.subjectId,
-          due_date: input.dueDate,
+          title: validated.title,
+          description: input.description?.trim() ?? null,
+          subject_id: validated.subjectId,
+          due_date: new Date(validated.dueDate).toISOString(),
         })
         .select('id')
         .single();
@@ -180,8 +202,8 @@ export function useCreateAssignment() {
         try {
           await supabase.functions.invoke('send-custom-notification', {
             body: {
-              title: `📝 New Assignment: ${input.title}`,
-              body: `A new assignment has been posted. Due: ${new Date(input.dueDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`,
+              title: `📝 New Assignment: ${validated.title}`,
+              body: `A new assignment has been posted. Due: ${new Date(validated.dueDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`,
               sectionId: sectionId,
               skipDbInsert: true
             }
@@ -199,7 +221,7 @@ export function useCreateAssignment() {
 
 export function useUpdateAssignment() {
   const qc = useQueryClient();
-  const { sectionId } = useAuthContext();
+  const { sectionId, role } = useAuthContext();
   return useMutation({
     mutationFn: async (input: {
       id: string;
@@ -210,19 +232,38 @@ export function useUpdateAssignment() {
       sets?: { id?: string; label: string; description: string; rollStart: number; rollEnd: number; pdfUrl?: string | null; pageNumbers?: string | null }[];
       notifyClass?: boolean;
     }) => {
-      // 1. Update assignment
+      // 1. Enforce strict CR authorization check
+      if (role !== 'cr') {
+        throw new Error('Unauthorized: Only Class Representatives can update assignments');
+      }
+
+      // 2. Enforce strict Zod schema validation
+      const validated = assignmentSchema.parse({
+        title: input.title.trim(),
+        subjectId: input.subjectId,
+        dueDate: input.dueDate,
+        sets: input.sets ? input.sets.map(s => ({
+          label: s.label,
+          rollStart: s.rollStart,
+          rollEnd: s.rollEnd,
+          description: s.description,
+          pdfUrl: s.pdfUrl ?? undefined,
+        })) : undefined,
+      });
+
+      // 3. Update assignment
       const { error: assignmentErr } = await supabase
         .from('assignments')
         .update({
-          title: input.title,
-          description: input.description ?? null,
-          subject_id: input.subjectId,
-          due_date: input.dueDate,
+          title: validated.title,
+          description: input.description?.trim() ?? null,
+          subject_id: validated.subjectId,
+          due_date: new Date(validated.dueDate).toISOString(),
         })
         .eq('id', input.id);
       if (assignmentErr) throw assignmentErr;
 
-      // 2. Sync assignment sets
+      // 4. Sync assignment sets
       const { data: existingSets, error: getSetsErr } = await supabase
         .from('assignment_sets')
         .select('id')
@@ -267,12 +308,12 @@ export function useUpdateAssignment() {
         }
       }
 
-      // 3. Optional class push notifications
+      // 5. Optional class push notifications
       if (input.notifyClass && sectionId) {
         try {
           const { data: pushData, error: funcError } = await supabase.functions.invoke('send-custom-notification', {
             body: {
-              title: `Assignment Updated: ${input.title}`,
+              title: `Assignment Updated: ${validated.title}`,
               body: `The assignment details or deadline have been modified. Please review.`,
               sectionId: sectionId,
               skipDbInsert: true
@@ -330,12 +371,18 @@ export function useSubmitAssignment() {
  */
 export function useCRToggleSubmission() {
   const qc = useQueryClient();
+  const { role } = useAuthContext();
   return useMutation({
     mutationFn: async (input: {
       assignmentId: string;
       studentId: string;
       crVerified: boolean;
     }) => {
+      // Enforce strict CR authorization check
+      if (role !== 'cr') {
+        throw new Error('Unauthorized: Only Class Representatives can verify submissions');
+      }
+
       const { error } = await supabase
         .from('submissions')
         .upsert({
@@ -356,7 +403,7 @@ export function useCRToggleSubmission() {
 
 export function useCreatePoll() {
   const qc = useQueryClient();
-  const { sectionId, userId } = useAuthContext();
+  const { sectionId, userId, role } = useAuthContext();
   return useMutation({
     mutationFn: async (input: {
       question: string;
@@ -365,13 +412,25 @@ export function useCreatePoll() {
       options: string[];
       allowMultiple: boolean;
     }) => {
+      // 1. Enforce strict CR authorization check
+      if (role !== 'cr') {
+        throw new Error('Unauthorized: Only Class Representatives can create polls');
+      }
+
+      // 2. Validate input using Zod
+      const validated = pollSchema.parse({
+        question: input.question.trim(),
+        type: input.pollType,
+        options: input.options,
+      });
+
       const { data: poll, error } = await supabase
         .from('polls')
         .insert({
           section_id: sectionId!,
           created_by: userId!,
-          question_text: input.question,
-          poll_type: input.pollType,
+          question_text: validated.question,
+          poll_type: validated.type,
           expires_at: input.expiresAt ?? null,
           allow_multiple: input.allowMultiple,
         })
@@ -380,22 +439,13 @@ export function useCreatePoll() {
       if (error) throw error;
 
       const { error: optErr } = await supabase.from('poll_options').insert(
-        input.options.map((label, i) => ({
+        (validated.options ?? []).map((label, i) => ({
           poll_id: poll.id,
-          label,
+          label: label.trim(),
           sort_order: i,
         }))
       );
       if (optErr) throw optErr;
-
-      // Fire push notifications to section members (best-effort — don't block on failure)
-      try {
-        await supabase.functions.invoke('send-new-poll-notification', {
-          body: { pollId: poll.id },
-        });
-      } catch {
-        // Non-critical: push failure should not block poll creation
-      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['polls'] }),
   });
@@ -520,7 +570,7 @@ export function useVotePoll() {
 
 export function useUpsertScheduleSlot() {
   const qc = useQueryClient();
-  const { sectionId, userId } = useAuthContext();
+  const { sectionId, userId, role } = useAuthContext();
   return useMutation({
     mutationFn: async (input: {
       id?: string;
@@ -532,33 +582,36 @@ export function useUpsertScheduleSlot() {
       type?: string;
       teacher?: string;
     }) => {
-      if (!sectionId || !userId) throw new Error('Not authenticated');
-      const row = {
-        section_id: sectionId,
-        subject_id: input.subjectId,
-        day_of_week: input.dayOfWeek,
-        start_time: input.startTime,
-        end_time: input.endTime,
-        room: input.room ?? null,
-        type: (input.type?.toLowerCase() ?? 'lecture') as SlotType,
-        teacher: input.teacher ?? null,
-        created_by: userId,
-      };
-
-      if (input.id) {
-        // Update existing slot
-        const { error } = await supabase
-          .from('timetable_slots')
-          .update(row)
-          .eq('id', input.id);
-        if (error) throw error;
-      } else {
-        // Insert new slot
-        const { error } = await supabase
-          .from('timetable_slots')
-          .insert(row);
-        if (error) throw error;
+      // 1. Enforce strict CR authorization check
+      if (role !== 'cr') {
+        throw new Error('Unauthorized: Only Class Representatives can manage timetable slots');
       }
+
+      // 2. Enforce Zod schema validation
+      const validated = timetableSlotSchema.parse({
+        dayOfWeek: input.dayOfWeek,
+        subjectId: input.subjectId,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        room: input.room ?? undefined,
+        type: input.type?.toLowerCase() as 'lecture' | 'tutorial' | 'lab' | undefined,
+        teacher: input.teacher ?? undefined,
+      });
+
+      const row = {
+        ...(input.id ? { id: input.id } : {}),
+        section_id: sectionId!,
+        subject_id: validated.subjectId ?? null,
+        day_of_week: validated.dayOfWeek,
+        start_time: validated.startTime,
+        end_time: validated.endTime,
+        room: validated.room ?? null,
+        type: (validated.type ?? 'lecture') as SlotType,
+        teacher: validated.teacher ?? null,
+        created_by: userId!,
+      };
+      const { error } = await supabase.from('timetable_slots').upsert(row);
+      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
   });
@@ -566,8 +619,14 @@ export function useUpsertScheduleSlot() {
 
 export function useDeleteScheduleSlot() {
   const qc = useQueryClient();
+  const { role } = useAuthContext();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Enforce strict CR authorization check
+      if (role !== 'cr') {
+        throw new Error('Unauthorized: Only Class Representatives can delete timetable slots');
+      }
+
       const { error } = await supabase.from('timetable_slots').delete().eq('id', id);
       if (error) throw error;
     },
@@ -578,9 +637,14 @@ export function useDeleteScheduleSlot() {
 /** Clear all slots for a specific day in the section */
 export function useClearDaySlots() {
   const qc = useQueryClient();
-  const { sectionId } = useAuthContext();
+  const { sectionId, role } = useAuthContext();
   return useMutation({
     mutationFn: async (dayOfWeek: number) => {
+      // Enforce strict CR authorization check
+      if (role !== 'cr') {
+        throw new Error('Unauthorized: Only Class Representatives can clear timetable slots');
+      }
+
       if (!sectionId) throw new Error('No section');
       const { error } = await supabase
         .from('timetable_slots')
@@ -596,9 +660,14 @@ export function useClearDaySlots() {
 /** Copy all slots from one day to another (replaces target day) */
 export function useCopyDaySlots() {
   const qc = useQueryClient();
-  const { sectionId, userId } = useAuthContext();
+  const { sectionId, userId, role } = useAuthContext();
   return useMutation({
     mutationFn: async ({ fromDay, toDay }: { fromDay: number; toDay: number }) => {
+      // Enforce strict CR authorization check
+      if (role !== 'cr') {
+        throw new Error('Unauthorized: Only Class Representatives can copy timetable slots');
+      }
+
       if (!sectionId) throw new Error('No section');
       // 1. Fetch source day slots
       const { data: source, error: fetchErr } = await supabase
