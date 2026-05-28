@@ -745,8 +745,16 @@ export default function AnnouncementsPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  // Auto-expiry: hide items past deadline + 2 days
-  const visible = announcements.filter(a => !isExpired(a.deadline));
+  // Auto-expiry: hide items past deadline + 2 days and exclude Flash Posts (which have expiresAt) from standard lists
+  const visible = announcements.filter(a => !isExpired(a.deadline) && !a.expiresAt);
+
+  const activeFlashPosts = useMemo(() => {
+    return announcements.filter(
+      (a) => a.priority === 'critical' && 
+             a.expiresAt && 
+             new Date(a.expiresAt) > new Date()
+    );
+  }, [announcements]);
 
   const criticalCounts = useMemo(() => {
     const counts = { active: 0, exams: 0, schedule: 0, campus: 0 };
@@ -1048,6 +1056,34 @@ export default function AnnouncementsPage() {
       </header>
 
       <main className="page-content">
+        {activeFlashPosts.length > 0 && (
+          <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {activeFlashPosts.map(fp => (
+              <div key={fp.id} style={{
+                background: 'var(--status-critical)', color: '#fff',
+                padding: '16px', borderRadius: 'var(--radius-lg)',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                display: 'flex', flexDirection: 'column', gap: 8
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertTriangle size={18} />
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{fp.title}</h3>
+                  <span style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.8 }}>Flash Post</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 14, opacity: 0.9 }}>{fp.body}</p>
+                {role === 'cr' && (
+                  <button onClick={() => setPendingDeleteId(fp.id)} style={{
+                    alignSelf: 'flex-start', background: 'rgba(0,0,0,0.2)', border: 'none',
+                    padding: '6px 12px', borderRadius: 6, color: '#fff', cursor: 'pointer',
+                    fontSize: 12, marginTop: 4
+                  }}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {(() => {
           if (isLoading) {
             return <AnnouncementsSkeleton />;

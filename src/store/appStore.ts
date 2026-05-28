@@ -95,6 +95,7 @@ export interface Announcement {
   priority: 'critical' | 'general';
   deadline: string | null;
   postedAt: string;
+  expiresAt?: string | null;
   attachmentUrl?: string | null;
   attachments?: Attachment[];
 }

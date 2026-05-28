@@ -55,6 +55,7 @@ export type Database = {
           author_id: string | null
           created_at: string
           deadline_at: string | null
+          expires_at: string | null
           id: string
           is_pinned: boolean
           is_template: boolean
@@ -69,6 +70,7 @@ export type Database = {
           author_id?: string | null
           created_at?: string
           deadline_at?: string | null
+          expires_at?: string | null
           id?: string
           is_pinned?: boolean
           is_template?: boolean
@@ -83,6 +85,7 @@ export type Database = {
           author_id?: string | null
           created_at?: string
           deadline_at?: string | null
+          expires_at?: string | null
           id?: string
           is_pinned?: boolean
           is_template?: boolean

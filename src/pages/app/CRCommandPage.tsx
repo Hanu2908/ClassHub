@@ -12,7 +12,7 @@ import { useAppStore, isExpired } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { useAssignments, useSectionMembers, useAssignmentSubmissions, useSection, useSectionAttendance } from '../../hooks/useSupabaseQuery';
 import type { SectionInfo } from '../../hooks/useSupabaseQuery';
-import { useCRToggleSubmission } from '../../hooks/useSupabaseMutations';
+import { useCRToggleSubmission, useCreateAnnouncement } from '../../hooks/useSupabaseMutations';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { SubmissionsSkeleton } from '../../components/LoadingSkeletons';
@@ -220,13 +220,22 @@ function SubmissionTracker() {
               </div>
 
               {subFilter === 'not_submitted' && pendingMembers.length > 0 ? (
-                <button
-                  onClick={handleBulkNotify} className="t-button" style={{ width: '100%', padding: '10px', marginBottom: 10,
-                    background: 'rgba(74,158,255,0.1)', border: '1px solid rgba(74,158,255,0.2)',
-                    borderRadius: 8, color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                >
-                  <Bell size={14} /> Notify Pending Students
-                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <button
+                    id="cr-btn-send-notif"
+                    onClick={handleBulkNotify}
+                    style={{
+                      padding: '16px 12px', background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
+                      color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--status-critical)' }}>
+                      <Bell size={18} />
+                    </div>
+                    <span className="t-label">Remind Pending</span>
+                  </button>
+                </div>
               ) : null}
 
               {/* Student list */}
@@ -769,11 +778,13 @@ function ClassAttendance() {
   );
 }
 
-function SendNotificationSheet({ onClose }: { onClose: () => void }) {
+function FlashPostSheet({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [sending, setSending] = useState(false);
-  const { data: section } = useSection();
+  const [timer, setTimer] = useState<string>('30m'); // 30m, 1h, 3h, 6h
+  const [customHours, setCustomHours] = useState('');
+  
+  const createAnnouncement = useCreateAnnouncement();
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -785,55 +796,74 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   const handleSend = async () => {
     if (!title.trim()) { showToast('Title is required', 'error'); return; }
     if (!body.trim())  { showToast('Message body is required', 'error'); return; }
-    if (!section?.id) return;
-    setSending(true);
+    
+    let hoursToAdd = 0.5;
+    if (timer === '30m') hoursToAdd = 0.5;
+    else if (timer === '1h') hoursToAdd = 1;
+    else if (timer === '3h') hoursToAdd = 3;
+    else if (timer === '6h') hoursToAdd = 6;
+    else if (timer === 'custom') {
+      const parsed = parseFloat(customHours);
+      if (isNaN(parsed) || parsed <= 0) { showToast('Invalid custom hours', 'error'); return; }
+      hoursToAdd = parsed;
+    }
+
+    const expiresAt = new Date(Date.now() + hoursToAdd * 60 * 60 * 1000).toISOString();
+
     try {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: pushData, error: pushErr } = await supabase.functions.invoke('send-custom-notification', {
-        body: { title: title.trim(), body: body.trim(), sectionId: section.id },
+      await createAnnouncement.mutateAsync({
+        title: title.trim(),
+        message: body.trim(),
+        priority: 'critical', // We'll map 'critical' with 'expires_at' as Flash Post
+        expiresAt: expiresAt,
       });
-
-      if (pushErr) {
-        console.error('[Notify] Push failed:', pushErr);
-        showToast('Notification sent to bell icon! Push delivery failed.', 'warning');
-      } else if (pushData && !pushData.error) {
-        const { sent, failed } = pushData;
-        if (sent === 0 && failed > 0) {
-          showToast('Notification sent to bell icon! Push delivery failed for all.', 'warning');
-        } else if (sent > 0 && failed > 0) {
-          showToast(`Notification sent! Push delivered to ${sent} (${failed} failed).`, 'success');
-        } else if (sent > 0) {
-          showToast(`Notification sent! Push delivered to ${sent} students.`, 'success');
-        } else {
-          showToast('Notification sent! (No active subscriptions found)', 'success');
-        }
-      } else if (pushData?.error) {
-        console.error('[Notify] Edge function error:', pushData.error);
-        showToast(`Failed: ${pushData.error}`, 'error');
-      } else {
-        showToast('Notification sent!', 'success');
-      }
+      showToast('Flash Post published!', 'success');
       onClose();
     } catch (err) {
-      console.error('[Notify] Send failed:', err);
-      showToast('Failed to send notification', 'error');
-    } finally {
-      setSending(false);
+      console.error('[FlashPost] Send failed:', err);
+      showToast('Failed to publish Flash Post', 'error');
     }
   };
 
+  const sending = createAnnouncement.isPending;
+
   return (
-    <BottomSheet onClose={onClose} title="Send Notification">
+    <BottomSheet onClose={onClose} title="Send Flash Post">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 20 }}>
         <div>
           <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
-          <input id="notif-title" style={inputStyle} placeholder="e.g. Important update" value={title} onChange={e => setTitle(e.target.value)} />
+          <input id="notif-title" style={inputStyle} placeholder="e.g. Class Cancelled" value={title} onChange={e => setTitle(e.target.value)} />
         </div>
         <div>
           <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
-          <textarea id="notif-body" style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder="Write your message to the class…" value={body} onChange={e => setBody(e.target.value)} />
+          <textarea id="notif-body" style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder="Write your message…" value={body} onChange={e => setBody(e.target.value)} />
+        </div>
+        <div>
+          <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Expiry Timer</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {['30m', '1h', '3h', '6h', 'custom'].map(t => (
+              <button
+                key={t}
+                onClick={() => setTimer(t)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: timer === t ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                  background: timer === t ? 'var(--accent-primary-glow)' : 'var(--bg-elevated)',
+                  color: timer === t ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                }}
+              >
+                {t === 'custom' ? 'Custom' : t}
+              </button>
+            ))}
+          </div>
+          {timer === 'custom' && (
+            <div style={{ marginTop: 8 }}>
+              <input type="number" step="0.5" min="0.5" placeholder="Hours (e.g. 1.5)" style={inputStyle} value={customHours} onChange={e => setCustomHours(e.target.value)} />
+            </div>
+          )}
         </div>
         <button
           id="send-notif-btn"
@@ -844,7 +874,7 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
             color: sending ? 'var(--text-muted)' : '#fff',
             transition: 'all 0.2s', marginTop: 10 }}
         >
-          <Send size={15} /> {sending ? 'Sending…' : 'Send Notification'}
+          <Send size={15} /> {sending ? 'Sending…' : 'Publish Flash Post'}
         </button>
       </div>
     </BottomSheet>
@@ -1197,7 +1227,7 @@ export default function CRCommandPage() {
         <div style={{ height: 24 }} />
       </main>
 
-      {showNotifSheet ? <SendNotificationSheet onClose={() => setShowNotifSheet(false)} /> : null}
+      {showNotifSheet ? <FlashPostSheet onClose={() => setShowNotifSheet(false)} /> : null}
 
       {showDeleteSheet && (
         <BottomSheet onClose={() => setShowDeleteSheet(false)} title="Delete Section Hub?">

@@ -29,18 +29,22 @@ function getUserSet(classRoll: string, sets: AssignmentSet[]) {
   return sets.find(s => roll >= s.rollStart && roll <= s.rollEnd) ?? null;
 }
 
-function autoGenerate(totalStudents: number, groupSize: number): AssignmentSet[] {
+function autoGenerate(totalStudents: number, numSets: number, excludeFirstPage: boolean): AssignmentSet[] {
   const sets: AssignmentSet[] = [];
+  if (numSets < 1) return sets;
+  const groupSize = Math.ceil(totalStudents / numSets);
   let roll = 1, setNum = 1;
+  const startPage = excludeFirstPage ? 2 : 1;
   while (roll <= totalStudents) {
     const end = Math.min(roll + groupSize - 1, totalStudents);
+    const pageNum = startPage + setNum - 1;
     sets.push({
       id: `set-${setNum}-${Date.now()}`,
       label: `Set ${setNum}`,
       rollStart: roll,
       rollEnd: end,
-      pageNumbers: String(setNum),
-      description: `Complete Page ${setNum} of the attached PDF.`,
+      pageNumbers: String(pageNum),
+      description: `Complete Page ${pageNum} of the attached PDF.`,
       pdfUrl: null,
     });
     roll = end + 1;
@@ -71,23 +75,44 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // Step 2 fields
-  const [totalStudents, setTotalStudents] = useState('');
-  const [groupSize, setGroupSize] = useState('');
+  const [totalStudents, setTotalStudents] = useState('60');
+  const [numSets, setNumSets] = useState('');
+  const [excludeFirstPage, setExcludeFirstPage] = useState(false);
   const [sets, setSets] = useState<AssignmentSet[]>([]);
 
   const reset = () => {
     setStep(1); setTitle(''); setSubjectId(''); setCustomSubjectName('');
     setDueDate(''); setDescription(''); setFiles([]); setHasSets(false);
-    setTotalStudents(''); setGroupSize(''); setSets([]); setUploadProgress(0);
+    setTotalStudents('60'); setNumSets(''); setExcludeFirstPage(false); setSets([]); setUploadProgress(0);
   };
 
   const handleClose = () => { reset(); onClose(); };
 
+  // Auto-detect PDF pages
+  useEffect(() => {
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type === 'application/pdf') {
+        file.arrayBuffer().then(async (ab) => {
+          try {
+            const { PDFDocument } = await import('pdf-lib');
+            const pdfDoc = await PDFDocument.load(ab);
+            const pageCount = pdfDoc.getPageCount();
+            const setsCount = excludeFirstPage ? Math.max(1, pageCount - 1) : pageCount;
+            setNumSets(String(setsCount));
+          } catch (err) {
+            console.error('Failed to parse PDF', err);
+          }
+        });
+      }
+    }
+  }, [files, excludeFirstPage]);
+
   const handleGenerate = () => {
-    const t = parseInt(totalStudents), g = parseInt(groupSize);
-    if (!t || !g || t < 1 || g < 1) { showToast('Enter valid numbers', 'error'); return; }
-    setSets(autoGenerate(t, g));
-    showToast(`Generated ${autoGenerate(t, g).length} sets`, 'info');
+    const t = parseInt(totalStudents), s = parseInt(numSets);
+    if (!t || !s || t < 1 || s < 1) { showToast('Enter valid numbers', 'error'); return; }
+    setSets(autoGenerate(t, s, excludeFirstPage));
+    showToast(`Generated ${autoGenerate(t, s, excludeFirstPage).length} sets`, 'info');
   };
 
   const updateSet = (idx: number, field: keyof AssignmentSet, value: string) => {
@@ -264,9 +289,22 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
                 <input style={inputStyle} type="number" min="1" placeholder="e.g. 68" value={totalStudents} onChange={e => setTotalStudents(e.target.value)} />
               </div>
               <div>
-                <label style={labelStyle}>Group Size</label>
-                <input style={inputStyle} type="number" min="1" placeholder="e.g. 6" value={groupSize} onChange={e => setGroupSize(e.target.value)} />
+                <label style={labelStyle}>Total Sets</label>
+                <input style={inputStyle} type="number" min="1" placeholder="e.g. 6" value={numSets} onChange={e => setNumSets(e.target.value)} />
               </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <input
+                type="checkbox"
+                id="exclude-first-page"
+                checked={excludeFirstPage}
+                onChange={e => setExcludeFirstPage(e.target.checked)}
+                style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+              />
+              <label htmlFor="exclude-first-page" style={{ color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px', fontWeight: 500, userSelect: 'none' }}>
+                Exclude 1st page of PDF (e.g. for Index/Cover)
+              </label>
             </div>
             <button
               onClick={handleGenerate} className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', color: 'var(--accent-primary)', cursor: 'pointer' }}
@@ -380,15 +418,16 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
   const [notifyClass, setNotifyClass] = useState(false);
 
   // Step 2 fields
-  const [totalStudents, setTotalStudents] = useState('');
-  const [groupSize, setGroupSize] = useState('');
+  const [totalStudents, setTotalStudents] = useState('60');
+  const [numSets, setNumSets] = useState('');
+  const [excludeFirstPage, setExcludeFirstPage] = useState(false);
   const [sets, setSets] = useState<AssignmentSet[]>(assignment.sets || []);
 
   const handleGenerate = () => {
-    const t = parseInt(totalStudents), g = parseInt(groupSize);
-    if (!t || !g || t < 1 || g < 1) { showToast('Enter valid numbers', 'error'); return; }
-    setSets(autoGenerate(t, g));
-    showToast(`Generated ${autoGenerate(t, g).length} sets`, 'info');
+    const t = parseInt(totalStudents), s = parseInt(numSets);
+    if (!t || !s || t < 1 || s < 1) { showToast('Enter valid numbers', 'error'); return; }
+    setSets(autoGenerate(t, s, excludeFirstPage));
+    showToast(`Generated ${autoGenerate(t, s, excludeFirstPage).length} sets`, 'info');
   };
 
   const updateSet = (idx: number, field: keyof AssignmentSet, value: string) => {
@@ -556,9 +595,22 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
                 <input style={inputStyle} type="number" min="1" placeholder="e.g. 68" value={totalStudents} onChange={e => setTotalStudents(e.target.value)} />
               </div>
               <div>
-                <label style={labelStyle}>Group Size</label>
-                <input style={inputStyle} type="number" min="1" placeholder="e.g. 6" value={groupSize} onChange={e => setGroupSize(e.target.value)} />
+                <label style={labelStyle}>Total Sets</label>
+                <input style={inputStyle} type="number" min="1" placeholder="e.g. 6" value={numSets} onChange={e => setNumSets(e.target.value)} />
               </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <input
+                type="checkbox"
+                id="exclude-first-page-edit"
+                checked={excludeFirstPage}
+                onChange={e => setExcludeFirstPage(e.target.checked)}
+                style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+              />
+              <label htmlFor="exclude-first-page-edit" style={{ color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px', fontWeight: 500, userSelect: 'none' }}>
+                Exclude 1st page of PDF (e.g. for Index/Cover)
+              </label>
             </div>
             <button
               onClick={handleGenerate} className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', color: 'var(--accent-primary)', cursor: 'pointer' }}

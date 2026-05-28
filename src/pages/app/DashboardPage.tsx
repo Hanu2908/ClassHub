@@ -24,7 +24,7 @@ export const prefetchAnnouncementsData = (queryClient: any, sectionId: string | 
       const { data: anns, error: annErr } = await supabase
         .from('announcements')
         .select(`
-          id, title, message_content, priority, deadline_at, created_at,
+          id, title, message_content, priority, deadline_at, expires_at, created_at,
           attachments (id, filename, file_size, file_type, storage_path)
         `)
         .eq('section_id', sectionId!)
@@ -51,6 +51,7 @@ export const prefetchAnnouncementsData = (queryClient: any, sectionId: string | 
         priority: a.priority as 'critical' | 'general',
         deadline: a.deadline_at,
         postedAt: a.created_at,
+        expiresAt: a.expires_at ?? null,
         isAcknowledged: ackIds.includes(a.id),
         attachments: ((a.attachments as any) ?? []).map((att: any) => ({
           id: att.id,
@@ -1683,7 +1684,10 @@ export default function DashboardPage() {
   const activeCritical = useMemo(() => {
     const dismissedSet = new Set(dismissedAnnouncements);
     return announcements.filter(
-      (a) => a.priority === 'critical' && !isExpired(a.deadline) && !dismissedSet.has(a.id)
+      (a) => a.priority === 'critical' && 
+             a.expiresAt && 
+             new Date(a.expiresAt) > new Date() && 
+             !dismissedSet.has(a.id)
     );
   }, [announcements, dismissedAnnouncements]);
 

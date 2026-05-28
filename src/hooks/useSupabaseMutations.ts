@@ -33,6 +33,7 @@ export function useCreateAnnouncement() {
       message: string;
       priority: 'general' | 'critical';
       deadline?: string | null;
+      expiresAt?: string | null;
     }) => {
       const { data, error } = await supabase
         .from('announcements')
@@ -43,6 +44,7 @@ export function useCreateAnnouncement() {
           message_content: input.message,
           priority: input.priority,
           deadline_at: input.deadline ?? null,
+          expires_at: input.expiresAt ?? null,
         })
         .select('id')
         .single();
@@ -446,6 +448,15 @@ export function useCreatePoll() {
         }))
       );
       if (optErr) throw optErr;
+
+      // Trigger push notification for new poll
+      try {
+        await supabase.functions.invoke('send-new-poll-notification', {
+          body: { pollId: poll.id }
+        });
+      } catch (err) {
+        console.warn('Failed to send push notification for new poll:', err);
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['polls'] }),
   });
@@ -612,6 +623,23 @@ export function useUpsertScheduleSlot() {
       };
       const { error } = await supabase.from('timetable_slots').upsert(row);
       if (error) throw error;
+
+      // Trigger push notification broadcast
+      if (sectionId) {
+        const action = input.id ? 'Updated' : 'Added';
+        try {
+          await supabase.functions.invoke('send-custom-notification', {
+            body: {
+              title: `📅 Timetable ${action}`,
+              body: `A class slot has been ${action.toLowerCase()} in the timetable.`,
+              sectionId: sectionId,
+              skipDbInsert: true
+            }
+          });
+        } catch (err) {
+          console.warn('Failed to send push notification for timetable change:', err);
+        }
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
   });
@@ -629,6 +657,22 @@ export function useDeleteScheduleSlot() {
 
       const { error } = await supabase.from('timetable_slots').delete().eq('id', id);
       if (error) throw error;
+
+      const sectionId = (await supabase.auth.getUser()).data.user?.user_metadata?.sectionId;
+      if (sectionId) {
+        try {
+          await supabase.functions.invoke('send-custom-notification', {
+            body: {
+              title: `❌ Timetable Updated`,
+              body: `A class slot has been removed from the timetable.`,
+              sectionId: sectionId,
+              skipDbInsert: true
+            }
+          });
+        } catch (err) {
+          console.warn('Failed to send push notification for timetable change:', err);
+        }
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
   });
@@ -652,6 +696,19 @@ export function useClearDaySlots() {
         .eq('section_id', sectionId)
         .eq('day_of_week', dayOfWeek);
       if (error) throw error;
+
+      try {
+        await supabase.functions.invoke('send-custom-notification', {
+          body: {
+            title: `❌ Timetable Cleared`,
+            body: `All slots for a day have been cleared.`,
+            sectionId: sectionId,
+            skipDbInsert: true
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to send push notification for timetable change:', err);
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
   });
@@ -700,6 +757,19 @@ export function useCopyDaySlots() {
       }));
       const { error: insErr } = await supabase.from('timetable_slots').insert(copies);
       if (insErr) throw insErr;
+
+      try {
+        await supabase.functions.invoke('send-custom-notification', {
+          body: {
+            title: `📅 Timetable Copied`,
+            body: `Slots have been copied to another day in the timetable.`,
+            sectionId: sectionId,
+            skipDbInsert: true
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to send push notification for timetable change:', err);
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule'] }),
   });

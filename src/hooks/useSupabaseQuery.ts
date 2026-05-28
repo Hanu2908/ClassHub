@@ -196,7 +196,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
       const { data: anns, error: annErr } = await supabase
         .from('announcements')
         .select(`
-          id, title, message_content, priority, deadline_at, created_at,
+          id, title, message_content, priority, deadline_at, expires_at, created_at,
           attachments (id, filename, file_size, file_type, storage_path)
         `)
         .eq('section_id', sectionId!)
@@ -223,6 +223,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
         priority: a.priority as 'critical' | 'general',
         deadline: a.deadline_at,
         postedAt: a.created_at,
+        expiresAt: (a as any).expires_at ?? null,
         attachmentUrl: null,
         isAcknowledged: ackIds.includes(a.id),
         attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
