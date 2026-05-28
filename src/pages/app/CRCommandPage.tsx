@@ -1172,7 +1172,7 @@ export default function CRCommandPage() {
   const location = useLocation();
   const role = useAppStore(s => s.role);
   const [showNotifSheet, setShowNotifSheet] = useState(!!location.state?.openBroadcast);
-  const [showFlashPostSheet, setShowFlashPostSheet] = useState(false);
+  const [showFlashPostSheet, setShowFlashPostSheet] = useState(!!location.state?.openFlashPost);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [deletingHub, setDeletingHub] = useState(false);
   const { data: section } = useSection();
@@ -1180,10 +1180,10 @@ export default function CRCommandPage() {
   const setActiveTab = useAppStore(s => s.setActiveTab);
 
   useEffect(() => {
-    if (location.state?.openBroadcast) {
+    if (location.state?.openBroadcast || location.state?.openFlashPost) {
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state?.openBroadcast, navigate, location.pathname]);
+  }, [location.state?.openBroadcast, location.state?.openFlashPost, navigate, location.pathname]);
 
   // Guard: non-CRs sent home
   if (role !== 'cr') {

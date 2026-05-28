@@ -1554,6 +1554,15 @@ function CRDashboardStation() {
             <ClipboardList size={18} color="var(--status-safe)" style={{ filter: 'drop-shadow(0 0 4px rgba(52, 211, 153, 0.3))' }} />
             <span>Add Assign</span>
           </button>
+
+          <button 
+            onClick={() => navigate('/app/cr-command', { state: { openFlashPost: true } })}
+            className="btn-tactile-cr glow-rose"
+            aria-label="Send a flash post"
+          >
+            <AlertTriangle size={18} color="var(--status-critical)" style={{ filter: 'drop-shadow(0 0 4px rgba(248, 113, 113, 0.3))' }} />
+            <span>Flash Post</span>
+          </button>
         </div>
       </div>
     </section>
