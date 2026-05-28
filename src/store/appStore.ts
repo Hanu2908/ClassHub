@@ -373,10 +373,9 @@ export const useAppStore = create<AppState>()(
         }));
       },
       clearNotification: async (id) => {
-        const nowStr = new Date().toISOString();
         const { error } = await supabase
           .from('notification_events')
-          .update({ read_at: nowStr })
+          .delete()
           .eq('id', id);
 
         if (error) {
@@ -389,10 +388,9 @@ export const useAppStore = create<AppState>()(
       },
       clearAllNotifications: async (ids) => {
         if (ids.length === 0) return;
-        const nowStr = new Date().toISOString();
         const { error } = await supabase
           .from('notification_events')
-          .update({ read_at: nowStr })
+          .delete()
           .in('id', ids);
 
         if (error) {
