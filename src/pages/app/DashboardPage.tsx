@@ -13,7 +13,7 @@ import { AttachmentCard } from '../../components/AttachmentCard';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
-import { useAnnouncementReactions, useAnnouncementComments } from '../../hooks/useAnnouncementsQA';
+import { AnnouncementReactions, AnnouncementCommentTrigger } from '../../components/AnnouncementQA';
 
 export const prefetchAnnouncementsData = (queryClient: any, sectionId: string | null | undefined, userId: string | null | undefined) => {
   if (!sectionId || !userId) return;
@@ -791,97 +791,6 @@ function linkify(text: string): React.ReactNode {
   });
 }
 
-// ── Dashboard Announcement QA Actions (reactions summary & Q&A deep link) ──
-function DashboardAnnouncementQA({ announcementId }: { announcementId: string }) {
-  const { data: reactions = [] } = useAnnouncementReactions(announcementId);
-  const { data: comments = [] } = useAnnouncementComments(announcementId);
-  const navigate = useNavigate();
-
-  // Group reactions by emoji and count them
-  const groupedReactions = reactions.reduce((acc, curr) => {
-    acc[curr.emoji] = (acc[curr.emoji] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  return (
-    <div 
-      style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        marginTop: '10px', 
-        paddingTop: '8px',
-        borderTop: '1px solid rgba(255,255,255,0.04)',
-        gap: 10, 
-        width: '100%' 
-      }}
-      onClick={(e) => e.stopPropagation()} // Prevent clicking the card and opening drawer
-    >
-      {/* Reactions Summary */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-        {Object.entries(groupedReactions).length === 0 ? (
-          <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>No reactions</span>
-        ) : (
-          Object.entries(groupedReactions).slice(0, 3).map(([emoji, count]) => (
-            <span 
-              key={emoji} 
-              style={{ 
-                background: 'rgba(255, 255, 255, 0.04)', 
-                border: '1px solid var(--border-default)', 
-                borderRadius: 'var(--radius-pill)', 
-                padding: '1px 5px', 
-                fontSize: '10px',
-                color: 'var(--text-secondary)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 2
-              }}
-              title={`${count} user(s) reacted`}
-            >
-              <span>{emoji}</span>
-              <span className="t-mono-sm" style={{ fontWeight: 600 }}>{count}</span>
-            </span>
-          ))
-        )}
-      </div>
-
-      {/* Reply / Ask button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          navigate(`/app/announcements?id=${announcementId}&expand_qa=true`);
-        }}
-        style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          border: '1px solid var(--border-default)',
-          borderRadius: '8px',
-          padding: '3px 8px',
-          color: 'var(--text-secondary)',
-          fontSize: '10px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 3,
-          transition: 'all var(--transition-fast)',
-          outline: 'none',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = 'var(--accent-primary-muted)';
-          e.currentTarget.style.color = 'var(--text-primary)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border-default)';
-          e.currentTarget.style.color = 'var(--text-secondary)';
-        }}
-      >
-        <MessageSquare size={10} />
-        <span>{comments.length > 0 ? `${comments.length} Reply` : 'Reply / Ask'}</span>
-      </button>
-    </div>
-  );
-}
-
 // ── Announcements scroll ─────────────────────────────────────────────────────
 function AnnouncementsScroll() {
   const queryClient = useQueryClient();
@@ -1115,7 +1024,7 @@ function AnnouncementsScroll() {
                     className={`card card-solid-charcoal ${ann.priority === 'critical' ? 'card-critical-solid' : 'card-general-solid'}`}
                     style={{ 
                       width: '100%', 
-                      height: '182px', 
+                      height: '148px', 
                       display: 'flex', 
                       flexDirection: 'column', 
                       justifyContent: 'space-between',
@@ -1221,9 +1130,6 @@ function AnnouncementsScroll() {
                             </span>
                           )}
                         </div>
-
-                        {/* Lightweight Reactions Summary & Reply/Ask Trigger */}
-                        <DashboardAnnouncementQA announcementId={ann.id} />
                       </>
                     ) : null}
                   </div>
@@ -1356,6 +1262,29 @@ function AnnouncementsScroll() {
                 </div>
               </div>
             )}
+
+            {/* Q&A & Emoji Reactions Footer */}
+            <div style={{
+              marginTop: '4px',
+              paddingTop: '12px',
+              borderTop: '1px solid var(--border-default)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap',
+              textAlign: 'left'
+            }}>
+              <AnnouncementReactions announcementId={selectedAnn.id} />
+              
+              <AnnouncementCommentTrigger 
+                announcementId={selectedAnn.id} 
+                onOpenComments={() => {
+                  setSelectedAnn(null);
+                  navigate(`/app/announcements?id=${selectedAnn.id}&expand_qa=true`);
+                }} 
+              />
+            </div>
 
             {/* Action / Acknowledgment CTAs */}
             <div style={{ marginTop: 8 }}>

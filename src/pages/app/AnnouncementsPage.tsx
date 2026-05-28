@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { NavBar } from '../../components/NavBar';
@@ -302,6 +302,310 @@ function TimelineSection({ title, count }: { title: string; count: number }) {
         {count} {count === 1 ? 'announcement' : 'announcements'}
       </span>
     </div>
+  );
+}
+
+interface AnnouncementCardComponentProps {
+  ann: Announcement & { isAcknowledged: boolean };
+  isHighlighted: boolean;
+  highlightRef: React.RefObject<HTMLDivElement | null> | null;
+  role: string;
+  totalStudentsCount: number;
+  ackCountsMap: Record<string, number>;
+  handleAcknowledge: (id: string) => void;
+  setPendingDeleteId: (id: string | null) => void;
+  setTrackingAnnouncement: (ann: Announcement | null) => void;
+  setOpenCommentsAnnId: (id: string | null) => void;
+}
+
+export function AnnouncementCardComponent({
+  ann,
+  isHighlighted,
+  highlightRef,
+  role,
+  totalStudentsCount,
+  ackCountsMap,
+  handleAcknowledge,
+  setPendingDeleteId,
+  setTrackingAnnouncement,
+  setOpenCommentsAnnId
+}: AnnouncementCardComponentProps) {
+  const [hovered, setHovered] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const isCritical = ann.priority === 'critical';
+  const isAcked = ann.isAcknowledged;
+  const bdg = deadlineBadgeClass(ann.deadline);
+  const lbl = deadlineLabel(ann.deadline);
+  const category = getAnnouncementCategory(ann.title, ann.priority);
+
+  const isLongText = ann.body.length > 200 || ann.body.split('\n').length > 3;
+
+  const glowingOutlineStyle: React.CSSProperties = {
+    position: 'relative',
+    border: hovered ? `1px solid ${category.color}` : '1px solid var(--border-default)',
+    borderLeft: `4px solid ${category.color}`,
+    boxShadow: hovered 
+      ? `0 12px 30px rgba(0, 0, 0, 0.25), 0 0 15px ${category.bgColor}`
+      : `0 4px 20px rgba(0, 0, 0, 0.15), inset 2px 0 8px ${category.bgColor}`,
+    transform: hovered ? 'scale(1.012)' : 'scale(1)',
+    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+    animation: 'fadeSlideUp 0.35s ease both',
+    padding: '18px',
+    borderRadius: 'var(--radius-lg)',
+    background: isCritical ? 'var(--status-critical-bg)' : 'var(--bg-elevated)',
+    outline: isHighlighted ? '2px solid var(--accent-primary)' : undefined,
+    outlineOffset: isHighlighted ? '2px' : undefined,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  };
+
+  return (
+    <article
+      ref={isHighlighted ? (highlightRef as any) : null}
+      className="card announcement-feed-card"
+      style={glowingOutlineStyle}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* 1. Header Metadata Row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 5,
+            padding: '2px 8px',
+            borderRadius: '12px',
+            background: category.bgColor,
+            border: `1px solid ${category.borderColor}`,
+          }}>
+            {category.icon}
+            <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '10px' }}>
+              {category.name}
+            </span>
+          </div>
+          {ann.deadline && <span className={`badge ${bdg}`}>{lbl}</span>}
+        </div>
+
+        {/* CR Tools (Delete, Receipt Tracking) */}
+        {role === 'cr' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              className="tracker-pill"
+              onClick={() => setTrackingAnnouncement(ann)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 8px',
+                borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-secondary)',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 500,
+                outline: 'none',
+              }}
+              aria-label={`View read receipts: ${ackCountsMap[ann.id] || 0} of ${totalStudentsCount} acknowledged`}
+              title="View read receipts"
+            >
+              <Users size={11} />
+              <span>{ackCountsMap[ann.id] || 0}/{totalStudentsCount} ✓</span>
+            </button>
+
+            <button
+              id={`del-ann-${ann.id}`}
+              onClick={() => setPendingDeleteId(ann.id)}
+              className="btn-del-ann"
+              style={{
+                background: 'rgba(255,68,68,0.08)', 
+                border: '1px solid rgba(255,68,68,0.2)',
+                borderRadius: 8, 
+                padding: '6px', 
+                cursor: 'pointer',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexShrink: 0,
+                outline: 'none',
+              }}
+              aria-label="Delete announcement"
+              title="Delete announcement"
+            >
+              <Trash2 size={13} color="var(--status-critical)" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Full-Width Typography Title */}
+      <h2 className="t-card-title" style={{ 
+        color: 'var(--text-primary)', 
+        lineHeight: 1.3,
+        fontSize: '16px',
+        fontWeight: 700,
+        margin: 0,
+      }}>
+        {ann.title}
+      </h2>
+
+      {/* 3. In-Place Option A Expand with Soft Glass Fade */}
+      <div style={{ position: 'relative', width: '100%' }}>
+        <p className="t-body" style={{ 
+          color: 'var(--text-secondary)', 
+          lineHeight: 1.6, 
+          fontSize: '13.5px',
+          margin: 0,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          display: isExpanded ? 'block' : '-webkit-box',
+          WebkitLineClamp: isExpanded ? undefined : 3,
+          WebkitBoxOrient: isExpanded ? undefined : 'vertical',
+          overflow: isExpanded ? 'visible' : 'hidden',
+          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}>
+          {ann.body}
+        </p>
+        {!isExpanded && isLongText && (
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '24px',
+            background: 'linear-gradient(to bottom, transparent, var(--bg-elevated, #0a0b12))',
+            pointerEvents: 'none',
+          }} />
+        )}
+      </div>
+
+      {/* Caret Toggle Button */}
+      {isLongText && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(prev => !prev);
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid var(--border-default)',
+            color: 'var(--text-accent)',
+            cursor: 'pointer',
+            fontSize: '11px',
+            fontWeight: 600,
+            alignSelf: 'flex-start',
+            padding: '4px 10px',
+            borderRadius: 'var(--radius-pill)',
+            transition: 'all var(--transition-fast)',
+            outline: 'none',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+            e.currentTarget.style.borderColor = 'var(--accent-primary-muted)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+            e.currentTarget.style.borderColor = 'var(--border-default)';
+          }}
+        >
+          <span>{isExpanded ? 'Show Less' : 'Read More'}</span>
+          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
+      )}
+
+      {/* 4. Attachments Block */}
+      {ann.attachments && ann.attachments.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+          {ann.attachments.map((att: Attachment) => (
+            <AttachmentCard key={att.id} attachment={att} />
+          ))}
+        </div>
+      )}
+
+      {/* 5. Time Ago Indicator */}
+      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10.5px' }}>
+        Posted {timeAgo(ann.postedAt)}
+      </span>
+
+      {/* 6. Footer Block: Reactions (left), Comments (middle), Acknowledge (right) */}
+      <div style={{
+        marginTop: '8px',
+        paddingTop: '12px',
+        borderTop: '1px solid var(--border-default)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+        flexWrap: 'wrap',
+        width: '100%',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <AnnouncementReactions announcementId={ann.id} />
+          
+          <AnnouncementCommentTrigger 
+            announcementId={ann.id} 
+            onOpenComments={() => setOpenCommentsAnnId(ann.id)} 
+          />
+        </div>
+
+        <div>
+          {!isAcked ? (
+            <button
+              id={`ack-btn-${ann.id}`}
+              onClick={() => handleAcknowledge(ann.id)}
+              className="btn-ack-btn"
+              style={{
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6, 
+                padding: '6px 12px',
+                background: 'var(--bg-elevated)', 
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)', 
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
+                fontSize: '12px',
+                fontWeight: 500,
+                outline: 'none',
+                transition: 'all var(--transition-fast)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                e.currentTarget.style.borderColor = 'var(--accent-primary-muted)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--bg-elevated)';
+                e.currentTarget.style.borderColor = 'var(--border-default)';
+              }}
+            >
+              <CheckCircle2 size={13} /> Acknowledge
+            </button>
+          ) : (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              padding: '6px 12px', 
+              background: 'var(--status-safe-bg)', 
+              border: '1px solid rgba(52,201,123,0.25)', 
+              borderRadius: 'var(--radius-md)', 
+              boxSizing: 'border-box'
+            }}>
+              <CheckCircle2 size={13} color="var(--status-safe)" />
+              <span className="t-label" style={{ color: 'var(--status-safe)', fontSize: '11px', fontWeight: 600 }}>Acked</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -762,159 +1066,21 @@ export default function AnnouncementsPage() {
           }
 
           const renderCard = (ann: Announcement & { isAcknowledged: boolean }) => {
-            const isCritical = ann.priority === 'critical';
-            const isAcked = ann.isAcknowledged;
-            const bdg = deadlineBadgeClass(ann.deadline);
-            const lbl = deadlineLabel(ann.deadline);
-
             const isHighlighted = highlightId === ann.id;
             return (
-              <article
+              <AnnouncementCardComponent
                 key={ann.id}
-                ref={isHighlighted ? highlightRef : null}
-                className="card announcement-feed-card"
-                style={{
-                  borderLeft: isCritical ? '4px solid var(--status-critical)' : undefined,
-                  background: isCritical ? 'var(--status-critical-bg)' : undefined,
-                  animation: 'fadeSlideUp 0.35s ease both',
-                  padding: '16px',
-                  outline: isHighlighted ? '2px solid var(--accent-primary)' : undefined,
-                  outlineOffset: isHighlighted ? '2px' : undefined,
-                  boxShadow: isHighlighted ? '0 0 0 4px rgba(74,158,255,0.15)' : undefined,
-                }}
-              >
-                <div className="announcement-card-content">
-                  {/* Left balanced column (75%) */}
-                  <div className="announcement-card-left">
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      {(() => {
-                        const category = getAnnouncementCategory(ann.title, ann.priority);
-                        return (
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 5,
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            background: category.bgColor,
-                            border: `1px solid ${category.borderColor}`,
-                          }}>
-                            {category.icon}
-                            <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '10px' }}>
-                              {category.name}
-                            </span>
-                          </div>
-                        );
-                      })()}
-                      {ann.deadline && <span className={`badge ${bdg}`}>{lbl}</span>}
-                    </div>
-                    
-                    <h2 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 10, lineHeight: 1.3 }}>
-                      {ann.title}
-                    </h2>
-
-                    <p className="t-body" style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14 }}>
-                      {ann.body}
-                    </p>
-
-                    {ann.attachments && ann.attachments.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-                        {ann.attachments.map((att: Attachment) => (
-                          <AttachmentCard key={att.id} attachment={att} />
-                        ))}
-                      </div>
-                    )}
-
-                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 'auto', paddingTop: 8 }}>
-                      {timeAgo(ann.postedAt)}
-                    </p>
-                  </div>
-
-                  {/* Right balanced column (25%) */}
-                  <div className="announcement-card-right">
-                    {role === 'cr' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button
-                          id={`del-ann-${ann.id}`}
-                          onClick={() => setPendingDeleteId(ann.id)}
-                          className="btn-del-ann"
-                          style={{
-                            background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
-                            borderRadius: 8, padding: '6px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                          aria-label="Delete announcement"
-                          title="Delete announcement"
-                        >
-                          <Trash2 size={14} color="var(--status-critical)" />
-                        </button>
-                      </div>
-                    )}
-
-                    {role === 'cr' && (
-                      <button 
-                        type="button"
-                        className="tracker-pill"
-                        onClick={() => setTrackingAnnouncement(ann)}
-                        aria-label={`View read receipts: ${ackCountsMap[ann.id] || 0} of ${totalStudentsCount} acknowledged`}
-                        title="View read receipts"
-                      >
-                        <Users size={12} />
-                        <span>{ackCountsMap[ann.id] || 0}/{totalStudentsCount} ✓</span>
-                      </button>
-                    )}
-
-                    <div className="t-label" style={{ width: '100%', marginTop: 'auto' }}>
-                      {!isAcked ? (
-                        <button
-                          id={`ack-btn-${ann.id}`}
-                          onClick={() => handleAcknowledge(ann.id)}
-                          className="btn-ack-btn"
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
-                            background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                            borderRadius: 'var(--radius-md)', cursor: 'pointer',
-                            color: 'var(--text-primary)',
-                            width: '100%', justifyContent: 'center',
-                          }}
-                        >
-                          <CheckCircle2 size={13} /> Acknowledge
-                        </button>
-                      ) : (
-                        <div style={{ 
-                          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', 
-                          background: 'var(--status-safe-bg)', border: '1px solid rgba(52,201,123,0.25)', 
-                          borderRadius: 'var(--radius-md)', width: '100%', justifyContent: 'center',
-                          boxSizing: 'border-box'
-                        }}>
-                          <CheckCircle2 size={13} color="var(--status-safe)" />
-                          <span className="t-label" style={{ color: 'var(--status-safe)' }}>Acked</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Q&A & Emoji Reactions Card Footer */}
-                <div style={{
-                  marginTop: '14px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid var(--border-default)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  flexWrap: 'wrap'
-                }}>
-                  <AnnouncementReactions announcementId={ann.id} />
-                  
-                  <AnnouncementCommentTrigger 
-                    announcementId={ann.id} 
-                    onOpenComments={() => setOpenCommentsAnnId(ann.id)} 
-                  />
-                </div>
-              </article>
+                ann={ann}
+                isHighlighted={isHighlighted}
+                highlightRef={highlightRef}
+                role={role}
+                totalStudentsCount={totalStudentsCount}
+                ackCountsMap={ackCountsMap}
+                handleAcknowledge={handleAcknowledge}
+                setPendingDeleteId={setPendingDeleteId}
+                setTrackingAnnouncement={setTrackingAnnouncement}
+                setOpenCommentsAnnId={setOpenCommentsAnnId}
+              />
             );
           };
 

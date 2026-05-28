@@ -16,6 +16,7 @@ import {
   useAnnouncementQARealtime,
   type QAReaction
 } from '../hooks/useAnnouncementsQA';
+import { useSectionMembers } from '../hooks/useSupabaseQuery';
 
 // ─── 1. REACTIONS COMPONENT ───────────────────────────────────────────
 
@@ -32,8 +33,6 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
   useAnnouncementQARealtime(announcementId);
 
   const [showPopover, setShowPopover] = useState(false);
-  const [isCustomEditing, setIsCustomEditing] = useState(false);
-  const [customInputVal, setCustomInputVal] = useState('');
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
@@ -52,8 +51,6 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
     function handleClickOutside(event: MouseEvent) {
       if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
         setShowPopover(false);
-        setIsCustomEditing(false);
-        setCustomInputVal('');
       }
     }
     if (showPopover) {
@@ -63,13 +60,6 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showPopover]);
-
-  // Focus custom input when editing begins
-  useEffect(() => {
-    if (isCustomEditing && customInputRef.current) {
-      customInputRef.current.focus();
-    }
-  }, [isCustomEditing]);
 
   const handleToggleEmoji = async (emoji: string) => {
     try {
@@ -81,17 +71,19 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
 
   const handleCustomInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    setCustomInputVal(val);
     
     if (val.trim().length > 0) {
       const emoji = Array.from(val)[0]; // Safe Unicode grapheme extraction
       try {
         await toggleReaction.mutateAsync(emoji);
-        setCustomInputVal('');
-        setIsCustomEditing(false);
         setShowPopover(false);
       } catch {
         // Error handled in hook
+      } finally {
+        if (customInputRef.current) {
+          customInputRef.current.value = '';
+          customInputRef.current.blur();
+        }
       }
     }
   };
@@ -243,48 +235,54 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
 
           <div style={{ width: '1px', height: '20px', background: 'var(--border-default)' }} />
 
-          {/* Custom Input */}
-          {!isCustomEditing ? (
-            <button
-              onClick={() => setIsCustomEditing(true)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px dashed var(--border-default)',
-                borderRadius: 'var(--radius-pill)',
-                padding: '4px 10px',
-                color: 'var(--text-secondary)',
-                fontSize: '11px',
-                fontWeight: 500,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)',
-                outline: 'none',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span>➕ Custom...</span>
-            </button>
-          ) : (
-            <input
-              ref={customInputRef}
-              type="text"
-              placeholder="Type emoji..."
-              value={customInputVal}
-              onChange={handleCustomInputChange}
-              style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid var(--accent-primary)',
-                borderRadius: 'var(--radius-pill)',
-                padding: '4px 10px',
-                color: 'var(--text-primary)',
-                fontSize: '11px',
-                width: '100px',
-                outline: 'none',
-              }}
-            />
-          )}
+          {/* Circular Button for Native Emoji Keyboard Trigger */}
+          <button
+            onClick={() => {
+              if (customInputRef.current) {
+                customInputRef.current.focus();
+              }
+            }}
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--border-default)',
+              borderRadius: '50%',
+              width: '28px',
+              height: '28px',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all var(--transition-fast)',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+            aria-label="Custom emoji"
+            title="Custom emoji"
+          >
+            <Plus size={14} />
+          </button>
+
+          {/* Hidden Input for Native Keyboard focus trigger */}
+          <input
+            ref={customInputRef}
+            type="text"
+            onChange={handleCustomInputChange}
+            style={{
+              position: 'absolute',
+              opacity: 0,
+              width: 0,
+              height: 0,
+              pointerEvents: 'none',
+            }}
+          />
         </div>
       )}
     </div>
@@ -390,6 +388,74 @@ export function AnnouncementCommentsDrawer({
   const listRef = useRef<HTMLDivElement>(null);
   const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Autocomplete Mentions states
+  const { data: sectionMembers = [] } = useSectionMembers();
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionFilterText, setMentionFilterText] = useState('');
+  const [mentionTriggerIndex, setMentionTriggerIndex] = useState(-1);
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setInputVal(val);
+
+    const selectionEnd = e.target.selectionEnd;
+    const textBeforeCursor = val.slice(0, selectionEnd);
+    
+    // Look for the last "@" character before the cursor
+    const lastAtIdx = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtIdx !== -1) {
+      const textAfterAt = textBeforeCursor.slice(lastAtIdx + 1);
+      const hasWhitespace = /\s/.test(textAfterAt);
+      const isPrecededBySpace = lastAtIdx === 0 || /\s/.test(textBeforeCursor.charAt(lastAtIdx - 1));
+
+      if (!hasWhitespace && isPrecededBySpace) {
+        setShowMentionSuggestions(true);
+        setMentionFilterText(textAfterAt);
+        setMentionTriggerIndex(lastAtIdx);
+        return;
+      }
+    }
+
+    setShowMentionSuggestions(false);
+    setMentionFilterText('');
+    setMentionTriggerIndex(-1);
+  };
+
+  const handleSelectMention = (memberName: string) => {
+    if (mentionTriggerIndex === -1 || !textareaRef.current) return;
+    
+    const val = inputVal;
+    const selectionEnd = textareaRef.current.selectionEnd;
+    
+    const prefix = val.slice(0, mentionTriggerIndex);
+    const suffix = val.slice(selectionEnd);
+    
+    const cleanName = memberName.replace(/\s+/g, '');
+    const mentionString = `@${cleanName} `;
+    
+    const newVal = prefix + mentionString + suffix;
+    setInputVal(newVal);
+    
+    setShowMentionSuggestions(false);
+    setMentionFilterText('');
+    setMentionTriggerIndex(-1);
+    
+    const newCursorPos = mentionTriggerIndex + mentionString.length;
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 50);
+  };
+
+  const filteredMembers = sectionMembers.filter(member => {
+    if (member.id === currentUserId) return false;
+    if (!mentionFilterText) return true;
+    return member.name.toLowerCase().includes(mentionFilterText.toLowerCase());
+  });
 
   const verifiedComments = comments.filter(c => c.isVerified);
   const hasVerified = verifiedComments.length > 0;
@@ -765,24 +831,119 @@ export function AnnouncementCommentsDrawer({
         <form
           onSubmit={handlePostComment}
           style={{
+            position: 'relative',
             borderTop: '1px solid var(--border-default)',
             paddingTop: 12,
-            background: 'var(--bg-overlay)',
+            background: 'none',
             display: 'flex',
             flexDirection: 'column',
             gap: 8,
           }}
         >
+          {showMentionSuggestions && filteredMembers.length > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '100%',
+                left: 0,
+                right: 0,
+                marginBottom: '8px',
+                maxHeight: '180px',
+                overflowY: 'auto',
+                background: 'rgba(10, 11, 18, 0.92)',
+                backdropFilter: 'blur(16px)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: 'var(--shadow-elevated)',
+                zIndex: 50,
+                display: 'flex',
+                flexDirection: 'column',
+                scrollbarWidth: 'thin',
+              }}
+            >
+              {filteredMembers.map(member => (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => handleSelectMention(member.name)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                    color: 'var(--text-primary)',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    transition: 'background var(--transition-fast)',
+                    outline: 'none',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'none';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {member.avatarUrl ? (
+                      <img 
+                        src={member.avatarUrl} 
+                        alt={member.name} 
+                        style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} 
+                      />
+                    ) : (
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '9px',
+                        fontWeight: 600
+                      }}>
+                        {member.name.charAt(0)}
+                      </div>
+                    )}
+                    <span style={{ fontWeight: 500 }}>{member.name}</span>
+                    {member.role === 'cr' && (
+                      <span style={{
+                        background: 'rgba(167, 139, 250, 0.15)',
+                        color: 'var(--status-announcement)',
+                        padding: '1px 4px',
+                        borderRadius: '4px',
+                        fontSize: '8px',
+                        fontWeight: 700,
+                      }}>
+                        CR
+                      </span>
+                    )}
+                  </div>
+                  {member.classRoll && (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                      {member.classRoll}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={{ position: 'relative', width: '100%' }}>
             <textarea
               ref={textareaRef}
               rows={2}
               placeholder="Ask a question or provide an answer..."
               value={inputVal}
-              onChange={e => setInputVal(e.target.value)}
+              onChange={handleTextareaChange}
               style={{
                 width: '100%',
-                background: 'rgba(255, 255, 255, 0.04)',
+                background: 'var(--bg-base)',
                 border: '1px solid var(--border-default)',
                 borderRadius: 'var(--radius-md)',
                 color: 'var(--text-primary)',

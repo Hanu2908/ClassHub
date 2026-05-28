@@ -6,7 +6,7 @@ This document specifies the database architecture, security policies, real-time 
 
 ## 1. Product Requirements & Scope
 
-* **Reactions**: Allows students and CRs to express lightweight, non-verbal feedback using 6 standardized academic emojis.
+* **Reactions**: Allows students and CRs to express lightweight, non-verbal feedback using standardized academic emojis.
 * **Public Q&A Comments**: Collapsible, chronological public comment drawer under each notice for Q&A, reducing repeat queries for CRs.
 * **Verified Answers**: A CR can mark any peer or CR comment as "Verified." Verified answers receive distinct glowing visual cues.
 * **Refined Notifications**: Real-time push alerts that keep threads interactive while avoiding alert fatigue:
@@ -16,6 +16,7 @@ This document specifies the database architecture, security policies, real-time 
   4. *Deep linking* scrolls and expands the drawer automatically.
   5. *Mute Toggles* allow users to opt out of noisy threads.
 * **Verified Lockout**: Once a comment is verified by the CR, the student author loses the ability to edit or delete it (only the CR can delete or un-verify it).
+* **Autocomplete Mentions**: Typing `@` inside the comments drawer displays a floating suggestion panel listing section members (excluding self) which filters dynamically and inserts selected names automatically.
 
 ---
 
@@ -244,90 +245,95 @@ Plain English: Allows users full control to mute or unmute notification threads 
 
 ## 3. High-Fidelity Frontend & Interactive UX
 
-### A. The Emoji Reactions Bar
-* **Location**: Placed at the bottom-left edge of each announcement card.
-* **Component flow**:
-  * **Dynamic Visibility**: If an announcement has **zero reactions**, no reaction pills are displayed. Instead, only a single desaturated smiley-face icon button is shown next to the Q&A trigger.
-  * **Reaction Pills**: If reactions exist, display active reactions in rounded pills (e.g. `👍 14`, `❓ 2`).
-  * If the user reacted to a pill, it lights up with a subtle glowing indigo/emerald border (`border: 1.5px solid var(--accent-primary)`) and a soft opacity fill.
-  * Clicking a pill optimistic-updates the count and executes the upsert/retract logic.
-  * **Add Reaction popover**: Clicking the Smiley face or `+` button triggers a compact bubble popover displaying:
-    1. **6 Quick-Select Emojis** (👍, ❓, 🚀, 👀, 🎉, 👎).
-    2. A text input box styled as `➕ Custom...` that accepts a single character. Clicking this input field triggers the user's native mobile/desktop virtual keyboard, allowing them to type or select **any custom emoji from their own emoji pack/keyboard**.
-    3. Entering any custom emoji registers it as their reaction on the backend instantly, optimizing PWA bundles to 0kb external library footprint!
+### A. Overhauled Announcements Page Card (Vertical Flow Layout)
+We discard the legacy two-column structure (`75%/25%` layout) in favor of a cohesive vertical block layout optimized for legibility and visual rhythm:
+* **Card Outer Boundary**: Features a curved edge (`border-radius: var(--radius-lg)`), semi-transparent glass background (`var(--bg-surface)`), and a category-coded color outline (e.g. ruby red border for `Critical`, violet for `Academic Exam`, light blue for `General Announcement`). Includes subtle scaling transitions on hover (`transform: scale(1.015)`) for responsiveness.
+* **Metadata Row (Header)**: Category pill tag + Deadline badge aligned on the left. The CR actions (`Trash` and `Tracking Receipts`) are grouped on the far right.
+* **Spacious Title**: Spans full-width with a bold display typography (`font-weight: 700`, `font-size: 16px`, `line-height: 1.3`).
+* **In-Place Truncation & Expansion (Option A)**:
+  * Descriptions longer than 3 lines are capped with a standard CSS `-webkit-line-clamp: 3` block and a fading glassmask overlay.
+  * Below the text, a clean `Read More` trigger (with a small caret chevron) is displayed.
+  * Clicking `Read More` expands the container **in-place** with a smooth CSS height transition. The text changes to `Show Less` and chevrons rotate dynamically.
+* **Attachments Cards**: Mount in a full-width row or grid directly below the description.
+* **Integrated Action Footer**: A bottom bar that stretches the card width, housing:
+  * **Reactions Pill Hub** (left-aligned)
+  * **Q&A Drawer Trigger Button** (middle-aligned)
+  * **Acknowledge / Acked Pill** (right-aligned)
 
-### B. Collapsible Q&A Drawer
-* **Visual Trigger**: A collapsible counter `💬 5 Questions & Comments` placed at the bottom-right of the card.
-* **Action Header**:
-  * If verified comments exist, a top banner mounts: `💡 Verified answer available. [Jump to Answer]`.
-  * Clicking it cycles focus smoothly (`scrollIntoView`) down to each highlighted verified card in order.
-* **Flat Thread Feed**:
-  * Chronological cards. Authors display Name + Section Roll Number (e.g. `Rohan Mehta (P-12)`).
-  * CR authors carry a specialized gold background badge: `[CR]`.
-  * Verified cards are highlighted with a glowing green border (`border: 1px solid rgba(16,185,129,0.3)`) and an emerald checkmark header: `✓ Verified Answer`.
-* **Actions**:
-  * **Reply**: Tapping `Reply` on any card auto-appends `@Rohan Mehta ` to the input box and focuses it.
-  * **Verify (CR Only)**: If the logged-in user is a CR, they see a toggle button: `✓ Verify`. Tapping it triggers an RLS-validated update converting the comment into the highlighted green verified block.
+---
 
-### C. Input & Interaction Safeguards
-* **Limit Indicator**: Character counter counts down from **500 characters** max.
-* **Submission Throttle**: A client-side **3-second debounce throttle** blocks double-clicking or rapid question submissions.
-* **Mute Toggle**: A small bell icon is situated near the Q&A toggle. Tapping it toggles the notification mute state.
+### B. Dashboard notices stack clean-up
+* **Card Stack Layout**: Remove the bottom bar of reactions/Q&A trigger entirely from the notice cards on the dashboard. The card size remains fixed at `148px`, completely avoiding overlaps with carousels or scroll indicators below.
+* **Expanded drawer capabilities**: In `DashboardPage.tsx`, render the complete `AnnouncementReactions` and `AnnouncementCommentTrigger` components inside the `selectedAnn` expanded detailed bottom-sheet drawer! Tapping a dashboard card opens the sheet, which fully loads all reactions and commenting capabilities in a safe space.
+
+---
+
+### C. Circular `+` Button Popover & Native Emoji Keyboard Link
+* **Popover layout**: Tapping the smiley face or `+` button in the reactions hub opens a floating glassmorphic popover displaying:
+  * **6 Quick-Select Emojis** (👍, ❓, 🚀, 👀, 🎉, 👎).
+  * A vertical dividing line.
+  * A circular button containing a Lucide `Plus` icon.
+* **Keyboard Linkage**:
+  * Tapping the circular `+` button programmatically focuses a hidden, overlaying `<input type="text" />` inside the popover.
+  * Focusing an input inside a direct click handler instantly triggers the device's native virtual keyboard emoji selectors.
+  * Once the user inputs a custom emoji from their keyboard pack, it triggers `onChange`, registers the reaction on the backend, closes the popover, and clears the input state immediately.
+
+---
+
+### D. Comments Drawer Styling & Autocomplete Mentions (`@`)
+* **Form styling**: The input area has a fully transparent background (`background: 'none'`), removing any grey/white blocks. The `textarea` has a deep solid background (`var(--bg-base)`) for high-contrast, zero-bleed text entry.
+* **Floating Autocomplete Panel**:
+  * Employs the `useSectionMembers()` query hook to fetch list of section members on mount.
+  * When the user types `@`, a floating glassmorphic autocomplete panel appears above the input form.
+  * **Filtering**: The panel dynamically lists matching names as they type (e.g. `@him` filters names containing "him"), **strictly excluding the user's own name** to prevent self-mentioning noise.
+  * Show roll number and CR badge in the selection cards.
+  * **Insertion**: Tapping any member in the list inserts their clean, formatted name (e.g., `@HimanshuSaini `) into the text box and returns focus to the cursor.
 
 ---
 
 ## 4. Real-Time Sync & Notifications Pipeline
 
 ### A. Real-Time State Management
-Zustand or TanStack Query will listen directly to changes via Supabase Realtime channels. If a new reaction or comment is added/removed/verified, the component updates instantly:
+Zustand or TanStack Query will listen directly to changes via Supabase Realtime channels. Every hook instance appends a random unique suffix to the channel name (`supabase.channel("channel-name-[id]-[random-suffix]")`) to avoid callback collisions:
 ```typescript
+const uniqueId = Math.random().toString(36).slice(2, 9);
 const channel = supabase
-  .channel(`announcement-qa-${announcementId}`)
+  .channel(`announcement-qa-realtime-${announcementId}-${uniqueId}`)
   .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions', filter: `announcement_id=eq.${announcementId}` }, handleReactionUpdate)
   .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_comments', filter: `announcement_id=eq.${announcementId}` }, handleCommentUpdate)
   .subscribe();
 ```
 
+---
+
 ### B. Push Notification Worker (Edge Functions)
 We will create a Supabase Edge Function `notify-qa-events` triggered by a database webhook on `announcement_comments` inserts or updates.
 
 1. **Verify Notification Path**:
-   * If a comment's `is_verified` becomes `true`: Send a push notification immediately to the comment author:
-     * Title: `✓ Verified Answer`
-     * Message: `[CR] verified your question in: "[Announcement Title]"`
+   * If a comment's `is_verified` becomes `true`: Send a push notification immediately to the comment author.
 2. **Peer Reply Notification Path**:
    * If a student posts a comment containing `@Name`:
-     * Look up the mentioned student's ID.
-     * If they are not muted, send a push notification:
-       * Title: `New Reply`
-       * Message: `[Author Name] replied to you: "[Excerpt]"`
+     * Look up the mentioned student's ID. If not muted, send a push notification.
 3. **CR Aggregated Notification Path**:
    * If a student posts a new comment/question:
-     * Look up if a notification was sent to the CR in the last 15 minutes.
-     * If yes: Do nothing (aggregate).
-     * If no: Send a push notification:
-       * Title: `New Question`
-       * Message: `Students are asking questions in: "[Announcement Title]"`
+     * Aggregate notifications to the CR within a 15-minute window.
 4. **Deep Linking Payload**:
    * Push notification packages will carry an actionable data payload:
-     ```json
-     {
-       "url": "/announcements?id=[announcement_id]&expand_qa=true&focus_comment=[comment_id]"
-     }
-     ```
-   * The frontend `App.tsx` or router listener will parse these search params on mount, scroll to the targeted element, and open the drawer automatically.
+     `{ "url": "/announcements?id=[announcement_id]&expand_qa=true&focus_comment=[comment_id]" }`
+   * The frontend `AnnouncementsPage.tsx` router listener will parse these search params on mount, scroll to the targeted element, and open the drawer automatically.
 
 ---
 
 ## 5. Verification Plan
 
 ### A. Automated Integration Tests
-* **RLS Verification**: Run Postgres integration tests validating that students cannot insert comments for announcements in other sections.
-* **Lockout Validation**: Run test trying to delete an `is_verified = true` comment under a student's token; assert that Postgres returns an RLS violation error.
+* **RLS Verification**: Run Postgres tests validating section boundaries.
+* **Lockout Validation**: Verify that attempts to delete or edit an `is_verified = true` comment by student authors fail with an RLS database block.
+* **Vite Production Compile**: Ensure that all changes build cleanly without compilation errors (`npm run build`).
+* **ESLint Validation**: Check that our code additions introduce zero lints (`npm run lint`).
 
 ### B. Manual Visual Checks
-1. **Fluid Reactions**: React with 👍, select 🚀, and ensure the 👍 reaction count decrements while the 🚀 reaction increments smoothly in a single fluid transition.
-2. **Cyclic Jump**: Mark two comments as verified. Click `Jump to Answer` repeatedly, confirming that focus smoothly alternates between the two highlighted cards.
-3. **Mute & Push**: Mute a thread, have a mock user reply, and verify that no push notifications arrive. Unmute, reply, and verify instant delivery.
-
----
+1. **Vertical Flow Cards**: Validate that cards expand/collapse smoothly in-place upon tapping `Read More`.
+2. **Dashboard Cleanliness**: Tapping stack cards correctly opens the detailed bottom drawer housing active commenting and reactions, without any bottom-bar carousel overlaps.
+3. **Plus Emoji keyboard**: Click the circular `+` button in the popover, verify that the virtual keyboard opens instantly, and custom selected emojis increment counts correctly.
+4. **Mention Autocomplete**: Write `@` in the comment textarea and confirm the floating member suggestions overlay appears, excludes your own name, filters as you type, and auto-completes the username cleanly on tap.
