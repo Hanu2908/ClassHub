@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Lock, Unlock, RefreshCw, X, Sparkles } from 'lucide-react';
+import type { Worker as TesseractWorker } from 'tesseract.js';
 import { useGPAStore } from '../../../store/gpaStore';
 import {
   GRADE_SCALE,
@@ -79,9 +80,13 @@ function MarksInput({
 }: { value: number | null; onChange: (v: number | null) => void; disabled?: boolean; subjectName: string; subjectIndex: number }) {
   const [raw, setRaw] = useState<string>(value !== null ? String(value) : '');
   const [isFocused, setIsFocused] = useState(false);
+  const [prevValue, setPrevValue] = useState(value);
   const color = value !== null ? marksToColor(value) : 'rgba(255,255,255,0.3)';
 
-  useEffect(() => { setRaw(value !== null ? String(value) : ''); }, [value]);
+  if (value !== prevValue) {
+    setRaw(value !== null ? String(value) : '');
+    setPrevValue(value);
+  }
 
   const commit = () => {
     const n = parseFloat(raw);
@@ -241,7 +246,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
   // OCR state
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState('');
-  const [ocrWorker, setOcrWorker] = useState<any>(null);
+  const [ocrWorker, setOcrWorker] = useState<TesseractWorker | null>(null);
   const [extractedMatches, setExtractedMatches] = useState<Array<{ id: string; name: string; marks: number; grade: string }>>([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
 
@@ -334,11 +339,12 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
       }
     };
 
+    const trigger = scanTriggerRef.current;
     window.addEventListener('keydown', handleKeys);
     return () => {
       window.removeEventListener('keydown', handleKeys);
       // Restore focus to scan trigger on unmount
-      scanTriggerRef.current?.focus();
+      trigger?.focus();
     };
   }, [showReviewModal]);
 
@@ -352,7 +358,8 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
     try {
       let text = '';
       if (file.type === 'application/pdf') {
-        const pdfjs = await initPdfJs() as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pdfjs = (await initPdfJs()) as any;
         setScanProgress('Reading PDF…');
         const arrayBuffer = await file.arrayBuffer();
         const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
@@ -382,9 +389,13 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
               }
             }
           } else {
-            const lineMap: Record<number, any[]> = {};
+            interface PDFItem {
+              str: string;
+              transform: number[];
+            }
+            const lineMap: Record<number, PDFItem[]> = {};
             
-            items.forEach((item: any) => {
+            (items as PDFItem[]).forEach((item) => {
               if (!item.str.trim()) return;
               const y = Math.round(item.transform[5]);
               const matchedY = Object.keys(lineMap).find(key => Math.abs(Number(key) - y) < 4);

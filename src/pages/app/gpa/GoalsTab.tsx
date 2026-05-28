@@ -47,13 +47,14 @@ export default function GoalsTab() {
   }, [cgpa, targetCgpa, setTargetCgpa]);
 
   const [val, setVal] = useState(targetCgpa ?? (cgpa > 0 ? cgpa + 0.2 : 8.0));
+  const [prevTargetCgpa, setPrevTargetCgpa] = useState(targetCgpa);
 
-  // Keep local slider synchronized with store target CGPA changes
-  useEffect(() => {
+  if (targetCgpa !== prevTargetCgpa) {
     if (targetCgpa !== null) {
       setVal(targetCgpa);
     }
-  }, [targetCgpa]);
+    setPrevTargetCgpa(targetCgpa);
+  }
 
   const calculateRequiredSgpa = () => {
     let currentTotalCredits = 0;
