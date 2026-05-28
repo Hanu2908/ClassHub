@@ -778,6 +778,88 @@ function ClassAttendance() {
   );
 }
 
+function SendNotificationSheet({ onClose }: { onClose: () => void }) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [sending, setSending] = useState(false);
+  const { data: section } = useSection();
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', boxSizing: 'border-box',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+    outline: 'none',
+  };
+
+  const handleSend = async () => {
+    if (!title.trim()) { showToast('Title is required', 'error'); return; }
+    if (!body.trim())  { showToast('Message body is required', 'error'); return; }
+    if (!section?.id) return;
+    setSending(true);
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: pushData, error: pushErr } = await supabase.functions.invoke('send-custom-notification', {
+        body: { title: title.trim(), body: body.trim(), sectionId: section.id },
+      });
+
+      if (pushErr) {
+        console.error('[Notify] Push failed:', pushErr);
+        showToast('Notification sent to bell icon! Push delivery failed.', 'warning');
+      } else if (pushData && !pushData.error) {
+        const { sent, failed } = pushData;
+        if (sent === 0 && failed > 0) {
+          showToast('Notification sent to bell icon! Push delivery failed for all.', 'warning');
+        } else if (sent > 0 && failed > 0) {
+          showToast(`Notification sent! Push delivered to ${sent} (${failed} failed).`, 'success');
+        } else if (sent > 0) {
+          showToast(`Notification sent! Push delivered to ${sent} students.`, 'success');
+        } else {
+          showToast('Notification sent! (No active subscriptions found)', 'success');
+        }
+      } else if (pushData?.error) {
+        console.error('[Notify] Edge function error:', pushData.error);
+        showToast(`Failed: ${pushData.error}`, 'error');
+      } else {
+        showToast('Notification sent!', 'success');
+      }
+      onClose();
+    } catch (err) {
+      console.error('[Notify] Send failed:', err);
+      showToast('Failed to send notification', 'error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <BottomSheet onClose={onClose} title="Send Notification">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 20 }}>
+        <div>
+          <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
+          <input id="notif-title" style={inputStyle} placeholder="e.g. Important update" value={title} onChange={e => setTitle(e.target.value)} />
+        </div>
+        <div>
+          <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
+          <textarea id="notif-body" style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} placeholder="Write your message to the class…" value={body} onChange={e => setBody(e.target.value)} />
+        </div>
+        <button
+          id="send-notif-btn"
+          onClick={handleSend}
+          disabled={sending} className="t-button" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '13px', background: sending ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+            border: 'none', borderRadius: 'var(--radius-md)', cursor: sending ? 'not-allowed' : 'pointer',
+            color: sending ? 'var(--text-muted)' : '#fff',
+            transition: 'all 0.2s', marginTop: 10 }}
+        >
+          <Send size={15} /> {sending ? 'Sending…' : 'Send Notification'}
+        </button>
+      </div>
+    </BottomSheet>
+  );
+}
+
 function FlashPostSheet({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -1090,6 +1172,7 @@ export default function CRCommandPage() {
   const location = useLocation();
   const role = useAppStore(s => s.role);
   const [showNotifSheet, setShowNotifSheet] = useState(!!location.state?.openBroadcast);
+  const [showFlashPostSheet, setShowFlashPostSheet] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [deletingHub, setDeletingHub] = useState(false);
   const { data: section } = useSection();
@@ -1177,6 +1260,10 @@ export default function CRCommandPage() {
               <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Announcement</span>
             </button>
             <button className="card" onClick={() => setShowNotifSheet(true)} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
+              <Bell size={16} color="var(--status-critical)" />
+              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Notification</span>
+            </button>
+            <button className="card" onClick={() => setShowFlashPostSheet(true)} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <AlertTriangle size={16} color="var(--status-critical)" />
               <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Flash Post</span>
             </button>
@@ -1227,7 +1314,8 @@ export default function CRCommandPage() {
         <div style={{ height: 24 }} />
       </main>
 
-      {showNotifSheet ? <FlashPostSheet onClose={() => setShowNotifSheet(false)} /> : null}
+      {showNotifSheet ? <SendNotificationSheet onClose={() => setShowNotifSheet(false)} /> : null}
+      {showFlashPostSheet ? <FlashPostSheet onClose={() => setShowFlashPostSheet(false)} /> : null}
 
       {showDeleteSheet && (
         <BottomSheet onClose={() => setShowDeleteSheet(false)} title="Delete Section Hub?">
