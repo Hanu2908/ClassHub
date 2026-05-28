@@ -1526,14 +1526,6 @@ function CRDashboardStation() {
             <span>New Poll</span>
           </button>
 
-          <button 
-            onClick={() => navigate('/app/cr-command', { state: { openBroadcast: true } })}
-            className="btn-tactile-cr glow-amber"
-            aria-label="Send a section broadcast notification"
-          >
-            <Megaphone size={18} color="var(--status-warning)" style={{ filter: 'drop-shadow(0 0 4px rgba(251, 191, 36, 0.3))' }} />
-            <span>Broadcast</span>
-          </button>
 
           <button 
             onClick={() => navigate('/app/announcements', { state: { openCreate: true } })}
