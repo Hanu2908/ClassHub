@@ -220,22 +220,14 @@ function SubmissionTracker() {
               </div>
 
               {subFilter === 'not_submitted' && pendingMembers.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <button
-                    id="cr-btn-send-notif"
-                    onClick={handleBulkNotify}
-                    style={{
-                      padding: '16px 12px', background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
-                      color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--status-critical)' }}>
-                      <Bell size={18} />
-                    </div>
-                    <span className="t-label">Remind Pending</span>
-                  </button>
-                </div>
+                <button
+                  id="cr-btn-send-notif"
+                  onClick={handleBulkNotify} className="t-button" style={{ width: '100%', padding: '10px', marginBottom: 10,
+                    background: 'rgba(74,158,255,0.1)', border: '1px solid rgba(74,158,255,0.2)',
+                    borderRadius: 8, color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  <Bell size={14} /> Notify Pending Students
+                </button>
               ) : null}
 
               {/* Student list */}
