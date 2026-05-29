@@ -285,8 +285,8 @@ export function useUpdateAssignment() {
           if (delErr) throw delErr;
         }
 
-        const setsToUpsert = input.sets.map(s => ({
-          ...(s.id ? { id: s.id } : {}),
+        const setsToUpdate = input.sets.filter(s => s.id).map(s => ({
+          id: s.id!,
           assignment_id: input.id,
           set_label: s.label,
           description: s.description,
@@ -296,10 +296,29 @@ export function useUpdateAssignment() {
           page_numbers: s.pageNumbers ?? null,
         }));
 
-        const { error: upsertErr } = await supabase
-          .from('assignment_sets')
-          .upsert(setsToUpsert);
-        if (upsertErr) throw upsertErr;
+        const setsToInsert = input.sets.filter(s => !s.id).map(s => ({
+          assignment_id: input.id,
+          set_label: s.label,
+          description: s.description,
+          roll_start: s.rollStart,
+          roll_end: s.rollEnd,
+          pdf_url: s.pdfUrl ?? null,
+          page_numbers: s.pageNumbers ?? null,
+        }));
+
+        if (setsToUpdate.length > 0) {
+          const { error: updateErr } = await supabase
+            .from('assignment_sets')
+            .upsert(setsToUpdate);
+          if (updateErr) throw updateErr;
+        }
+
+        if (setsToInsert.length > 0) {
+          const { error: insertErr } = await supabase
+            .from('assignment_sets')
+            .insert(setsToInsert);
+          if (insertErr) throw insertErr;
+        }
       } else {
         if (existingIds.length > 0) {
           const { error: delErr } = await supabase
