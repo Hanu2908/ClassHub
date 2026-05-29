@@ -24,6 +24,7 @@ export interface AuthUser {
   email: string;
   avatarUrl: string | null;
   role: 'student' | 'cr';
+  crRank: 'primary' | 'co' | null;
   sectionId: string | null;
   sectionRoll: string | null;
   universityRoll: string | null;
@@ -310,7 +311,7 @@ export const useAppStore = create<AppState>()(
         if (!user) return;
         const { data, error } = await supabase
           .from('users')
-          .select('id, name, email, avatar_url, role, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer')
+          .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer')
           .eq('id', user.id)
           .single();
         if (error || !data) return;
@@ -320,6 +321,7 @@ export const useAppStore = create<AppState>()(
           email: data.email,
           avatarUrl: data.avatar_url ?? null,
           role: data.role as 'student' | 'cr',
+          crRank: (data as Record<string, unknown>).cr_rank as 'primary' | 'co' | null ?? null,
           sectionId: data.section_id,
           sectionRoll: data.section_roll,
           universityRoll: data.university_roll,

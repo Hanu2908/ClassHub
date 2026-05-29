@@ -275,6 +275,16 @@ export function useUpdateAssignment() {
       const existingIds = (existingSets ?? []).map(s => s.id);
 
       if (input.sets && input.sets.length > 0) {
+        const inputSetIds = input.sets.map(s => s.id).filter(Boolean) as string[];
+        const idsToDelete = existingIds.filter(id => !inputSetIds.includes(id));
+        if (idsToDelete.length > 0) {
+          const { error: delErr } = await supabase
+            .from('assignment_sets')
+            .delete()
+            .in('id', idsToDelete);
+          if (delErr) throw delErr;
+        }
+
         const setsToUpsert = input.sets.map(s => ({
           ...(s.id ? { id: s.id } : {}),
           assignment_id: input.id,
@@ -290,16 +300,6 @@ export function useUpdateAssignment() {
           .from('assignment_sets')
           .upsert(setsToUpsert);
         if (upsertErr) throw upsertErr;
-
-        const inputSetIds = input.sets.map(s => s.id).filter(Boolean) as string[];
-        const idsToDelete = existingIds.filter(id => !inputSetIds.includes(id));
-        if (idsToDelete.length > 0) {
-          const { error: delErr } = await supabase
-            .from('assignment_sets')
-            .delete()
-            .in('id', idsToDelete);
-          if (delErr) throw delErr;
-        }
       } else {
         if (existingIds.length > 0) {
           const { error: delErr } = await supabase
@@ -1027,3 +1027,86 @@ export function useDeleteGlobalPYQ() {
   });
 }
 
+// ── CR Management (ADR-018) ──────────────────────────────────────────────────
+
+/** Transfer primary CR role to another section member. Caller must be primary CR. */
+export function useTransferPrimaryCR() {
+  const qc = useQueryClient();
+  const { sectionId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (input: {
+      newPrimaryId: string;
+      oldCrAction: 'become_student' | 'become_co_cr';
+    }) => {
+      const { error } = await supabase.rpc('transfer_primary_cr', {
+        new_primary_id: input.newPrimaryId,
+        old_cr_action: input.oldCrAction,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['section_crs', sectionId] });
+      qc.invalidateQueries({ queryKey: ['members', sectionId] });
+      qc.invalidateQueries({ queryKey: ['cr_transfer_log', sectionId] });
+      // Refresh the auth profile since the caller's role/rank changed
+      useAppStore.getState().refreshProfile();
+    },
+  });
+}
+
+/** Promote a student to co-CR. Caller must be primary CR. */
+export function usePromoteToCoCR() {
+  const qc = useQueryClient();
+  const { sectionId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (targetUserId: string) => {
+      const { error } = await supabase.rpc('promote_to_co_cr', {
+        target_user_id: targetUserId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['section_crs', sectionId] });
+      qc.invalidateQueries({ queryKey: ['members', sectionId] });
+      qc.invalidateQueries({ queryKey: ['cr_transfer_log', sectionId] });
+    },
+  });
+}
+
+/** Remove a co-CR back to student. Caller must be primary CR. */
+export function useDemoteCoCR() {
+  const qc = useQueryClient();
+  const { sectionId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (targetUserId: string) => {
+      const { error } = await supabase.rpc('demote_co_cr', {
+        target_user_id: targetUserId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['section_crs', sectionId] });
+      qc.invalidateQueries({ queryKey: ['members', sectionId] });
+      qc.invalidateQueries({ queryKey: ['cr_transfer_log', sectionId] });
+    },
+  });
+}
+
+/** Resign as CR (co-CR only; primary must transfer first). */
+export function useResignAsCR() {
+  const qc = useQueryClient();
+  const { sectionId } = useAuthContext();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('resign_as_cr');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['section_crs', sectionId] });
+      qc.invalidateQueries({ queryKey: ['members', sectionId] });
+      qc.invalidateQueries({ queryKey: ['cr_transfer_log', sectionId] });
+      // Refresh the auth profile since the caller's role/rank changed
+      useAppStore.getState().refreshProfile();
+    },
+  });
+}

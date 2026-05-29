@@ -267,8 +267,51 @@ Types for the database are generated via `npx supabase gen types typescript`.
 
 ---
 
+## ADR-017 — Gmail Notice Sync (Deferred to Roadmap)
+**Decision:** Automatic import of SKIT college emails into ClassHub
+announcements via Gmail API (`gmail.readonly` scope), with Supabase Vault
+token storage, scheduled Edge Function sync, rule-based classification,
+and a CR pending-review queue.
+**Status:** Deferred to future roadmap. Design complete, implementation
+blocked on Google Cloud OAuth verification for SKIT Workspace accounts.
+**Design decisions locked for when picked up:**
+- Rule-based classifier only (no AI) — keyword + sender pattern matching
+- Map notices to `general`/`critical` only (no new `important` priority)
+- `pg_cron` + `pg_net` for scheduling inside Supabase
+**Date:** May 2026
+
+---
+
+## ADR-018 — Multi-CR Identity + Transfer System
+**Decision:** Add a two-tier CR model on top of the existing `role = 'cr'`
+system. The distinction is purely about CR management — who can add, remove,
+or transfer the role itself. App permissions (announcements, assignments,
+polls, timetable) are identical for both ranks.
+**Model:**
+- `primary_cr` — exactly 1 per section. Can manage co-CRs, transfer primary.
+- `co_cr` — max 2 per section. Full app permissions, cannot manage CRs.
+- Max 3 CRs per section total.
+**Schema changes:**
+- `users.cr_rank` column (`'primary' | 'co' | null`)
+- Constraint: `cr_rank IS NULL OR role = 'cr'`
+- Unique index: exactly 1 primary per section
+- Trigger: max 3 CRs per section
+- `cr_transfer_log` audit table for all CR changes
+**Management:** Four SECURITY DEFINER RPCs — never direct table writes:
+1. `transfer_primary_cr(new_primary_id, old_cr_action)` — atomic swap
+2. `promote_to_co_cr(target_user_id)` — primary CR only
+3. `demote_co_cr(target_user_id)` — primary CR only
+4. `resign_as_cr()` — any CR (primary must transfer first)
+**What doesn't change:**
+- `requireCr()` in Edge Functions — still checks `role = 'cr'`
+- All existing RLS policies — `role = 'cr'` covers both ranks
+- All feature permissions — tied to `section_id`, not rank
+**Date:** May 2026
+
+---
+
 ## Change Log
 | Version | Change | Author |
 |---|---|---|
 | 1.0 | Initial 16 decisions locked | Himanshu Saini |
-
+| 1.1 | ADR-017 (deferred), ADR-018 (Multi-CR) added | Himanshu Saini |

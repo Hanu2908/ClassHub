@@ -27,6 +27,7 @@ export function useAuth() {
       dayScholar: true,
       notificationsEnabled: false,
       isDeveloper: false,
+      crRank: store.role === 'cr' ? 'primary' : null,
     } satisfies AuthUser) : null),
     [isDemoMode, store.authUser, store.role]
   );

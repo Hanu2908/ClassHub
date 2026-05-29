@@ -596,6 +596,7 @@ export interface SectionMember {
   classRoll: string | null;
   universityRoll: string | null;
   role: 'student' | 'cr';
+  crRank: 'primary' | 'co' | null;
   avatarUrl: string | null;
   dayScholar: boolean;
 }
@@ -609,7 +610,7 @@ export function useSectionMembers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, section_roll, university_roll, role, avatar_url, day_scholar')
+        .select('id, name, email, section_roll, university_roll, role, cr_rank, avatar_url, day_scholar')
         .eq('section_id', sectionId!)
         .order('section_roll')
         .limit(200); // safeguard: avoid extremely large member lists on the dashboard
@@ -621,6 +622,7 @@ export function useSectionMembers() {
         classRoll: u.section_roll,
         universityRoll: u.university_roll,
         role: u.role as 'student' | 'cr',
+        crRank: (u as Record<string, unknown>).cr_rank as 'primary' | 'co' | null ?? null,
         avatarUrl: u.avatar_url,
         dayScholar: u.day_scholar,
       }));
@@ -804,3 +806,76 @@ export function useGlobalPYQs() {
   });
 }
 
+// ── Section CRs (for Manage CRs UI) ─────────────────────────────────────────
+
+export interface SectionCR {
+  id: string;
+  name: string;
+  email: string;
+  classRoll: string | null;
+  crRank: 'primary' | 'co' | null;
+  avatarUrl: string | null;
+}
+
+export function useSectionCRs() {
+  const { sectionId, isAuthenticated } = useAuthContext();
+  return useQuery<SectionCR[]>({
+    queryKey: ['section_crs', sectionId],
+    enabled: !!sectionId && isAuthenticated,
+    staleTime: 1000 * 30, // 30 seconds for quick updates
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email, section_roll, cr_rank, avatar_url')
+        .eq('section_id', sectionId!)
+        .eq('role', 'cr')
+        .order('cr_rank');
+      if (error) throw error;
+      return (data ?? []).map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        classRoll: u.section_roll,
+        crRank: (u as Record<string, unknown>).cr_rank as 'primary' | 'co' | null ?? null,
+        avatarUrl: u.avatar_url,
+      }));
+    },
+  });
+}
+
+// ── CR Transfer Audit Log ────────────────────────────────────────────────────
+
+export interface CRTransferEntry {
+  id: string;
+  actorId: string;
+  targetId: string;
+  action: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export function useCRTransferLog() {
+  const { sectionId, role, isAuthenticated } = useAuthContext();
+  return useQuery<CRTransferEntry[]>({
+    queryKey: ['cr_transfer_log', sectionId],
+    enabled: !!sectionId && isAuthenticated && role === 'cr',
+    staleTime: 1000 * 60 * 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cr_transfer_log')
+        .select('id, actor_id, target_id, action, note, created_at')
+        .eq('section_id', sectionId!)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []).map(e => ({
+        id: e.id,
+        actorId: e.actor_id,
+        targetId: e.target_id,
+        action: e.action,
+        note: e.note,
+        createdAt: e.created_at,
+      }));
+    },
+  });
+}

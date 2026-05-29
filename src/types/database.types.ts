@@ -280,6 +280,58 @@ export type Database = {
           },
         ]
       }
+      cr_transfer_log: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          id: string
+          note: string | null
+          section_id: string
+          target_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          section_id: string
+          target_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          section_id?: string
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cr_transfer_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cr_transfer_log_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cr_transfer_log_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           absent: number
@@ -717,6 +769,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          cr_rank: string | null
           day_scholar: boolean
           email: string
           id: string
@@ -732,6 +785,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          cr_rank?: string | null
           day_scholar?: boolean
           email: string
           id: string
@@ -747,6 +801,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          cr_rank?: string | null
           day_scholar?: boolean
           email?: string
           id?: string
@@ -907,6 +962,29 @@ export type Database = {
           percentage: number
           votes: number
         }[]
+      }
+      demote_co_cr: {
+        Args: {
+          target_user_id: string
+        }
+        Returns: undefined
+      }
+      promote_to_co_cr: {
+        Args: {
+          target_user_id: string
+        }
+        Returns: undefined
+      }
+      resign_as_cr: {
+        Args: never
+        Returns: undefined
+      }
+      transfer_primary_cr: {
+        Args: {
+          new_primary_id: string
+          old_cr_action?: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
