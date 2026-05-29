@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
@@ -186,7 +186,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
   const { sectionId, userId, isAuthenticated } = useAuthContext();
   const page = opts?.page ?? 0;
   const limit = opts?.limit ?? 100; // default cap to avoid unbounded fetches
-  return useQuery<(Announcement & { isAcknowledged: boolean })[]>({
+  const queryResult = useQuery<(Announcement & { isAcknowledged: boolean })[]>({
     queryKey: ['announcements', sectionId, userId, page, limit],
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -236,6 +236,17 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
       }));
     },
   });
+
+  const optimisticAcks = useAppStore(s => s.optimisticAcks);
+  const data = useMemo(() => {
+    if (!queryResult.data) return queryResult.data;
+    return queryResult.data.map(ann => ({
+      ...ann,
+      isAcknowledged: ann.isAcknowledged || optimisticAcks.has(ann.id)
+    }));
+  }, [queryResult.data, optimisticAcks]);
+
+  return { ...queryResult, data };
 }
 
 // ── 4. Assignments ───────────────────────────────────────────────────────────
@@ -327,7 +338,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
 
 export function usePolls() {
   const { sectionId, userId, isAuthenticated } = useAuthContext();
-  return useQuery<Poll[]>({
+  const queryResult = useQuery<Poll[]>({
     queryKey: ['polls', sectionId, userId],
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -407,6 +418,58 @@ export function usePolls() {
       });
     },
   });
+
+  const optimisticVotes = useAppStore(s => s.optimisticVotes);
+  const data = useMemo(() => {
+    if (!queryResult.data) return queryResult.data;
+    return queryResult.data.map(poll => {
+      const localVotes = optimisticVotes[poll.id];
+      if (!localVotes) return poll;
+
+      const localVoteSet = new Set(localVotes);
+      const dbVoteSet = new Set(poll.userVotes);
+
+      // Overlay userVotes state
+      const userVotes = localVotes;
+      const userVote = localVotes[0] ?? null;
+
+      // Adjust options' vote counts
+      const options = poll.options.map(opt => {
+        let votes = opt.votes;
+        const inDb = dbVoteSet.has(opt.id);
+        const inLocal = localVoteSet.has(opt.id);
+
+        if (inLocal && !inDb) {
+          votes += 1;
+        } else if (!inLocal && inDb) {
+          votes = Math.max(0, votes - 1);
+        }
+
+        return { ...opt, votes };
+      });
+
+      // Adjust voterCount total
+      const hadDbVotes = dbVoteSet.size > 0;
+      const hasLocalVotes = localVoteSet.size > 0;
+      let voterCount = poll.voterCount ?? 0;
+
+      if (hasLocalVotes && !hadDbVotes) {
+        voterCount += 1;
+      } else if (!hasLocalVotes && hadDbVotes) {
+        voterCount = Math.max(0, voterCount - 1);
+      }
+
+      return {
+        ...poll,
+        userVotes,
+        userVote,
+        options,
+        voterCount,
+      };
+    });
+  }, [queryResult.data, optimisticVotes]);
+
+  return { ...queryResult, data };
 }
 
 export function usePollsRealtime(sectionId: string | null) {

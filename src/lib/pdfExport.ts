@@ -1,5 +1,3 @@
-import html2canvas from 'html2canvas';
-
 /**
  * Captures the element with the given ID and downloads it as a PNG.
  */
@@ -10,6 +8,7 @@ export async function exportGPAReport(elementId: string, filename = 'ClassHub-GP
     return;
   }
 
+  const html2canvas = (await import('html2canvas')).default;
   const canvas = await html2canvas(el, {
     scale: 2,
     backgroundColor: '#0A0C14',

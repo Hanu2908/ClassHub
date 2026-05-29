@@ -21,6 +21,19 @@ const CR_TABS = [
 
 type TabId = typeof STUDENT_TABS[number]['id'] | typeof CR_TABS[number]['id'];
 
+const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
+  '/app/home':          () => import('../pages/app/DashboardPage'),
+  '/app/schedule':      () => import('../pages/app/SchedulePage'),
+  '/app/announcements': () => import('../pages/app/AnnouncementsPage'),
+  '/app/cr-command':    () => import('../pages/app/CRCommandPage'),
+  '/app/attendance':    () => import('../pages/app/AttendancePage'),
+  '/app/profile':       () => import('../pages/app/ProfilePage'),
+};
+
+function prefetchRoute(path: string) {
+  PREFETCH_MAP[path]?.().catch(() => {});
+}
+
 export function NavBar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -41,6 +54,8 @@ export function NavBar() {
             id={`nav-${tab.id}`}
             className={`navbar-tab${isActive ? ' active' : ''}`}
             onClick={() => { setActiveTab(tab.id); navigate(tab.path); }}
+            onMouseEnter={() => prefetchRoute(tab.path)}
+            onTouchStart={() => prefetchRoute(tab.path)}
             aria-label={tab.label}
             aria-current={isActive ? 'page' : undefined}
           >

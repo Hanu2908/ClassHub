@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
+import type { Poll } from '../store/appStore';
 import type { Database } from '../types/database.types';
 import { enqueueAction } from '../lib/offlineSync';
 import { assignmentSchema } from '../lib/validation/assignments.schema';
@@ -86,7 +87,13 @@ export function useDeleteAnnouncement() {
 export function useAcknowledge() {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
+  const addOptimisticAck = useAppStore(s => s.addOptimisticAck);
+  const removeOptimisticAck = useAppStore(s => s.removeOptimisticAck);
+
   return useMutation({
+    onMutate: async (announcementId: string) => {
+      addOptimisticAck(announcementId);
+    },
     mutationFn: async (announcementId: string) => {
       if (!navigator.onLine) {
         if (import.meta.env.DEV) {
@@ -133,6 +140,9 @@ export function useAcknowledge() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['announcements'] });
       qc.invalidateQueries({ queryKey: ['section_acknowledgments'] });
+    },
+    onSettled: (_data, _error, announcementId) => {
+      removeOptimisticAck(announcementId);
     },
   });
 }
@@ -494,8 +504,44 @@ export function useDeletePoll() {
 
 export function useVotePoll() {
   const qc = useQueryClient();
-  const { userId } = useAuthContext();
+  const { userId, sectionId } = useAuthContext();
+  const setOptimisticVote = useAppStore(s => s.setOptimisticVote);
+  const clearOptimisticVote = useAppStore(s => s.clearOptimisticVote);
+
   return useMutation({
+    onMutate: async (input: {
+      pollId: string;
+      optionId: string;
+      pollType: 'general' | 'anonymous' | 'actionable';
+      allowMultiple: boolean;
+      isSelected: boolean;
+    }) => {
+      // Look up current poll data from TanStack cache
+      const polls = qc.getQueryData<Poll[]>(['polls', sectionId, userId]);
+      const poll = polls?.find(p => p.id === input.pollId);
+      const currentVotes = poll?.userVotes ?? [];
+
+      let newVotes: string[] = [];
+      if (input.allowMultiple) {
+        if (input.isSelected) {
+          // Was selected, so remove it
+          newVotes = currentVotes.filter(id => id !== input.optionId);
+        } else {
+          // Was not selected, so add it
+          newVotes = [...currentVotes, input.optionId];
+        }
+      } else {
+        if (input.isSelected) {
+          // Was selected, remove it
+          newVotes = [];
+        } else {
+          // Was not selected, set as the only choice
+          newVotes = [input.optionId];
+        }
+      }
+
+      setOptimisticVote(input.pollId, newVotes);
+    },
     mutationFn: async (input: {
       pollId: string;
       optionId: string;
@@ -593,6 +639,11 @@ export function useVotePoll() {
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['polls'] }),
+    onSettled: (_data, _error, input) => {
+      if (input?.pollId) {
+        clearOptimisticVote(input.pollId);
+      }
+    },
   });
 }
 

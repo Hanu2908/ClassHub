@@ -254,6 +254,69 @@ async function playbackOfflineActionsSW() {
   }
 }
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+self.addEventListener('pushsubscriptionchange', (e) => {
+  e.waitUntil(
+    getDBSession().then(async (session) => {
+      if (!session || !session.token) {
+        console.warn('[SW PushChange] No active session. Skipping self-heal.');
+        return;
+      }
+
+      const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!VAPID_PUBLIC_KEY) {
+        console.warn('[SW PushChange] VITE_VAPID_PUBLIC_KEY env var is missing.');
+        return;
+      }
+
+      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      const newSub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey
+      });
+
+      const json = newSub.toJSON();
+
+      const res = await fetch(`${supabaseUrl}/rest/v1/push_subscriptions`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${session.token}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({
+          user_id: session.userId,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth
+        })
+      });
+
+      if (res.ok) {
+        console.log('[SW PushChange] Subscription self-healing completed successfully!');
+      } else {
+        console.warn('[SW PushChange] Subscription self-healing failed with status:', res.status, await res.text());
+      }
+    }).catch(err => {
+      console.error('[SW PushChange] Subscription healing failed:', err);
+    })
+  );
+});
+
 // ── Push Notifications ──
 
 self.addEventListener("push", (e) => {

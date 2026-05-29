@@ -262,6 +262,16 @@ interface AppState {
   clearNotification: (id: string) => Promise<void>;
   clearAllNotifications: (ids: string[]) => Promise<void>;
 
+  // Optimistic UI states
+  optimisticAcks: Set<string>;
+  optimisticVotes: Record<string, string[]>;
+
+  // Actions
+  addOptimisticAck: (id: string) => void;
+  removeOptimisticAck: (id: string) => void;
+  setOptimisticVote: (pollId: string, optionIds: string[]) => void;
+  clearOptimisticVote: (pollId: string) => void;
+
   signOut: () => void;
 }
 
@@ -280,8 +290,11 @@ export const useAppStore = create<AppState>()(
       hub: null,
       activeTab: 'home',
       deferredPrompt: null,
-
       notifications: [],
+
+      // Volatile Optimistic UI states (not persisted)
+      optimisticAcks: new Set<string>(),
+      optimisticVotes: {},
 
       // ── Setters ──
       setUser: (user) => set({ user }),
@@ -405,6 +418,30 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
+      // ── Optimistic Actions ──
+      addOptimisticAck: (id) =>
+        set((s) => {
+          const next = new Set(s.optimisticAcks);
+          next.add(id);
+          return { optimisticAcks: next };
+        }),
+      removeOptimisticAck: (id) =>
+        set((s) => {
+          const next = new Set(s.optimisticAcks);
+          next.delete(id);
+          return { optimisticAcks: next };
+        }),
+      setOptimisticVote: (pollId, optionIds) =>
+        set((s) => ({
+          optimisticVotes: { ...s.optimisticVotes, [pollId]: optionIds },
+        })),
+      clearOptimisticVote: (pollId) =>
+        set((s) => {
+          const next = { ...s.optimisticVotes };
+          delete next[pollId];
+          return { optimisticVotes: next };
+        }),
+
       // ── Sign out ──
       signOut: () =>
         set({
@@ -412,6 +449,8 @@ export const useAppStore = create<AppState>()(
           isAuthLoading: false,
           hub: null, isFirstTime: false,
           notifications: [],
+          optimisticAcks: new Set<string>(),
+          optimisticVotes: {},
         }),
     }),
     {

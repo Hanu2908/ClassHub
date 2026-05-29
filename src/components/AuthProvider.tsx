@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAppStore, type AuthUser, type DbNotification } from '../store/appStore';
+import { useAppStore, mapDbNotification, type AuthUser, type DbNotification } from '../store/appStore';
 import { queryClient } from '../lib/queryClient';
 import { showToast } from '../components/Toast';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -396,7 +396,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data) {
-        const { mapDbNotification } = await import('../store/appStore');
         setNotifications(data.map(mapDbNotification));
       }
     }
@@ -424,7 +423,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         async (payload) => {
           if (import.meta.env.DEV) console.log('[Realtime] notification change:', payload);
-          const { mapDbNotification } = await import('../store/appStore');
 
           if (payload.eventType === 'INSERT') {
             const newNotif = mapDbNotification(payload.new as DbNotification);

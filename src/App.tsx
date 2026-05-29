@@ -4,6 +4,7 @@ import { AuthProvider } from './components/AuthProvider';
 import { useAppStore, type BeforeInstallPromptEvent } from './store/appStore';
 import { ToastContainer } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
+import PageSkeleton from './components/PageSkeleton';
 
 // Pages (Lazy Loaded for Code Splitting)
 const SignIn = lazy(() => import('./pages/SignIn'));
@@ -107,11 +108,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastContainer />
-        <Suspense fallback={
-          <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
-            <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
-          </div>
-        }>
+        <Suspense fallback={<PageSkeleton />}>
           <Routes>
             {/* Public */}
             <Route path="/" element={<PublicRoute><SignIn /></PublicRoute>} />
