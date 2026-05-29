@@ -6,6 +6,9 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 DROP POLICY IF EXISTS "CR manages assignments" ON public.assignments;
+DROP POLICY IF EXISTS "CR creates assignments" ON public.assignments;
+DROP POLICY IF EXISTS "CR updates assignments" ON public.assignments;
+DROP POLICY IF EXISTS "CR deletes assignments" ON public.assignments;
 
 CREATE POLICY "CR creates assignments"
   ON public.assignments
@@ -31,6 +34,9 @@ CREATE POLICY "CR deletes assignments"
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 DROP POLICY IF EXISTS "CR manages polls" ON public.polls;
+DROP POLICY IF EXISTS "CR creates polls" ON public.polls;
+DROP POLICY IF EXISTS "CR updates polls" ON public.polls;
+DROP POLICY IF EXISTS "CR deletes polls" ON public.polls;
 
 CREATE POLICY "CR creates polls"
   ON public.polls
