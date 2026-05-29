@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -305,6 +305,56 @@ function TimelineSection({ title, count }: { title: string; count: number }) {
   );
 }
 
+function CountdownTimer({ expiresAt, onExpire }: { expiresAt: string; onExpire: () => void }) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('Expired');
+        onExpire();
+        return;
+      }
+      const h = Math.floor(diff / (3600 * 1000));
+      const m = Math.floor((diff % (3600 * 1000)) / (60 * 1000));
+      const s = Math.floor((diff % (60 * 1000)) / 1000);
+
+      if (h > 0) {
+        setTimeLeft(`${h}h ${m}m ${s}s left`);
+      } else if (m > 0) {
+        setTimeLeft(`${m}m ${s}s left`);
+      } else {
+        setTimeLeft(`${s}s left`);
+      }
+    };
+
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt, onExpire]);
+
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 5,
+      padding: '3px 8px',
+      borderRadius: 'var(--radius-pill)',
+      background: 'rgba(239, 68, 68, 0.15)',
+      border: '1px solid rgba(239, 68, 68, 0.3)',
+      color: '#ef4444',
+      fontFamily: 'var(--font-mono)',
+      fontVariantNumeric: 'tabular-nums',
+      fontSize: '10px',
+      fontWeight: 600,
+    }}>
+      <Clock size={11} className="animate-pulse" style={{ animation: 'pulse 1.5s infinite' }} />
+      <span>{timeLeft}</span>
+    </div>
+  );
+}
+
 interface AnnouncementCardComponentProps {
   ann: Announcement & { isAcknowledged: boolean };
   isHighlighted: boolean;
@@ -335,6 +385,7 @@ export function AnnouncementCardComponent({
 
   const isCritical = ann.priority === 'critical';
   const isAcked = ann.isAcknowledged;
+  const isExpiredAlert = ann.expiresAt && new Date(ann.expiresAt) < new Date();
   const bdg = deadlineBadgeClass(ann.deadline);
   const lbl = deadlineLabel(ann.deadline);
   const category = getAnnouncementCategory(ann.title, ann.priority);
@@ -356,6 +407,7 @@ export function AnnouncementCardComponent({
     background: isCritical ? 'var(--status-critical-bg)' : 'var(--bg-elevated)',
     outline: isHighlighted ? '2px solid var(--accent-primary)' : undefined,
     outlineOffset: isHighlighted ? '2px' : undefined,
+    opacity: isExpiredAlert ? 0.65 : 1,
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
@@ -387,6 +439,19 @@ export function AnnouncementCardComponent({
             </span>
           </div>
           {ann.deadline && <span className={`badge ${bdg}`}>{lbl}</span>}
+          {ann.expiresAt && (
+            <span className="badge" style={{
+              background: isExpiredAlert ? 'rgba(255,255,255,0.06)' : 'rgba(239, 68, 68, 0.15)',
+              color: isExpiredAlert ? 'var(--text-muted)' : '#ef4444',
+              border: isExpiredAlert ? '1px solid var(--border-default)' : '1px solid rgba(239, 68, 68, 0.3)',
+              fontSize: '10px',
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-pill)',
+            }}>
+              {isExpiredAlert ? 'Expired' : 'Flash Post'}
+            </span>
+          )}
         </div>
 
         {/* CR Tools (Delete, Receipt Tracking) */}
@@ -557,7 +622,21 @@ export function AnnouncementCardComponent({
         </div>
 
         <div>
-          {!isAcked ? (
+          {isExpiredAlert ? (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              padding: '6px 12px', 
+              background: 'rgba(255,255,255,0.03)', 
+              border: '1px solid var(--border-default)', 
+              borderRadius: 'var(--radius-md)', 
+              boxSizing: 'border-box'
+            }}>
+              <Clock size={13} color="var(--text-muted)" />
+              <span className="t-label" style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 600 }}>Expired</span>
+            </div>
+          ) : !isAcked ? (
             <button
               id={`ack-btn-${ann.id}`}
               onClick={() => handleAcknowledge(ann.id)}
@@ -691,6 +770,7 @@ export default function AnnouncementsPage() {
   const { data: announcements = [], isLoading } = useAnnouncements();
   const deleteAnn = useDeleteAnnouncement();
   const ackMutation = useAcknowledge();
+  const queryClient = useQueryClient();
 
   // Sort dropdown reference for click outside dismissed behaviour
   const sortContainerRef = useRef<HTMLDivElement>(null);
@@ -745,21 +825,28 @@ export default function AnnouncementsPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  // Auto-expiry: hide items past deadline + 2 days and exclude Flash Posts (which have expiresAt) from standard lists
-  const visible = announcements.filter(a => !isExpired(a.deadline) && !a.expiresAt);
+  // Auto-expiry: hide items past deadline + 2 days and include Flash Posts (which always stay in timeline history)
+  const visible = announcements.filter(a => {
+    if (!a.expiresAt) {
+      return !isExpired(a.deadline);
+    }
+    return true; // Expired or active Flash Posts always stay in history
+  });
 
   const activeFlashPosts = useMemo(() => {
     return announcements.filter(
       (a) => a.priority === 'critical' && 
              a.expiresAt && 
-             new Date(a.expiresAt) > new Date()
+             new Date(a.expiresAt) > new Date() &&
+             !a.isAcknowledged
     );
   }, [announcements]);
 
   const criticalCounts = useMemo(() => {
     const counts = { active: 0, exams: 0, schedule: 0, campus: 0 };
     visible.forEach(a => {
-      if (a.priority === 'critical' && !a.isAcknowledged) {
+      const isExpiredAlert = a.expiresAt && new Date(a.expiresAt) < new Date();
+      if (a.priority === 'critical' && !a.isAcknowledged && !isExpiredAlert) {
         counts.active++;
         
         const categoryInfo = getAnnouncementCategory(a.title, a.priority);
@@ -1057,29 +1144,99 @@ export default function AnnouncementsPage() {
 
       <main className="page-content">
         {activeFlashPosts.length > 0 && (
-          <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p className="t-mono" style={{ color: 'var(--status-critical)', margin: '0 0 4px', letterSpacing: '0.04em', fontSize: '11px', fontWeight: 700 }}>
+              URGENT ALERTS
+            </p>
             {activeFlashPosts.map(fp => (
-              <div key={fp.id} style={{
-                background: 'var(--status-critical)', color: '#fff',
-                padding: '16px', borderRadius: 'var(--radius-lg)',
-                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-                display: 'flex', flexDirection: 'column', gap: 8
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <AlertTriangle size={18} />
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{fp.title}</h3>
-                  <span style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.8 }}>Flash Post</span>
-                </div>
-                <p style={{ margin: 0, fontSize: 14, opacity: 0.9 }}>{fp.body}</p>
-                {role === 'cr' && (
-                  <button onClick={() => setPendingDeleteId(fp.id)} style={{
-                    alignSelf: 'flex-start', background: 'rgba(0,0,0,0.2)', border: 'none',
-                    padding: '6px 12px', borderRadius: 6, color: '#fff', cursor: 'pointer',
-                    fontSize: 12, marginTop: 4
+              <div 
+                key={fp.id} 
+                style={{
+                  position: 'relative',
+                  padding: '16px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(15, 17, 26, 0.95) 100%)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 0 12px rgba(239, 68, 68, 0.05)',
+                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}>
-                    Remove
+                    <AlertTriangle size={14} color="var(--status-critical)" />
+                  </div>
+                  <h3 className="truncate" style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>
+                    {fp.title}
+                  </h3>
+                  
+                  {/* Countdown Timer */}
+                  {fp.expiresAt && (
+                    <CountdownTimer 
+                      expiresAt={fp.expiresAt} 
+                      onExpire={() => {
+                        queryClient.invalidateQueries({ queryKey: ['announcements'] });
+                      }} 
+                    />
+                  )}
+                </div>
+
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5', opacity: 0.9 }}>
+                  {fp.body}
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                  <button
+                    onClick={() => handleAcknowledge(fp.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '6px 12px',
+                      background: 'rgba(52, 201, 123, 0.15)',
+                      border: '1px solid rgba(52, 201, 123, 0.3)',
+                      borderRadius: 'var(--radius-md)',
+                      cursor: 'pointer',
+                      color: 'var(--status-safe)',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      outline: 'none',
+                    }}
+                    className="btn-ack-banner"
+                    aria-label="Acknowledge alert"
+                  >
+                    <CheckCircle2 size={12} />
+                    <span>Got it</span>
                   </button>
-                )}
+
+                  {role === 'cr' && (
+                    <button 
+                      onClick={() => setPendingDeleteId(fp.id)} 
+                      style={{
+                        background: 'rgba(255, 68, 68, 0.12)', 
+                        border: '1px solid rgba(255, 68, 68, 0.2)',
+                        padding: '6px 12px', 
+                        borderRadius: 'var(--radius-md)', 
+                        color: 'var(--status-critical)', 
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        outline: 'none',
+                      }}
+                      aria-label="Remove alert"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

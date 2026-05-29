@@ -287,9 +287,60 @@ function NotificationSheet({ onClose }: { onClose: () => void }) {
 interface CriticalCarouselProps {
   items: Announcement[];
   onDismiss: (id: string) => void;
+  onAcknowledge: (id: string) => void;
 }
 
-function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
+function CountdownTimer({ expiresAt, onExpire }: { expiresAt: string; onExpire: () => void }) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('Expired');
+        onExpire();
+        return;
+      }
+      const h = Math.floor(diff / (3600 * 1000));
+      const m = Math.floor((diff % (3600 * 1000)) / (60 * 1000));
+      const s = Math.floor((diff % (60 * 1000)) / 1000);
+
+      if (h > 0) {
+        setTimeLeft(`${h}h ${m}m ${s}s left`);
+      } else if (m > 0) {
+        setTimeLeft(`${m}m ${s}s left`);
+      } else {
+        setTimeLeft(`${s}s left`);
+      }
+    };
+
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt, onExpire]);
+
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 5,
+      padding: '3px 8px',
+      borderRadius: 'var(--radius-pill)',
+      background: 'rgba(239, 68, 68, 0.15)',
+      border: '1px solid rgba(239, 68, 68, 0.3)',
+      color: '#ef4444',
+      fontFamily: 'var(--font-mono)',
+      fontVariantNumeric: 'tabular-nums',
+      fontSize: '10px',
+      fontWeight: 600,
+    }}>
+      <Clock size={11} className="animate-pulse" style={{ animation: 'pulse 1.5s infinite' }} />
+      <span>{timeLeft}</span>
+    </div>
+  );
+}
+
+function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCarouselProps) {
   const queryClient = useQueryClient();
   const authUser = useAppStore(s => s.authUser);
   const sectionId = authUser?.sectionId;
@@ -322,20 +373,25 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
     setActiveIndex((prev) => (prev - 1 + items.length) % items.length);
   };
 
+  const handleTimerExpire = () => {
+    // Invalidate announcements query to clean up expired posts
+    queryClient.invalidateQueries({ queryKey: ['announcements', sectionId, userId] });
+  };
+
   return (
     <>
       <style>{`
         @keyframes pulsate-glow {
           0% {
-            box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.08), 0 0 4px rgba(239, 68, 68, 0.02);
+            box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.08), 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 4px rgba(239, 68, 68, 0.02);
           }
           100% {
-            box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.22), 0 0 10px rgba(239, 68, 68, 0.12);
+            box-shadow: inset 0 0 16px rgba(239, 68, 68, 0.25), 0 4px 24px rgba(0, 0, 0, 0.45), 0 0 12px rgba(239, 68, 68, 0.15);
           }
         }
         @keyframes pulsate-alert {
           0%, 100% { transform: scale(1); opacity: 0.95; }
-          50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.45)); }
+          50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.45)); }
         }
         @keyframes pulse-bell {
           0%, 100% { transform: rotate(0deg); }
@@ -346,12 +402,23 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
           50% { transform: rotate(5deg); }
           60% { transform: rotate(0deg); }
         }
+        .critical-carousel-container {
+          outline: none;
+        }
+        .critical-carousel-container:focus-visible {
+          outline: 2px solid rgba(239, 68, 68, 0.5) !important;
+          outline-offset: 2px;
+        }
         .dismiss-banner-btn:hover {
-          background: rgba(239, 68, 68, 0.3) !important;
+          background: rgba(255, 255, 255, 0.1) !important;
           transform: scale(1.1);
         }
         .dismiss-banner-btn:active {
           transform: scale(0.9);
+        }
+        .dismiss-banner-btn:focus-visible {
+          outline: 2px solid rgba(255, 255, 255, 0.4) !important;
+          outline-offset: 1px;
         }
         .push-cta-btn:hover {
           opacity: 0.95;
@@ -361,162 +428,244 @@ function CriticalCarousel({ items, onDismiss }: CriticalCarouselProps) {
         .push-cta-btn:active {
           transform: translateY(1px);
         }
+        .btn-ack-banner {
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .btn-ack-banner:hover {
+          background: rgba(52, 201, 123, 0.25) !important;
+          border-color: rgba(52, 201, 123, 0.5) !important;
+          transform: translateY(-1px);
+        }
+        .btn-ack-banner:active {
+          transform: translateY(1px);
+        }
+        .btn-ack-banner:focus-visible {
+          outline: 2px solid var(--status-safe) !important;
+          outline-offset: 2px;
+        }
+        .carousel-nav-btn {
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .carousel-nav-btn:hover {
+          background: rgba(255, 255, 255, 0.1) !important;
+          transform: scale(1.05);
+        }
+        .carousel-nav-btn:active {
+          transform: scale(0.95);
+        }
+        .carousel-nav-btn:focus-visible {
+          outline: 2px solid rgba(255, 255, 255, 0.4) !important;
+          outline-offset: 1px;
+        }
+        .carousel-dot {
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          outline: none;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .carousel-dot:focus-visible {
+          outline: 2px solid #ef4444 !important;
+          outline-offset: 2px;
+        }
       `}</style>
 
       <div
         className="critical-carousel-container"
+        tabIndex={0}
+        role="link"
+        aria-label={`Urgent announcement: ${current.title}. Click to read all announcements.`}
         style={{
           position: 'relative',
-          margin: '4px 8px 4px',
-          borderRadius: 'var(--radius-md)',
-          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.07) 0%, rgba(13, 15, 20, 0.9) 100%)',
-          border: '1px solid rgba(239, 68, 68, 0.22)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.4), 0 0 8px 0 rgba(239, 68, 68, 0.08)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          margin: '4px 8px 8px',
+          borderRadius: 'var(--radius-lg)',
+          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(15, 17, 26, 0.95) 100%)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
           overflow: 'hidden',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          animation: 'pulsate-glow 4s infinite alternate',
           cursor: 'pointer',
         }}
         onClick={() => navigate('/app/announcements')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            navigate('/app/announcements');
+          }
+        }}
         onMouseEnter={prefetchAnnouncements}
         onTouchStart={prefetchAnnouncements}
       >
-        {/* Pulsating glowing neon border overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: 'var(--radius-md)',
-            pointerEvents: 'none',
-            boxShadow: 'inset 0 0 12px rgba(239, 68, 68, 0.12)',
-            animation: 'pulsate-glow 4s infinite alternate',
-          }}
-        />
-
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            padding: '14px 16px',
+            flexDirection: 'column',
+            padding: '16px',
             gap: 12,
           }}
         >
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <AlertTriangle
-              size={20}
-              color="var(--status-critical)"
+          {/* Title Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
               style={{
-                flexShrink: 0,
-                animation: 'pulsate-alert 4s infinite ease-in-out',
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}
-            />
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {items.length > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <span
-                  className="t-badge" style={{ color: '#ef4444',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase' }}
-                >
-                  {`${activeIndex + 1} of ${items.length}`}
-                </span>
-              </div>
-            )}
-            <p
-              className="truncate t-subtitle" style={{ color: 'var(--text-primary)',
-                margin: 0,
-                fontWeight: 600,
-                letterSpacing: '-0.015em' }}
             >
-              {current.title}
-            </p>
-            {current.body && (
+              <AlertTriangle
+                size={16}
+                color="var(--status-critical)"
+                style={{ animation: 'pulsate-alert 3s infinite ease-in-out' }}
+              />
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
               <p
-                style={{
-                  color: 'var(--text-secondary)',
-                  fontSize: '11px',
-                  lineHeight: '1.4',
-                  marginTop: '4px',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  opacity: 0.85
-                }}
+                className="truncate t-subtitle"
+                style={{ color: 'var(--text-primary)', margin: 0, fontWeight: 700, fontSize: '14.5px', letterSpacing: '-0.01em' }}
               >
-                {current.body}
+                {current.title}
               </p>
-            )}
-            <p
-              className="truncate t-mono-sm" style={{ color: 'var(--text-secondary)',
-                marginTop: 4,
-                margin: '4px 0 0' }}
-            >
-              {timeAgo(current.postedAt)}
-            </p>
-          </div>
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            {items.length > 1 && (
-              <div style={{ display: 'flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={handlePrev} className="t-subtitle" style={{ background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: 4,
-                    width: 24,
-                    height: 24,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer' }}
-                >
-                  ‹
-                </button>
-                <button
-                  onClick={handleNext} className="t-subtitle" style={{ background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: 4,
-                    width: 24,
-                    height: 24,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer' }}
-                >
-                  ›
-                </button>
+            {/* Countdown / Live timer indicator */}
+            {current.expiresAt && (
+              <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+                <CountdownTimer expiresAt={current.expiresAt} onExpire={handleTimerExpire} />
               </div>
             )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDismiss(current.id);
-              }}
-              style={{
-                background: 'rgba(255, 68, 68, 0.15)',
-                border: '1px solid rgba(255, 68, 68, 0.3)',
-                borderRadius: '50%',
-                width: 26,
-                height: 26,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: '#ef4444',
-                transition: 'all 0.2s',
-              }}
-              title="Dismiss for this session"
-              className="dismiss-banner-btn"
-            >
-              <X size={13} />
-            </button>
           </div>
+
+          {/* Body content */}
+          {current.body && (
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                fontSize: '12.5px',
+                lineHeight: '1.5',
+                margin: '0 0 2px',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                opacity: 0.9,
+              }}
+            >
+              {current.body}
+            </p>
+          )}
+
+          {/* Action Row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Inline Acknowledge check button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAcknowledge(current.id);
+                }}
+                onKeyDown={e => e.stopPropagation()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '6px 12px',
+                  background: 'rgba(52, 201, 123, 0.15)',
+                  border: '1px solid rgba(52, 201, 123, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  color: 'var(--status-safe)',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  outline: 'none',
+                }}
+                className="btn-ack-banner"
+              >
+                <CheckCircle2 size={12} />
+                <span>Got it</span>
+              </button>
+
+              {/* Slide indicators / pagination if multiple items */}
+              {items.length > 1 && (
+                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10.5px' }}>
+                  {activeIndex + 1} of {items.length}
+                </span>
+              )}
+            </div>
+
+            {/* Carousel navigation + close buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+              {items.length > 1 && (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    onClick={handlePrev}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', color: 'var(--text-primary)', cursor: 'pointer', outline: 'none',
+                    }}
+                    className="carousel-nav-btn"
+                    aria-label="Previous Flash Post"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', color: 'var(--text-primary)', cursor: 'pointer', outline: 'none',
+                    }}
+                    className="carousel-nav-btn"
+                    aria-label="Next Flash Post"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismiss(current.id);
+                }}
+                style={{
+                  background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', outline: 'none',
+                  transition: 'all 0.2s',
+                }}
+                title="Dismiss for this session"
+                aria-label="Dismiss this flash post"
+                className="dismiss-banner-btn"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* Dots Indicator for Carousel paging */}
+          {items.length > 1 && (
+            <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 4 }} onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+              {items.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveIndex(idx)}
+                  className="carousel-dot"
+                  aria-label={`Go to slide ${idx + 1}`}
+                  style={{
+                    width: activeIndex === idx ? 12 : 5,
+                    height: 5,
+                    borderRadius: 'var(--radius-pill)',
+                    background: activeIndex === idx ? '#ef4444' : 'rgba(255, 255, 255, 0.25)',
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -1579,6 +1728,7 @@ export default function DashboardPage() {
   const [isDiagnoseOpen, setIsDiagnoseOpen] = useState(false);
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
   const navigate = useNavigate();
+  const acknowledgeMutation = useAcknowledge();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 440);
   useEffect(() => {
@@ -1688,6 +1838,7 @@ export default function DashboardPage() {
       (a) => a.priority === 'critical' && 
              a.expiresAt && 
              new Date(a.expiresAt) > new Date() && 
+             !a.isAcknowledged &&
              !dismissedSet.has(a.id)
     );
   }, [announcements, dismissedAnnouncements]);
@@ -1696,6 +1847,18 @@ export default function DashboardPage() {
     const updated = [...dismissedAnnouncements, id];
     setDismissedAnnouncements(updated);
     sessionStorage.setItem('dismissed_critical_announcements', JSON.stringify(updated));
+  };
+
+  const handleAcknowledgeAnnouncement = async (id: string) => {
+    try {
+      await acknowledgeMutation.mutateAsync(id);
+      showToast('Urgent post acknowledged ✓', 'success');
+      const updated = [...dismissedAnnouncements, id];
+      setDismissedAnnouncements(updated);
+      sessionStorage.setItem('dismissed_critical_announcements', JSON.stringify(updated));
+    } catch (err) {
+      showToast('Failed to acknowledge', 'error');
+    }
   };
 
   const handleDismissPushCTA = () => {
@@ -1745,7 +1908,11 @@ export default function DashboardPage() {
 
       <main className="page-content">
         {activeCritical.length > 0 && (
-          <CriticalCarousel items={activeCritical} onDismiss={handleDismissAnnouncement} />
+          <CriticalCarousel 
+            items={activeCritical} 
+            onDismiss={handleDismissAnnouncement} 
+            onAcknowledge={handleAcknowledgeAnnouncement}
+          />
         )}
         {showPushCTA && (
           <PushPermissionCTA onDismiss={handleDismissPushCTA} />
