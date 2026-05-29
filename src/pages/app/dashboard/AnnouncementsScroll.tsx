@@ -9,7 +9,7 @@ import { showToast } from '../../../components/Toast';
 import { AttachmentCard } from '../../../components/AttachmentCard';
 import { AnnouncementReactions, AnnouncementCommentTrigger } from '../../../components/AnnouncementQA';
 import { useQueryClient } from '@tanstack/react-query';
-import { prefetchAnnouncementsData } from '../DashboardPage';
+import { prefetchAnnouncementsData } from './prefetchHelper';
 import { WidgetSkeleton } from './dashboardUtils';
 
 // ── Secure Auto-Linkifier Engine ──

@@ -521,7 +521,7 @@ export function useVotePoll() {
       const poll = polls?.find(p => p.id === input.pollId);
       const currentVotes = poll?.userVotes ?? [];
 
-      let newVotes: string[] = [];
+      let newVotes: string[];
       if (input.allowMultiple) {
         if (input.isSelected) {
           // Was selected, so remove it

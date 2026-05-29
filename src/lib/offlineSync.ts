@@ -284,7 +284,7 @@ export async function playbackOfflineActionsClient(): Promise<void> {
     queryClient.invalidateQueries({ queryKey: ['announcements'] });
     queryClient.invalidateQueries({ queryKey: ['section_acknowledgments'] });
     queryClient.invalidateQueries({ queryKey: ['polls'] });
-  } catch (e) {
+  } catch {
     // Ignore if queryClient cannot be imported (e.g. in some isolated worker testing contexts)
   }
 }

@@ -3,7 +3,7 @@ import { BarChart2, MessageSquare, ClipboardList, AlertTriangle } from 'lucide-r
 import { useAppStore } from '../../../store/appStore';
 import { useSection } from '../../../hooks/useSupabaseQuery';
 import { useQueryClient } from '@tanstack/react-query';
-import { prefetchAnnouncementsData } from '../DashboardPage';
+import { prefetchAnnouncementsData } from './prefetchHelper';
 
 export default function CRDashboardStation() {
   const queryClient = useQueryClient();

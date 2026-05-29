@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore, type Announcement } from '../../../store/appStore';
 import { isPushSupported, getPushPermission, subscribeToPush } from '../../../lib/pushNotifications';
 import { showToast } from '../../../components/Toast';
-import { prefetchAnnouncementsData } from '../DashboardPage';
+import { prefetchAnnouncementsData } from './prefetchHelper';
 
 interface CountdownTimerProps {
   expiresAt: string;

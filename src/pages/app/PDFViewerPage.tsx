@@ -5,7 +5,6 @@ import { showToast } from '../../components/Toast';
 
 declare global {
   interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pdfjsLib?: any;
   }
 }
@@ -19,7 +18,7 @@ interface PageLayout {
 
 interface PDFPageContainerProps {
   pageLayout: PageLayout;
-  pdf: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  pdf: any;
   scale: number;
   isLowEnd: boolean;
   isFastScrolling: boolean;
@@ -75,7 +74,7 @@ function PDFPageContainer({
   }, [isLowEnd, scrollContainerRef]);
 
   // Handle active drawing loop
-  const renderTaskRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const renderTaskRef = useRef<any>(null);
   const drawingRef = useRef(false);
 
   const drawPage = useCallback(async () => {
@@ -134,7 +133,7 @@ function PDFPageContainer({
       context.drawImage(tempCanvas, 0, 0);
       setIsRendered(true);
       setRenderError(false);
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
       if (err?.name !== 'RenderingCancelledException') {
         console.error(`[PDFViewer] Page ${pageLayout.pageNumber} render error:`, err);
         setRenderError(true);
@@ -146,7 +145,6 @@ function PDFPageContainer({
 
   useEffect(() => {
     if (isVisible && !isFastScrolling) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       drawPage();
     } else if (!isVisible) {
       // Free memory immediately once page leaves active observer threshold
@@ -246,7 +244,7 @@ export default function PDFViewerPage() {
   const range = searchParams.get('range') || '';
   const title = searchParams.get('title') || 'PDF Viewer';
 
-  const [pdf, setPdf] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [pdf, setPdf] = useState<any>(null);
   const [pageLayouts, setPageLayouts] = useState<PageLayout[]>([]);
   const [activePageNum, setActivePageNum] = useState<number>(initialPage);
   const [numPages, setNumPages] = useState<number>(1);
@@ -258,7 +256,6 @@ export default function PDFViewerPage() {
   // Performance configurations (lazy initial state to detect low-end devices synchronously)
   const [isLowEnd] = useState<boolean>(() => {
     const cores = navigator.hardwareConcurrency || 4;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ram = (navigator as any).deviceMemory || 4;
     return cores <= 4 || ram < 4;
   });
@@ -557,7 +554,7 @@ export default function PDFViewerPage() {
         await navigator.clipboard.writeText(url);
         showToast('Temporary view link copied to clipboard!', 'success');
       }
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
       if (err?.name !== 'AbortError') {
         console.error('[PDFViewer] Share error:', err);
         showToast('Could not share link', 'error');

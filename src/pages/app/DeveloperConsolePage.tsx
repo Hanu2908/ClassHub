@@ -225,6 +225,7 @@ export default function DeveloperConsolePage() {
     checkPWA();
     pingDatabase();
     refreshPushDiagnostics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 4. Fetch Feedback Reports

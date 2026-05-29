@@ -358,7 +358,6 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
     try {
       let text = '';
       if (file.type === 'application/pdf') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pdfjs = (await initPdfJs()) as any;
         setScanProgress('Reading PDF…');
         const arrayBuffer = await file.arrayBuffer();

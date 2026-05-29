@@ -705,7 +705,6 @@ export default function AnnouncementsPage() {
 
   // Clear justAckedIds when the tab changes to let the feed refresh
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setJustAckedIds(new Set());
   }, [activeTab]);
 
