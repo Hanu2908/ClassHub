@@ -11,74 +11,91 @@ interface DefaultSubject {
 // Credits: L+T for theory, P/2 for labs (CBCS standard)
 // NOTE: 0-credit audit/soft-skills courses removed as they don't affect CGPA
 // ─────────────────────────────────────────────────────────────────────────────
-const SEM1_COMMON: DefaultSubject[] = [
-  { name: 'Engineering Mathematics-I',                           credits: 4   }, // 3L+1T
-  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   }, // 3L+1T
-  { name: 'Communication Skills / Universal Human Values',       credits: 2   }, // 2L
-  { name: 'Computational Thinking and Programming',              credits: 2   }, // 2L
-  { name: 'Basic Electrical & Electronics Engineering',          credits: 2   }, // 2L (EEUL101 for CSE/IT/DS/AI/IOT/ME/CE)
-  { name: 'Engineering Physics / Chemistry Lab',                 credits: 1   }, // 2P
-  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   }, // 2P
-  { name: 'C Programming Lab',                                   credits: 1   }, // 2P
-  { name: 'Basic EE Lab / Manufacturing Practice Workshop',      credits: 1   }, // 2P
-  { name: 'Computer Aided Engineering Graphics',                 credits: 1.5 }, // 3P
-  { name: 'SODECA',                                              credits: 0.5 },
-  // Total: 20 credits
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SEMESTER 1 — EE / ECE variant
-// CEUL101 Basic Civil Engineering replaces EEUL101
-// ─────────────────────────────────────────────────────────────────────────────
-const SEM1_EE_ECE: DefaultSubject[] = [
+const SEM1_GROUP_1: DefaultSubject[] = [
   { name: 'Engineering Mathematics-I',                           credits: 4   },
   { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   },
   { name: 'Communication Skills / Universal Human Values',       credits: 2   },
   { name: 'Computational Thinking and Programming',              credits: 2   },
-  { name: 'Basic Civil Engineering',                             credits: 2   }, // CEUL101 for EE/ECE
-  { name: 'Engineering Physics / Chemistry Lab',                 credits: 1   },
+  { name: 'Basic Electrical & Electronics Engineering / Basic Mechanical Engineering', credits: 2   },
+  { name: 'Engineering Physics Lab / Engineering Chemistry Lab', credits: 1   },
   { name: 'Language Lab / Universal Human Values Lab',           credits: 1   },
   { name: 'C Programming Lab',                                   credits: 1   },
-  { name: 'Basic Civil Engineering Lab / Manufacturing Practice',credits: 1   },
-  { name: 'Computer Aided Engineering Graphics',                 credits: 1.5 },
-  { name: 'SODECA',                                              credits: 0.5 },
-  // Total: 20 credits
+  { name: 'Basic Electrical & Electronics Engineering Lab / Manufacturing Practice Workshop', credits: 1   },
+  { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SEMESTER 2 — Common for ALL branches
-// Source: SKIT Autonomous Scheme 2024-25, Sem II
-// ─────────────────────────────────────────────────────────────────────────────
-const SEM2_COMMON: DefaultSubject[] = [
-  { name: 'Engineering Mathematics-II',                          credits: 4   }, // 3L+1T
-  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   }, // 3L+1T
-  { name: 'Communication Skills / Universal Human Values',       credits: 2   }, // 2L
-  { name: 'Innovation & Entrepreneurship',                       credits: 1   }, // 1L
-  { name: 'Problem Solving using Object Oriented Paradigm',      credits: 2   }, // 2L
-  { name: 'Basic Electrical & Electronics Engineering',          credits: 2   }, // 2L
-  { name: 'Engineering Physics / Chemistry Lab',                 credits: 1   }, // 2P
-  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   }, // 2P
-  { name: 'Object Oriented Programming Lab',                     credits: 1   }, // 2P
-  { name: 'Basic EE Lab / Manufacturing Practice Workshop',      credits: 1   }, // 2P
-  { name: 'Computer Aided Engineering Graphics',                 credits: 1.5 }, // 3P
-  { name: 'SODECA',                                              credits: 0.5 },
-  // Total: 21 credits
+const SEM1_GROUP_2: DefaultSubject[] = [
+  { name: 'Engineering Mathematics-I',                           credits: 4   },
+  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   },
+  { name: 'Communication Skills / Universal Human Values',       credits: 2   },
+  { name: 'Computational Thinking and Programming',              credits: 2   },
+  { name: 'Basic Civil Engineering / Basic Mechanical Engineering', credits: 2   },
+  { name: 'Engineering Physics Lab / Engineering Chemistry Lab', credits: 1   },
+  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   },
+  { name: 'C Programming Lab',                                   credits: 1   },
+  { name: 'Basic Civil Engineering Lab / Manufacturing Practice Workshop', credits: 1   },
+  { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
-const SEM2_EE_ECE: DefaultSubject[] = [
+const SEM1_GROUP_3: DefaultSubject[] = [
+  { name: 'Engineering Mathematics-I',                           credits: 4   },
+  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   },
+  { name: 'Communication Skills / Universal Human Values',       credits: 2   },
+  { name: 'Computational Thinking and Programming',              credits: 2   },
+  { name: 'Basic Electrical & Electronics Engineering / Basic Civil Engineering', credits: 2   },
+  { name: 'Engineering Physics Lab / Engineering Chemistry Lab', credits: 1   },
+  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   },
+  { name: 'C Programming Lab',                                   credits: 1   },
+  { name: 'Basic Electrical & Electronics Engineering Lab / Basic Civil Engineering Lab', credits: 1   },
+  { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
+];
+
+const SEM2_GROUP_1: DefaultSubject[] = [
   { name: 'Engineering Mathematics-II',                          credits: 4   },
   { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   },
   { name: 'Communication Skills / Universal Human Values',       credits: 2   },
   { name: 'Innovation & Entrepreneurship',                       credits: 1   },
   { name: 'Problem Solving using Object Oriented Paradigm',      credits: 2   },
-  { name: 'Basic Civil Engineering',                             credits: 2   },
-  { name: 'Engineering Physics / Chemistry Lab',                 credits: 1   },
+  { name: 'Basic Electrical & Electronics Engineering / Basic Mechanical Engineering', credits: 2   },
+  { name: 'Engineering Physics Lab / Engineering Chemistry Lab', credits: 1   },
   { name: 'Language Lab / Universal Human Values Lab',           credits: 1   },
   { name: 'Object Oriented Programming Lab',                     credits: 1   },
-  { name: 'Basic Civil Engineering Lab / Manufacturing Practice',credits: 1   },
-  { name: 'Computer Aided Engineering Graphics',                 credits: 1.5 },
-  { name: 'SODECA',                                              credits: 0.5 },
-  // Total: 21 credits
+  { name: 'Basic Electrical & Electronics Engineering Lab / Manufacturing Practice Workshop', credits: 1   },
+  { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
+];
+
+const SEM2_GROUP_2: DefaultSubject[] = [
+  { name: 'Engineering Mathematics-II',                          credits: 4   },
+  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   },
+  { name: 'Communication Skills / Universal Human Values',       credits: 2   },
+  { name: 'Innovation & Entrepreneurship',                       credits: 1   },
+  { name: 'Problem Solving using Object Oriented Paradigm',      credits: 2   },
+  { name: 'Basic Civil Engineering / Basic Mechanical Engineering', credits: 2   },
+  { name: 'Engineering Physics Lab / Engineering Chemistry Lab', credits: 1   },
+  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   },
+  { name: 'Object Oriented Programming Lab',                     credits: 1   },
+  { name: 'Basic Civil Engineering Lab / Manufacturing Practice Workshop', credits: 1   },
+  { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
+];
+
+const SEM2_GROUP_3: DefaultSubject[] = [
+  { name: 'Engineering Mathematics-II',                          credits: 4   },
+  { name: 'Engineering Physics / Engineering Chemistry',         credits: 4   },
+  { name: 'Communication Skills / Universal Human Values',       credits: 2   },
+  { name: 'Innovation & Entrepreneurship',                       credits: 1   },
+  { name: 'Problem Solving using Object Oriented Paradigm',      credits: 2   },
+  { name: 'Basic Electrical & Electronics Engineering / Basic Civil Engineering', credits: 2   },
+  { name: 'Engineering Physics Lab / Engineering Chemistry Lab', credits: 1   },
+  { name: 'Language Lab / Universal Human Values Lab',           credits: 1   },
+  { name: 'Object Oriented Programming Lab',                     credits: 1   },
+  { name: 'Basic Electrical & Electronics Engineering Lab / Basic Civil Engineering Lab', credits: 1   },
+  { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -571,64 +588,64 @@ const CE_UPPER: Record<number, DefaultSubject[]> = {
 // ─────────────────────────────────────────────────────────────────────────────
 export const SUBJECTS_DATA: Record<Branch, Record<number, DefaultSubject[]>> = {
   'CSE': {
-    1: SEM1_COMMON,
-    2: SEM2_COMMON,
+    1: SEM1_GROUP_1,
+    2: SEM2_GROUP_1,
     3: CSE_S3,
     4: CSE_S4,
     ...CSE_UPPER,
   },
   'CSE-AI': {
-    1: SEM1_COMMON,
-    2: SEM2_COMMON,
+    1: SEM1_GROUP_1,
+    2: SEM2_GROUP_1,
     3: CSE_AI_S3,
     4: CSE_AI_S4,
     ...CSE_UPPER,
   },
   'CSE-DS': {
-    1: SEM1_COMMON,
-    2: SEM2_COMMON,
+    1: SEM1_GROUP_1,
+    2: SEM2_GROUP_1,
     3: CSE_DS_S3,
     4: CSE_DS_S4,
     ...CSE_UPPER,
   },
   'CSE-IOT': {
-    1: SEM1_COMMON,
-    2: SEM2_COMMON,
+    1: SEM1_GROUP_1,
+    2: SEM2_GROUP_1,
     3: CSE_IOT_S3,
     4: CSE_IOT_S4,
     ...CSE_UPPER,
   },
   'IT': {
-    1: SEM1_COMMON,
-    2: SEM2_COMMON,
+    1: SEM1_GROUP_1,
+    2: SEM2_GROUP_1,
     3: IT_S3,
     4: IT_S4,
     ...CSE_UPPER,
   },
   'ECE': {
-    1: SEM1_EE_ECE,
-    2: SEM2_EE_ECE,
+    1: SEM1_GROUP_2,
+    2: SEM2_GROUP_2,
     3: ECE_S3,
     4: ECE_S4,
     ...ECE_UPPER,
   },
   'EE': {
-    1: SEM1_EE_ECE,
-    2: SEM2_EE_ECE,
+    1: SEM1_GROUP_2,
+    2: SEM2_GROUP_2,
     3: EE_S3,
     4: EE_S4,
     ...EE_UPPER,
   },
   'ME': {
-    1: SEM1_COMMON,
-    2: SEM2_COMMON,
+    1: SEM1_GROUP_3,
+    2: SEM2_GROUP_3,
     3: ME_S3,
     4: ME_S4,
     ...ME_UPPER,
   },
   'CE': {
-    1: SEM1_COMMON,
-    2: SEM2_COMMON,
+    1: SEM1_GROUP_1,
+    2: SEM2_GROUP_1,
     3: CE_S3,
     4: CE_S4,
     ...CE_UPPER,
