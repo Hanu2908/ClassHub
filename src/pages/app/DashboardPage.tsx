@@ -1,10 +1,10 @@
 import { useState, useMemo, type CSSProperties, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Megaphone, BarChart2, ClipboardList, Activity, PartyPopper, AlertTriangle } from 'lucide-react';
+import { Bell, Megaphone, BarChart2, ClipboardList, Activity, PartyPopper, AlertTriangle, Award } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
-import { useAnnouncements, useAssignments, usePolls, useAttendance } from '../../hooks/useSupabaseQuery';
+import { useAnnouncements, useAssignments, usePolls, useAttendance, useExams, useStudentExamPrep } from '../../hooks/useSupabaseQuery';
 import { useAcknowledge } from '../../hooks/useSupabaseMutations';
 import { showToast } from '../../components/Toast';
 import { isPushSupported, getPushPermission } from '../../lib/pushNotifications';
@@ -199,6 +199,24 @@ export default function DashboardPage() {
   const unread = notifications.filter(n => !n.read).length;
 
   // ── Attendance Hero Data ──
+  const { data: exams = [] } = useExams();
+
+  const upcomingExams = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return exams
+      .filter(e => e.examDate >= todayStr)
+      .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
+  }, [exams]);
+
+  const closestExam = upcomingExams[0] || null;
+
+  const isExamSoon = useMemo(() => {
+    if (!closestExam) return false;
+    const diffTime = new Date(closestExam.examDate).getTime() - new Date().getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= 7;
+  }, [closestExam]);
+
   const overallPercent = attendance?.overall ?? 0;
   const subjectsList = attendance?.subjects ?? [];
   const overallTotal = subjectsList.reduce((sum, s) => sum + s.total, 0);
@@ -458,7 +476,9 @@ export default function DashboardPage() {
 
           {/* Right Panel: Unified Deadline Hurdle & Quick Links */}
           <div className="hero-panel-right">
-            {primaryDeadline ? (
+            {isExamSoon && closestExam ? (
+              <NextExamHeroCard exam={closestExam} navigate={navigate} />
+            ) : primaryDeadline ? (
               (() => {
                 const dueDate = new Date(primaryDeadline.dueDate).getTime();
                 /* eslint-disable-next-line react-hooks/purity */
@@ -531,6 +551,22 @@ export default function DashboardPage() {
                     <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                       <span className="t-badge" style={{ color: 'var(--text-muted)', textTransform: 'uppercase' }}>Jump Center</span>
                       <div style={{ display: 'flex', gap: 10 }}>
+                        {upcomingExams.length > 0 && (
+                          <button 
+                            onClick={() => navigate('/app/exams')} 
+                            className="hurdle-shortcut-btn glow-crimson" 
+                            title={`${upcomingExams.length} upcoming exams`} 
+                            style={{ 
+                              position: 'relative',
+                              background: 'rgba(239, 68, 68, 0.08)',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              boxShadow: '0 0 12px rgba(239, 68, 68, 0.15)'
+                            }}
+                          >
+                            <Award size={13} color="var(--status-critical)" style={{ animation: 'nowPulse 1.5s infinite alternate' }} />
+                            <span className="shortcut-badge" style={{ background: 'var(--status-critical)' }}>{upcomingExams.length}</span>
+                          </button>
+                        )}
                         {outstandingCounts.assignments > 0 && (
                           <button onClick={() => navigate('/app/assignments')} className="hurdle-shortcut-btn glow-emerald" title={`${outstandingCounts.assignments} pending assignments`} style={{ position: 'relative' }}>
                             <ClipboardList size={13} />
@@ -570,6 +606,22 @@ export default function DashboardPage() {
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                   <span className="t-badge" style={{ color: 'var(--text-muted)', textTransform: 'uppercase' }}>Jump Center</span>
                   <div style={{ display: 'flex', gap: 8 }}>
+                    {upcomingExams.length > 0 && (
+                      <button 
+                        onClick={() => navigate('/app/exams')} 
+                        className="hurdle-shortcut-btn glow-crimson" 
+                        title={`${upcomingExams.length} upcoming exams`}
+                        style={{
+                          position: 'relative',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                          boxShadow: '0 0 12px rgba(239, 68, 68, 0.15)'
+                        }}
+                      >
+                        <Award size={13} color="var(--status-critical)" style={{ animation: 'nowPulse 1.5s infinite alternate' }} />
+                        <span className="shortcut-badge" style={{ background: 'var(--status-critical)' }}>{upcomingExams.length}</span>
+                      </button>
+                    )}
                     <button onClick={() => navigate('/app/assignments')} className="hurdle-shortcut-btn" title="Assignments"><ClipboardList size={13} /></button>
                     <button onClick={() => navigate('/app/announcements')} onMouseEnter={prefetchAnnouncements} onTouchStart={prefetchAnnouncements} className="hurdle-shortcut-btn" title="Announcements"><Megaphone size={13} /></button>
                     <button onClick={() => navigate('/app/polls')} className="hurdle-shortcut-btn" title="Polls"><BarChart2 size={13} /></button>
@@ -607,3 +659,156 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+// Harmonious gradient generator helper for subject avatars
+function generateGradient(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
+  const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
+  return `linear-gradient(135deg, ${c1}, ${c2})`;
+}
+
+// Next Exam Hero Card inner component with dynamic isolated 1-minute ticking countdown timer
+function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: string) => void }) {
+  const { data: prepData = [] } = useStudentExamPrep(exam.id);
+  const [nowTime, setNowTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowTime(Date.now());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const countdownText = useMemo(() => {
+    const examDateTime = new Date(`${exam.examDate}T${exam.startTime}`).getTime();
+    const diffMs = examDateTime - nowTime;
+    if (diffMs <= 0) return 'Active';
+
+    const diffMins = Math.floor(diffMs / 60000);
+    const mins = diffMins % 60;
+    const hours = Math.floor(diffMins / 60) % 24;
+    const days = Math.floor(diffMins / 1440);
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (days === 0 && mins > 0) parts.push(`${mins}m`);
+
+    return parts.join(' ') || '1m';
+  }, [exam, nowTime]);
+
+  const preparedCount = prepData.filter(p => p.isPrepared).length;
+  const totalUnits = exam.syllabusUnits?.length || 0;
+  const progressPercent = totalUnits > 0 ? (preparedCount / totalUnits) * 100 : 0;
+  const examGradient = generateGradient(exam.subjectCode);
+
+  return (
+    <div
+      onClick={() => navigate('/app/exams')}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        justifyContent: 'space-between',
+        width: '100%',
+        cursor: 'pointer'
+      }}
+    >
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Next Exam
+          </span>
+          <span
+            className="badge badge-critical t-badge"
+            style={{
+              fontSize: 9,
+              padding: '2px 8px',
+              animation: 'nowPulse 1.2s infinite alternate',
+              background: 'var(--status-critical)',
+              color: '#fff',
+              borderRadius: 4,
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.2)'
+            }}
+          >
+            {countdownText}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: examGradient,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)',
+            flexShrink: 0
+          }}>
+            <span className="t-mono" style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>
+              {exam.subjectCode.slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h4 className="t-card-title truncate" style={{ color: 'var(--text-primary)', margin: 0, fontSize: 14 }}>
+              {exam.subjectName}
+            </h4>
+            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+              {exam.examType} • {exam.subjectCode}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>
+            Room: <strong style={{ color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>{exam.activeRoom || 'N/A'}</strong>
+          </span>
+          <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+            {preparedCount}/{totalUnits} units
+          </span>
+        </div>
+
+        {totalUnits > 0 && (
+          <div className="glass-progress-track" style={{ height: 5, borderRadius: 2.5, border: 'none', background: 'rgba(255,255,255,0.03)' }}>
+            <div
+              className="glass-progress-fill"
+              style={{
+                width: `${progressPercent}%`,
+                background: 'linear-gradient(90deg, var(--accent-primary) 0%, var(--status-safe) 100%)',
+                boxShadow: '0 0 10px rgba(16, 185, 129, 0.2)',
+                borderRadius: 2.5
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Hurdle Jump Shortcuts */}
+      <div style={{ marginTop: 16, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <span className="t-badge" style={{ color: 'var(--text-muted)', textTransform: 'uppercase' }}>Jump Center</span>
+        <span 
+          style={{ 
+            fontSize: 9, 
+            padding: '3px 8px', 
+            height: 18, 
+            color: 'var(--accent-primary)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 4 
+          }}
+        >
+          View Hub →
+        </span>
+      </div>
+    </div>
+  );
+}
+

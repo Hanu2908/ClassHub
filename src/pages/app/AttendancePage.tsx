@@ -137,6 +137,7 @@ export default function AttendancePage() {
 
   const [erpText, setErpText] = useState('');
   const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
+  const [selectedImportSemester, setSelectedImportSemester] = useState<number>(1);
 
   // LocalStorage-based timezone-resilient daily review streak
   const [streakCount, setStreakCount] = useState<number>(0);
@@ -487,7 +488,17 @@ export default function AttendancePage() {
     }
 
     try {
-      const mapping = await ensureSubjects.mutateAsync(result.map(r => ({ code: r.code, name: r.name })));
+      const activeSemester = subjects.length === 0
+        ? selectedImportSemester
+        : Math.max(...subjects.map(s => s.semester ?? 1), 1);
+
+      const mapping = await ensureSubjects.mutateAsync(
+        result.map(r => ({
+          code: r.code,
+          name: r.name,
+          semester: activeSemester
+        }))
+      );
       const enriched = result.map(r => ({ ...r, subjectId: mapping[r.code] ?? null }));
       setParsed(enriched);
       showToast(`Parsed ${result.length} subjects. Review and confirm.`, 'info');
@@ -1219,6 +1230,34 @@ export default function AttendancePage() {
               <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
                 Paste your ERP Attendance table below.
               </p>
+              {subjects.length === 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '4px 0 8px 0' }}>
+                  <label htmlFor="import-semester-select" className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
+                    Select Your Section's Current Semester:
+                  </label>
+                  <select
+                    id="import-semester-select"
+                    className="input"
+                    value={selectedImportSemester}
+                    onChange={e => setSelectedImportSemester(Number(e.target.value))}
+                    style={{
+                      width: '100%',
+                      fontSize: '13px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '8px 12px',
+                      color: 'var(--text-primary)'
+                    }}
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                      <option key={sem} value={sem} style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+                        Semester {sem}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ padding: '10px 12px', background: 'var(--bg-base)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
                 <p className="t-mono-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>
                   How to copy:<br />

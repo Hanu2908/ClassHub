@@ -52,6 +52,7 @@ export interface AttendanceSubject {
   percentage: number;
   canSkip: number;
   needToAttend: number;
+  semester?: number;
 }
 
 export interface AssignmentSet {
@@ -134,6 +135,36 @@ export interface ScheduleSlot {
 }
 
 export type ScheduleMap = Record<string, ScheduleSlot[]>;
+
+export interface Exam {
+  id: string;
+  semester: number;
+  subjectCode: string;
+  subjectName: string;
+  examType: string;
+  examDate: string;
+  startTime: string;
+  endTime: string;
+  maxMarks: number | null;
+  syllabusUnits: string[];
+  syllabusPdfPath: string | null;
+  room: string | null;
+  seatingPlanPath: string | null;
+  activeRoom: string | null;
+  activeSeatingPlan: string | null;
+  baseCreatorId: string | null;
+  overrideId: string | null;
+  createdAt?: string;
+  createdBy?: string;
+}
+
+export interface StudentExamPrep {
+  id: string;
+  userId: string;
+  examId: string;
+  unitIndex: number;
+  isPrepared: boolean;
+}
 
 export type NotificationType =
   | 'cr_broadcast'

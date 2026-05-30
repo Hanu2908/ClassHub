@@ -15,7 +15,7 @@ export default function ScheduleWidget() {
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
-    }, 60 * 1000); // 1-minute ticking interval
+    }, 30 * 1000); // 30 second interval
     return () => clearInterval(timer);
   }, []);
   

@@ -1180,3 +1180,138 @@ export function useResignAsCR() {
     },
   });
 }
+
+export function useUpsertExam() {
+  const qc = useQueryClient();
+  const { userId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (exam: {
+      id?: string;
+      semester: number;
+      subjectCode: string;
+      subjectName: string;
+      examType: string;
+      examDate: string;
+      startTime: string;
+      endTime: string;
+      maxMarks?: number | null;
+      room?: string | null;
+      syllabusUnits?: string[];
+      syllabusPdfPath?: string | null;
+      seatingPlanPath?: string | null;
+    }) => {
+      if (!userId) throw new Error('Not authenticated');
+
+      const payload = {
+        semester: exam.semester,
+        subject_code: exam.subjectCode,
+        subject_name: exam.subjectName,
+        exam_type: exam.examType,
+        exam_date: exam.examDate,
+        start_time: exam.startTime,
+        end_time: exam.endTime,
+        max_marks: exam.maxMarks ?? null,
+        room: exam.room ?? null,
+        syllabus_units: exam.syllabusUnits ?? [],
+        syllabus_pdf_path: exam.syllabusPdfPath ?? null,
+        seating_plan_path: exam.seatingPlanPath ?? null,
+        created_by: userId
+      };
+
+      if (exam.id) {
+        const { error } = await (supabase as any)
+          .from('exams')
+          .update(payload)
+          .eq('id', exam.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from('exams')
+          .insert([payload]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['exams'] });
+    }
+  });
+}
+
+export function useDeleteExam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (examId: string) => {
+      const { error } = await (supabase as any)
+        .from('exams')
+        .delete()
+        .eq('id', examId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['exams'] });
+    }
+  });
+}
+
+export function useUpsertExamOverride() {
+  const qc = useQueryClient();
+  const { userId, sectionId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (override: {
+      examId: string;
+      room?: string | null;
+      seatingPlanPath?: string | null;
+    }) => {
+      if (!sectionId) throw new Error('Missing section context');
+      if (!userId) throw new Error('Not authenticated');
+
+      const { error } = await (supabase as any)
+        .from('exam_overrides')
+        .upsert({
+          section_id: sectionId,
+          exam_id: override.examId,
+          room: override.room ?? null,
+          seating_plan_path: override.seatingPlanPath ?? null,
+          created_by: userId,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'section_id,exam_id'
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['exams'] });
+    }
+  });
+}
+
+export function useUpsertStudentExamPrep() {
+  const qc = useQueryClient();
+  const { userId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (prep: {
+      examId: string;
+      unitIndex: number;
+      isPrepared: boolean;
+    }) => {
+      if (!userId) throw new Error('Not authenticated');
+
+      const { error } = await (supabase as any)
+        .from('student_exam_prep')
+        .upsert({
+          user_id: userId,
+          exam_id: prep.examId,
+          unit_index: prep.unitIndex,
+          is_prepared: prep.isPrepared,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,exam_id,unit_index'
+        });
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['student_exam_prep', variables.examId, userId] });
+    }
+  });
+}
+

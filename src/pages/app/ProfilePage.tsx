@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
@@ -240,6 +240,16 @@ export default function ProfilePage() {
             <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }} onClick={() => navigate('/app/gpa')}>
               <Calculator size={18} color="var(--accent-primary)" />
               <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
+            <button
+              id="exams-hub-btn"
+              onClick={() => navigate('/app/exams')}
+              className="list-row"
+              style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }}
+            >
+              <Calendar size={18} color="#ec4899" />
+              <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>Exams Hub</span>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
             <button

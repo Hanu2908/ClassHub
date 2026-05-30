@@ -24,6 +24,7 @@ const PDFViewerPage = lazy(() => import('./pages/app/PDFViewerPage'));
 const GPACalculatorPage = lazy(() => import('./pages/app/GPACalculatorPage'));
 const ResourceHubPage = lazy(() => import('./pages/app/ResourceHubPage'));
 const DeveloperConsolePage = lazy(() => import('./pages/app/DeveloperConsolePage'));
+const ExamsPage = lazy(() => import('./pages/app/ExamsPage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -130,6 +131,7 @@ export default function App() {
             <Route path="/app/cr-command" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><CRCommandPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><ManageSubjectsPage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
             <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PDFViewerPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+            <Route path="/app/exams" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/app/gpa" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><DeveloperConsolePage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
 

@@ -4,10 +4,10 @@ import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
 import type {
   Announcement, Assignment, AssignmentSet, Poll, PollOption,
-  ScheduleSlot, ScheduleMap, AttendanceSubject,
+  ScheduleSlot, ScheduleMap, AttendanceSubject, Exam, StudentExamPrep,
 } from '../store/appStore';
 
-type SubjectRelation = { code: string; name: string } | null;
+type SubjectRelation = { code: string; name: string; semester?: number } | null;
 type AssignmentSetRelation = {
   id: string;
   set_label: string;
@@ -614,7 +614,7 @@ export function useAttendance() {
         .from('attendance_records')
         .select(`
           present, od, makeup, absent, percentage, updated_at,
-          subjects:subject_id (code, name)
+          subjects:subject_id (code, name, semester)
         `)
         .eq('user_id', userId!);
       if (error) throw error;
@@ -638,6 +638,7 @@ export function useAttendance() {
           percentage: Number(pct),
           canSkip: Math.max(0, canSkip),
           needToAttend: need,
+          semester: subj?.semester ?? 1,
         };
       });
 
@@ -953,3 +954,95 @@ export function useCRTransferLog() {
     },
   });
 }
+
+export function useExams() {
+  const { sectionId, isAuthenticated } = useAuthContext();
+  return useQuery<Exam[]>({
+    queryKey: ['exams', sectionId],
+    enabled: !!sectionId && isAuthenticated,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    queryFn: async () => {
+      // 1. Fetch active subjects in this section
+      const { data: subjects, error: subjError } = await supabase
+        .from('subjects')
+        .select('code')
+        .eq('section_id', sectionId!);
+      if (subjError) throw subjError;
+
+      const subjectCodes = (subjects ?? []).map(s => s.code);
+      if (subjectCodes.length === 0) return [];
+
+      // 2. Fetch base exams filtered by subject codes, and join section-specific overrides
+      const { data: examsData, error: examsError } = await (supabase as any)
+        .from('exams')
+        .select(`
+          *,
+          exam_overrides (
+            id,
+            room,
+            seating_plan_path,
+            section_id
+          )
+        `)
+        .in('subject_code', subjectCodes)
+        .order('exam_date', { ascending: true })
+        .order('start_time', { ascending: true });
+
+      if (examsError) throw examsError;
+
+      return (examsData ?? []).map((e: any) => {
+        // Find override for current section
+        const overrides = e.exam_overrides || [];
+        const sectionOverride = overrides.find((o: any) => o.section_id === sectionId);
+
+        return {
+          id: e.id,
+          semester: e.semester,
+          subjectCode: e.subject_code,
+          subjectName: e.subject_name,
+          examType: e.exam_type,
+          examDate: e.exam_date,
+          startTime: e.start_time,
+          endTime: e.end_time,
+          maxMarks: e.max_marks,
+          room: e.room,
+          seatingPlanPath: e.seating_plan_path,
+          syllabusUnits: e.syllabus_units || [],
+          syllabusPdfPath: e.syllabus_pdf_path,
+          activeRoom: sectionOverride?.room || e.room,
+          activeSeatingPlan: sectionOverride?.seating_plan_path || e.seating_plan_path,
+          baseCreatorId: e.created_by,
+          overrideId: sectionOverride?.id || null,
+          createdAt: e.created_at,
+          createdBy: e.created_by
+        };
+      });
+    }
+  });
+}
+
+export function useStudentExamPrep(examId: string) {
+  const { userId, isAuthenticated } = useAuthContext();
+  return useQuery<StudentExamPrep[]>({
+    queryKey: ['student_exam_prep', examId, userId],
+    enabled: !!examId && !!userId && isAuthenticated,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('student_exam_prep')
+        .select('*')
+        .eq('exam_id', examId)
+        .eq('user_id', userId!);
+      if (error) throw error;
+
+      return (data ?? []).map((p: any) => ({
+        id: p.id,
+        userId: p.user_id,
+        examId: p.exam_id,
+        unitIndex: p.unit_index,
+        isPrepared: p.is_prepared
+      }));
+    }
+  });
+}
+
