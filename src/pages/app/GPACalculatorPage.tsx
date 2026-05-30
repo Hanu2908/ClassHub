@@ -10,6 +10,7 @@ import type { Branch } from '../../lib/gpaData';
 
 // Standalone tabs regular import for Calculator Tab (since it stays lean and instant)
 import CalculatorTab from './gpa/CalculatorTab';
+import { useGPASync } from '../../hooks/useGPASync';
 
 // Dynamic lazy imports for heavy dependent tabs
 const AnalyticsTab = React.lazy(() => import('./gpa/AnalyticsTab'));
@@ -177,6 +178,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id'];
 
 export default function GPACalculatorPage() {
+  useGPASync();
   const navigate = useNavigate();
   const {
     activeBranch, setActiveBranch,

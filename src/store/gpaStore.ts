@@ -26,6 +26,7 @@ interface GPAState {
   lockSemester:      (sem: number, locked: boolean) => void;
   setManualHistory:  (sem: number, cgpa: number | null) => void;
   setTargetCgpa:     (cgpa: number | null) => void;
+  hydrateState:      (state: Partial<GPAState>) => void;
 
   // Computed selectors
   getSGPA:              (sem: number) => number;
@@ -183,6 +184,8 @@ export const useGPAStore = create<GPAState>()(
       },
 
       setTargetCgpa: (cgpa) => set({ targetCgpa: cgpa }),
+
+      hydrateState: (newState) => set((state) => ({ ...state, ...newState })),
 
       getSGPA: (sem) => computeSGPA(get().semesters[sem]?.subjects ?? []),
 
