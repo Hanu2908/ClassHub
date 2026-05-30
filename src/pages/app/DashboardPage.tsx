@@ -1,6 +1,6 @@
 import { useState, useMemo, type CSSProperties, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Megaphone, BarChart2, ClipboardList, Activity, PartyPopper } from 'lucide-react';
+import { Bell, Megaphone, BarChart2, ClipboardList, Activity, PartyPopper, AlertTriangle } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
@@ -77,8 +77,17 @@ export default function DashboardPage() {
   const role = useAppStore(s => s.role);
   const { data: announcements = [] } = useAnnouncements({ limit: 50 });
   const { data: assignments = [] } = useAssignments();
-  const { data: attendance = { subjects: [], overall: 0 } } = useAttendance();
+  const { data: attendance = { subjects: [], overall: 0, lastUpdated: null } } = useAttendance();
   const { data: polls = [] } = usePolls();
+
+  const lastUpdated = attendance?.lastUpdated;
+  const isSyncOverdue = useMemo(() => {
+    if (!lastUpdated) return true; // never synced is overdue
+    /* eslint-disable-next-line react-hooks/purity */
+    const diffTime = Date.now() - new Date(lastUpdated).getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    return diffDays >= 3;
+  }, [lastUpdated]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [isDiagnoseOpen, setIsDiagnoseOpen] = useState(false);
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
@@ -340,6 +349,57 @@ export default function DashboardPage() {
                   ? `Alert: You must attend at least ${needToAttendOverall} consecutive classes to recover 75% standing.`
                   : `Status clear! You can skip up to ${canSkipOverall} classes without dropping below 75%.`}
               </div>
+
+              {isSyncOverdue && (
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open('https://erp.skit.ac.in/reports/student_aggregate', '_blank');
+                    navigate('/app/attendance?openERP=true');
+                  }}
+                  style={{
+                    marginTop: 12,
+                    background: 'rgba(239, 68, 68, 0.06)',
+                    border: '1px dashed rgba(239, 68, 68, 0.25)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  className="sync-overdue-banner"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertTriangle size={14} style={{ color: 'var(--status-critical)', flexShrink: 0 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span className="t-mono-sm" style={{ color: 'var(--status-critical)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.04em' }}>SYNC OVERDUE (3D+)</span>
+                      <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
+                        {lastUpdated ? `Last updated ${new Date(lastUpdated).toLocaleDateString()}` : 'Never synced with ERP'}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    className="t-mono-sm"
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      background: 'var(--status-critical)',
+                      color: '#fff',
+                      borderRadius: '4px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      height: '18px',
+                      boxShadow: '0 2px 8px rgba(239, 68, 68, 0.2)'
+                    }}
+                  >
+                    SYNC
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Advisor Diagnostics Accordion */}

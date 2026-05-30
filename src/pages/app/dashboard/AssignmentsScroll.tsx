@@ -1,9 +1,19 @@
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Cpu, BookMarked, Paperclip, PartyPopper } from 'lucide-react';
+import { Paperclip, PartyPopper } from 'lucide-react';
 import { deadlineBadgeClass, deadlineLabel } from '../../../components/Shared';
 import { useAssignments } from '../../../hooks/useSupabaseQuery';
 import { isExpired } from '../../../store/appStore';
 import { WidgetSkeleton } from './dashboardUtils';
+
+function generateGradient(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
+  const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
+  return `linear-gradient(135deg, ${c1}, ${c2})`;
+}
 
 export default function AssignmentsScroll() {
   const navigate = useNavigate();
@@ -56,13 +66,16 @@ export default function AssignmentsScroll() {
                       width: 40, 
                       height: 40, 
                       borderRadius: 10, 
-                      background: 'var(--accent-primary-glow)', 
+                      background: generateGradient(a.subjectCode || a.subject), 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)'
                     }}>
-                      {a.subject.includes('DBMS') ? <BookOpen size={16} color="var(--accent-primary)" /> : a.subject.includes('OS') ? <Cpu size={16} color="var(--status-safe)" /> : <BookMarked size={16} color="var(--status-warning)" />}
+                      <span className="t-mono" style={{ color: '#fff', fontSize: 13, fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                        {(a.subjectCode || a.subject || '??').slice(0, 2).toUpperCase()}
+                      </span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="truncate t-button" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{a.subject}</div>

@@ -534,7 +534,14 @@ export default function SchedulePage() {
   }, [classes]);
 
   // Now line position
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 60 * 1000); // 1-minute ticking interval
+    return () => clearInterval(timer);
+  }, []);
+
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const isToday = selectedDay === todayKey;
   const nowLineY = isToday ? ((nowMinutes / 60) - timeRange.startHour) * PX_PER_HOUR : -1;

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, Edit3,
   TrendingUp, TrendingDown, Target, Info, ChevronDown, ChevronUp,
@@ -119,9 +119,22 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
 
 export default function AttendancePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
   const authUser = useAppStore(s => s.authUser);
   const [erpOpen, setErpOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('openERP') === 'true') {
+      setErpOpen(true);
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('openERP');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const [erpText, setErpText] = useState('');
   const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
 

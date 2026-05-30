@@ -1,4 +1,4 @@
-import React, { useState, type CSSProperties } from 'react';
+import React, { useState, useMemo, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Megaphone, Award, Calendar, Coffee, Paperclip, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../../components/Shared';
@@ -114,7 +114,11 @@ export default function AnnouncementsScroll() {
   const [selectedAnn, setSelectedAnn] = useState<(Announcement & { isAcknowledged: boolean }) | null>(null);
 
   const { data: announcements = [], isLoading } = useAnnouncements({ limit: 12 });
-  const visible = announcements.filter(a => !isExpired(a.deadline));
+  const visible = useMemo(() => {
+    return announcements
+      .filter(a => !isExpired(a.deadline))
+      .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+  }, [announcements]);
 
   if (isLoading) return <WidgetSkeleton />;
 

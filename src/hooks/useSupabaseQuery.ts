@@ -605,7 +605,7 @@ export function useSchedule() {
 
 export function useAttendance() {
   const { userId, isAuthenticated } = useAuthContext();
-  return useQuery<{ subjects: AttendanceSubject[]; overall: number }>({
+  return useQuery<{ subjects: AttendanceSubject[]; overall: number; lastUpdated: string | null }>({
     queryKey: ['attendance', userId],
     enabled: !!userId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -613,7 +613,7 @@ export function useAttendance() {
       const { data, error } = await supabase
         .from('attendance_records')
         .select(`
-          present, od, makeup, absent, percentage,
+          present, od, makeup, absent, percentage, updated_at,
           subjects:subject_id (code, name)
         `)
         .eq('user_id', userId!);
@@ -645,7 +645,18 @@ export function useAttendance() {
       const totalHeld = subjects.reduce((sum, s) => sum + s.total, 0);
       const overall = totalHeld > 0 ? (totalPresent / totalHeld) * 100 : 0;
 
-      return { subjects, overall };
+      let maxUpdatedAt: string | null = null;
+      if (data && data.length > 0) {
+        const dates = data
+          .map(r => r.updated_at)
+          .filter(Boolean)
+          .map(d => new Date(d).getTime());
+        if (dates.length > 0) {
+          maxUpdatedAt = new Date(Math.max(...dates)).toISOString();
+        }
+      }
+
+      return { subjects, overall, lastUpdated: maxUpdatedAt };
     },
   });
 }

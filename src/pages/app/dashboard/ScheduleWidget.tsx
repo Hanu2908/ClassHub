@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Coffee } from 'lucide-react';
 import { useSchedule } from '../../../hooks/useSupabaseQuery';
@@ -11,7 +11,13 @@ export default function ScheduleWidget() {
   const key = todayKey();
   const { data: schedule, isLoading } = useSchedule();
   const classes = useMemo(() => schedule?.[key] ?? [], [schedule, key]);
-  const now = useMemo(() => new Date(), []);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 60 * 1000); // 1-minute ticking interval
+    return () => clearInterval(timer);
+  }, []);
   
   const current = useMemo(() => classes.find((c) => {
     const start = parseTime(c.startTime);
