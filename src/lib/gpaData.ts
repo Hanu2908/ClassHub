@@ -64,10 +64,10 @@ export function computeCGPA(
     const entered = (semesterData[sem]?.subjects ?? []).filter(s => s.marks !== null && s.credits > 0);
 
     if (entered.length > 0) {
-      const sgpa    = computeSGPA(entered);
-      const credits = entered.reduce((acc, s) => acc + s.credits, 0);
-      totalWeighted += sgpa * credits;
-      totalCredits  += credits;
+      const semWeighted = entered.reduce((acc, s) => acc + s.credits * marksToPoint(s.marks), 0);
+      const semCredits = entered.reduce((acc, s) => acc + s.credits, 0);
+      totalWeighted += semWeighted;
+      totalCredits  += semCredits;
     } else if (manualHistory[sem] !== undefined) {
       const credits = 20; // proxy weight for a semester entered manually
       totalWeighted += manualHistory[sem] * credits;
