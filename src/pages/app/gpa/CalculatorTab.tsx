@@ -285,6 +285,9 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
     try {
       const { createWorker } = await import('tesseract.js');
       const worker = await createWorker('eng');
+      await worker.setParameters({
+        tessedit_pageseg_mode: 6 as any, // PSM 6: Assume a single uniform block of text (keeps table rows together)
+      });
       setOcrWorker(worker);
       return worker;
     } catch (err) {
@@ -468,18 +471,9 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         if (pCtx) {
           // Draw downscaled image onto the preprocess canvas
           pCtx.drawImage(imageElement, 0, 0, width, height);
-          const imgData = pCtx.getImageData(0, 0, width, height);
-          const data = imgData.data;
           
-          // High contrast binary thresholding
-          for (let i = 0; i < data.length; i += 4) {
-            const grayscale = data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11;
-            const binaryValue = grayscale > 125 ? 255 : 0;
-            data[i] = binaryValue;
-            data[i + 1] = binaryValue;
-            data[i + 2] = binaryValue;
-          }
-          pCtx.putImageData(imgData, 0, 0);
+          // Removed high-contrast binary thresholding because it degrades anti-aliased text.
+          // Tesseract performs its own binarization via Otsu's method which is generally superior.
         }
 
         setScanProgress('Analyzing text…');
@@ -546,15 +540,6 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
           if (cleanSub.includes('SODECA') && cleanLine.includes('SODECA')) {
             isMatch = true;
             refinedName = 'SODECA';
-          } else if (cleanSub.includes('THINKING') && cleanLine.includes('THINKING')) {
-            isMatch = true;
-            refinedName = 'Computational Thinking and Programming';
-          } else if (cleanSub.includes('BASIC ELECTRICAL') && cleanLine.includes('MECHANICAL')) {
-            isMatch = true;
-            refinedName = 'Basic Mechanical Engineering';
-          } else if (cleanSub.includes('BASIC EE LAB') && (cleanLine.includes('MANUFACTURING') || cleanLine.includes('PRACTICE'))) {
-            isMatch = true;
-            refinedName = 'Manufacturing Practice Workshop';
           } else {
             const options = cleanSub.split('/').map(opt => opt.trim());
             for (const option of options) {
@@ -571,8 +556,8 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
               const required = keywords.length === 1 ? 1 : Math.min(2, keywords.length);
               
               if (matchCount >= required) {
-                const optionIsLab = option.includes('LAB') || option.includes('WORKSHOP') || option.includes('PRACTICE') || option.includes('GRAPHICS');
-                const lineIsLab = cleanLine.includes('LAB') || cleanLine.includes('WORKSHOP') || cleanLine.includes('PRACTICE') || cleanLine.includes('WORKS') || cleanLine.includes('UP') || cleanLine.includes('MEUP') || cleanLine.includes('CSUP') || cleanLine.includes('CHUP') || cleanLine.includes('HSUP');
+                const optionIsLab = option.includes('LAB') || option.includes('WORKSHOP') || option.includes('PRACTICE') || option.includes('GRAPHICS') || option.includes('DRAWING');
+                const lineIsLab = cleanLine.includes('LAB') || cleanLine.includes('WORKSHOP') || cleanLine.includes('PRACTICE') || cleanLine.includes('WORKS') || cleanLine.includes('UP') || cleanLine.includes('MEUP') || cleanLine.includes('CSUP') || cleanLine.includes('CHUP') || cleanLine.includes('HSUP') || cleanLine.includes('DRAWING');
                 
                 if (optionIsLab !== lineIsLab) {
                   continue;

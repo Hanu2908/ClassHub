@@ -22,6 +22,7 @@ const SEM1_GROUP_1: DefaultSubject[] = [
   { name: 'C Programming Lab',                                   credits: 1   },
   { name: 'Basic Electrical & Electronics Engineering Lab / Manufacturing Practice Workshop', credits: 1   },
   { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Environmental Sciences / Constitution of India', credits: 0 },
   { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
@@ -36,6 +37,7 @@ const SEM1_GROUP_2: DefaultSubject[] = [
   { name: 'C Programming Lab',                                   credits: 1   },
   { name: 'Basic Civil Engineering Lab / Manufacturing Practice Workshop', credits: 1   },
   { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Environmental Sciences / Constitution of India', credits: 0 },
   { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
@@ -50,6 +52,7 @@ const SEM1_GROUP_3: DefaultSubject[] = [
   { name: 'C Programming Lab',                                   credits: 1   },
   { name: 'Basic Electrical & Electronics Engineering Lab / Basic Civil Engineering Lab', credits: 1   },
   { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Environmental Sciences / Constitution of India', credits: 0 },
   { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
@@ -65,6 +68,7 @@ const SEM2_GROUP_1: DefaultSubject[] = [
   { name: 'Object Oriented Programming Lab',                     credits: 1   },
   { name: 'Basic Electrical & Electronics Engineering Lab / Manufacturing Practice Workshop', credits: 1   },
   { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Environmental Sciences / Constitution of India', credits: 0 },
   { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
@@ -80,6 +84,7 @@ const SEM2_GROUP_2: DefaultSubject[] = [
   { name: 'Object Oriented Programming Lab',                     credits: 1   },
   { name: 'Basic Civil Engineering Lab / Manufacturing Practice Workshop', credits: 1   },
   { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Environmental Sciences / Constitution of India', credits: 0 },
   { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
@@ -95,6 +100,7 @@ const SEM2_GROUP_3: DefaultSubject[] = [
   { name: 'Object Oriented Programming Lab',                     credits: 1   },
   { name: 'Basic Electrical & Electronics Engineering Lab / Basic Civil Engineering Lab', credits: 1   },
   { name: 'Computer Aided Engineering Graphics / Computer Aided Machine Drawing', credits: 1.5 },
+  { name: 'Environmental Sciences / Constitution of India', credits: 0 },
   { name: 'Social Outreach, Discipline and Extra-Curricular Activities (SODECA)', credits: 0.5 },
 ];
 
