@@ -165,8 +165,18 @@ function GlassCard({ children, style: sx }: { children: React.ReactNode; style?:
 
 function RowSubjectNameInput({ value, onChange, disabled, idx }: { value: string; onChange: (v: string) => void; disabled: boolean; idx: number }) {
   const [isFocused, setIsFocused] = useState(false);
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto';
+      ref.current.style.height = `${ref.current.scrollHeight}px`;
+    }
+  }, [value]);
+
   return (
-    <input
+    <textarea
+      ref={ref}
       name={`subject-name-${idx}`}
       autoComplete="off"
       aria-label={`Subject name ${idx + 1}`}
@@ -176,6 +186,7 @@ function RowSubjectNameInput({ value, onChange, disabled, idx }: { value: string
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
       placeholder="Subject name…"
+      rows={1}
       style={{
         background: isFocused ? 'rgba(0,0,0,0.2)' : 'transparent',
         border: isFocused ? `1px solid ${T.accent}` : '1px solid transparent',
@@ -183,11 +194,15 @@ function RowSubjectNameInput({ value, onChange, disabled, idx }: { value: string
         borderRadius: 6,
         outline: 'none',
         color: 'var(--text-primary)',
-        fontSize: 12,
+        fontSize: 11,
+        lineHeight: 1.3,
         fontFamily: 'var(--font-body)',
         width: '100%',
-        padding: '3px 6px',
-        transition: 'all 0.2s'
+        padding: '4px 6px',
+        transition: 'all 0.2s',
+        resize: 'none',
+        overflow: 'hidden',
+        display: 'block'
       }}
     />
   );
