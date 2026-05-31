@@ -95,7 +95,12 @@ export default function ReportTab() {
   const { semesters, manualHistory, activeBranch, getAllSemesterSGPAs } = useGPAStore();
   const cgpa       = useMemo(() => computeCGPA(semesters, manualHistory), [semesters, manualHistory]);
   const pct        = useMemo(() => computePercentage(cgpa), [cgpa]);
-  const semHistory = useMemo(() => getAllSemesterSGPAs(), [semesters, manualHistory, getAllSemesterSGPAs]);
+  const semHistory = useMemo(() => {
+    // Reference semesters and manualHistory to satisfy react-hooks/exhaustive-deps and trigger recalculation on change
+    void semesters;
+    void manualHistory;
+    return getAllSemesterSGPAs();
+  }, [semesters, manualHistory, getAllSemesterSGPAs]);
   const [exporting, setExporting] = useState(false);
 
   const totalCredits = Object.values(semesters).flatMap(s => s.subjects).filter(s => s.marks !== null).reduce((a, s) => a + s.credits, 0);

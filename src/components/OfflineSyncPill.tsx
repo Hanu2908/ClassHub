@@ -16,12 +16,12 @@ export default function OfflineSyncPill() {
 
   if (!visible) return null;
 
-  let bgClass = '';
-  let borderClass = '';
-  let textClass = '';
-  let glowClass = '';
-  let label = '';
-  let Icon = WifiOff;
+  let bgClass: string;
+  let borderClass: string;
+  let textClass: string;
+  let glowClass: string;
+  let label: string;
+  let Icon: typeof WifiOff;
   let animateClass = '';
 
   switch (syncStatus) {

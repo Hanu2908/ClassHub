@@ -124,7 +124,12 @@ export default function AnalyticsTab() {
   const { semesters, activeSemester, manualHistory, getAllSemesterSGPAs } = useGPAStore();
   const subjects = useMemo(() => semesters[activeSemester]?.subjects ?? [], [semesters, activeSemester]);
   const sgpa       = useMemo(() => computeSGPA(subjects), [subjects]);
-  const semHistory = useMemo(() => getAllSemesterSGPAs(), [semesters, manualHistory, getAllSemesterSGPAs]);
+  const semHistory = useMemo(() => {
+    // Reference semesters and manualHistory to satisfy react-hooks/exhaustive-deps and trigger recalculation on change
+    void semesters;
+    void manualHistory;
+    return getAllSemesterSGPAs();
+  }, [semesters, manualHistory, getAllSemesterSGPAs]);
 
   const pieData = useMemo(() => {
     const entered = subjects.filter(s => s.marks !== null);
