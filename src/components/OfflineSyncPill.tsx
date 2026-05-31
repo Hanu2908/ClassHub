@@ -55,12 +55,12 @@ export default function OfflineSyncPill() {
   }
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none animate-slide-down">
+    <div className="fixed top-[18px] left-1/2 -translate-x-1/2 z-[9999] pointer-events-none animate-slide-down">
       <div
-        className={`flex items-center gap-2 px-4 py-2 rounded-full border ${borderClass} ${bgClass} ${textClass} shadow-lg ${glowClass} transition-all duration-300`}
+        className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${borderClass} ${bgClass} ${textClass} shadow-md ${glowClass} transition-all duration-300`}
       >
-        <Icon className={`w-3.5 h-3.5 ${animateClass}`} />
-        <span className="text-xs font-semibold tracking-wide select-none">
+        <Icon className={`w-3 h-3 ${animateClass}`} />
+        <span className="text-[10px] font-bold tracking-wider uppercase select-none">
           {label}
         </span>
       </div>
