@@ -122,14 +122,28 @@ export function EmptyState({ emoji, icon, title, subtitle }: EmptyStateProps) {
   );
 }
 
-// Time helper
+// Time helper - Context-aware absolute friendly timestamps
 export function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  const date = new Date(iso);
+  const now = new Date();
+  
+  // Format the exact time (e.g. 2:30 PM)
+  const timeStr = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+  // Calculate day differences by resetting hours/minutes/seconds
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterday = today - 24 * 60 * 60 * 1000;
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+  if (targetDate === today) {
+    return `Today at ${timeStr}`;
+  } else if (targetDate === yesterday) {
+    return `Yesterday at ${timeStr}`;
+  } else {
+    // Older: e.g. "31 May at 2:30 PM"
+    const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    return `${dateStr} at ${timeStr}`;
+  }
 }
 
 export function timeUntil(iso: string): string {

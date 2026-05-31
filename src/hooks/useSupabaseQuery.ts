@@ -285,7 +285,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
         const submissionQuery = userId
           ? supabase
               .from('submissions')
-              .select('assignment_id, submission_link, status')
+              .select('assignment_id, submission_link, status, cr_verified')
               .eq('student_id', userId)
           : Promise.resolve({ data: [], error: null });
 
@@ -297,9 +297,9 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
         if (error) throw error;
         if (subErr) throw subErr;
 
-        const userSubs: Record<string, { link: string | null; status: string }> = {};
+        const userSubs: Record<string, { link: string | null; status: string; crVerified: boolean }> = {};
         for (const s of subs ?? []) {
-          userSubs[s.assignment_id] = { link: s.submission_link, status: s.status };
+          userSubs[s.assignment_id] = { link: s.submission_link, status: s.status, crVerified: s.cr_verified ?? false };
         }
 
         const result = (assigns ?? []).map(a => {
@@ -328,6 +328,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
             hasSets: sets.length > 0,
             sets,
             submittedLink: sub?.link ?? null,
+            crVerified: sub?.crVerified ?? false,
             createdAt: a.created_at,
             attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
               id: att.id,

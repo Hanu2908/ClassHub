@@ -86,6 +86,7 @@ export interface Assignment {
   hasSets: boolean;
   sets: AssignmentSet[];
   submittedLink: string | null;
+  crVerified?: boolean;
   createdAt: string;
   attachments?: Attachment[];
 }

@@ -285,16 +285,21 @@ function SubmissionTracker() {
                                 showToast('Failed to update', 'error');
                               }
                             }}
+                            disabled={crToggle.isPending}
                             style={{
                               background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
-                              borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                              borderRadius: 6, padding: '3px 8px', cursor: crToggle.isPending ? 'not-allowed' : 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: '#f59e0b', fontSize: 11, fontWeight: 600, gap: 4,
+                              color: '#f59e0b', fontSize: 11, fontWeight: 600, gap: 4, opacity: crToggle.isPending ? 0.6 : 1
                             }}
                             title={`Unmark ${st.name} as submitted`}
                           >
-                            <XCircle size={12} />
-                            Unmark
+                            {crToggle.isPending && crToggle.variables?.studentId === st.id ? (
+                              <Loader2 className="animate-spin" size={11} style={{ animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                              <XCircle size={12} />
+                            )}
+                            {crToggle.isPending && crToggle.variables?.studentId === st.id ? 'Saving…' : 'Unmark'}
                           </button>
                         </div>
                       ) : (
@@ -335,16 +340,21 @@ function SubmissionTracker() {
                                 showToast('Failed to update', 'error');
                               }
                             }}
+                            disabled={crToggle.isPending}
                             style={{
                               background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.25)',
-                              borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                              borderRadius: 6, padding: '3px 8px', cursor: crToggle.isPending ? 'not-allowed' : 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600, gap: 4,
+                              color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600, gap: 4, opacity: crToggle.isPending ? 0.6 : 1
                             }}
                             title={`Mark ${st.name} as submitted`}
                           >
-                            <CheckCircle2 size={12} />
-                            Mark
+                            {crToggle.isPending && crToggle.variables?.studentId === st.id ? (
+                              <Loader2 className="animate-spin" size={11} style={{ animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                              <CheckCircle2 size={12} />
+                            )}
+                            {crToggle.isPending && crToggle.variables?.studentId === st.id ? 'Saving…' : 'Verify'}
                           </button>
                         </div>
                       )}
@@ -775,6 +785,29 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   const [sending, setSending] = useState(false);
   const { data: section } = useSection();
 
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('classhub-draft-announcement');
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        if (draft.title) setTitle(draft.title);
+        if (draft.body) setBody(draft.body);
+        showToast('Draft recovered! ✓', 'success');
+      } catch (e) {
+        console.error('Failed to parse draft', e);
+      }
+    }
+  }, []);
+
+  // Save draft to localStorage on fields change
+  useEffect(() => {
+    const draft = { title, body };
+    if (title || body) {
+      localStorage.setItem('classhub-draft-announcement', JSON.stringify(draft));
+    }
+  }, [title, body]);
+
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
     background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
@@ -815,6 +848,7 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
       } else {
         showToast('Notification sent!', 'success');
       }
+      localStorage.removeItem('classhub-draft-announcement');
       onClose();
     } catch (err) {
       console.error('[Notify] Send failed:', err);
@@ -844,7 +878,12 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
             color: sending ? 'var(--text-muted)' : '#fff',
             transition: 'all 0.2s', marginTop: 10 }}
         >
-          <Send size={15} /> {sending ? 'Sending…' : 'Send Notification'}
+          {sending ? (
+            <Loader2 className="animate-spin" size={15} style={{ animation: 'spin 1s linear infinite' }} />
+          ) : (
+            <Send size={15} />
+          )}
+          {sending ? 'Sending…' : 'Send Notification'}
         </button>
       </div>
     </BottomSheet>
@@ -947,7 +986,12 @@ function FlashPostSheet({ onClose }: { onClose: () => void }) {
             color: sending ? 'var(--text-muted)' : '#fff',
             transition: 'all 0.2s', marginTop: 10 }}
         >
-          <Send size={15} /> {sending ? 'Sending…' : 'Publish Flash Post'}
+          {sending ? (
+            <Loader2 className="animate-spin" size={15} style={{ animation: 'spin 1s linear infinite' }} />
+          ) : (
+            <Send size={15} />
+          )}
+          {sending ? 'Sending…' : 'Publish Flash Post'}
         </button>
       </div>
     </BottomSheet>

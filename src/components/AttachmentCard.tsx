@@ -214,6 +214,34 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     }
   }, [isImage, previewState.thumbUrl, downloading, attachment, pageNumber, navigate]);
 
+  const handleDownload = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (downloading) return;
+    setDownloading(true);
+
+    try {
+      const { data, error } = await supabase.storage.from('attachments').createSignedUrl(attachment.storagePath, 60, {
+        download: attachment.filename
+      });
+      if (error) throw error;
+      if (data?.signedUrl) {
+        const link = document.createElement('a');
+        link.href = data.signedUrl;
+        link.download = attachment.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err) {
+      console.error('[AttachmentCard] Failed to download file:', err);
+      alert('Failed to download file.');
+    } finally {
+      setDownloading(false);
+    }
+  }, [downloading, attachment]);
+
   const getFileIcon = (type: string) => {
     const t = type.toLowerCase();
     if (t.includes('pdf')) return <FileText size={20} style={{ color: '#F87171' }} />;
@@ -351,6 +379,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
             <button
               type="button" 
               disabled={downloading} 
+              onClick={handleDownload}
               aria-label={`Download ${attachment.filename}`}
               style={{
                 background: 'none',

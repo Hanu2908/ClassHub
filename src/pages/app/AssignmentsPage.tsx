@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -79,6 +79,37 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const [numSets, setNumSets] = useState('');
   const [excludeFirstPage, setExcludeFirstPage] = useState(false);
   const [sets, setSets] = useState<AssignmentSet[]>([]);
+
+  // Load draft from localStorage on mount (when sheet opens)
+  useEffect(() => {
+    if (open) {
+      const saved = localStorage.getItem('classhub-draft-assignment');
+      if (saved) {
+        try {
+          const draft = JSON.parse(saved);
+          if (draft.title) setTitle(draft.title);
+          if (draft.subjectId) setSubjectId(draft.subjectId);
+          if (draft.customSubjectName) setCustomSubjectName(draft.customSubjectName);
+          if (draft.dueDate) setDueDate(draft.dueDate);
+          if (draft.description) setDescription(draft.description);
+          if (draft.hasSets !== undefined) setHasSets(draft.hasSets);
+          showToast('Draft recovered! ✓', 'success');
+        } catch (e) {
+          console.error('Failed to parse draft', e);
+        }
+      }
+    }
+  }, [open]);
+
+  // Save draft to localStorage on fields change
+  useEffect(() => {
+    if (open) {
+      const draft = { title, subjectId, customSubjectName, dueDate, description, hasSets };
+      if (title || subjectId || customSubjectName || dueDate || description || hasSets) {
+        localStorage.setItem('classhub-draft-assignment', JSON.stringify(draft));
+      }
+    }
+  }, [title, subjectId, customSubjectName, dueDate, description, hasSets, open]);
 
   const reset = () => {
     setStep(1); setTitle(''); setSubjectId(''); setCustomSubjectName('');
@@ -192,6 +223,7 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
       }
 
       showToast('Assignment published! ✓', 'success');
+      localStorage.removeItem('classhub-draft-assignment');
       handleClose();
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Failed to publish', 'error');
@@ -268,7 +300,8 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
             <button className="btn-secondary" style={{ flex: 1 }} onClick={handleClose}>Cancel</button>
             {hasSets
               ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate || (subjectId === 'other' && !customSubjectName.trim())) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
-              : <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={pending}>
+              : <button className="btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={handlePublish} disabled={pending}>
+                  {pending && <Loader2 className="animate-spin" size={16} style={{ animation: 'spin 1s linear infinite' }} />}
                   {pending 
                     ? (uploadProgress > 0 && files.length > 0
                       ? `Uploading (${uploadProgress}/${files.length})…`
@@ -378,7 +411,8 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(1)} disabled={pending}>← Back</button>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={handlePublish} disabled={pending}>
+            <button className="btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={handlePublish} disabled={pending}>
+              {pending && <Loader2 className="animate-spin" size={16} style={{ animation: 'spin 1s linear infinite' }} />}
               {pending 
                 ? (uploadProgress > 0 && files.length > 0
                   ? `Uploading (${uploadProgress}/${files.length})…`
@@ -1003,8 +1037,13 @@ export default function AssignmentsPage() {
             let lbl = 'Pending';
             
             if (isSubmitted) {
-              bdg = 'badge-safe';
-              lbl = 'Submitted';
+              if (a.crVerified) {
+                bdg = 'badge-safe';
+                lbl = 'Verified Safely ✓';
+              } else {
+                bdg = 'badge-warning';
+                lbl = 'Submitted';
+              }
             } else if (a.isOverdue) {
               bdg = 'badge-critical';
               lbl = 'Overdue';
@@ -1148,7 +1187,6 @@ export default function AssignmentsPage() {
                   </button>
                 ) : null}
 
-                {/* Submit area */}
                 {isSubmitted ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--status-safe-bg)', border: '1px solid rgba(52,201,123,0.35)', borderRadius: 'var(--radius-md)', transition: 'all 0.3s ease' }}>
                     <CheckCircle2 size={15} color="var(--status-safe)" />
@@ -1158,11 +1196,17 @@ export default function AssignmentsPage() {
                   <button className="t-button"
                     id={`submit-btn-${a.id}`}
                     onClick={() => handleMarkSubmitted(a.id)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.4)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--accent-primary)', width: '100%', transition: 'all 0.2s ease' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,158,255,0.18)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary-glow)'; }}
+                    disabled={submitMutation.isPending}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.4)', borderRadius: 'var(--radius-md)', cursor: submitMutation.isPending ? 'not-allowed' : 'pointer', color: 'var(--accent-primary)', width: '100%', transition: 'all 0.2s ease', opacity: submitMutation.isPending ? 0.6 : 1 }}
+                    onMouseEnter={e => { if (!submitMutation.isPending) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,158,255,0.18)'; }}
+                    onMouseLeave={e => { if (!submitMutation.isPending) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary-glow)'; }}
                   >
-                    <CheckCircle2 size={15} /> Mark as Submitted
+                    {submitMutation.isPending && submitMutation.variables?.assignmentId === a.id ? (
+                      <Loader2 className="animate-spin" size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                    ) : (
+                      <CheckCircle2 size={15} />
+                    )}
+                    {submitMutation.isPending && submitMutation.variables?.assignmentId === a.id ? 'Submitting…' : 'Mark as Submitted'}
                   </button>
                 )}
               </article>

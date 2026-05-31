@@ -25,6 +25,8 @@ function useAuthContext() {
 
 // ── Announcements ────────────────────────────────────────────────────────────
 
+let isCreatingAnnouncement = false;
+
 export function useCreateAnnouncement() {
   const qc = useQueryClient();
   const { sectionId, userId } = useAuthContext();
@@ -36,38 +38,47 @@ export function useCreateAnnouncement() {
       deadline?: string | null;
       expiresAt?: string | null;
     }) => {
-      const { data, error } = await supabase
-        .from('announcements')
-        .insert({
-          section_id: sectionId!,
-          author_id: userId!,
-          title: input.title,
-          message_content: input.message,
-          priority: input.priority,
-          deadline_at: input.deadline ?? null,
-          expires_at: input.expiresAt ?? null,
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      if (data?.id) {
-        try {
-          const { data: pushData, error: funcError } = await supabase.functions.invoke('send-critical-announcement', {
-            body: { announcementId: data.id },
-          });
-          if (funcError) {
-            console.warn('Failed to broadcast critical announcement notification:', funcError);
-          } else {
-            console.log('Push notification result:', pushData);
-          }
-        } catch (err) {
-          console.warn('Error invoking send-critical-announcement function:', err);
-        }
+      if (isCreatingAnnouncement) {
+        console.warn('Announcement creation already in flight. Ignoring duplicate request.');
+        return;
       }
+      isCreatingAnnouncement = true;
+      try {
+        const { data, error } = await supabase
+          .from('announcements')
+          .insert({
+            section_id: sectionId!,
+            author_id: userId!,
+            title: input.title,
+            message_content: input.message,
+            priority: input.priority,
+            deadline_at: input.deadline ?? null,
+            expires_at: input.expiresAt ?? null,
+          })
+          .select('id')
+          .single();
 
-      return data?.id;
+        if (error) throw error;
+
+        if (data?.id) {
+          try {
+            const { data: pushData, error: funcError } = await supabase.functions.invoke('send-critical-announcement', {
+              body: { announcementId: data.id },
+            });
+            if (funcError) {
+              console.warn('Failed to broadcast critical announcement notification:', funcError);
+            } else {
+              console.log('Push notification result:', pushData);
+            }
+          } catch (err) {
+            console.warn('Error invoking send-critical-announcement function:', err);
+          }
+        }
+
+        return data?.id;
+      } finally {
+        isCreatingAnnouncement = false;
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
   });
@@ -84,6 +95,8 @@ export function useDeleteAnnouncement() {
   });
 }
 
+const inFlightAcks = new Set<string>();
+
 export function useAcknowledge() {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
@@ -95,34 +108,17 @@ export function useAcknowledge() {
       addOptimisticAck(announcementId);
     },
     mutationFn: async (announcementId: string) => {
-      if (!navigator.onLine) {
-        if (import.meta.env.DEV) {
-          console.log('[OfflineSync] Network offline. Enqueuing acknowledgment.');
-        }
-        await enqueueAction('acknowledge', { announcementId, userId: userId! });
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.ready.then((reg) => {
-            if ('sync' in reg) {
-              return (reg as any).sync.register('sync-offline-actions');
-            }
-          }).catch((err) => console.warn('[OfflineSync] Sync registration failed:', err));
-        }
-        return; // Optimistic success
+      const key = `${announcementId}-${userId}`;
+      if (inFlightAcks.has(key)) {
+        console.warn('Acknowledgment already in flight. Ignoring duplicate request.');
+        return;
       }
+      inFlightAcks.add(key);
 
       try {
-        const { error } = await supabase.from('acknowledgments').insert({
-          announcement_id: announcementId,
-          user_id: userId!,
-        });
-        if (error) {
-          throw error;
-        }
-      } catch (err: any) {
-        const isNetworkErr = err.message?.includes('Failed to fetch') || err.name === 'TypeError';
-        if (isNetworkErr) {
+        if (!navigator.onLine) {
           if (import.meta.env.DEV) {
-            console.warn('[OfflineSync] Mutation failed due to network error. Enqueuing acknowledgment:', err);
+            console.log('[OfflineSync] Network offline. Enqueuing acknowledgment.');
           }
           await enqueueAction('acknowledge', { announcementId, userId: userId! });
           if ('serviceWorker' in navigator) {
@@ -130,11 +126,39 @@ export function useAcknowledge() {
               if ('sync' in reg) {
                 return (reg as any).sync.register('sync-offline-actions');
               }
-            }).catch((syncErr) => console.warn('[OfflineSync] Sync registration failed:', syncErr));
+            }).catch((err) => console.warn('[OfflineSync] Sync registration failed:', err));
           }
           return; // Optimistic success
         }
-        throw err;
+
+        try {
+          const { error } = await supabase.from('acknowledgments').insert({
+            announcement_id: announcementId,
+            user_id: userId!,
+          });
+          if (error) {
+            throw error;
+          }
+        } catch (err: any) {
+          const isNetworkErr = err.message?.includes('Failed to fetch') || err.name === 'TypeError';
+          if (isNetworkErr) {
+            if (import.meta.env.DEV) {
+              console.warn('[OfflineSync] Mutation failed due to network error. Enqueuing acknowledgment:', err);
+            }
+            await enqueueAction('acknowledge', { announcementId, userId: userId! });
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then((reg) => {
+                if ('sync' in reg) {
+                  return (reg as any).sync.register('sync-offline-actions');
+                }
+              }).catch((syncErr) => console.warn('[OfflineSync] Sync registration failed:', syncErr));
+            }
+            return; // Optimistic success
+          }
+          throw err;
+        }
+      } finally {
+        inFlightAcks.delete(key);
       }
     },
     onSuccess: () => {
@@ -149,6 +173,8 @@ export function useAcknowledge() {
 
 // ── Assignments ──────────────────────────────────────────────────────────────
 
+let isCreatingAssignment = false;
+
 export function useCreateAssignment() {
   const qc = useQueryClient();
   const { sectionId, userId, role } = useAuthContext();
@@ -160,72 +186,81 @@ export function useCreateAssignment() {
       dueDate: string;
       sets?: { label: string; description: string; rollStart: number; rollEnd: number; pdfUrl?: string | null; pageNumbers?: string | null }[];
     }) => {
-      // 1. Enforce strict CR authorization check
-      if (role !== 'cr') {
-        throw new Error('Unauthorized: Only Class Representatives can create assignments');
+      if (isCreatingAssignment) {
+        console.warn('Assignment creation already in flight. Ignoring duplicate request.');
+        return;
       }
-
-      // 2. Enforce strict Zod schema validation
-      const validated = assignmentSchema.parse({
-        title: input.title.trim(),
-        subjectId: input.subjectId,
-        dueDate: input.dueDate,
-        sets: input.sets ? input.sets.map(s => ({
-          label: s.label,
-          rollStart: s.rollStart,
-          rollEnd: s.rollEnd,
-          description: s.description,
-          pdfUrl: s.pdfUrl ?? undefined,
-        })) : undefined,
-      });
-
-      const { data: assignment, error } = await supabase
-        .from('assignments')
-        .insert({
-          section_id: sectionId!,
-          created_by: userId!,
-          title: validated.title,
-          description: input.description?.trim() ?? null,
-          subject_id: validated.subjectId,
-          due_date: new Date(validated.dueDate).toISOString(),
-        })
-        .select('id')
-        .single();
-      if (error) throw error;
-
-      // Insert sets if provided
-      if (input.sets && input.sets.length > 0) {
-        const { error: setErr } = await supabase.from('assignment_sets').insert(
-          input.sets.map(s => ({
-            assignment_id: assignment.id,
-            set_label: s.label,
-            description: s.description,
-            roll_start: s.rollStart,
-            roll_end: s.rollEnd,
-            pdf_url: s.pdfUrl ?? null,
-            page_numbers: s.pageNumbers ?? null,
-          }))
-        );
-        if (setErr) throw setErr;
-      }
-
-      // Trigger push notification broadcast to all section members
-      if (sectionId) {
-        try {
-          await supabase.functions.invoke('send-custom-notification', {
-            body: {
-              title: `📝 New Assignment: ${validated.title}`,
-              body: `A new assignment has been posted. Due: ${new Date(validated.dueDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`,
-              sectionId: sectionId,
-              skipDbInsert: true
-            }
-          });
-        } catch (err) {
-          console.warn('Failed to send push notification for new assignment:', err);
+      isCreatingAssignment = true;
+      try {
+        // 1. Enforce strict CR authorization check
+        if (role !== 'cr') {
+          throw new Error('Unauthorized: Only Class Representatives can create assignments');
         }
-      }
 
-      return assignment.id;
+        // 2. Enforce strict Zod schema validation
+        const validated = assignmentSchema.parse({
+          title: input.title.trim(),
+          subjectId: input.subjectId,
+          dueDate: input.dueDate,
+          sets: input.sets ? input.sets.map(s => ({
+            label: s.label,
+            rollStart: s.rollStart,
+            rollEnd: s.rollEnd,
+            description: s.description,
+            pdfUrl: s.pdfUrl ?? undefined,
+          })) : undefined,
+        });
+
+        const { data: assignment, error } = await supabase
+          .from('assignments')
+          .insert({
+            section_id: sectionId!,
+            created_by: userId!,
+            title: validated.title,
+            description: input.description?.trim() ?? null,
+            subject_id: validated.subjectId,
+            due_date: new Date(validated.dueDate).toISOString(),
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+
+        // Insert sets if provided
+        if (input.sets && input.sets.length > 0) {
+          const { error: setErr } = await supabase.from('assignment_sets').insert(
+            input.sets.map(s => ({
+              assignment_id: assignment.id,
+              set_label: s.label,
+              description: s.description,
+              roll_start: s.rollStart,
+              roll_end: s.rollEnd,
+              pdf_url: s.pdfUrl ?? null,
+              page_numbers: s.pageNumbers ?? null,
+            }))
+          );
+          if (setErr) throw setErr;
+        }
+
+        // Trigger push notification broadcast to all section members
+        if (sectionId) {
+          try {
+            await supabase.functions.invoke('send-custom-notification', {
+              body: {
+                title: `📝 New Assignment: ${validated.title}`,
+                body: `A new assignment has been posted. Due: ${new Date(validated.dueDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`,
+                sectionId: sectionId,
+                skipDbInsert: true
+              }
+            });
+          } catch (err) {
+            console.warn('Failed to send push notification for new assignment:', err);
+          }
+        }
+
+        return assignment.id;
+      } finally {
+        isCreatingAssignment = false;
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assignments'] }),
   });
@@ -377,19 +412,31 @@ export function useDeleteAssignment() {
   });
 }
 
+const inFlightSubmissions = new Set<string>();
+
 export function useSubmitAssignment() {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
   return useMutation({
     mutationFn: async (input: { assignmentId: string; link: string }) => {
-      const { error } = await supabase.from('submissions').upsert({
-        assignment_id: input.assignmentId,
-        student_id: userId!,
-        submission_link: input.link,
-        status: 'submitted' as const,
-        submitted_at: new Date().toISOString(),
-      }, { onConflict: 'assignment_id,student_id' });
-      if (error) throw error;
+      const key = `${input.assignmentId}-${userId}`;
+      if (inFlightSubmissions.has(key)) {
+        console.warn('Submission already in flight. Ignoring duplicate request.');
+        return;
+      }
+      inFlightSubmissions.add(key);
+      try {
+        const { error } = await supabase.from('submissions').upsert({
+          assignment_id: input.assignmentId,
+          student_id: userId!,
+          submission_link: input.link,
+          status: 'submitted' as const,
+          submitted_at: new Date().toISOString(),
+        }, { onConflict: 'assignment_id,student_id' });
+        if (error) throw error;
+      } finally {
+        inFlightSubmissions.delete(key);
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assignments'] }),
   });
