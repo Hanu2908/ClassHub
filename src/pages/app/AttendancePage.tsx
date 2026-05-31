@@ -18,6 +18,7 @@ import { AttendanceSkeleton } from '../../components/LoadingSkeletons';
 
 import { parseERPAttendance } from '../../lib/utils/attendance';
 import type { ParsedSubject } from '../../lib/utils/attendance';
+import { ACADEMIC_HOLIDAYS, ACADEMIC_BREAKS } from '../../lib/curriculumData';
 
 interface ParsedERPSubject extends ParsedSubject {
   subjectId: string | null;
@@ -33,8 +34,6 @@ const STATUS_BG = (pct: number) => {
   return rounded >= 85 ? 'var(--status-safe-bg)' : rounded >= 75 ? 'var(--status-warning-bg)' : 'var(--status-critical-bg)';
 };
 
-const HOLIDAYS = ["2026-02-15", "2026-03-02", "2026-03-03", "2026-03-26", "2026-08-15", "2026-08-28", "2026-09-04", "2026-10-20"];
-
 function isHolidayOrSunday(date: Date): boolean {
   if (date.getDay() === 0) return true;
   const yyyy = date.getFullYear();
@@ -42,17 +41,14 @@ function isHolidayOrSunday(date: Date): boolean {
   const dd = String(date.getDate()).padStart(2, '0');
   const dateStr = `${yyyy}-${mm}-${dd}`;
   
-  if (HOLIDAYS.includes(dateStr)) return true;
+  if (ACADEMIC_HOLIDAYS.includes(dateStr)) return true;
   
-  // Autumn Break: Nov 6 to Nov 15
-  const diwaliStart = new Date(yyyy, 10, 6);
-  const diwaliEnd = new Date(yyyy, 10, 15);
-  if (date >= diwaliStart && date <= diwaliEnd) return true;
-  
-  // Winter Vacation: Dec 25 to Dec 31
-  const winterStart = new Date(yyyy, 11, 25);
-  const winterEnd = new Date(yyyy, 11, 31);
-  if (date >= winterStart && date <= winterEnd) return true;
+  // Dynamic breaks matching
+  for (const b of ACADEMIC_BREAKS) {
+    const breakStart = new Date(yyyy, b.startMonth, b.startDay);
+    const breakEnd = new Date(yyyy, b.endMonth, b.endDay);
+    if (date >= breakStart && date <= breakEnd) return true;
+  }
   
   return false;
 }

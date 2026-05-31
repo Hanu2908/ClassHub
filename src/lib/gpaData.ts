@@ -13,7 +13,7 @@ export const GRADE_SCALE: GradeEntry[] = [
   { label: 'A+', minMark: 80, point:  9, color: '#818CF8', desc: 'Excellent'    },
   { label: 'A',  minMark: 70, point:  8, color: '#60A5FA', desc: 'Very Good'    },
   { label: 'B+', minMark: 60, point:  7, color: '#67E8F9', desc: 'Good'         },
-  { label: 'B', minMark: 50, point: 6, color: 'rgba(52, 198, 211, 1)ff', desc: 'Above Average' },
+  { label: 'B', minMark: 50, point: 6, color: '#34C6D3', desc: 'Above Average' },
   { label: 'C',  minMark: 45, point:  5, color: '#FCD34D', desc: 'Average'      },
   { label: 'P',  minMark: 40, point:  4, color: '#F97316', desc: 'Pass'         },
   { label: 'F',  minMark:  0, point:  0, color: '#F87171', desc: 'Fail'         },

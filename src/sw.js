@@ -1,6 +1,6 @@
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { precacheAndRoute, cleanupOutdatedCaches, matchPrecache } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { NetworkFirst, CacheFirst } from 'workbox-strategies';
+import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 
 // Clean up old outdated caches from previous builds
@@ -10,6 +10,28 @@ cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST || []);
 
 // ── Runtime Caching Rules ──
+
+// Cache Google Fonts stylesheets with Stale-While-Revalidate
+registerRoute(
+  ({ url }) => url.origin === 'https://fonts.googleapis.com',
+  new StaleWhileRevalidate({
+    cacheName: 'google-fonts-stylesheets',
+  })
+);
+
+// Cache Google Fonts webfont files with Cache-First strategy and long expiration (1 year)
+registerRoute(
+  ({ url }) => url.origin === 'https://fonts.gstatic.com',
+  new CacheFirst({
+    cacheName: 'google-fonts-webfonts',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 30,
+        maxAgeSeconds: 365 * 24 * 60 * 60, // 1 Year
+      }),
+    ],
+  })
+);
 
 // Cache-first strategy for runtime image requests (avatars, attachments, dynamic assets)
 registerRoute(
@@ -33,7 +55,7 @@ registerRoute(
     try {
       return await navigationRouteHandler.handle(params);
     } catch {
-      return (await caches.match('/index.html')) || Response.error();
+      return (await matchPrecache('/index.html')) || Response.error();
     }
   }
 );

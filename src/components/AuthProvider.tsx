@@ -9,6 +9,7 @@ import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { ensurePushSubscription } from '../lib/pushNotifications';
 import { saveSession, clearSession, playbackOfflineActionsClient } from '../lib/offlineSync';
 import InstallPwaBanner from './InstallPwaBanner';
+import OfflineSyncPill from './OfflineSyncPill';
 
 const SKIT_DOMAIN = '@skit.ac.in';
 
@@ -465,23 +466,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [authUserId, setNotifications]);
 
-  // Listen for returning online to trigger manual sync of any queued offline mutations
+  // Listen for online/offline event transitions and manage Zustand syncStatus
   useEffect(() => {
+    const store = useAppStore.getState();
+
+    // Set initial status based on current browser environment
+    store.setSyncStatus(navigator.onLine ? 'online' : 'offline');
+
     const handleOnline = () => {
-      if (import.meta.env.DEV) {
-        console.log('[OfflineSync] Browser returned online. Triggering queued actions playback...');
-      }
-      playbackOfflineActionsClient().catch((err) => {
-        console.error('[OfflineSync] Failed to process online action queue playback:', err);
-      });
+      store.setSyncStatus('syncing');
+      showToast('Connection restored. Syncing offline changes...', 'info');
+
+      // Trigger playback of client offline actions
+      playbackOfflineActionsClient()
+        .then(() => {
+          store.setSyncStatus('synced');
+          showToast('Offline actions synchronized successfully.', 'success');
+          // Smoothly reset back to online state after showing success confirmation
+          setTimeout(() => {
+            if (useAppStore.getState().syncStatus === 'synced') {
+              useAppStore.getState().setSyncStatus('online');
+            }
+          }, 3000);
+        })
+        .catch((err) => {
+          console.error('[OfflineSync] Client sync playback failed:', err);
+          store.setSyncStatus('online'); // Reset back to standard online to avoid stuck pill
+        });
+
       // Notify Service Worker to run sync if supported
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'SYNC_ACTIONS' });
       }
     };
 
+    const handleOffline = () => {
+      store.setSyncStatus('offline');
+      showToast('Offline Mode. Timetable and attendance loaded from cache.', 'warning');
+    };
+
     window.addEventListener('online', handleOnline);
-    // Also trigger on mount just in case there are pending items from last session
+    window.addEventListener('offline', handleOffline);
+
+    // Run initial check and sync on mount if online
     if (navigator.onLine) {
       playbackOfflineActionsClient().catch((err) => {
         console.error('[OfflineSync] Initial online action queue playback failed:', err);
@@ -490,6 +517,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
@@ -497,6 +525,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <>
       {children}
       <InstallPwaBanner />
+      <OfflineSyncPill />
     </>
   );
 }

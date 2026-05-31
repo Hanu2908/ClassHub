@@ -250,10 +250,34 @@ export function isExpired(isoDeadline: string | null | undefined): boolean {
   return Date.now() > new Date(isoDeadline).getTime() + TWO_DAYS_MS;
 }
 
+export interface SectionInfo {
+  id: string;
+  name: string;
+  college: string;
+  inviteCode: string;
+  createdBy: string | null;
+}
+
+export interface OfflineCache {
+  schedule?: ScheduleMap;
+  attendance?: { subjects: AttendanceSubject[]; overall: number; lastUpdated: string | null };
+  announcements?: (Announcement & { isAcknowledged: boolean })[];
+  assignments?: Assignment[];
+  polls?: Poll[];
+  section?: SectionInfo;
+}
+
+export type SyncStatus = 'online' | 'offline' | 'syncing' | 'synced';
+
 // ── Store interface ───────────────────────────────────────────────────────────
 // Client-only state. Server data lives in TanStack Query.
 
 interface AppState {
+  // Offline & Sync Cache
+  offlineCache: OfflineCache;
+  syncStatus: SyncStatus;
+  setOfflineCache: <K extends keyof OfflineCache>(key: K, data: OfflineCache[K]) => void;
+  setSyncStatus: (status: SyncStatus) => void;
   // Auth (centralized — single source of truth)
   authUser: AuthUser | null;
   session: Session | null;
@@ -322,6 +346,14 @@ export const useAppStore = create<AppState>()(
       activeTab: 'home',
       deferredPrompt: null,
       notifications: [],
+
+      // Offline & Sync Cache
+      offlineCache: {},
+      syncStatus: 'online',
+      setOfflineCache: (key, data) => set((s) => ({
+        offlineCache: { ...s.offlineCache, [key]: data }
+      })),
+      setSyncStatus: (syncStatus) => set({ syncStatus }),
 
       // Volatile Optimistic UI states (not persisted)
       optimisticAcks: new Set<string>(),
@@ -482,6 +514,8 @@ export const useAppStore = create<AppState>()(
           notifications: [],
           optimisticAcks: new Set<string>(),
           optimisticVotes: {},
+          offlineCache: {},
+          syncStatus: 'online',
         }),
     }),
     {
@@ -495,6 +529,7 @@ export const useAppStore = create<AppState>()(
         activeTab: state.activeTab,
         notifications: state.notifications,
         role: state.role,
+        offlineCache: state.offlineCache,
       }),
     }
   )

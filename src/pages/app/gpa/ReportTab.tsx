@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Download, Share2, X } from 'lucide-react';
 import { useGPAStore } from '../../../store/gpaStore';
-import { marksToColor, marksToGrade, GRADE_SCALE } from '../../../lib/gpaData';
+import { marksToColor, marksToGrade, GRADE_SCALE, computeCGPA, computePercentage } from '../../../lib/gpaData';
 import { exportGPAReport, generateShareURL } from '../../../lib/pdfExport';
 import { showToast } from '../../../components/Toast';
 
@@ -92,10 +92,10 @@ function PriorSemHistory() {
 }
 
 export default function ReportTab() {
-  const { semesters, manualHistory, activeBranch, getAllSemesterSGPAs, getCGPA, getPercentage } = useGPAStore();
-  const cgpa       = getCGPA();
-  const pct        = getPercentage();
-  const semHistory = getAllSemesterSGPAs();
+  const { semesters, manualHistory, activeBranch, getAllSemesterSGPAs } = useGPAStore();
+  const cgpa       = useMemo(() => computeCGPA(semesters, manualHistory), [semesters, manualHistory]);
+  const pct        = useMemo(() => computePercentage(cgpa), [cgpa]);
+  const semHistory = useMemo(() => getAllSemesterSGPAs(), [semesters, manualHistory, getAllSemesterSGPAs]);
   const [exporting, setExporting] = useState(false);
 
   const totalCredits = Object.values(semesters).flatMap(s => s.subjects).filter(s => s.marks !== null).reduce((a, s) => a + s.credits, 0);

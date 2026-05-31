@@ -121,10 +121,10 @@ function CustomPieTooltip({ active, payload }: { active?: boolean; payload?: any
 }
 
 export default function AnalyticsTab() {
-  const { semesters, activeSemester, getAllSemesterSGPAs } = useGPAStore();
+  const { semesters, activeSemester, manualHistory, getAllSemesterSGPAs } = useGPAStore();
   const subjects = useMemo(() => semesters[activeSemester]?.subjects ?? [], [semesters, activeSemester]);
   const sgpa       = useMemo(() => computeSGPA(subjects), [subjects]);
-  const semHistory = useMemo(() => getAllSemesterSGPAs(), [getAllSemesterSGPAs]);
+  const semHistory = useMemo(() => getAllSemesterSGPAs(), [semesters, manualHistory, getAllSemesterSGPAs]);
 
   const pieData = useMemo(() => {
     const entered = subjects.filter(s => s.marks !== null);

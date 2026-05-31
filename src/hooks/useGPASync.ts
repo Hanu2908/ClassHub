@@ -11,6 +11,27 @@ export function useGPASync() {
   useEffect(() => {
     if (!user) return;
 
+    // Shared save function — used by both initial sync push and subscription handler
+    const saveStateToDb = async () => {
+      const state = useGPAStore.getState();
+      const payload = {
+        activeBranch: state.activeBranch,
+        activeSemester: state.activeSemester,
+        semesters: state.semesters,
+        manualHistory: state.manualHistory,
+        targetCgpa: state.targetCgpa,
+      };
+      const { error } = await (supabase as any)
+        .from('user_gpa_data')
+        .upsert({
+          user_id: user.id,
+          gpa_state: payload,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      if (error) console.error('Failed to sync GPA data to database:', error);
+      else console.log('Successfully synced GPA data to database!');
+    };
+
     // 1. Fetch initial state
     const fetchState = async () => {
       const { data, error } = await (supabase as any)
@@ -28,9 +49,9 @@ export function useGPASync() {
         const countLocalMarks = Object.values(localState.semesters).reduce((sum, sem) => 
           sum + sem.subjects.filter(sub => sub.marks !== null).length, 0
         );
-        const countDbMarks = Object.values(data.gpa_state.semesters || {}).reduce((sum: number, sem: any) => 
-          sum + (sem.subjects || []).filter((sub: any) => sub.marks !== null).length, 0
-        );
+        const countDbMarks = Object.values((data.gpa_state as any).semesters || {}).reduce((sum: number, sem: any) => 
+          sum + (sem.subjects || []).filter((sub: any) => sub.marks !== null).length
+        , 0) as number;
 
         console.log(`GPA Sync: Local marks count = ${countLocalMarks}, DB marks count = ${countDbMarks}`);
 
@@ -41,10 +62,8 @@ export function useGPASync() {
           localState.hydrateState(data.gpa_state);
         } else {
           console.log('Client has richer local marks than database. Skipping hydration to prevent overwrite.');
-          // Force an immediate trigger to save the richer client state to the database
-          setTimeout(() => {
-            localState.hydrateState({}); // Safe trigger to fire subscription upsert
-          }, 500);
+          // Directly push the richer local state to the database
+          setTimeout(saveStateToDb, 500);
         }
       } else {
         console.log('No existing GPA data found in database for user.');
@@ -60,35 +79,12 @@ export function useGPASync() {
     fetchState();
 
     // 2. Subscribe to changes
-    const unsubscribe = useGPAStore.subscribe((state) => {
+    const unsubscribe = useGPAStore.subscribe(() => {
       // Don't save before initial load is complete
       if (!isHydrated.current) return;
 
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      
-      timeoutRef.current = setTimeout(async () => {
-        const payload = {
-          activeBranch: state.activeBranch,
-          activeSemester: state.activeSemester,
-          semesters: state.semesters,
-          manualHistory: state.manualHistory,
-          targetCgpa: state.targetCgpa
-        };
-
-        const { error } = await (supabase as any)
-          .from('user_gpa_data')
-          .upsert({
-            user_id: user.id,
-            gpa_state: payload,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id' });
-
-        if (error) {
-          console.error('Failed to sync GPA data to database:', error);
-        } else {
-          console.log('Successfully synced GPA data to database!');
-        }
-      }, 1500) as unknown as number; // 1.5s debounce
+      timeoutRef.current = setTimeout(saveStateToDb, 1500) as unknown as number; // 1.5s debounce
     });
 
     return () => {

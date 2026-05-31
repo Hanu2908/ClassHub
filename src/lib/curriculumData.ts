@@ -657,3 +657,21 @@ export const SUBJECTS_DATA: Record<Branch, Record<number, DefaultSubject[]>> = {
     ...CE_UPPER,
   },
 };
+
+// ── Centralized Academic Holidays & Calendar Configurations ──────────────────
+// Includes official SKIT Autonomous gazetted holidays and long breaks
+export const ACADEMIC_HOLIDAYS = [
+  "2026-02-15", 
+  "2026-03-02", 
+  "2026-03-03", 
+  "2026-03-26", 
+  "2026-08-15", 
+  "2026-08-28", 
+  "2026-09-04", 
+  "2026-10-20"
+];
+
+export const ACADEMIC_BREAKS = [
+  { name: 'Autumn Break', startMonth: 10, startDay: 6, endMonth: 10, endDay: 15 }, // Nov 6 to Nov 15 (0-indexed month 10 = Nov)
+  { name: 'Winter Vacation', startMonth: 11, startDay: 25, endMonth: 11, endDay: 31 } // Dec 25 to Dec 31 (0-indexed month 11 = Dec)
+];

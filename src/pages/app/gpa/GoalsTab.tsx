@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Target, Sparkles, X } from 'lucide-react';
 import { useGPAStore } from '../../../store/gpaStore';
-import { computeSGPA } from '../../../lib/gpaData';
+import { computeSGPA, computeCGPA, SUBJECTS_DATA } from '../../../lib/gpaData';
 
 const T = {
   card:      'rgba(18,20,32,0.7)',
@@ -36,8 +36,8 @@ function ChartTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function GoalsTab() {
-  const { targetCgpa, setTargetCgpa, semesters, getCGPA } = useGPAStore();
-  const cgpa = getCGPA();
+  const { targetCgpa, setTargetCgpa, semesters, manualHistory, activeBranch } = useGPAStore();
+  const cgpa = useMemo(() => computeCGPA(semesters, manualHistory), [semesters, manualHistory]);
   
   // Set default goal if null and we have a CGPA
   useEffect(() => {
@@ -77,7 +77,9 @@ export default function GoalsTab() {
         const remainingCrs = remainingSubs.reduce((acc, s) => acc + s.credits, 0);
         remainingCredits += remainingCrs;
       } else {
-        remainingCredits += 20; // Untouched semester: assume standard 20 credits proxy weight
+        const defaultSubs = SUBJECTS_DATA[activeBranch]?.[sem] ?? [];
+        const defaultCredits = defaultSubs.reduce((acc, s) => acc + s.credits, 0) || 20;
+        remainingCredits += defaultCredits;
       }
     }
     

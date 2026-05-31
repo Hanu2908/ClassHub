@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, BookOpen, Award, BarChart3, ChevronDown, Target, Loader2 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useGPAStore } from '../../store/gpaStore';
 import {
   BRANCHES, marksToGrade,
+  computeSGPA, computeCGPA, computePercentage,
 } from '../../lib/gpaData';
 import type { Branch } from '../../lib/gpaData';
 
@@ -183,14 +184,14 @@ export default function GPACalculatorPage() {
   const {
     activeBranch, setActiveBranch,
     activeSemester, setActiveSemester,
-    semesters, getSGPA, getCGPA, getPercentage,
+    semesters, manualHistory,
   } = useGPAStore();
 
   const [activeTab, setActiveTab] = useState<TabId>('calc');
 
-  const cgpa = getCGPA();
-  const sgpa = getSGPA(activeSemester);
-  const pct  = getPercentage();
+  const sgpa = useMemo(() => computeSGPA(semesters[activeSemester]?.subjects ?? []), [semesters, activeSemester]);
+  const cgpa = useMemo(() => computeCGPA(semesters, manualHistory), [semesters, manualHistory]);
+  const pct  = useMemo(() => computePercentage(cgpa), [cgpa]);
 
   const getSemStatus = useCallback((sem: number) => {
     const subs = semesters[sem]?.subjects ?? [];
@@ -253,7 +254,7 @@ export default function GPACalculatorPage() {
         <GlassCard style={{ padding: '10px 12px' }}>
           <div style={{ display: 'flex', gap: 4, overflowX: 'auto' }} className="hide-scrollbar">
             {[1,2,3,4,5,6,7,8].map(sem => {
-              const semSgpa  = getSGPA(sem);
+              const semSgpa  = computeSGPA(semesters[sem]?.subjects ?? []);
               const status   = getSemStatus(sem);
               const isActive = activeSemester === sem;
               return (

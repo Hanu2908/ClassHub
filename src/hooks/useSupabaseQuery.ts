@@ -5,7 +5,9 @@ import { useAppStore } from '../store/appStore';
 import type {
   Announcement, Assignment, AssignmentSet, Poll, PollOption,
   ScheduleSlot, ScheduleMap, AttendanceSubject, Exam, StudentExamPrep,
+  SectionInfo,
 } from '../store/appStore';
+export type { SectionInfo };
 
 type SubjectRelation = { code: string; name: string; semester?: number } | null;
 type AssignmentSetRelation = {
@@ -55,14 +57,6 @@ function useAuthContext() {
 
 // ── 1. Section info ──────────────────────────────────────────────────────────
 
-export interface SectionInfo {
-  id: string;
-  name: string;
-  college: string;
-  inviteCode: string;
-  createdBy: string | null;
-}
-
 export function useSection() {
   const { sectionId, isAuthenticated } = useAuthContext();
   return useQuery<SectionInfo | null>({
@@ -70,28 +64,31 @@ export function useSection() {
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sections')
-        .select('id, name, college, invite_code, created_by')
-        .eq('id', sectionId!)
-        .single();
-      
-      if (error) {
-        console.error('[useSection] query error:', error);
-        return null;
-      }
-      if (!data) {
-        console.warn('[useSection] no section data returned for ID:', sectionId);
-        return null;
-      }
+      try {
+        const { data, error } = await supabase
+          .from('sections')
+          .select('id, name, college, invite_code, created_by')
+          .eq('id', sectionId!)
+          .single();
+        
+        if (error) throw error;
+        if (!data) throw new Error('No section data returned');
 
-      return {
-        id: data.id,
-        name: data.name,
-        college: data.college,
-        inviteCode: data.invite_code,
-        createdBy: data.created_by,
-      };
+        const sectionData: SectionInfo = {
+          id: data.id,
+          name: data.name,
+          college: data.college,
+          inviteCode: data.invite_code,
+          createdBy: data.created_by,
+        };
+        useAppStore.getState().setOfflineCache('section', sectionData);
+        return sectionData;
+      } catch (err) {
+        console.error('[useSection] Error, using offline cache fallback:', err);
+        const cached = useAppStore.getState().offlineCache?.section;
+        if (cached) return cached;
+        return null;
+      }
     },
   });
 }
@@ -191,49 +188,59 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      const from = page * limit;
-      const to = (page + 1) * limit - 1;
-      const { data: anns, error: annErr } = await supabase
-        .from('announcements')
-        .select(`
-          id, title, message_content, priority, deadline_at, expires_at, created_at,
-          attachments (id, filename, file_size, file_type, storage_path)
-        `)
-        .eq('section_id', sectionId!)
-        .order('created_at', { ascending: false })
-        .range(from, to);
-      if (annErr) throw annErr;
+      try {
+        const from = page * limit;
+        const to = (page + 1) * limit - 1;
+        const { data: anns, error: annErr } = await supabase
+          .from('announcements')
+          .select(`
+            id, title, message_content, priority, deadline_at, expires_at, created_at,
+            attachments (id, filename, file_size, file_type, storage_path)
+          `)
+          .eq('section_id', sectionId!)
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        if (annErr) throw annErr;
 
-      let ackIds: string[] = [];
-      if (userId && Array.isArray(anns) && anns.length > 0) {
-        const announcementIds = anns.map(a => a.id);
-        const { data: acks, error: ackErr } = await supabase
-          .from('acknowledgments')
-          .select('announcement_id')
-          .eq('user_id', userId)
-          .in('announcement_id', announcementIds);
-        if (ackErr) throw ackErr;
-        ackIds = (acks ?? []).map(a => a.announcement_id);
+        let ackIds: string[] = [];
+        if (userId && Array.isArray(anns) && anns.length > 0) {
+          const announcementIds = anns.map(a => a.id);
+          const { data: acks, error: ackErr } = await supabase
+            .from('acknowledgments')
+            .select('announcement_id')
+            .eq('user_id', userId)
+            .in('announcement_id', announcementIds);
+          if (ackErr) throw ackErr;
+          ackIds = (acks ?? []).map(a => a.announcement_id);
+        }
+
+        const result = (anns ?? []).map(a => ({
+          id: a.id,
+          title: a.title,
+          body: a.message_content,
+          priority: a.priority as 'critical' | 'general',
+          deadline: a.deadline_at,
+          postedAt: a.created_at,
+          expiresAt: (a as any).expires_at ?? null,
+          attachmentUrl: null,
+          isAcknowledged: ackIds.includes(a.id),
+          attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
+            id: att.id,
+            filename: att.filename,
+            fileSize: att.file_size,
+            fileType: att.file_type,
+            storagePath: att.storage_path,
+          })),
+        }));
+
+        useAppStore.getState().setOfflineCache('announcements', result);
+        return result;
+      } catch (err) {
+        console.error('[useAnnouncements] Query failed, returning offline cache:', err);
+        const cached = useAppStore.getState().offlineCache?.announcements;
+        if (cached) return cached;
+        throw err;
       }
-
-      return (anns ?? []).map(a => ({
-        id: a.id,
-        title: a.title,
-        body: a.message_content,
-        priority: a.priority as 'critical' | 'general',
-        deadline: a.deadline_at,
-        postedAt: a.created_at,
-        expiresAt: (a as any).expires_at ?? null,
-        attachmentUrl: null,
-        isAcknowledged: ackIds.includes(a.id),
-        attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
-          id: att.id,
-          filename: att.filename,
-          fileSize: att.file_size,
-          fileType: att.file_type,
-          storagePath: att.storage_path,
-        })),
-      }));
     },
   });
 
@@ -260,76 +267,86 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      const from = page * limit;
-      const to = (page + 1) * limit - 1;
-      const assignmentsQuery = supabase
-        .from('assignments')
-        .select(`
-          id, title, subject_id, due_date, description, created_at,
-          subjects:subject_id (code, name),
-          assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers),
-          attachments (id, filename, file_size, file_type, storage_path)
-        `)
-        .eq('section_id', sectionId!)
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      try {
+        const from = page * limit;
+        const to = (page + 1) * limit - 1;
+        const assignmentsQuery = supabase
+          .from('assignments')
+          .select(`
+            id, title, subject_id, due_date, description, created_at,
+            subjects:subject_id (code, name),
+            assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers),
+            attachments (id, filename, file_size, file_type, storage_path)
+          `)
+          .eq('section_id', sectionId!)
+          .order('created_at', { ascending: false })
+          .range(from, to);
 
-      const submissionQuery = userId
-        ? supabase
-            .from('submissions')
-            .select('assignment_id, submission_link, status')
-            .eq('student_id', userId)
-        : Promise.resolve({ data: [], error: null });
+        const submissionQuery = userId
+          ? supabase
+              .from('submissions')
+              .select('assignment_id, submission_link, status')
+              .eq('student_id', userId)
+          : Promise.resolve({ data: [], error: null });
 
-      const [{ data: assigns, error }, { data: subs, error: subErr }] = await Promise.all([
-        assignmentsQuery,
-        submissionQuery,
-      ] as const);
+        const [{ data: assigns, error }, { data: subs, error: subErr }] = await Promise.all([
+          assignmentsQuery,
+          submissionQuery,
+        ] as const);
 
-      if (error) throw error;
-      if (subErr) throw subErr;
+        if (error) throw error;
+        if (subErr) throw subErr;
 
-      const userSubs: Record<string, { link: string | null; status: string }> = {};
-      for (const s of subs ?? []) {
-        userSubs[s.assignment_id] = { link: s.submission_link, status: s.status };
+        const userSubs: Record<string, { link: string | null; status: string }> = {};
+        for (const s of subs ?? []) {
+          userSubs[s.assignment_id] = { link: s.submission_link, status: s.status };
+        }
+
+        const result = (assigns ?? []).map(a => {
+          const sub = userSubs[a.id];
+          const subjectData = a.subjects as SubjectRelation;
+          const sets: AssignmentSet[] = ((a.assignment_sets ?? []) as AssignmentSetRelation[]).map(s => ({
+            id: s.id,
+            label: s.set_label,
+            rollStart: s.roll_start,
+            rollEnd: s.roll_end,
+            pageNumbers: s.page_numbers ?? '',
+            description: s.description,
+            pdfUrl: s.pdf_url,
+          }));
+
+          return {
+            id: a.id,
+            title: a.title,
+            subject: subjectData?.name ?? 'Unknown',
+            subjectCode: subjectData?.code ?? '???',
+            subjectId: a.subject_id,
+            dueDate: a.due_date,
+            description: a.description ?? '',
+            status: (sub?.status ?? 'pending') as 'pending' | 'submitted',
+            pdfUrl: null,
+            hasSets: sets.length > 0,
+            sets,
+            submittedLink: sub?.link ?? null,
+            createdAt: a.created_at,
+            attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
+              id: att.id,
+              filename: att.filename,
+              fileSize: att.file_size,
+              fileType: att.file_type,
+              storagePath: att.storage_path,
+            })),
+          };
+        });
+
+        useAppStore.getState().setOfflineCache('assignments', result);
+        return result;
+      } catch (err) {
+        console.error('[useAssignments] Query failed, returning offline cache:', err);
+        const cached = useAppStore.getState().offlineCache?.assignments;
+        if (cached) return cached;
+        throw err;
       }
-
-      return (assigns ?? []).map(a => {
-        const sub = userSubs[a.id];
-        const subjectData = a.subjects as SubjectRelation;
-        const sets: AssignmentSet[] = ((a.assignment_sets ?? []) as AssignmentSetRelation[]).map(s => ({
-          id: s.id,
-          label: s.set_label,
-          rollStart: s.roll_start,
-          rollEnd: s.roll_end,
-          pageNumbers: s.page_numbers ?? '',
-          description: s.description,
-          pdfUrl: s.pdf_url,
-        }));
-
-        return {
-          id: a.id,
-          title: a.title,
-          subject: subjectData?.name ?? 'Unknown',
-          subjectCode: subjectData?.code ?? '???',
-          subjectId: a.subject_id,
-          dueDate: a.due_date,
-          description: a.description ?? '',
-          status: (sub?.status ?? 'pending') as 'pending' | 'submitted',
-          pdfUrl: null,
-          hasSets: sets.length > 0,
-          sets,
-          submittedLink: sub?.link ?? null,
-          createdAt: a.created_at,
-          attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
-            id: att.id,
-            filename: att.filename,
-            fileSize: att.file_size,
-            fileType: att.file_type,
-            storagePath: att.storage_path,
-          })),
-        };
-      });
     },
   });
 }
@@ -343,79 +360,89 @@ export function usePolls() {
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      const { data: polls, error } = await supabase
-        .from('polls')
-        .select(`
-          id, question_text, poll_type, is_active, expires_at, created_at, allow_multiple,
-          poll_options (id, label, sort_order)
-        `)
-        .eq('section_id', sectionId!)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      try {
+        const { data: polls, error } = await supabase
+          .from('polls')
+          .select(`
+            id, question_text, poll_type, is_active, expires_at, created_at, allow_multiple,
+            poll_options (id, label, sort_order)
+          `)
+          .eq('section_id', sectionId!)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
 
-      const pollArray = polls ?? [];
-      const pollIds = pollArray.map(p => p.id);
-      const results: Record<string, Record<string, number>> = {};
-      const voterCounts: Record<string, number> = {};
-      const userVotes: Record<string, string[]> = {};
+        const pollArray = polls ?? [];
+        const pollIds = pollArray.map(p => p.id);
+        const results: Record<string, Record<string, number>> = {};
+        const voterCounts: Record<string, number> = {};
+        const userVotes: Record<string, string[]> = {};
 
-      if (pollIds.length > 0) {
-        // 1. Fetch aggregate vote counts, voter counts, and current user's votes concurrently
-        const [resultsRes, voterCountsRes, myVotesRes] = await Promise.all([
-          supabase.rpc('batch_poll_results', { target_polls: pollIds }),
-          supabase.rpc('batch_poll_voter_counts', { target_polls: pollIds }),
-          userId
-            ? supabase.from('votes').select('poll_id, option_id').in('poll_id', pollIds)
-            : Promise.resolve({ data: [], error: null })
-        ]);
+        if (pollIds.length > 0) {
+          // 1. Fetch aggregate vote counts, voter counts, and current user's votes concurrently
+          const [resultsRes, voterCountsRes, myVotesRes] = await Promise.all([
+            supabase.rpc('batch_poll_results', { target_polls: pollIds }),
+            supabase.rpc('batch_poll_voter_counts', { target_polls: pollIds }),
+            userId
+              ? supabase.from('votes').select('poll_id, option_id').in('poll_id', pollIds)
+              : Promise.resolve({ data: [], error: null })
+          ]);
 
-        if (resultsRes.error) throw resultsRes.error;
-        if (voterCountsRes.error) throw voterCountsRes.error;
-        if (myVotesRes.error) throw myVotesRes.error;
+          if (resultsRes.error) throw resultsRes.error;
+          if (voterCountsRes.error) throw voterCountsRes.error;
+          if (myVotesRes.error) throw myVotesRes.error;
 
-        for (const r of resultsRes.data ?? []) {
-          if (!results[r.poll_id]) results[r.poll_id] = {};
-          results[r.poll_id][r.option_id] = r.votes;
-        }
-
-        for (const vc of voterCountsRes.data ?? []) {
-          voterCounts[vc.poll_id] = Number(vc.voter_count);
-        }
-
-        for (const mv of myVotesRes.data ?? []) {
-          if (!userVotes[mv.poll_id]) {
-            userVotes[mv.poll_id] = [];
+          for (const r of resultsRes.data ?? []) {
+            if (!results[r.poll_id]) results[r.poll_id] = {};
+            results[r.poll_id][r.option_id] = r.votes;
           }
-          userVotes[mv.poll_id].push(mv.option_id);
+
+          for (const vc of voterCountsRes.data ?? []) {
+            voterCounts[vc.poll_id] = Number(vc.voter_count);
+          }
+
+          for (const mv of myVotesRes.data ?? []) {
+            if (!userVotes[mv.poll_id]) {
+              userVotes[mv.poll_id] = [];
+            }
+            userVotes[mv.poll_id].push(mv.option_id);
+          }
         }
+
+        const result = pollArray.map(p => {
+          const opts = ((p.poll_options ?? []) as PollOptionRelation[]).sort((a, b) => a.sort_order - b.sort_order);
+          const isActive = p.is_active && (!p.expires_at || new Date(p.expires_at) > new Date());
+
+          const options: PollOption[] = opts.map((o) => ({
+            id: o.id,
+            text: o.label,
+            votes: results[p.id]?.[o.id] ?? 0,
+          }));
+
+          const myVotesForPoll = userVotes[p.id] ?? [];
+
+          return {
+            id: p.id,
+            question: p.question_text,
+            type: p.poll_type === 'general' ? 'anonymous' as const : 'actionable' as const,
+            closesAt: p.expires_at ?? new Date(Date.now() + 7 * 86400000).toISOString(),
+            status: isActive ? 'active' as const : 'closed' as const,
+            options,
+            createdAt: p.created_at,
+            allowMultiple: p.allow_multiple ?? false,
+            userVotes: myVotesForPoll,
+            userVote: myVotesForPoll[0] ?? null, // Backward compatibility
+            voterCount: voterCounts[p.id] ?? 0,
+          };
+        });
+
+        useAppStore.getState().setOfflineCache('polls', result);
+        return result;
+      } catch (err) {
+        console.error('[usePolls] Query failed, returning offline cache:', err);
+        const cached = useAppStore.getState().offlineCache?.polls;
+        if (cached) return cached;
+        throw err;
       }
-
-      return pollArray.map(p => {
-        const opts = ((p.poll_options ?? []) as PollOptionRelation[]).sort((a, b) => a.sort_order - b.sort_order);
-        const isActive = p.is_active && (!p.expires_at || new Date(p.expires_at) > new Date());
-
-        const options: PollOption[] = opts.map((o) => ({
-          id: o.id,
-          text: o.label,
-          votes: results[p.id]?.[o.id] ?? 0,
-        }));
-
-        const myVotesForPoll = userVotes[p.id] ?? [];
-
-        return {
-          id: p.id,
-          question: p.question_text,
-          type: p.poll_type === 'general' ? 'anonymous' as const : 'actionable' as const,
-          closesAt: p.expires_at ?? new Date(Date.now() + 7 * 86400000).toISOString(),
-          status: isActive ? 'active' as const : 'closed' as const,
-          options,
-          createdAt: p.created_at,
-          allowMultiple: p.allow_multiple ?? false,
-          userVotes: myVotesForPoll,
-          userVote: myVotesForPoll[0] ?? null, // Backward compatibility
-          voterCount: voterCounts[p.id] ?? 0,
-        };
-      });
     },
   });
 
@@ -567,36 +594,45 @@ export function useSchedule() {
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('timetable_slots')
-        .select(`
-          id, day_of_week, start_time, end_time, room, type, teacher, created_by,
-          subjects:subject_id (code, name)
-        `)
-        .eq('section_id', sectionId!)
-        .order('start_time');
+      try {
+        const { data, error } = await supabase
+          .from('timetable_slots')
+          .select(`
+            id, day_of_week, start_time, end_time, room, type, teacher, created_by,
+            subjects:subject_id (code, name)
+          `)
+          .eq('section_id', sectionId!)
+          .order('start_time');
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const map: ScheduleMap = {};
-      for (const slot of data ?? []) {
-        const dayName = DAY_NAMES[slot.day_of_week] ?? 'Mon';
-        const subjectData = slot.subjects as SubjectRelation;
-        const entry: ScheduleSlot = {
-          id: slot.id,
-          day: dayName,
-          subject: subjectData?.name ?? 'Free Period',
-          code: subjectData?.code ?? '',
-          room: slot.room ?? '',
-          teacher: (slot as Record<string, unknown>).teacher as string ?? '',
-          type: slot.type.charAt(0).toUpperCase() + slot.type.slice(1),
-          startTime: slot.start_time.slice(0, 5), // HH:MM
-          endTime: slot.end_time.slice(0, 5),
-        };
-        if (!map[dayName]) map[dayName] = [];
-        map[dayName].push(entry);
+        const map: ScheduleMap = {};
+        for (const slot of data ?? []) {
+          const dayName = DAY_NAMES[slot.day_of_week] ?? 'Mon';
+          const subjectData = slot.subjects as SubjectRelation;
+          const entry: ScheduleSlot = {
+            id: slot.id,
+            day: dayName,
+            subject: subjectData?.name ?? 'Free Period',
+            code: subjectData?.code ?? '',
+            room: slot.room ?? '',
+            teacher: (slot as Record<string, unknown>).teacher as string ?? '',
+            type: slot.type.charAt(0).toUpperCase() + slot.type.slice(1),
+            startTime: slot.start_time.slice(0, 5), // HH:MM
+            endTime: slot.end_time.slice(0, 5),
+          };
+          if (!map[dayName]) map[dayName] = [];
+          map[dayName].push(entry);
+        }
+
+        useAppStore.getState().setOfflineCache('schedule', map);
+        return map;
+      } catch (err) {
+        console.error('[useSchedule] Query failed, returning offline cache:', err);
+        const cached = useAppStore.getState().offlineCache?.schedule;
+        if (cached) return cached;
+        throw err;
       }
-      return map;
     },
   });
 }
@@ -610,54 +646,63 @@ export function useAttendance() {
     enabled: !!userId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('attendance_records')
-        .select(`
-          present, od, makeup, absent, percentage, updated_at,
-          subjects:subject_id (code, name, semester)
-        `)
-        .eq('user_id', userId!);
-      if (error) throw error;
+      try {
+        const { data, error } = await supabase
+          .from('attendance_records')
+          .select(`
+            present, od, makeup, absent, percentage, updated_at,
+            subjects:subject_id (code, name, semester)
+          `)
+          .eq('user_id', userId!);
+        if (error) throw error;
 
-      const subjects: AttendanceSubject[] = (data ?? []).map(r => {
-        const subj = r.subjects as SubjectRelation;
-        const total = r.present + r.od + r.absent;
-        const attended = r.present + r.od + r.makeup;
-        const pct = r.percentage ?? (total > 0 ? (attended / total) * 100 : 0);
-        // canSkip: how many more can skip while staying >= 75%
-        const canSkip = total > 0 ? Math.floor((attended - 0.75 * total) / 0.75) : 0;
-        // needToAttend: how many more to reach 75%
-        const need = total > 0 ? Math.max(0, Math.ceil((0.75 * total - attended) / 0.25)) : 0;
-        return {
-          code: subj?.code ?? '???',
-          name: subj?.name ?? 'Unknown',
-          type: 'Lecture',
-          present: attended,
-          absent: r.absent,
-          total,
-          percentage: Number(pct),
-          canSkip: Math.max(0, canSkip),
-          needToAttend: need,
-          semester: subj?.semester ?? 1,
-        };
-      });
+        const subjects: AttendanceSubject[] = (data ?? []).map(r => {
+          const subj = r.subjects as SubjectRelation;
+          const total = r.present + r.od + r.absent;
+          const attended = r.present + r.od + r.makeup;
+          const pct = r.percentage ?? (total > 0 ? (attended / total) * 100 : 0);
+          // canSkip: how many more can skip while staying >= 75%
+          const canSkip = total > 0 ? Math.floor((attended - 0.75 * total) / 0.75) : 0;
+          // needToAttend: how many more to reach 75%
+          const need = total > 0 ? Math.max(0, Math.ceil((0.75 * total - attended) / 0.25)) : 0;
+          return {
+            code: subj?.code ?? '???',
+            name: subj?.name ?? 'Unknown',
+            type: 'Lecture',
+            present: attended,
+            absent: r.absent,
+            total,
+            percentage: Number(pct),
+            canSkip: Math.max(0, canSkip),
+            needToAttend: need,
+            semester: subj?.semester ?? 1,
+          };
+        });
 
-      const totalPresent = subjects.reduce((sum, s) => sum + s.present, 0);
-      const totalHeld = subjects.reduce((sum, s) => sum + s.total, 0);
-      const overall = totalHeld > 0 ? (totalPresent / totalHeld) * 100 : 0;
+        const totalPresent = subjects.reduce((sum, s) => sum + s.present, 0);
+        const totalHeld = subjects.reduce((sum, s) => sum + s.total, 0);
+        const overall = totalHeld > 0 ? (totalPresent / totalHeld) * 100 : 0;
 
-      let maxUpdatedAt: string | null = null;
-      if (data && data.length > 0) {
-        const dates = data
-          .map(r => r.updated_at)
-          .filter(Boolean)
-          .map(d => new Date(d).getTime());
-        if (dates.length > 0) {
-          maxUpdatedAt = new Date(Math.max(...dates)).toISOString();
+        let maxUpdatedAt: string | null = null;
+        if (data && data.length > 0) {
+          const dates = data
+            .map(r => r.updated_at)
+            .filter(Boolean)
+            .map(d => new Date(d).getTime());
+          if (dates.length > 0) {
+            maxUpdatedAt = new Date(Math.max(...dates)).toISOString();
+          }
         }
-      }
 
-      return { subjects, overall, lastUpdated: maxUpdatedAt };
+        const result = { subjects, overall, lastUpdated: maxUpdatedAt };
+        useAppStore.getState().setOfflineCache('attendance', result);
+        return result;
+      } catch (err) {
+        console.error('[useAttendance] Query failed, returning offline cache:', err);
+        const cached = useAppStore.getState().offlineCache?.attendance;
+        if (cached) return cached;
+        throw err;
+      }
     },
   });
 }
