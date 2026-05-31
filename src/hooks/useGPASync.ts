@@ -19,9 +19,35 @@ export function useGPASync() {
         .eq('user_id', user.id)
         .maybeSingle();
       
-      if (!error && data?.gpa_state) {
-        // Hydrate store from backend JSON
-        useGPAStore.getState().hydrateState(data.gpa_state);
+      if (error) {
+        console.error('Failed to fetch GPA data from database:', error);
+      } else if (data?.gpa_state) {
+        const localState = useGPAStore.getState();
+        
+        // Count how many marks are filled locally vs in the database
+        const countLocalMarks = Object.values(localState.semesters).reduce((sum, sem) => 
+          sum + sem.subjects.filter(sub => sub.marks !== null).length, 0
+        );
+        const countDbMarks = Object.values(data.gpa_state.semesters || {}).reduce((sum: number, sem: any) => 
+          sum + (sem.subjects || []).filter((sub: any) => sub.marks !== null).length, 0
+        );
+
+        console.log(`GPA Sync: Local marks count = ${countLocalMarks}, DB marks count = ${countDbMarks}`);
+
+        // Prevent destructive overwrites: only hydrate if DB has equal or more marks, 
+        // or if local store is completely blank.
+        if (countLocalMarks === 0 || countDbMarks >= countLocalMarks) {
+          console.log('Hydrating local store from database:', data.gpa_state);
+          localState.hydrateState(data.gpa_state);
+        } else {
+          console.log('Client has richer local marks than database. Skipping hydration to prevent overwrite.');
+          // Force an immediate trigger to save the richer client state to the database
+          setTimeout(() => {
+            localState.hydrateState({}); // Safe trigger to fire subscription upsert
+          }, 500);
+        }
+      } else {
+        console.log('No existing GPA data found in database for user.');
       }
       
       // Mark as hydrated regardless of success/fail (e.g. if row doesn't exist yet)
@@ -49,13 +75,19 @@ export function useGPASync() {
           targetCgpa: state.targetCgpa
         };
 
-        await (supabase as any)
+        const { error } = await (supabase as any)
           .from('user_gpa_data')
           .upsert({
             user_id: user.id,
             gpa_state: payload,
             updated_at: new Date().toISOString()
           }, { onConflict: 'user_id' });
+
+        if (error) {
+          console.error('Failed to sync GPA data to database:', error);
+        } else {
+          console.log('Successfully synced GPA data to database!');
+        }
       }, 1500) as unknown as number; // 1.5s debounce
     });
 

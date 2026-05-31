@@ -55,34 +55,41 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.exam_overrides TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_exam_prep TO authenticated;
 
 -- 6. Create RLS Policies for public.exams
+DROP POLICY IF EXISTS "Authenticated users read exams" ON public.exams;
 CREATE POLICY "Authenticated users read exams"
 ON public.exams FOR SELECT TO authenticated
 USING (true);
 
+DROP POLICY IF EXISTS "CR creates exams" ON public.exams;
 CREATE POLICY "CR creates exams"
 ON public.exams FOR INSERT TO authenticated
 WITH CHECK ((SELECT public.current_user_role()) = 'cr');
 
+DROP POLICY IF EXISTS "CR updates exams" ON public.exams;
 CREATE POLICY "CR updates exams"
 ON public.exams FOR UPDATE TO authenticated
 USING ((SELECT public.current_user_role()) = 'cr')
 WITH CHECK ((SELECT public.current_user_role()) = 'cr');
 
+DROP POLICY IF EXISTS "Creator CR deletes exams" ON public.exams;
 CREATE POLICY "Creator CR deletes exams"
 ON public.exams FOR DELETE TO authenticated
 USING (created_by = (SELECT auth.uid()) AND (SELECT public.current_user_role()) = 'cr');
 
 -- 7. Create RLS Policies for public.exam_overrides
+DROP POLICY IF EXISTS "Section members read overrides" ON public.exam_overrides;
 CREATE POLICY "Section members read overrides"
 ON public.exam_overrides FOR SELECT TO authenticated
 USING (section_id = (SELECT public.current_user_section_id()));
 
+DROP POLICY IF EXISTS "CR manages overrides" ON public.exam_overrides;
 CREATE POLICY "CR manages overrides"
 ON public.exam_overrides FOR ALL TO authenticated
 USING (public.is_cr_for_section(section_id))
 WITH CHECK (public.is_cr_for_section(section_id));
 
 -- 8. Create RLS Policies for public.student_exam_prep
+DROP POLICY IF EXISTS "Students manage own exam prep" ON public.student_exam_prep;
 CREATE POLICY "Students manage own exam prep"
 ON public.student_exam_prep FOR ALL TO authenticated
 USING (user_id = (SELECT auth.uid()))

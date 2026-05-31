@@ -415,7 +415,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
             (items as PDFItem[]).forEach((item) => {
               if (!item.str.trim()) return;
               const y = Math.round(item.transform[5]);
-              const matchedY = Object.keys(lineMap).find(key => Math.abs(Number(key) - y) < 4);
+              const matchedY = Object.keys(lineMap).find(key => Math.abs(Number(key) - y) < 8);
               if (matchedY) {
                 lineMap[Number(matchedY)].push(item);
               } else {
@@ -491,8 +491,9 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         const words = str.split(/\s+/);
         const nums: number[] = [];
         words.forEach(w => {
-          if (/^\d+$/.test(w)) {
-            const val = parseInt(w, 10);
+          const match = w.match(/\d+/);
+          if (match) {
+            const val = parseInt(match[0], 10);
             if (val >= 0 && val <= 100) {
               nums.push(val);
             }
@@ -505,27 +506,21 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         const nums = extractNumbers(line);
         if (nums.length === 0) return null;
         
-        if (nums.length >= 3) {
-          const ise = nums[0];
-          const see = nums[1];
-          const total = nums[2];
+        // Right-to-Left (R2L) marks detection
+        const rev = [...nums].reverse();
+        if (rev.length >= 3) {
+          const total = rev[0];
+          const see = rev[1];
+          const ise = rev[2];
           
           if (ise + see === total) return total;
-          if (ise + see >= 40 && ise + see <= 100) {
-            return ise + see;
-          }
-          if (total >= 30 && total <= 100) {
-            return total;
-          }
-          return Math.max(total, ise + see);
-        } else if (nums.length === 2) {
-          const x = nums[0];
-          const y = nums[1];
-          if (y >= 30) return y;
-          return x;
-        } else {
-          return nums[0];
+          if (total >= 30 && total <= 100) return total;
+          if (ise + see >= 30 && ise + see <= 100) return ise + see;
+        } else if (rev.length === 2) {
+          const total = rev[0];
+          if (total >= 30) return total;
         }
+        return nums[nums.length - 1];
       };
 
       lines.forEach((line: string) => {
@@ -539,16 +534,22 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
           
           if (cleanSub.includes('SODECA') && cleanLine.includes('SODECA')) {
             isMatch = true;
-            refinedName = 'SODECA';
+            refinedName = sub.name;
+          } else if (cleanSub.includes('THINKING') && cleanLine.includes('THINKING')) {
+            isMatch = true;
+            refinedName = 'Computational Thinking and Programming';
           } else {
             const options = cleanSub.split('/').map(opt => opt.trim());
             for (const option of options) {
               if (option.length < 3) continue;
               
-              const keywords = option
-                .replace(/[^A-Z0-9\s]/g, ' ')
+              // Strip dashes and non-alphanumeric first so split works on MATHEMATICS-II -> [MATHEMATICS, II]
+              const cleanOption = option.replace(/[^A-Z0-9\s]/g, ' ');
+              
+              // Lower keyword filter to >= 2 to capture electives (AI, IT, ME, EE, CE)
+              const keywords = cleanOption
                 .split(/\s+/)
-                .filter(w => w.length > 2 && !['AND', 'THE', 'LAB', 'PRACTICAL', 'THEORY', 'ENGINEERING', 'BASIC', 'SKILLS', 'VALUES'].includes(w));
+                .filter(w => w.length >= 2 && !['AND', 'THE', 'LAB', 'PRACTICAL', 'THEORY', 'ENGINEERING', 'BASIC', 'SKILLS', 'VALUES'].includes(w));
               
               if (keywords.length === 0) continue;
               
