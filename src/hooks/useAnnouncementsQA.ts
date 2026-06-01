@@ -173,11 +173,11 @@ export function useToggleReaction(announcementId: string) {
   const { userId } = useAuthContext();
 
   return useMutation({
-    mutationFn: async ({ emoji, existingReaction }: ToggleReactionInput) => {
+    mutationFn: async ({ emoji }: ToggleReactionInput) => {
       if (!userId) throw new Error("Not authenticated");
 
       // Fetch the actual current reaction from database to bypass any optimistic cache pollution
-      const { data: dbReaction, error: fetchError } = await supabase
+      const { data: rawDbReaction, error: fetchError } = await supabase
         .from("announcement_reactions" as any)
         .select("id, emoji")
         .eq("announcement_id", announcementId)
@@ -185,6 +185,8 @@ export function useToggleReaction(announcementId: string) {
         .maybeSingle();
 
       if (fetchError) throw fetchError;
+
+      const dbReaction = rawDbReaction as { id: string; emoji: string } | null;
 
       if (dbReaction) {
         if (dbReaction.emoji === emoji) {
