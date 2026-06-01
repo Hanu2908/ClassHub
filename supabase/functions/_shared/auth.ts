@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
+import { createClient } from "npm:@supabase/supabase-js@2.43.4";
 
 export type FunctionContext = {
   supabaseUrl: string;
