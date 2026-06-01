@@ -40,7 +40,7 @@ export function AnnouncementCommentTrigger({ announcementId, onOpenComments }: A
       }}
     >
       <MessageSquare size={14} />
-      <span>{count > 0 ? `${count} ${count === 1 ? 'Comment' : 'Comments'}` : 'Ask / Reply'}</span>
+      <span>{count > 0 ? `${count} ${count === 1 ? 'Comment' : 'Comments'}` : 'Ask'}</span>
       {verifiedCount > 0 && (
         <span
           style={{
