@@ -4,8 +4,12 @@ import { Bell, Megaphone, BarChart2, ClipboardList, Activity, PartyPopper, Alert
 import { NavBar } from '../../components/NavBar';
 import { deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
-import { useAnnouncements, useAssignments, usePolls, useAttendance, useExams, useStudentExamPrep } from '../../hooks/useSupabaseQuery';
-import { useAcknowledge } from '../../hooks/useSupabaseMutations';
+import { useAnnouncements, useAcknowledge } from '../../hooks/useAnnouncements';
+import { useNotifications } from '../../hooks/useNotifications';
+import { useAssignments } from '../../hooks/useAssignments';
+import { usePolls } from '../../hooks/usePolls';
+import { useAttendance } from '../../hooks/useAttendance';
+import { useExams, useStudentExamPrep } from '../../hooks/useExams';
 import { showToast } from '../../components/Toast';
 import { isPushSupported, getPushPermission } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
@@ -73,7 +77,7 @@ export default function DashboardPage() {
   const userId = authUser?.id;
   const prefetchAnnouncements = () => prefetchAnnouncementsData(queryClient, sectionId, userId);
 
-  const notifications = useAppStore(s => s.notifications);
+  const { notifications } = useNotifications();
   const role = useAppStore(s => s.role);
   const { data: announcements = [] } = useAnnouncements({ limit: 50 });
   const { data: assignments = [] } = useAssignments();

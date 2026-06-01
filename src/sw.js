@@ -60,221 +60,8 @@ registerRoute(
   }
 );
 
-// ── Lightweight Self-Contained IndexedDB Wrappers ──
-const DB_NAME = 'classhub-offline';
+import { getSession, enqueueAction, getQueuedActions, dequeueAction } from './lib/offlineDb';
 
-function openOfflineDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-  });
-}
-
-function getDBSession() {
-  return openOfflineDB().then((db) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('auth-session', 'readonly');
-      const store = transaction.objectStore('auth-session');
-      const request = store.get('session');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }).catch((err) => {
-    console.error('[SW DB] Failed to get session:', err);
-    return null;
-  });
-}
-
-function enqueueDBAction(type, payload) {
-  const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  const action = { id, type, payload, timestamp: Date.now() };
-  return openOfflineDB().then((db) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('offline-actions', 'readwrite');
-      const store = transaction.objectStore('offline-actions');
-      const request = store.put(action);
-      request.onsuccess = () => resolve(id);
-      request.onerror = () => reject(request.error);
-    });
-  }).catch((err) => {
-    console.error('[SW DB] Failed to enqueue action:', err);
-    return id;
-  });
-}
-
-function getDBQueuedActions() {
-  return openOfflineDB().then((db) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('offline-actions', 'readonly');
-      const store = transaction.objectStore('offline-actions');
-      const request = store.getAll();
-      request.onsuccess = () => {
-        const actions = request.result || [];
-        actions.sort((a, b) => a.timestamp - b.timestamp);
-        resolve(actions);
-      };
-      request.onerror = () => reject(request.error);
-    });
-  }).catch((err) => {
-    console.error('[SW DB] Failed to fetch queued actions:', err);
-    return [];
-  });
-}
-
-function dequeueDBAction(id) {
-  return openOfflineDB().then((db) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('offline-actions', 'readwrite');
-      const store = transaction.objectStore('offline-actions');
-      const request = store.delete(id);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  }).catch((err) => {
-    console.error('[SW DB] Failed to dequeue action:', err);
-  });
-}
-
-// ── Background Sync Engine Playback ──
-async function playbackOfflineActionsSW() {
-  const session = await getDBSession();
-  if (!session || !session.token) {
-    console.warn('[SW Sync] No active session found in IndexedDB. Skipping playback.');
-    return;
-  }
-
-  const actions = await getDBQueuedActions();
-  if (actions.length === 0) return;
-
-  console.log(`[SW Sync] Playing back ${actions.length} offline actions from service worker...`);
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  for (const action of actions) {
-    try {
-      if (action.type === 'acknowledge') {
-        const { announcementId, userId } = action.payload;
-        const res = await fetch(`${supabaseUrl}/rest/v1/acknowledgments`, {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${session.token}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'resolution=merge-duplicates'
-          },
-          body: JSON.stringify({
-            announcement_id: announcementId,
-            user_id: userId === 'null-fallback' ? session.userId : userId
-          })
-        });
-
-        if (res.ok || res.status === 409) {
-          await dequeueDBAction(action.id);
-        } else {
-          const text = await res.text();
-          if (text.includes('23505') || text.includes('already exists')) {
-            await dequeueDBAction(action.id);
-          } else {
-            console.error(`[SW Sync] Temporary failure for acknowledgment ${action.id}:`, res.status, text);
-            break; // Hold queue order on server errors
-          }
-        }
-      } else if (action.type === 'vote') {
-        const { pollId, optionId, pollType, allowMultiple, isSelected, userId } = action.payload;
-        const isAnonymous = pollType === 'general' || pollType === 'anonymous';
-        let token = null;
-
-        const activeUserId = userId === 'null-fallback' ? session.userId : userId;
-
-        if (isAnonymous) {
-          const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/calculate_anonymous_token`, {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseAnonKey,
-              'Authorization': `Bearer ${session.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              user_id: activeUserId,
-              poll_id: pollId
-            })
-          });
-          if (rpcRes.ok) {
-            token = await rpcRes.json();
-          } else {
-            throw new Error(`Failed to compute anonymous token: ${await rpcRes.text()}`);
-          }
-        }
-
-        let success = false;
-        let deleteErr = false;
-
-        const queryParams = new URLSearchParams();
-        if (allowMultiple) {
-          queryParams.append('option_id', `eq.${optionId}`);
-        } else {
-          queryParams.append('poll_id', `eq.${pollId}`);
-        }
-        if (isAnonymous) {
-          queryParams.append('anonymous_token', `eq.${token}`);
-        } else {
-          queryParams.append('student_id', `eq.${activeUserId}`);
-        }
-
-        const delRes = await fetch(`${supabaseUrl}/rest/v1/votes?${queryParams.toString()}`, {
-          method: 'DELETE',
-          headers: {
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${session.token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!delRes.ok) {
-          deleteErr = true;
-        }
-
-        let insertErr = false;
-        if (!deleteErr && (!allowMultiple || !isSelected)) {
-          const insRes = await fetch(`${supabaseUrl}/rest/v1/votes`, {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseAnonKey,
-              'Authorization': `Bearer ${session.token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              poll_id: pollId,
-              option_id: optionId,
-              student_id: isAnonymous ? null : activeUserId,
-              anonymous_token: token
-            })
-          });
-
-          if (!insRes.ok) {
-            const insText = await insRes.text();
-            if (insText.includes('23505') || insRes.status === 409) {
-              // Already exists, treat as success
-            } else {
-              insertErr = true;
-            }
-          }
-        }
-
-        if (!deleteErr && !insertErr) {
-          await dequeueDBAction(action.id);
-        } else {
-          console.error(`[SW Sync] Temporary failure for vote ${action.id}`);
-          break; // Hold queue order
-        }
-      }
-    } catch (err) {
-      console.error(`[SW Sync] Failed to playback action ${action.id}:`, err);
-      break;
-    }
-  }
-}
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -289,7 +76,7 @@ function urlBase64ToUint8Array(base64String) {
 
 self.addEventListener('pushsubscriptionchange', (e) => {
   e.waitUntil(
-    getDBSession().then(async (session) => {
+    getSession().then(async (session) => {
       if (!session || !session.token) {
         console.warn('[SW PushChange] No active session. Skipping self-heal.');
         return;
@@ -387,10 +174,10 @@ self.addEventListener("notificationclick", (e) => {
     const { announcementId } = e.notification.data;
     
     e.waitUntil(
-      getDBSession().then(async (session) => {
+      getSession().then(async (session) => {
         if (!session || !session.token || !session.userId) {
           console.warn('[SW Click] No active session found. Enqueuing for offline sync...');
-          await enqueueDBAction('acknowledge', { announcementId, userId: 'null-fallback' });
+          await enqueueAction('acknowledge', { announcementId, userId: 'null-fallback' });
           return;
         }
 
@@ -424,7 +211,7 @@ self.addEventListener("notificationclick", (e) => {
           }
         } catch (err) {
           console.warn('[SW Click] Background acknowledgment failed due to network. Enqueuing offline action:', err);
-          await enqueueDBAction('acknowledge', { announcementId, userId: session.userId });
+          await enqueueAction('acknowledge', { announcementId, userId: session.userId });
           // Register background sync if supported
           if ('sync' in self.registration) {
             await self.registration.sync.register('sync-offline-actions').catch((syncErr) => {
@@ -458,12 +245,25 @@ self.addEventListener("notificationclick", (e) => {
 
 self.addEventListener('sync', (e) => {
   if (e.tag === 'sync-offline-actions') {
-    e.waitUntil(playbackOfflineActionsSW());
+    e.waitUntil(
+      self.clients.matchAll({ type: 'window' }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'TRIGGER_SYNC_PLAYBACK' });
+        });
+      })
+    );
   }
 });
 
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SYNC_ACTIONS') {
-    e.waitUntil(playbackOfflineActionsSW());
+    e.waitUntil(
+      self.clients.matchAll({ type: 'window' }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'TRIGGER_SYNC_PLAYBACK' });
+        });
+      })
+    );
   }
 });
+

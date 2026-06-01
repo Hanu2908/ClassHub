@@ -12,8 +12,9 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import type { AttendanceSubject } from '../../store/appStore';
 import { useAppStore } from '../../store/appStore';
-import { useAttendance, useSchedule } from '../../hooks/useSupabaseQuery';
-import { useBulkUpsertAttendance, useEnsureSubjects, useUpdateSubject } from '../../hooks/useSupabaseMutations';
+import { useAttendance, useBulkUpsertAttendance, useUpdateSubject } from '../../hooks/useAttendance';
+import { useSchedule } from '../../hooks/useSchedule';
+import { useEnsureSubjects } from '../../hooks/useSubjects';
 import { AttendanceSkeleton } from '../../components/LoadingSkeletons';
 
 import { parseERPAttendance } from '../../lib/utils/attendance';

@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAppStore, mapDbNotification, type AuthUser, type DbNotification } from '../store/appStore';
+import { useAppStore, type AuthUser } from '../store/appStore';
 import { queryClient } from '../lib/queryClient';
 import { showToast } from '../components/Toast';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -10,6 +10,7 @@ import { ensurePushSubscription } from '../lib/pushNotifications';
 import { saveSession, clearSession, playbackOfflineActionsClient } from '../lib/offlineSync';
 import InstallPwaBanner from './InstallPwaBanner';
 import OfflineSyncPill from './OfflineSyncPill';
+import { subscribeToSection } from '../lib/realtimeBroker';
 
 const SKIT_DOMAIN = '@skit.ac.in';
 
@@ -286,185 +287,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!sectionId) return;
 
-    if (import.meta.env.DEV) {
-      console.log(`[Realtime] Setting up subscriptions for section: ${sectionId}`);
-    }
+    const unsubscribe = subscribeToSection(sectionId, {
+      onAnnouncement: () => queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] }),
+      onAssignment: () => queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] }),
+      onPoll: () => queryClient.invalidateQueries({ queryKey: ['polls', sectionId] }),
+      onVote: () => queryClient.invalidateQueries({ queryKey: ['polls', sectionId] }),
+      onSubmission: () => queryClient.invalidateQueries({ queryKey: ['submissions'] }),
+      onAcknowledgment: () => queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] }),
+    });
 
-    const channel = supabase
-      .channel(`section-realtime-${sectionId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'announcements', filter: `section_id=eq.${sectionId}` },
-        (payload) => {
-          console.log('[Realtime] announcement change:', payload);
-          queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
-          // Notification toast/bell is handled by the notification_events realtime subscription
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'assignments', filter: `section_id=eq.${sectionId}` },
-        (payload) => {
-          console.log('[Realtime] assignment change:', payload);
-          queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] });
-          // Notification toast/bell is handled by the notification_events realtime subscription
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'polls', filter: `section_id=eq.${sectionId}` },
-        (payload) => {
-          console.log('[Realtime] poll change:', payload);
-          queryClient.invalidateQueries({ queryKey: ['polls', sectionId] });
-          // Notification toast/bell is handled by the notification_events realtime subscription
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'votes' },
-        (payload) => {
-          console.log('[Realtime] vote change:', payload);
-          queryClient.invalidateQueries({ queryKey: ['polls', sectionId] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'submissions' },
-        (payload) => {
-          console.log('[Realtime] submission change:', payload);
-          queryClient.invalidateQueries({ queryKey: ['submissions'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'acknowledgments' },
-        (payload) => {
-          console.log('[Realtime] acknowledgment change:', payload);
-          queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
-        }
-      )
-      .on(
-        'broadcast',
-        { event: 'custom_notification' },
-        (payload) => {
-          console.log('[Realtime] custom notification broadcast:', payload);
-          useAppStore.getState().addNotification({
-            title: payload.payload.title,
-            body: payload.payload.body,
-            type: 'system'
-          });
-        }
-      )
-      .subscribe((status) => {
-        if (import.meta.env.DEV) {
-          console.log(`[Realtime] Subscription status for section ${sectionId}:`, status);
-        }
-      });
-
-    return () => {
-      if (import.meta.env.DEV) {
-        console.log(`[Realtime] Cleaning up subscriptions for section: ${sectionId}`);
-      }
-      supabase.removeChannel(channel);
-    };
+    return unsubscribe;
   }, [sectionId]);
 
-  // ── Supabase Realtime Notifications Sync ──
+  // ── Push Notification Subscriptions Self-Heal ──
   const authUser = useAppStore(s => s.authUser);
   const authUserId = authUser?.id;
-  const setNotifications = useAppStore(s => s.setNotifications);
 
   useEffect(() => {
     if (!authUserId) return;
-    const userId = authUserId;
-
-    if (import.meta.env.DEV) {
-      console.log(`[Realtime] Setting up notifications subscription for user: ${userId}`);
-    }
-
-    // 1. Initial Fetch of notifications
-    async function fetchInitialNotifications() {
-      const { data, error } = await supabase
-        .from('notification_events')
-        .select('*')
-        .eq('recipient_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50); // Cap at 50 to keep it fast
-
-      if (error) {
-        console.error('[Realtime] Failed to fetch initial notifications:', error);
-        return;
-      }
-
-      if (data) {
-        setNotifications(data.map(mapDbNotification));
-      }
-    }
-
-    fetchInitialNotifications();
-
-    // Heal push subscriptions that may have been cleaned up server-side.
-    // Only in production — SW is intentionally disabled in dev.
     if (import.meta.env.PROD) {
       ensurePushSubscription().catch((err) => {
         console.warn('[Push] ensurePushSubscription on auth ready failed:', err);
       });
     }
-
-    // 2. Real-time Subscription for notification_events
-    const channel = supabase
-      .channel(`user-notifications-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notification_events',
-          filter: `recipient_id=eq.${userId}`,
-        },
-        async (payload) => {
-          if (import.meta.env.DEV) console.log('[Realtime] notification change:', payload);
-
-          if (payload.eventType === 'INSERT') {
-            const newNotif = mapDbNotification(payload.new as DbNotification);
-            
-            // Add to store
-            useAppStore.setState((s) => ({
-              notifications: [newNotif, ...s.notifications],
-            }));
-
-            // Trigger a beautiful toast notification!
-            showToast(newNotif.title, 'info');
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedNotif = mapDbNotification(payload.new as DbNotification);
-            
-            // Update in store
-            useAppStore.setState((s) => ({
-              notifications: s.notifications.map((n) =>
-                n.id === updatedNotif.id ? updatedNotif : n
-              ),
-            }));
-          } else if (payload.eventType === 'DELETE') {
-            // Remove from store
-            useAppStore.setState((s) => ({
-              notifications: s.notifications.filter((n) => n.id !== payload.old.id),
-            }));
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (import.meta.env.DEV) {
-          console.log(`[Realtime] Notifications subscription status for ${userId}:`, status);
-        }
-      });
-
-    return () => {
-      if (import.meta.env.DEV) {
-        console.log(`[Realtime] Cleaning up notifications subscription for user: ${userId}`);
-      }
-      supabase.removeChannel(channel);
-    };
-  }, [authUserId, setNotifications]);
+  }, [authUserId]);
 
   // Listen for online/offline event transitions and manage Zustand syncStatus
   useEffect(() => {
@@ -473,11 +319,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set initial status based on current browser environment
     store.setSyncStatus(navigator.onLine ? 'online' : 'offline');
 
-    const handleOnline = () => {
+    const triggerClientPlayback = () => {
       store.setSyncStatus('syncing');
-      showToast('Connection restored. Syncing offline changes...', 'info');
-
-      // Trigger playback of client offline actions
       playbackOfflineActionsClient()
         .then(() => {
           store.setSyncStatus('synced');
@@ -493,6 +336,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('[OfflineSync] Client sync playback failed:', err);
           store.setSyncStatus('online'); // Reset back to standard online to avoid stuck pill
         });
+    };
+
+    const handleOnline = () => {
+      showToast('Connection restored. Syncing offline changes...', 'info');
+      triggerClientPlayback();
 
       // Notify Service Worker to run sync if supported
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -505,8 +353,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       showToast('Offline Mode. Timetable and attendance loaded from cache.', 'warning');
     };
 
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'TRIGGER_SYNC_PLAYBACK') {
+        if (navigator.onLine) {
+          triggerClientPlayback();
+        }
+      }
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    }
 
     // Run initial check and sync on mount if online
     if (navigator.onLine) {
@@ -518,6 +378,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      }
     };
   }, []);
 

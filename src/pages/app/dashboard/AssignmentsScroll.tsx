@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Paperclip, PartyPopper } from 'lucide-react';
 import { deadlineBadgeClass, deadlineLabel } from '../../../components/Shared';
-import { useAssignments } from '../../../hooks/useSupabaseQuery';
+import { useAssignments } from '../../../hooks/useAssignments';
 import { isExpired } from '../../../store/appStore';
 import { WidgetSkeleton } from './dashboardUtils';
 

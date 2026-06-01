@@ -5,11 +5,7 @@ import {
   ChevronDown, ChevronUp, FileText, CheckSquare, Square,
   Loader2, CalendarDays, BookOpen, AlertCircle
 } from 'lucide-react';
-import { useExams, useStudentExamPrep } from '../../hooks/useSupabaseQuery';
-import {
-  useUpsertExam, useDeleteExam,
-  useUpsertExamOverride, useUpsertStudentExamPrep
-} from '../../hooks/useSupabaseMutations';
+import { useExams, useStudentExamPrep, useUpsertExam, useDeleteExam, useUpsertExamOverride, useUpsertStudentExamPrep } from '../../hooks/useExams';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { BottomSheet } from '../../components/BottomSheet';

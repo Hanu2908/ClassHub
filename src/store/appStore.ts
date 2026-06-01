@@ -296,8 +296,6 @@ interface AppState {
   activeTab: 'home' | 'schedule' | 'polls' | 'profile' | 'cr-command' | 'attendance' | 'announcements';
   deferredPrompt: BeforeInstallPromptEvent | null;
 
-  // In-app notifications (client-only)
-  notifications: AppNotification[];
 
   // ── Actions ──
   setUser: (user: UserInfo | null) => void;
@@ -311,12 +309,6 @@ interface AppState {
   setFirstTime: (v: boolean) => void;
   refreshProfile: () => Promise<void>;
 
-  // Notifications
-  setNotifications: (notifications: AppNotification[]) => void;
-  addNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void;
-  markAllNotificationsRead: () => Promise<void>;
-  clearNotification: (id: string) => Promise<void>;
-  clearAllNotifications: (ids: string[]) => Promise<void>;
 
   // Optimistic UI states
   optimisticAcks: Set<string>;
@@ -346,7 +338,6 @@ export const useAppStore = create<AppState>()(
       hub: null,
       activeTab: 'home',
       deferredPrompt: null,
-      notifications: [],
 
       // Offline & Sync Cache
       offlineCache: {},
@@ -413,74 +404,6 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      // ── Notifications ──
-      setNotifications: (notifications) => set({ notifications }),
-      addNotification: (n) =>
-        set((s) => ({
-          notifications: [
-            {
-              ...n,
-              id: `notif-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-              createdAt: new Date().toISOString(),
-              read: false,
-            },
-            ...s.notifications,
-          ],
-        })),
-      markAllNotificationsRead: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const nowStr = new Date().toISOString();
-        const { error } = await supabase
-          .from('notification_events')
-          .update({ read_at: nowStr })
-          .eq('recipient_id', user.id)
-          .is('read_at', null);
-
-        if (error) {
-          console.error('Failed to mark notifications as read in DB:', error);
-        }
-
-        set((s) => ({
-          notifications: s.notifications.map((n) => ({
-            ...n,
-            read: true,
-            readAt: n.readAt ?? nowStr,
-            read_at: n.read_at ?? nowStr,
-          })),
-        }));
-      },
-      clearNotification: async (id) => {
-        const { error } = await supabase
-          .from('notification_events')
-          .delete()
-          .eq('id', id);
-
-        if (error) {
-          console.error('Failed to clear notification in DB:', error);
-        }
-
-        set((s) => ({
-          notifications: s.notifications.filter((n) => n.id !== id),
-        }));
-      },
-      clearAllNotifications: async (ids) => {
-        if (ids.length === 0) return;
-        const { error } = await supabase
-          .from('notification_events')
-          .delete()
-          .in('id', ids);
-
-        if (error) {
-          console.error('Failed to clear all notifications in DB:', error);
-        }
-
-        const idSet = new Set(ids);
-        set((s) => ({
-          notifications: s.notifications.filter((n) => !idSet.has(n.id)),
-        }));
-      },
 
       // ── Optimistic Actions ──
       addOptimisticAck: (id) =>
@@ -512,7 +435,6 @@ export const useAppStore = create<AppState>()(
           authUser: null, user: null, session: null, role: 'student',
           isAuthLoading: false,
           hub: null, isFirstTime: false,
-          notifications: [],
           optimisticAcks: new Set<string>(),
           optimisticVotes: {},
           offlineCache: {},
@@ -528,7 +450,6 @@ export const useAppStore = create<AppState>()(
         isFirstTime: state.isFirstTime,
         hub: state.hub,
         activeTab: state.activeTab,
-        notifications: state.notifications,
         role: state.role,
         offlineCache: state.offlineCache,
       }),

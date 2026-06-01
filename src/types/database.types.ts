@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -43,6 +43,123 @@ export type Database = {
           },
           {
             foreignKeyName: "acknowledgments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_comments: {
+        Row: {
+          announcement_id: string
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          is_verified: boolean
+        }
+        Insert: {
+          announcement_id: string
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+        }
+        Update: {
+          announcement_id?: string
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_comments_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_reactions: {
+        Row: {
+          announcement_id: string
+          created_at: string
+          emoji: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          created_at?: string
+          emoji: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reactions_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_thread_mutes: {
+        Row: {
+          announcement_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_thread_mutes_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_thread_mutes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -280,6 +397,57 @@ export type Database = {
           },
         ]
       }
+      attendance_records: {
+        Row: {
+          absent: number
+          id: string
+          makeup: number
+          od: number
+          percentage: number | null
+          present: number
+          subject_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          absent?: number
+          id?: string
+          makeup?: number
+          od?: number
+          percentage?: number | null
+          present?: number
+          subject_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          absent?: number
+          id?: string
+          makeup?: number
+          od?: number
+          percentage?: number | null
+          present?: number
+          subject_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cr_transfer_log: {
         Row: {
           action: string
@@ -332,51 +500,244 @@ export type Database = {
           },
         ]
       }
-      attendance_records: {
+      exam_overrides: {
         Row: {
-          absent: number
+          created_by: string | null
+          exam_id: string
           id: string
-          makeup: number
-          od: number
-          percentage: number | null
-          present: number
-          subject_id: string
-          updated_at: string
-          user_id: string
+          room: string | null
+          seating_plan_path: string | null
+          section_id: string
+          updated_at: string | null
         }
         Insert: {
-          absent?: number
+          created_by?: string | null
+          exam_id: string
           id?: string
-          makeup?: number
-          od?: number
-          percentage?: number | null
-          present?: number
-          subject_id: string
-          updated_at?: string
-          user_id: string
+          room?: string | null
+          seating_plan_path?: string | null
+          section_id: string
+          updated_at?: string | null
         }
         Update: {
-          absent?: number
+          created_by?: string | null
+          exam_id?: string
           id?: string
-          makeup?: number
-          od?: number
-          percentage?: number | null
-          present?: number
-          subject_id?: string
-          updated_at?: string
-          user_id?: string
+          room?: string | null
+          seating_plan_path?: string | null
+          section_id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "attendance_records_subject_id_fkey"
-            columns: ["subject_id"]
+            foreignKeyName: "exam_overrides_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "subjects"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "attendance_records_user_id_fkey"
+            foreignKeyName: "exam_overrides_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_overrides_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          end_time: string
+          exam_date: string
+          exam_type: string
+          id: string
+          max_marks: number | null
+          room: string | null
+          seating_plan_path: string | null
+          semester: number
+          start_time: string
+          subject_code: string
+          subject_name: string
+          syllabus_pdf_path: string | null
+          syllabus_units: string[] | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          end_time: string
+          exam_date: string
+          exam_type: string
+          id?: string
+          max_marks?: number | null
+          room?: string | null
+          seating_plan_path?: string | null
+          semester: number
+          start_time: string
+          subject_code: string
+          subject_name: string
+          syllabus_pdf_path?: string | null
+          syllabus_units?: string[] | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          end_time?: string
+          exam_date?: string
+          exam_type?: string
+          id?: string
+          max_marks?: number | null
+          room?: string | null
+          seating_plan_path?: string | null
+          semester?: number
+          start_time?: string
+          subject_code?: string
+          subject_name?: string
+          syllabus_pdf_path?: string | null
+          syllabus_units?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_reports: {
+        Row: {
+          created_at: string | null
+          description: string
+          developer_notes: string | null
+          device_info: Json
+          id: string
+          status: string
+          title: string
+          type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          developer_notes?: string | null
+          device_info: Json
+          id?: string
+          status?: string
+          title: string
+          type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          developer_notes?: string | null
+          device_info?: Json
+          id?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_reports_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      global_pyqs: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_latest: boolean | null
+          semester: string
+          url: string
+          year: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_latest?: boolean | null
+          semester: string
+          url: string
+          year: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_latest?: boolean | null
+          semester?: string
+          url?: string
+          year?: string
+        }
+        Relationships: []
+      }
+      global_resources: {
+        Row: {
+          accent_color: string | null
+          branch: string
+          id: string
+          lab_url: string | null
+          notes_url: string | null
+          practice_url: string | null
+          pyqs_url: string | null
+          semester: string
+          subject_code: string
+          subject_name: string
+          syllabus_url: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          branch: string
+          id?: string
+          lab_url?: string | null
+          notes_url?: string | null
+          practice_url?: string | null
+          pyqs_url?: string | null
+          semester: string
+          subject_code: string
+          subject_name: string
+          syllabus_url?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          branch?: string
+          id?: string
+          lab_url?: string | null
+          notes_url?: string | null
+          practice_url?: string | null
+          pyqs_url?: string | null
+          semester?: string
+          subject_code?: string
+          subject_name?: string
+          syllabus_url?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_resources_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -555,7 +916,7 @@ export type Database = {
           p256dh: string
           updated_at?: string
           user_agent?: string | null
-          user_id: string
+          user_id?: string
         }
         Update: {
           auth?: string
@@ -606,6 +967,48 @@ export type Database = {
           {
             foreignKeyName: "sections_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_exam_prep: {
+        Row: {
+          exam_id: string
+          id: string
+          is_prepared: boolean
+          unit_index: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          exam_id: string
+          id?: string
+          is_prepared?: boolean
+          unit_index: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          exam_id?: string
+          id?: string
+          is_prepared?: boolean
+          unit_index?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_exam_prep_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_exam_prep_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -698,6 +1101,21 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
       timetable_slots: {
         Row: {
           created_at: string
@@ -765,11 +1183,37 @@ export type Database = {
           },
         ]
       }
+      user_gpa_data: {
+        Row: {
+          gpa_state: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          gpa_state?: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          gpa_state?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_gpa_data_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
-          created_at: string
           cr_rank: string | null
+          created_at: string
           day_scholar: boolean
           email: string
           id: string
@@ -784,8 +1228,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string
           cr_rank?: string | null
+          created_at?: string
           day_scholar?: boolean
           email: string
           id: string
@@ -800,8 +1244,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string
           cr_rank?: string | null
+          created_at?: string
           day_scholar?: boolean
           email?: string
           id?: string
@@ -929,16 +1373,23 @@ export type Database = {
         Args: { target_section_id: string }
         Returns: undefined
       }
+      demote_co_cr: { Args: { target_user_id: string }; Returns: undefined }
       is_cr_for_section: { Args: { target_section: string }; Returns: boolean }
+      is_primary_cr_for_section: {
+        Args: { target_section: string }
+        Returns: boolean
+      }
       is_skit_email: { Args: { email: string }; Returns: boolean }
       join_section: {
         Args: { class_roll: string; invite: string; uni_roll: string }
         Returns: {
           avatar_url: string | null
+          cr_rank: string | null
           created_at: string
           day_scholar: boolean
           email: string
           id: string
+          is_developer: boolean
           name: string
           notifications_enabled: boolean
           role: Database["public"]["Enums"]["user_role"]
@@ -963,27 +1414,10 @@ export type Database = {
           votes: number
         }[]
       }
-      demote_co_cr: {
-        Args: {
-          target_user_id: string
-        }
-        Returns: undefined
-      }
-      promote_to_co_cr: {
-        Args: {
-          target_user_id: string
-        }
-        Returns: undefined
-      }
-      resign_as_cr: {
-        Args: never
-        Returns: undefined
-      }
+      promote_to_co_cr: { Args: { target_user_id: string }; Returns: undefined }
+      resign_as_cr: { Args: never; Returns: undefined }
       transfer_primary_cr: {
-        Args: {
-          new_primary_id: string
-          old_cr_action?: string
-        }
+        Args: { new_primary_id: string; old_cr_action?: string }
         Returns: undefined
       }
     }
@@ -996,11 +1430,15 @@ export type Database = {
         | "general_announcement"
         | "new_assignment"
         | "new_poll"
+        | "custom"
+        | "qa_verified"
+        | "qa_reply"
+        | "qa_question_agg"
       notification_status: "queued" | "sent" | "failed"
       poll_type: "general" | "actionable"
       slot_type: "lecture" | "lab" | "tutorial" | "other"
       submission_status: "pending" | "submitted"
-      user_role: "student" | "cr"
+      user_role: "student" | "cr" | "developer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1136,12 +1574,16 @@ export const Constants = {
         "general_announcement",
         "new_assignment",
         "new_poll",
+        "custom",
+        "qa_verified",
+        "qa_reply",
+        "qa_question_agg",
       ],
       notification_status: ["queued", "sent", "failed"],
       poll_type: ["general", "actionable"],
       slot_type: ["lecture", "lab", "tutorial", "other"],
       submission_status: ["pending", "submitted"],
-      user_role: ["student", "cr"],
+      user_role: ["student", "cr", "developer"],
     },
   },
 } as const

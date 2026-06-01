@@ -8,9 +8,9 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useAnnouncements, useSectionMembers } from '../../hooks/useSupabaseQuery';
-import { useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useSupabaseMutations';
-import { AnnouncementReactions, AnnouncementCommentTrigger, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
+import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useAnnouncements';
+import { useSectionMembers } from '../../hooks/useSectionMembers';
+import { AnnouncementQAFooter, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
@@ -612,14 +612,10 @@ export function AnnouncementCardComponent({
         flexWrap: 'wrap',
         width: '100%',
       }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <AnnouncementReactions announcementId={ann.id} />
-          
-          <AnnouncementCommentTrigger 
-            announcementId={ann.id} 
-            onOpenComments={() => setOpenCommentsAnnId(ann.id)} 
-          />
-        </div>
+        <AnnouncementQAFooter 
+          announcementId={ann.id} 
+          onOpenComments={() => setOpenCommentsAnnId(ann.id)} 
+        />
 
         <div>
           {isExpiredAlert ? (

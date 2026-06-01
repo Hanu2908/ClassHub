@@ -6,8 +6,8 @@ import { CROnly } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
-import { useSchedule, useSubjects } from '../../hooks/useSupabaseQuery';
-import { useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSupabaseMutations';
+import { useSchedule, useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSchedule';
+import { useSubjects } from '../../hooks/useSubjects';
 import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS } from '../../lib/scheduleUtils';
 import { ScheduleSkeleton } from '../../components/LoadingSkeletons';
 

@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Coffee } from 'lucide-react';
-import { useSchedule } from '../../../hooks/useSupabaseQuery';
+import { useSchedule } from '../../../hooks/useSchedule';
 import { todayKey, parseTime, hoursUntil, WidgetSkeleton, sectionCardStyle, sectionIconStyle } from './dashboardUtils';
 import { getCategory, CATEGORY_COLORS, CATEGORY_LABELS } from '../../../lib/scheduleUtils';
 import type { ScheduleSlot } from '../../../store/appStore';

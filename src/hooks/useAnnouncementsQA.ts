@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
 import { showToast } from '../components/Toast';
+import { subscribeToAnnouncementQA } from '../lib/realtimeBroker';
 
 // Helper to access auth context from Zustand appStore
 function useAuthContext() {
@@ -46,38 +47,12 @@ export function useAnnouncementQARealtime(announcementId: string) {
   useEffect(() => {
     if (!announcementId) return;
 
-    const uniqueId = Math.random().toString(36).slice(2, 9);
-    const channel = supabase
-      .channel(`announcement-qa-realtime-${announcementId}-${uniqueId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'announcement_reactions',
-          filter: `announcement_id=eq.${announcementId}`,
-        },
-        () => {
-          qc.invalidateQueries({ queryKey: ['announcement_reactions', announcementId] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'announcement_comments',
-          filter: `announcement_id=eq.${announcementId}`,
-        },
-        () => {
-          qc.invalidateQueries({ queryKey: ['announcement_comments', announcementId] });
-        }
-      )
-      .subscribe();
+    const unsubscribe = subscribeToAnnouncementQA(announcementId, {
+      onReaction: () => qc.invalidateQueries({ queryKey: ['announcement_reactions', announcementId] }),
+      onComment: () => qc.invalidateQueries({ queryKey: ['announcement_comments', announcementId] }),
+    });
 
-    return () => {
-      channel.unsubscribe();
-    };
+    return unsubscribe;
   }, [announcementId, qc]);
 }
 

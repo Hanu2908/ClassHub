@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, X } from 'lucide-react';
-import { useAppStore, type AppNotification } from '../../../store/appStore';
+import { type AppNotification } from '../../../store/appStore';
+import { useNotifications } from '../../../hooks/useNotifications';
 import { BottomSheet } from '../../../components/BottomSheet';
 import { timeAgo } from '../../../components/Shared';
 
@@ -11,7 +12,7 @@ interface NotificationSheetProps {
 
 export default function NotificationSheet({ onClose }: NotificationSheetProps) {
   const navigate = useNavigate();
-  const { notifications, markAllNotificationsRead, clearNotification, clearAllNotifications } = useAppStore();
+  const { notifications, markAllRead, clear, clearAll } = useNotifications();
 
   const [now] = useState(() => Date.now());
   const visibleNotifications = useMemo(() => notifications.filter(n => {
@@ -22,9 +23,9 @@ export default function NotificationSheet({ onClose }: NotificationSheetProps) {
 
   useEffect(() => {
     if (notifications.some(n => !n.read)) {
-      markAllNotificationsRead();
+      markAllRead();
     }
-  }, [notifications, markAllNotificationsRead]);
+  }, [notifications, markAllRead]);
 
   // Deep-link: map target_table + target_id to a URL
   function getNotificationUrl(n: AppNotification): string | null {
@@ -57,7 +58,7 @@ export default function NotificationSheet({ onClose }: NotificationSheetProps) {
         ) : (
           <>
             <button
-              onClick={() => clearAllNotifications(visibleNotifications.map(n => n.id))}
+              onClick={() => clearAll(visibleNotifications.map(n => n.id))}
               className="t-label"
               style={{
                 background: 'none',
@@ -97,7 +98,7 @@ export default function NotificationSheet({ onClose }: NotificationSheetProps) {
                       <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</p>
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); clearNotification(n.id); }}
+                      onClick={(e) => { e.stopPropagation(); clear(n.id); }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}
                     >
                       <X size={14} />

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { BarChart2, MessageSquare, ClipboardList, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '../../../store/appStore';
-import { useSection } from '../../../hooks/useSupabaseQuery';
+import { useSection } from '../../../hooks/useSectionMembers';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchAnnouncementsData } from './prefetchHelper';
 

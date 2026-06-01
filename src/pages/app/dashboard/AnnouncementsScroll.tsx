@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Megaphone, Award, Calendar, Coffee, Paperclip, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../../store/appStore';
-import { useAnnouncements } from '../../../hooks/useSupabaseQuery';
-import { useAcknowledge } from '../../../hooks/useSupabaseMutations';
+import { useAnnouncements, useAcknowledge } from '../../../hooks/useAnnouncements';
 import { showToast } from '../../../components/Toast';
 import { AttachmentCard } from '../../../components/AttachmentCard';
-import { AnnouncementReactions, AnnouncementCommentTrigger } from '../../../components/AnnouncementQA';
+import { AnnouncementQAFooter } from '../../../components/AnnouncementQA';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchAnnouncementsData } from './prefetchHelper';
 import { WidgetSkeleton } from './dashboardUtils';
@@ -517,14 +516,13 @@ export default function AnnouncementsScroll() {
               flexWrap: 'wrap',
               textAlign: 'left'
             }}>
-              <AnnouncementReactions announcementId={selectedAnn.id} />
-              
-              <AnnouncementCommentTrigger 
+              <AnnouncementQAFooter 
                 announcementId={selectedAnn.id} 
                 onOpenComments={() => {
                   setSelectedAnn(null);
                   navigate(`/app/announcements?id=${selectedAnn.id}&expand_qa=true`);
-                }} 
+                }}
+                style={{ justifyContent: 'space-between', width: '100%' }}
               />
             </div>
 

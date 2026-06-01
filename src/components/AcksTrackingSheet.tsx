@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Bell, Search, Loader } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { BottomSheet } from './BottomSheet';
 import { showToast } from './Toast';
 import { supabase } from '../lib/supabase';
 import type { Announcement } from '../store/appStore';
-import type { SectionMember } from '../hooks/useSupabaseQuery';
+import type { SectionMember } from '../hooks/useSectionMembers';
 
 export interface SectionAck {
   announcement_id: string;
@@ -25,6 +26,25 @@ export default function AcksTrackingSheet({ announcement, onClose, sectionAcks, 
   const [nudgingIds, setNudgingIds] = useState<Set<string>>(new Set());
   const [isNudgingAll, setIsNudgingAll] = useState(false);
 
+  // Fetch notification events telemetry for Priority 2 CR Delivery Analytics
+  const { data: pushEvents = [] } = useQuery({
+    queryKey: ['announcement-push-events', announcement.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notification_events')
+        .select('recipient_id, status, error_message')
+        .eq('target_table', 'announcements')
+        .eq('target_id', announcement.id);
+
+      if (error) {
+        console.error('[AcksTrackingSheet] Failed to load push events:', error);
+        return [];
+      }
+      return data || [];
+    },
+    staleTime: 30 * 1000, // 30 seconds
+  });
+
   // Filter out CR accounts to get students list
   const totalStudents = members.filter(m => m.role === 'student');
   
@@ -34,6 +54,9 @@ export default function AcksTrackingSheet({ announcement, onClose, sectionAcks, 
 
   const ackedStudents = totalStudents.filter(m => ackedUserIds.has(m.id));
   const pendingStudents = totalStudents.filter(m => !ackedUserIds.has(m.id));
+
+  const deliveredCount = pushEvents.filter(e => e.status === 'sent').length;
+  const failedCount = pushEvents.filter(e => e.status === 'failed').length;
 
   // Fuzzy filter by name or class roll
   const filterList = (list: SectionMember[]) => {
@@ -95,9 +118,22 @@ export default function AcksTrackingSheet({ announcement, onClose, sectionAcks, 
           <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
             {announcement.title}
           </h3>
-          <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>
-            Acknowledgment tracking: <strong style={{ color: 'var(--status-announcement)' }}>{ackedStudents.length} / {totalStudents.length} acknowledged</strong>
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <p className="t-caption" style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+              <span>Read status:</span>
+              <strong style={{ color: 'var(--status-announcement)' }}>{ackedStudents.length} / {totalStudents.length} acknowledged</strong>
+            </p>
+            {pushEvents.length > 0 && (
+              <p className="t-caption" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, fontSize: '11px', margin: 0 }}>
+                <span>Push reach:</span>
+                <span>
+                  🟢 <strong style={{ color: 'var(--status-safe)' }}>{deliveredCount}</strong> Delivered
+                  <span style={{ margin: '0 6px', opacity: 0.3 }}>|</span>
+                  🔴 <strong style={{ color: 'var(--status-critical)' }}>{failedCount}</strong> Failed
+                </span>
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Dynamic Search Bar */}
@@ -174,7 +210,30 @@ export default function AcksTrackingSheet({ announcement, onClose, sectionAcks, 
                     )}
                   </div>
                   <div>
-                    <div className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{student.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{student.name}</span>
+                      {(() => {
+                        const pushEvent = pushEvents.find(e => e.recipient_id === student.id);
+                        if (!pushEvent) return null;
+                        const isSent = pushEvent.status === 'sent';
+                        return (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontSize: '9px',
+                            fontWeight: 600,
+                            background: isSent ? 'rgba(52, 211, 153, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                            color: isSent ? 'var(--status-safe)' : 'var(--status-critical)',
+                            border: isSent ? '1px solid rgba(52, 211, 153, 0.15)' : '1px solid rgba(239, 68, 68, 0.15)',
+                          }} title={pushEvent.error_message || undefined}>
+                            {isSent ? '📲 Sent' : '⚠️ Failed'}
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <div className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
                       {student.classRoll || 'No Roll'} • {student.email}
                     </div>

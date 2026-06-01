@@ -21,11 +21,11 @@ export function useGPASync() {
         manualHistory: state.manualHistory,
         targetCgpa: state.targetCgpa,
       };
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('user_gpa_data')
         .upsert({
           user_id: user.id,
-          gpa_state: payload,
+          gpa_state: payload as any,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
       if (error) console.error('Failed to sync GPA data to database:', error);
@@ -34,7 +34,7 @@ export function useGPASync() {
 
     // 1. Fetch initial state
     const fetchState = async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_gpa_data')
         .select('gpa_state')
         .eq('user_id', user.id)
@@ -44,12 +44,19 @@ export function useGPASync() {
         console.error('Failed to fetch GPA data from database:', error);
       } else if (data?.gpa_state) {
         const localState = useGPAStore.getState();
+        const gpaStateParsed = data.gpa_state as unknown as {
+          activeBranch: string;
+          activeSemester: number;
+          semesters: Record<number, { subjects: Array<{ id: string; name: string; credits: number; marks: number | null }>; locked: boolean }>;
+          manualHistory: Record<number, number>;
+          targetCgpa: number | null;
+        };
         
         // Count how many marks are filled locally vs in the database
         const countLocalMarks = Object.values(localState.semesters).reduce((sum, sem) => 
           sum + sem.subjects.filter(sub => sub.marks !== null).length, 0
         );
-        const countDbMarks = Object.values((data.gpa_state as any).semesters || {}).reduce((sum: number, sem: any) => 
+        const countDbMarks = Object.values(gpaStateParsed.semesters || {}).reduce((sum: number, sem: any) => 
           sum + (sem.subjects || []).filter((sub: any) => sub.marks !== null).length
         , 0) as number;
 
@@ -58,8 +65,8 @@ export function useGPASync() {
         // Prevent destructive overwrites: only hydrate if DB has equal or more marks, 
         // or if local store is completely blank.
         if (countLocalMarks === 0 || countDbMarks >= countLocalMarks) {
-          console.log('Hydrating local store from database:', data.gpa_state);
-          localState.hydrateState(data.gpa_state);
+          console.log('Hydrating local store from database:', gpaStateParsed);
+          localState.hydrateState(gpaStateParsed as any);
         } else {
           console.log('Client has richer local marks than database. Skipping hydration to prevent overwrite.');
           // Directly push the richer local state to the database

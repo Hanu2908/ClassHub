@@ -4,7 +4,7 @@ import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, 
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useSection } from '../../hooks/useSupabaseQuery';
+import { useSection } from '../../hooks/useSectionMembers';
 import { supabase } from '../../lib/supabase';
 import { isPushSupported, getPushPermission, hasActiveSubscription, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';

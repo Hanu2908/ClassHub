@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture Review — ClassHub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "dark",
+        securityLevel: "loose",
+        themeVariables: {
+          background: "#13131C",
+          primaryColor: "#1C1C2E",
+          primaryTextColor: "#F0F0FF",
+          lineColor: "#8B5CF6",
+          nodeBorder: "#2A2A40 font-semibold"
+        }
+      });
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Outfit', sans-serif;
+        background-color: #0A0A0F;
+        color: #F0F0FF;
+      }
+      pre, code {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep-card {
+        background: linear-gradient(135deg, #13131C 0%, #1A1A28 100%);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-slate-100 antialiased selection:bg-violet-500 selection:text-white pb-20">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      
+      <!-- HEADER -->
+      <header class="border-b border-[#2A2A40] pb-8 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span class="text-violet-400 text-xs font-semibold tracking-wider uppercase">ClassHub Architectural Audit</span>
+            <h1 class="text-4xl font-bold tracking-tight text-white mt-1">Deepening Opportunities</h1>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-400 text-xs font-mono">Date: June 1, 2026</span>
+            <div class="text-emerald-400 text-sm font-semibold flex items-center justify-end gap-1.5 mt-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Previous Audit Completed Successfully
+            </div>
+          </div>
+        </div>
+        
+        <!-- Legend Bar -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg bg-[#13131C] border border-[#2A2A40] text-xs">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded bg-[#1C1C2E] border border-violet-500"></span>
+            <span>Module</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-0 border-t-2 border-dashed border-violet-400"></span>
+            <span>Seam</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded bg-[#13131C] border border-red-500"></span>
+            <span class="text-red-400">Implementation Leak</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded bg-gradient-to-r from-violet-950 to-indigo-950 border border-violet-400"></span>
+            <span class="text-violet-300 font-semibold">Deep Module</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- CANDIDATES SECTION -->
+      <section id="candidates" class="space-y-12">
+        <h2 class="text-2xl font-bold text-white tracking-wide border-l-4 border-violet-500 pl-3">Architecture Candidates</h2>
+        
+        <!-- CANDIDATE 1 -->
+        <article class="p-6 rounded-xl border border-[#2A2A40] deep-card shadow-xl space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-xl font-bold text-white">1. Consolidate Offline Actions Sync Playback</h3>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">Strong</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-950 text-violet-300 border border-violet-800">ports & adapters</span>
+            </div>
+          </div>
+          
+          <div class="space-y-1">
+            <h4 class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Involved Files</h4>
+            <div class="bg-[#0A0A0F] p-3 rounded-lg border border-[#1C1C2E] font-mono text-xs text-violet-300 space-y-1">
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/lib/offlineSync.ts" class="hover:underline">src/lib/offlineSync.ts</a></div>
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/sw.js" class="hover:underline">src/sw.js</a></div>
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/AuthProvider.tsx" class="hover:underline">src/components/AuthProvider.tsx</a></div>
+            </div>
+          </div>
+
+          <!-- BEFORE / AFTER DIAGRAMS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Before -->
+            <div class="rounded-lg border border-red-500/20 bg-[#0A0A0F] p-4 flex flex-col justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-red-400 mb-3 text-center">Before: Shallow Module with Leaking Mutations</h4>
+              <div class="flex-grow flex items-center justify-center min-h-[300px]">
+                <pre class="mermaid">
+                  flowchart TD
+                    subgraph Main ["Main App Context"]
+                      A[Domain UI Components] --> B["offlineSync.ts (Client API)"]
+                      B -->|Client SDK Mutations| S[Supabase Cloud]
+                      B -.-> IDB1[(IndexedDB)]
+                    end
+                    
+                    subgraph SW ["Service Worker Context"]
+                      C[Browser Push / Sync Event] --> D["sw.js (Worker File)"]
+                      D -.-> IDB2[(IndexedDB)]
+                      D -->|Leaked REST Mutations| S
+                    end
+
+                    classDef leak stroke:#dc2626,stroke-width:2px;
+                    class D,B leak
+                </pre>
+              </div>
+            </div>
+            
+            <!-- After -->
+            <div class="rounded-lg border border-violet-500/20 bg-[#0A0A0F] p-4 flex flex-col justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-violet-400 mb-3 text-center">After: Deep Seam delegating Playback to Main Thread</h4>
+              <div class="flex-grow flex items-center justify-center min-h-[300px]">
+                <pre class="mermaid">
+                  flowchart TD
+                    subgraph Main ["Main App Context (Deep Seam)"]
+                      A[Domain UI Components] --> B["offlineSync.ts (Queue & Playback)"]
+                      B -->|Unified Supabase Client SDK| S[Supabase Cloud]
+                      B -.-> IDB[(Shared IndexedDB Store)]
+                    end
+                    
+                    subgraph SW ["Service Worker Context (Dumb Receiver)"]
+                      C[Browser Push / Sync Event] --> D["sw.js"]
+                      D -->|PostMessage Wakeup| B
+                      D -.-> IDB
+                    end
+
+                    classDef deep stroke:#8B5CF6,stroke-width:2px;
+                    class B deep
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Problem / Solution Prose -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Friction</h4>
+              <p class="text-slate-300">
+                The offline sync module is <strong class="text-violet-400">shallow</strong>. Rather than acting as a simple, abstract transaction ledger, it hardcodes exact database structures. It duplicates complete network mutation REST calls using raw <code class="text-red-300 font-mono text-xs">fetch</code> requests inside the Service Worker (<code class="font-mono text-xs">sw.js</code>) and Supabase JS query builders inside <code class="font-mono text-xs">offlineSync.ts</code>, scattering domain database rules across thread seams.
+              </p>
+            </div>
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Proposal</h4>
+              <p class="text-slate-300">
+                Deepen the module by making the Service Worker a dumb queue receiver that persists raw action payloads to IndexedDB and triggers a wakeup signal. Collapse all database mutation and playback logic strictly into <code class="font-mono text-xs">offlineSync.ts</code>, utilizing the official, type-safe Supabase JS SDK on the client side when the browser transitions online.
+              </p>
+            </div>
+          </div>
+
+          <!-- Wins -->
+          <div class="border-t border-[#1C1C2E] pt-4">
+            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Architectural Wins</h4>
+            <ul class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Locality</strong>: Playback mutations concentrate in one module.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Interface shrinks</strong>: Worker delegates all mutations to main.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Deletes 150+ lines</strong> of duplicate REST fetch code in sw.js.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Leverage</strong>: Re-uses deep type-safe Supabase JS clients.</span>
+              </li>
+            </ul>
+          </div>
+        </article>
+        
+        <!-- CANDIDATE 2 -->
+        <article class="p-6 rounded-xl border border-[#2A2A40] deep-card shadow-xl space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-xl font-bold text-white">2. Deepen In-App Notifications State</h3>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">Strong</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950 text-blue-300 border border-blue-800">in-process</span>
+            </div>
+          </div>
+          
+          <div class="space-y-1">
+            <h4 class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Involved Files</h4>
+            <div class="bg-[#0A0A0F] p-3 rounded-lg border border-[#1C1C2E] font-mono text-xs text-violet-300 space-y-1">
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/store/appStore.ts" class="hover:underline">src/store/appStore.ts</a></div>
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/AuthProvider.tsx" class="hover:underline">src/components/AuthProvider.tsx</a></div>
+            </div>
+          </div>
+
+          <!-- BEFORE / AFTER DIAGRAMS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Before -->
+            <div class="rounded-lg border border-red-500/20 bg-[#0A0A0F] p-4 flex flex-col justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-red-400 mb-3 text-center">Before: Scattered Store and Lifecycle Subscriptions</h4>
+              <div class="flex-grow flex items-center justify-center min-h-[300px]">
+                <pre class="mermaid">
+                  flowchart TD
+                    subgraph AuthProvider
+                      E["Fetch Initial rows"]
+                      F["Realtime subscription (Postgres)"]
+                    end
+                    subgraph appStore ["appStore.ts (Zustand)"]
+                      G["State: notifications[]"]
+                      H["Actions: markRead, clear, clearAll"]
+                    end
+
+                    E -->|Update state| appStore
+                    F -->|Push events| appStore
+                    H -->|Direct DB Queries| DB[Supabase Cloud]
+
+                    classDef leak stroke:#dc2626,stroke-width:2px;
+                    class H,appStore leak
+                </pre>
+              </div>
+            </div>
+            
+            <!-- After -->
+            <div class="rounded-lg border border-violet-500/20 bg-[#0A0A0F] p-4 flex flex-col justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-violet-400 mb-3 text-center">After: Concentrated Locality in deep useNotifications hook</h4>
+              <div class="flex-grow flex items-center justify-center min-h-[300px]">
+                <pre class="mermaid">
+                  flowchart TD
+                    subgraph UI ["UI Component Layer"]
+                      A[Bell Icon]
+                      B[Notifications Drawer]
+                    end
+                    subgraph Deep ["useNotifications (Deep Domain Hook)"]
+                      C["Query: Get Active Notifs"]
+                      D["Subscription: Realtime Channels"]
+                      E["Mutations: read, clear, clearAll"]
+                    end
+
+                    UI -->|Leverages single interface| Deep
+                    Deep -->|Centralized client operations| DB[Supabase Cloud]
+
+                    classDef deep stroke:#8B5CF6,stroke-width:2px;
+                    class Deep deep
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Problem / Solution Prose -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Friction</h4>
+              <p class="text-slate-300">
+                The notification state management is <strong class="text-violet-400">shallow</strong>. The client-only state store (<code class="font-mono text-xs">useAppStore</code>) performs backend database mutations directly in its actions (violating ADR-016), while subscription registration and query lifecycles are hardcoded inside a <code class="font-mono text-xs">useEffect</code> block in <code class="font-mono text-xs">AuthProvider.tsx</code>. Callers must interact with multiple separate files.
+              </p>
+            </div>
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Proposal</h4>
+              <p class="text-slate-300">
+                Collapse all notifications state, Postgres realtime listeners, and database mutations into a single, deep <code class="font-mono text-xs">useNotifications</code> custom hook utilizing TanStack Query mutations. Keep Zustand's store purely volatile and focused on client-side state.
+              </p>
+            </div>
+          </div>
+
+          <!-- Wins -->
+          <div class="border-t border-[#1C1C2E] pt-4">
+            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Architectural Wins</h4>
+            <ul class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Locality</strong>: Notification database logic concentrates in one hook.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Leverage</strong>: Callers get complete state, mutations, and updates in one call.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Adheres to ADR-016</strong>: Server state resides fully inside TanStack Query.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Interface shrinks</strong>: AppStore acts strictly as UI/Session store.</span>
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- CANDIDATE 3 -->
+        <article class="p-6 rounded-xl border border-[#2A2A40] deep-card shadow-xl space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-xl font-bold text-white">3. Abstract Real-time Database Subscription Channels</h3>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950 text-amber-300 border border-amber-800">Worth exploring</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-950 text-violet-300 border border-violet-800">ports & adapters</span>
+            </div>
+          </div>
+          
+          <div class="space-y-1">
+            <h4 class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Involved Files</h4>
+            <div class="bg-[#0A0A0F] p-3 rounded-lg border border-[#1C1C2E] font-mono text-xs text-violet-300 space-y-1">
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/AuthProvider.tsx" class="hover:underline">src/components/AuthProvider.tsx</a></div>
+            </div>
+          </div>
+
+          <!-- Problem / Solution Prose -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Friction</h4>
+              <p class="text-slate-300">
+                <code class="font-mono text-xs">AuthProvider.tsx</code> has a 100+ line setup subscribing to six distinct Postgres tables and broadcast channel feeds (<code class="font-mono text-xs">announcements, assignments, polls, votes, submissions, acknowledgments</code>). This is <strong class="text-amber-400">shallow</strong> because it couples the top-level Auth wrapper component to database schemas. If a new real-time table is added or query key is changed, it requires modifying <code class="font-mono text-xs">AuthProvider.tsx</code> inline.
+              </p>
+            </div>
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Proposal</h4>
+              <p class="text-slate-300">
+                Introduce a dedicated, deep <strong class="text-violet-400">RealtimeBroker</strong> with a clean pub/sub interface. The broker handles connection pooling, channel registration, and message dispatching, letting domain hooks subscribe to updates dynamically rather than hardcoding all table triggers inside a monolithic auth-provider lifecycle.
+              </p>
+            </div>
+          </div>
+
+          <!-- Wins -->
+          <div class="border-t border-[#1C1C2E] pt-4">
+            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Architectural Wins</h4>
+            <ul class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Interface shrinks</strong>: AuthProvider is relieved of database multiplexing.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Locality</strong>: Real-time configuration parameters sit close to queries.</span>
+              </li>
+            </ul>
+          </div>
+        </article>
+      </section>
+
+      <!-- TOP RECOMMENDATION -->
+      <section id="top-recommendation" class="p-6 rounded-xl border border-violet-500 bg-gradient-to-r from-violet-950/40 to-indigo-950/40 shadow-2xl space-y-4">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <span>🎯</span> Top Recommendation: Consolidate Offline Actions Sync Playback
+        </h2>
+        <p class="text-sm text-slate-300">
+          We recommend tackling the <strong>Offline Actions Sync Playback</strong> candidate first. De-duplicating the Supabase database mutations between the Service Worker and the client-side main thread instantly simplifies the network layer. It restores single-point <strong>locality</strong> for database transactions, ensures 100% type-safety, and deletes over 150 lines of redundant, error-prone REST API call setups in the service worker.
+        </p>
+      </section>
+
+    </main>
+  </body>
+</html>

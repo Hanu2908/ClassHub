@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePolls } from '../../../hooks/useSupabaseQuery';
+import { usePolls } from '../../../hooks/usePolls';
 import { isExpired } from '../../../store/appStore';
 
 export default function PollBanner() {

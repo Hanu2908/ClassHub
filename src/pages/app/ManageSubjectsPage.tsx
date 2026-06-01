@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Plus, BookOpen, Trash2, Edit3, Check, AlertTriangle 
 } from 'lucide-react';
-import { useSubjects, useMutateSubjects } from '../../hooks/useSupabaseQuery';
+import { useSubjects, useMutateSubjects } from '../../hooks/useSubjects';
 import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import { ManageSubjectsSkeleton } from '../../components/LoadingSkeletons';

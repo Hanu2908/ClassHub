@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Edit2, Loader2, Search, Plus, Trash2 } from 'lucide-react';
-import { useGlobalResources, useGlobalPYQs, type GlobalResource } from '../../hooks/useSupabaseQuery';
-import { 
-  useUpdateGlobalResource, 
-  useCreateGlobalResource, 
+import {
+  useGlobalResources,
+  useGlobalPYQs,
+  type GlobalResource,
+  useUpdateGlobalResource,
+  useCreateGlobalResource,
   useDeleteGlobalResource,
   useCreateGlobalPYQ,
-  useDeleteGlobalPYQ 
-} from '../../hooks/useSupabaseMutations';
+  useDeleteGlobalPYQ
+} from '../../hooks/useGlobalResources';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { BottomSheet } from '../../components/BottomSheet';

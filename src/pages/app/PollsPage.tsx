@@ -6,8 +6,9 @@ import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { usePolls, useActionablePollVotes, useSchedule, usePollsRealtime, useSectionMembers } from '../../hooks/useSupabaseQuery';
-import { useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/useSupabaseMutations';
+import { usePolls, useActionablePollVotes, usePollsRealtime, useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/usePolls';
+import { useSchedule } from '../../hooks/useSchedule';
+import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { BottomSheet } from '../../components/BottomSheet';
 import { PollsSkeleton } from '../../components/LoadingSkeletons';
 

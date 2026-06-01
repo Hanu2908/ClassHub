@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture Review V2 — ClassHub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "dark",
+        securityLevel: "loose",
+        themeVariables: {
+          background: "#13131C",
+          primaryColor: "#1C1C2E",
+          primaryTextColor: "#F0F0FF",
+          lineColor: "#8B5CF6",
+          nodeBorder: "#2A2A40 font-semibold"
+        }
+      });
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Outfit', sans-serif;
+        background-color: #0A0A0F;
+        color: #F0F0FF;
+      }
+      pre, code {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep-card {
+        background: linear-gradient(135deg, #13131C 0%, #1A1A28 100%);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-slate-100 antialiased selection:bg-violet-500 selection:text-white pb-20">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      
+      <!-- HEADER -->
+      <header class="border-b border-[#2A2A40] pb-8 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span class="text-violet-400 text-xs font-semibold tracking-wider uppercase">ClassHub Architectural Audit (Sprint 4)</span>
+            <h1 class="text-4xl font-bold tracking-tight text-white mt-1">Deepening & Component Locality</h1>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-400 text-xs font-mono">Date: June 1, 2026</span>
+            <div class="text-violet-400 text-sm font-semibold flex items-center justify-end gap-1.5 mt-1">
+              <span class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></span>
+              Analyzing 1,000+ Line Monoliths
+            </div>
+          </div>
+        </div>
+        
+        <!-- Legend Bar -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg bg-[#13131C] border border-[#2A2A40] text-xs">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded bg-[#1C1C2E] border border-violet-500"></span>
+            <span>Module</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-0 border-t-2 border-dashed border-violet-400"></span>
+            <span>Seam</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded bg-[#13131C] border border-red-500"></span>
+            <span class="text-red-400">Redundant Socket Leak</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded bg-gradient-to-r from-violet-950 to-indigo-950 border border-violet-400"></span>
+            <span class="text-violet-300 font-semibold">Deep Seam / Broker</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- CANDIDATES SECTION -->
+      <section id="candidates" class="space-y-12">
+        <h2 class="text-2xl font-bold text-white tracking-wide border-l-4 border-violet-500 pl-3">Architecture Candidates</h2>
+        
+        <!-- CANDIDATE 1 -->
+        <article class="p-6 rounded-xl border border-[#2A2A40] deep-card shadow-xl space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-xl font-bold text-white">1. Split Monolithic AnnouncementQA UI Component</h3>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">Strong</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950 text-blue-300 border border-blue-800">in-process</span>
+            </div>
+          </div>
+          
+          <div class="space-y-1">
+            <h4 class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Involved Files</h4>
+            <div class="bg-[#0A0A0F] p-3 rounded-lg border border-[#1C1C2E] font-mono text-xs text-violet-300 space-y-1">
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/AnnouncementQA.tsx" class="hover:underline">src/components/AnnouncementQA.tsx</a></div>
+            </div>
+          </div>
+
+          <!-- BEFORE / AFTER DIAGRAMS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Before -->
+            <div class="rounded-lg border border-red-500/20 bg-[#0A0A0F] p-4 flex flex-col justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-red-400 mb-3 text-center">Before: Monolithic 1,015 Line File</h4>
+              <div class="flex-grow flex items-center justify-center min-h-[250px]">
+                <pre class="mermaid">
+                  flowchart TD
+                    subgraph Mono ["AnnouncementQA.tsx"]
+                      A[AnnouncementReactions Component]
+                      B[AnnouncementComments Component]
+                      C[AnnouncementQAButton Parent Component]
+                      D[Helper Hooks Imports]
+                    end
+                    
+                    classDef leak stroke:#dc2626,stroke-width:2px;
+                    class Mono leak
+                </pre>
+              </div>
+            </div>
+            
+            <!-- After -->
+            <div class="rounded-lg border border-violet-500/20 bg-[#0A0A0F] p-4 flex flex-col justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-violet-400 mb-3 text-center">After: Structured Folder of focused Sub-modules</h4>
+              <div class="flex-grow flex items-center justify-center min-h-[250px]">
+                <pre class="mermaid">
+                  flowchart TD
+                    subgraph Folder ["src/components/announcement-qa/"]
+                      A["AnnouncementReactions.tsx"]
+                      B["AnnouncementComments.tsx"]
+                      C["AnnouncementQAButton.tsx (Parent Interface)"]
+                    end
+                    
+                    C -->|Imports| A
+                    C -->|Imports| B
+
+                    classDef deep stroke:#8B5CF6,stroke-width:2px;
+                    class Folder deep
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Problem / Solution Prose -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Friction</h4>
+              <p class="text-slate-300">
+                <code class="font-mono text-xs">AnnouncementQA.tsx</code> is a monolithic file holding **1,015 lines of code**. It violates single-responsibility and component <strong class="text-violet-400">locality</strong> by forcing three distinct, complex sub-modules (reactions picker, comments editor thread, and the parent slidesheet drawer) to reside in the exact same workspace area, hindering testability and maintainability.
+              </p>
+            </div>
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Proposal</h4>
+              <p class="text-slate-300">
+                Decompose the monolith into a modular folder structure under <code class="font-mono text-xs">src/components/announcement-qa/</code>. Each visual sub-module will occupy a single, highly readable file (200-300 lines) with a focused external seam and clean TypeScript type definitions.
+              </p>
+            </div>
+          </div>
+
+          <!-- Wins -->
+          <div class="border-t border-[#1C1C2E] pt-4">
+            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Architectural Wins</h4>
+            <ul class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Locality</strong>: Layout structures and private hooks concentrate in distinct sub-modules.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Depth</strong>: Simplifies parent interfaces by hiding sub-module rendering details.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Deletes 1,000+ line monolith</strong> in favor of modular components.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Testability</strong>: Individual components can be isolated and unit-tested.</span>
+              </li>
+            </ul>
+          </div>
+        </article>
+        
+        <!-- CANDIDATE 2 -->
+        <article class="p-6 rounded-xl border border-[#2A2A40] deep-card shadow-xl space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-xl font-bold text-white">2. Consolidate Announcement Q&A Realtime Sockets</h3>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">Strong</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-950 text-violet-300 border border-violet-800">ports & adapters</span>
+            </div>
+          </div>
+          
+          <div class="space-y-1">
+            <h4 class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Involved Files</h4>
+            <div class="bg-[#0A0A0F] p-3 rounded-lg border border-[#1C1C2E] font-mono text-xs text-violet-300 space-y-1">
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/hooks/useAnnouncementsQA.ts" class="hover:underline">src/hooks/useAnnouncementsQA.ts</a></div>
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/lib/realtimeBroker.ts" class="hover:underline">src/lib/realtimeBroker.ts</a></div>
+              <div>📄 <a href="file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/AnnouncementQA.tsx" class="hover:underline">src/components/AnnouncementQA.tsx</a></div>
+            </div>
+          </div>
+
+          <!-- BEFORE / AFTER DIAGRAMS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Before -->
+            <div class="rounded-lg border border-red-500/20 bg-[#0A0A0F] p-4 flex flex-col justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-red-400 mb-3 text-center">Before: Duplicate Sockets for Same Announcement</h4>
+              <div class="flex-grow flex items-center justify-center min-h-[250px]">
+                <pre class="mermaid">
+                  flowchart TD
+                    A[AnnouncementReactions Component] -->|Calls Hook| R1["useAnnouncementQARealtime()"]
+                    B[AnnouncementComments Component] -->|Calls Hook| R2["useAnnouncementQARealtime()"]
+                    
+                    R1 -->|Opens Socket 1| DB[Supabase Realtime]
+                    R2 -->|Opens Socket 2| DB
+
+                    classDef leak stroke:#dc2626,stroke-width:2px;
+                    class R1,R2 leak
+                </pre>
+              </div>
+            </div>
+            
+            <!-- After -->
+            <div class="rounded-lg border border-violet-500/20 bg-[#0A0A0F] p-4 flex flex-col justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-violet-400 mb-3 text-center">After: Shared Seam via RealtimeBroker delegation</h4>
+              <div class="flex-grow flex items-center justify-center min-h-[250px]">
+                <pre class="mermaid">
+                  flowchart TD
+                    C["AnnouncementQAButton (Parent Component)"] -->|Dynamic Seam Subscription| B["RealtimeBroker (subscribeToAnnouncementQA)"]
+                    B -->|Single Multiplexed Channel| DB[Supabase Realtime]
+
+                    C -->|Passes Callback Refreshers| E[Reactions Sub-component]
+                    C -->|Passes Callback Refreshers| F[Comments Sub-component]
+
+                    classDef deep stroke:#8B5CF6,stroke-width:2px;
+                    class B deep
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Problem / Solution Prose -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Friction</h4>
+              <p class="text-slate-300">
+                The current real-time listener hook <code class="font-mono text-xs">useAnnouncementQARealtime</code> is called independently inside multiple child components. This spawns <strong class="text-red-400">redundant, duplicate socket connections</strong> for the exact same announcement ID, violating connection efficiency and leaking websocket details.
+              </p>
+            </div>
+            <div class="space-y-2">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">The Proposal</h4>
+              <p class="text-slate-300">
+                Delegate Q&A real-time setups to our deep <strong class="text-violet-400">RealtimeBroker</strong>. Expose a single unified subscription method <code class="font-mono text-xs">subscribeToAnnouncementQA</code> and have the parent slidesheet mount a single connection, invalidating React Query states globally on database changes.
+              </p>
+            </div>
+          </div>
+
+          <!-- Wins -->
+          <div class="border-t border-[#1C1C2E] pt-4">
+            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Architectural Wins</h4>
+            <ul class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Locality</strong>: Web socket connection lifecycles remain entirely in the RealtimeBroker.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Socket Efficiency</strong>: Eliminates redundant, multi-socket duplicate calls.</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-300">
+                <span class="text-emerald-400 font-bold">✔</span>
+                <span><strong>Leverage</strong>: One channel invalidates multiple disjoint query keys automatically.</span>
+              </li>
+            </ul>
+          </div>
+        </article>
+      </section>
+
+      <!-- TOP RECOMMENDATION -->
+      <section id="top-recommendation" class="p-6 rounded-xl border border-violet-500 bg-gradient-to-r from-violet-950/40 to-indigo-950/40 shadow-2xl space-y-4">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <span>🎯</span> Top Recommendation: Split Monolithic AnnouncementQA UI Component
+        </h2>
+        <p class="text-sm text-slate-300">
+          Decomposing the massive 1,000+ line <strong>AnnouncementQA</strong> monolith into a clean, localized component folder is our top priority. Storing reactions, comment threads, and triggers in individual, well-named files improves AI navigability, restores strict **locality** of layout edits, and simplifies testing immensely.
+        </p>
+      </section>
+
+    </main>
+  </body>
+</html>
