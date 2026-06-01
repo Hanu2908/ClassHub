@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { AnnouncementsSkeleton } from '../../components/LoadingSkeletons';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
+import RichTextBody from '../../components/RichTextBody';
 
 const DeleteConfirmationModal = lazy(() => import('../../components/DeleteConfirmationModal'));
 const AcksTrackingSheet = lazy(() => import('../../components/AcksTrackingSheet'));
@@ -549,21 +550,19 @@ export function AnnouncementCardComponent({
 
       {/* 3. In-Place Option A Expand with Soft Glass Fade */}
       <div style={{ position: 'relative', width: '100%' }}>
-        <p className="t-body" style={{ 
-          color: 'var(--text-secondary)', 
-          lineHeight: 1.6, 
-          fontSize: '13.5px',
+        <div className="t-body" style={{ 
+          color: 'var(--text-primary)', 
+          lineHeight: 1.625, 
+          fontSize: '14.5px',
           margin: 0,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
           display: isExpanded ? 'block' : '-webkit-box',
           WebkitLineClamp: isExpanded ? undefined : 3,
           WebkitBoxOrient: isExpanded ? undefined : 'vertical',
           overflow: isExpanded ? 'visible' : 'hidden',
           transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         }}>
-          {ann.body}
-        </p>
+          <RichTextBody text={ann.body} />
+        </div>
         {!isExpanded && isLongText && (
           <div style={{
             position: 'absolute',
@@ -1213,9 +1212,9 @@ export default function AnnouncementsPage() {
                   )}
                 </div>
 
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5', opacity: 0.9 }}>
-                  {fp.body}
-                </p>
+                <div style={{ margin: 0, fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.5', opacity: 0.95 }}>
+                  <RichTextBody text={fp.body} />
+                </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
                   <button

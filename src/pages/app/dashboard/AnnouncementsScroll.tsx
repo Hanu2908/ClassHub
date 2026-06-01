@@ -10,30 +10,7 @@ import { AnnouncementQAFooter } from '../../../components/AnnouncementQA';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchAnnouncementsData } from './prefetchHelper';
 import { WidgetSkeleton } from './dashboardUtils';
-
-// ── Secure Auto-Linkifier Engine ──
-function linkify(text: string): React.ReactNode {
-  if (!text) return null;
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
-  return parts.map((part, index) => {
-    if (urlRegex.test(part) || part.startsWith('http://') || part.startsWith('https://')) {
-      return (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: 'var(--accent-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {part}
-        </a>
-      );
-    }
-    return part;
-  });
-}
+import RichTextBody from '../../../components/RichTextBody';
 
 interface CategoryInfo {
   name: string;
@@ -478,8 +455,8 @@ export default function AnnouncementsScroll() {
             </div>
 
             {/* Rich Body Content */}
-            <div className="t-body" style={{ color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: '30vh', overflowY: 'auto', paddingRight: 4, textAlign: 'left' }}>
-              {linkify(selectedAnn.body)}
+            <div className="t-body" style={{ color: 'var(--text-primary)', lineHeight: 1.6, maxHeight: '30vh', overflowY: 'auto', paddingRight: 4, textAlign: 'left' }}>
+              <RichTextBody text={selectedAnn.body} />
             </div>
 
             {/* Deadline Badge */}
