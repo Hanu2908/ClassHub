@@ -1,4 +1,4 @@
-import React, { useState, useMemo, type CSSProperties } from 'react';
+import React, { useState, useMemo, useRef, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Megaphone, Award, Calendar, Coffee, Paperclip, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../../components/Shared';
@@ -11,6 +11,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { prefetchAnnouncementsData } from './prefetchHelper';
 import { WidgetSkeleton } from './dashboardUtils';
 import RichTextBody from '../../../components/RichTextBody';
+import { OffscreenSharePortal } from '../../../components/announcement-qa/OffscreenSharePortal';
+import { shareAnnouncementCard } from '../../../lib/utils/shareCard';
 
 interface CategoryInfo {
   name: string;
@@ -88,6 +90,24 @@ export default function AnnouncementsScroll() {
   const [dragOffset, setDragOffset] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [selectedAnn, setSelectedAnn] = useState<(Announcement & { isAcknowledged: boolean }) | null>(null);
+
+  // Announcement sharing states
+  const sharePortalRef = useRef<HTMLDivElement>(null);
+  const [activeShareAnn, setActiveShareAnn] = useState<Announcement | null>(null);
+
+  const handleShareAnnouncement = (announcement: Announcement) => {
+    setActiveShareAnn(announcement);
+    setTimeout(async () => {
+      await shareAnnouncementCard(
+        announcement,
+        sharePortalRef,
+        () => {},
+        () => {
+          setActiveShareAnn(null);
+        }
+      );
+    }, 50);
+  };
 
   const { data: announcements = [], isLoading } = useAnnouncements({ limit: 12 });
   const visible = useMemo(() => {
@@ -499,6 +519,7 @@ export default function AnnouncementsScroll() {
                   setSelectedAnn(null);
                   navigate(`/app/announcements?id=${selectedAnn.id}&expand_qa=true`);
                 }}
+                onShare={() => handleShareAnnouncement(selectedAnn)}
                 style={{ justifyContent: 'space-between', width: '100%' }}
               />
             </div>
@@ -545,6 +566,7 @@ export default function AnnouncementsScroll() {
             </div>
           </div>
         )}
+        <OffscreenSharePortal announcement={activeShareAnn} domRef={sharePortalRef} />
       </div>
     </section>
   );

@@ -18,6 +18,8 @@ import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { AnnouncementsSkeleton } from '../../components/LoadingSkeletons';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
 import RichTextBody from '../../components/RichTextBody';
+import { OffscreenSharePortal } from '../../components/announcement-qa/OffscreenSharePortal';
+import { shareAnnouncementCard } from '../../lib/utils/shareCard';
 
 const DeleteConfirmationModal = lazy(() => import('../../components/DeleteConfirmationModal'));
 const AcksTrackingSheet = lazy(() => import('../../components/AcksTrackingSheet'));
@@ -396,6 +398,7 @@ interface AnnouncementCardComponentProps {
   setPendingDeleteId: (id: string | null) => void;
   setTrackingAnnouncement: (ann: Announcement | null) => void;
   setOpenCommentsAnnId: (id: string | null) => void;
+  onShare: (ann: Announcement) => void;
 }
 
 export function AnnouncementCardComponent({
@@ -408,7 +411,8 @@ export function AnnouncementCardComponent({
   handleAcknowledge,
   setPendingDeleteId,
   setTrackingAnnouncement,
-  setOpenCommentsAnnId
+  setOpenCommentsAnnId,
+  onShare
 }: AnnouncementCardComponentProps) {
   const [hovered, setHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -643,6 +647,7 @@ export function AnnouncementCardComponent({
         <AnnouncementQAFooter 
           announcementId={ann.id} 
           onOpenComments={() => setOpenCommentsAnnId(ann.id)} 
+          onShare={() => onShare(ann)}
         />
 
         <div>
@@ -757,6 +762,10 @@ export default function AnnouncementsPage() {
   const [openCommentsAnnId, setOpenCommentsAnnId] = useState<string | null>(null);
   const [focusCommentId, setFocusCommentId] = useState<string | null>(null);
 
+  // Announcement Card Share states
+  const sharePortalRef = useRef<HTMLDivElement>(null);
+  const [activeShareAnn, setActiveShareAnn] = useState<Announcement | null>(null);
+
   // Parse deep-linking Q&A parameters on mount/location change
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -785,6 +794,20 @@ export default function AnnouncementsPage() {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId]);
+
+  const handleShareAnnouncement = (announcement: Announcement) => {
+    setActiveShareAnn(announcement);
+    setTimeout(async () => {
+      await shareAnnouncementCard(
+        announcement,
+        sharePortalRef,
+        () => {},
+        () => {
+          setActiveShareAnn(null);
+        }
+      );
+    }, 50);
+  };
 
   const role = useAppStore(s => s.role);
   const authUser = useAppStore(s => s.authUser);
@@ -1296,6 +1319,7 @@ export default function AnnouncementsPage() {
                 setPendingDeleteId={setPendingDeleteId}
                 setTrackingAnnouncement={setTrackingAnnouncement}
                 setOpenCommentsAnnId={setOpenCommentsAnnId}
+                onShare={handleShareAnnouncement}
               />
             );
           };
@@ -1389,6 +1413,8 @@ export default function AnnouncementsPage() {
           }}
         />
       )}
+
+      <OffscreenSharePortal announcement={activeShareAnn} domRef={sharePortalRef} />
 
       <NavBar />
     </div>
