@@ -1,5 +1,5 @@
 // src/hooks/useNotifications.ts
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore, mapDbNotification } from '../store/appStore';
@@ -10,8 +10,14 @@ export function useNotifications() {
   const queryClient = useQueryClient();
   const authUser = useAppStore((s) => s.authUser);
   const userId = authUser?.id;
+  const [instanceId, setInstanceId] = useState<string>('');
 
-  // ── 1. Query to Fetch Notifications ──
+  // ── 1. Safe instanceId generation after render ──
+  useEffect(() => {
+    setInstanceId(Math.random().toString(36).substring(2, 9));
+  }, []);
+
+  // ── 2. Query to Fetch Notifications ──
   const query = useQuery<AppNotification[]>({
     queryKey: ['notifications', userId],
     enabled: !!userId,
@@ -34,16 +40,16 @@ export function useNotifications() {
     },
   });
 
-  // ── 2. Real-time PostgreSQL subscription ──
+  // ── 3. Real-time PostgreSQL subscription ──
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !instanceId) return;
 
     if (import.meta.env.DEV) {
-      console.log(`[useNotifications] Setting up notifications subscription for user: ${userId}`);
+      console.log(`[useNotifications] Setting up notifications subscription for user: ${userId} (instance: ${instanceId})`);
     }
 
     const channel = supabase
-      .channel(`user-notifications-${userId}`)
+      .channel(`user-notifications-${userId}-${instanceId}`)
       .on(
         'postgres_changes',
         {
@@ -74,11 +80,11 @@ export function useNotifications() {
 
     return () => {
       if (import.meta.env.DEV) {
-        console.log(`[useNotifications] Cleaning up notifications subscription for user: ${userId}`);
+        console.log(`[useNotifications] Cleaning up notifications subscription for user: ${userId} (instance: ${instanceId})`);
       }
       supabase.removeChannel(channel);
     };
-  }, [userId, queryClient]);
+  }, [userId, queryClient, instanceId]);
 
   // ── 3. Mutation: Mark All Read ──
   const markAllRead = useMutation({
