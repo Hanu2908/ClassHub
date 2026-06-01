@@ -174,15 +174,22 @@ export function useToggleReaction(announcementId: string) {
           if (error) throw error;
           return { action: 'retract' as const, emoji };
         } else {
-          // Different emoji -> Swap reaction via UPSERT (enforced by UNIQUE db constraint)
-          const { error } = await supabase
+          // Different emoji → Delete old reaction, then insert new one
+          // This avoids needing an UPDATE RLS policy (DELETE + INSERT both have their own policies)
+          const { error: deleteErr } = await supabase
             .from('announcement_reactions' as any)
-            .upsert({
+            .delete()
+            .eq('id', userReaction.id);
+          if (deleteErr) throw deleteErr;
+
+          const { error: insertErr } = await supabase
+            .from('announcement_reactions' as any)
+            .insert({
               announcement_id: announcementId,
               user_id: userId,
               emoji: emoji,
-            }, { onConflict: 'announcement_id,user_id' });
-          if (error) throw error;
+            });
+          if (insertErr) throw insertErr;
           return { action: 'swap' as const, emoji };
         }
       } else {

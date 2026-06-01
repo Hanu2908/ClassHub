@@ -11,18 +11,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
  * 3. Delete auth.users row via admin API
  */
 Deno.serve(async (req: Request) => {
-  const corsHeaders: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, x-client-info, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-
+  // CORS — fall back to wildcard when ALLOWED_ORIGINS is not configured.
+  // Auth security comes from JWT verification below, not from origin restriction.
   const origin = req.headers.get("Origin") ?? "";
-  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map(s => s.trim()).filter(Boolean);
-  if (allowed.includes(origin)) {
-    corsHeaders["Access-Control-Allow-Origin"] = origin;
-  } else if (allowed.length === 1) {
-    corsHeaders["Access-Control-Allow-Origin"] = allowed[0];
-  }
+  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map(s => s.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+
+  const corsHeaders: Record<string, string> = {
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Origin": allowed.includes(origin)
+      ? origin
+      : allowed.length === 1
+      ? allowed[0]
+      : "*", // default to wildcard — JWT is the real security gate
+  };
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
