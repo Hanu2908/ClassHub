@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Bell, BellOff, Check, Trash2, CornerDownRight } from 'lucide-react';
+import { Bell, BellOff, Check, Trash2, CornerDownRight, Pencil } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../Toast';
 import { BottomSheet } from '../BottomSheet';
@@ -9,6 +9,7 @@ import {
   useAnnouncementMuteStatus,
   useAddComment,
   useDeleteComment,
+  useEditComment,
   useToggleVerifyComment,
   useToggleThreadMute,
   useAnnouncementQARealtime
@@ -35,6 +36,7 @@ export function AnnouncementCommentsDrawer({
   
   const addComment = useAddComment(announcementId);
   const deleteComment = useDeleteComment(announcementId);
+  const editComment = useEditComment(announcementId);
   const toggleVerify = useToggleVerifyComment(announcementId);
   const toggleMute = useToggleThreadMute(announcementId);
   useAnnouncementQARealtime(announcementId);
@@ -42,6 +44,11 @@ export function AnnouncementCommentsDrawer({
   const [inputVal, setInputVal] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
+
+  // Edit comment states
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editInputVal, setEditInputVal] = useState('');
+  const [now] = useState(() => Date.now());
 
   const listRef = useRef<HTMLDivElement>(null);
   const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -193,6 +200,17 @@ export function AnnouncementCommentsDrawer({
     }
   };
 
+  const handleSaveEdit = async (commentId: string) => {
+    if (!editInputVal.trim() || editInputVal.length > 500 || editComment.isPending) return;
+
+    try {
+      await editComment.mutateAsync({ commentId, content: editInputVal });
+      setEditingCommentId(null);
+    } catch {
+      // Error handled in hook
+    }
+  };
+
   const handleToggleVerify = async (commentId: string, currentStatus: boolean) => {
     try {
       await toggleVerify.mutateAsync({ commentId, isVerified: !currentStatus });
@@ -278,6 +296,7 @@ export function AnnouncementCommentsDrawer({
               const isSelf = comment.authorId === currentUserId;
               const isAuthorCR = comment.authorRole === 'cr';
               const isCommentVerified = comment.isVerified;
+              const canEdit = isSelf && !isCommentVerified && (now - new Date(comment.createdAt).getTime() <= 15 * 60 * 1000);
               
               return (
                 <div
@@ -331,22 +350,104 @@ export function AnnouncementCommentsDrawer({
                           </span>
                         )}
                       </div>
-                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
-                        {timeAgo(comment.createdAt)}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                          {timeAgo(comment.createdAt)}
+                        </span>
+                        {comment.editedAt && (
+                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px', fontStyle: 'italic' }}>
+                            • (Edited)
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Comment Content */}
+                    {/* Comment Content or Editor */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <p className="t-body" style={{ color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                        {comment.content.split(/(\s+)/).map((word, idx) => {
-                          // Colorize @mentions beautifully
-                          if (word.startsWith('@')) {
-                            return <span key={idx} style={{ color: 'var(--text-accent)', fontWeight: 500 }}>{word}</span>;
-                          }
-                          return word;
-                        })}
-                      </p>
+                      {editingCommentId === comment.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          <textarea
+                            autoFocus
+                            rows={2}
+                            value={editInputVal}
+                            onChange={(e) => setEditInputVal(e.target.value)}
+                            style={{
+                              width: '100%',
+                              background: 'var(--bg-base)',
+                              border: '1px solid var(--border-default)',
+                              borderRadius: 'var(--radius-sm)',
+                              color: 'var(--text-primary)',
+                              padding: '8px 10px',
+                              fontSize: '13px',
+                              lineHeight: 1.5,
+                              outline: 'none',
+                              resize: 'none',
+                              fontFamily: 'var(--font-body)',
+                            }}
+                            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent-primary-muted)')}
+                            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-default)')}
+                          />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span
+                              className="t-mono-sm"
+                              style={{
+                                fontSize: '9px',
+                                color: editInputVal.length > 500 ? 'var(--status-critical)' : 'var(--text-muted)',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {editInputVal.length}/500
+                            </span>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => setEditingCommentId(null)}
+                                className="t-button-secondary"
+                                style={{
+                                  padding: '4px 12px',
+                                  fontSize: '11px',
+                                  height: 'auto',
+                                  lineHeight: 'normal',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEdit(comment.id)}
+                                disabled={editComment.isPending || !editInputVal.trim() || editInputVal.length > 500}
+                                className="t-button"
+                                style={{
+                                  padding: '4px 12px',
+                                  fontSize: '11px',
+                                  height: 'auto',
+                                  lineHeight: 'normal',
+                                  background: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
+                                    ? 'rgba(255, 255, 255, 0.05)' 
+                                    : 'var(--accent-primary)',
+                                  color: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
+                                    ? 'var(--text-muted)' 
+                                    : '#000',
+                                  cursor: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                {editComment.isPending ? 'Saving...' : 'Save'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="t-body" style={{ color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                          {comment.content.split(/(\s+)/).map((word, idx) => {
+                            // Colorize @mentions beautifully
+                            if (word.startsWith('@')) {
+                              return <span key={idx} style={{ color: 'var(--text-accent)', fontWeight: 500 }}>{word}</span>;
+                            }
+                            return word;
+                          })}
+                        </p>
+                      )}
 
                       {/* Controls Footer */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
@@ -373,35 +474,75 @@ export function AnnouncementCommentsDrawer({
                           </button>
                         ) : <div />}
 
-                        {/* Delete action (CR or Self) */}
-                        {(userRole === 'cr' || isSelf) && (
-                          <button
-                            onClick={() => handleDeleteComment(comment.id)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'rgba(255, 68, 68, 0.6)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: 4,
-                              borderRadius: '4px',
-                              transition: 'all var(--transition-fast)',
-                              outline: 'none',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.color = 'var(--status-critical)';
-                              e.currentTarget.style.background = 'rgba(255, 68, 68, 0.08)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.color = 'rgba(255, 68, 68, 0.6)';
-                              e.currentTarget.style.background = 'none';
-                            }}
-                            title={isCommentVerified ? 'Delete verified comment (CR Only)' : 'Delete comment'}
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                        {/* Right side actions (Edit and Delete) */}
+                        {editingCommentId !== comment.id && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  setEditingCommentId(comment.id);
+                                  setEditInputVal(comment.content);
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-muted)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: '50%',
+                                  transition: 'all var(--transition-fast)',
+                                  outline: 'none',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'var(--accent-primary)';
+                                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'var(--text-muted)';
+                                  e.currentTarget.style.background = 'none';
+                                }}
+                                title="Edit comment"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                            )}
+
+                            {/* Delete action (CR or Self) */}
+                            {(userRole === 'cr' || isSelf) && (
+                              <button
+                                onClick={() => handleDeleteComment(comment.id)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'rgba(255, 68, 68, 0.6)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: '50%',
+                                  transition: 'all var(--transition-fast)',
+                                  outline: 'none',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'var(--status-critical)';
+                                  e.currentTarget.style.background = 'rgba(255, 68, 68, 0.08)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'rgba(255, 68, 68, 0.6)';
+                                  e.currentTarget.style.background = 'none';
+                                }}
+                                title={isCommentVerified ? 'Delete verified comment (CR Only)' : 'Delete comment'}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>

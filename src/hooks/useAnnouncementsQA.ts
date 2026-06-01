@@ -34,6 +34,7 @@ export interface QAComment {
   content: string;
   isVerified: boolean;
   createdAt: string;
+  editedAt: string | null;
   authorName: string;
   authorRoll: string | null;
   authorRole: 'student' | 'cr';
@@ -105,6 +106,7 @@ export function useAnnouncementComments(announcementId: string) {
           content,
           is_verified,
           created_at,
+          edited_at,
           users (name, section_roll, role)
         `)
         .eq('announcement_id', announcementId)
@@ -119,6 +121,7 @@ export function useAnnouncementComments(announcementId: string) {
         content: c.content,
         isVerified: c.is_verified,
         createdAt: c.created_at,
+        editedAt: c.edited_at ?? null,
         authorName: c.users?.name ?? 'Unknown Student',
         authorRoll: c.users?.section_roll ?? null,
         authorRole: (c.users?.role as 'student' | 'cr') ?? 'student',
@@ -287,6 +290,33 @@ export function useDeleteComment(announcementId: string) {
         showToast('Cannot delete verified comments', 'error');
       } else {
         showToast('Failed to delete comment', 'error');
+      }
+    },
+  });
+}
+
+export function useEditComment(announcementId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ commentId, content }: { commentId: string; content: string }) => {
+      const { error } = await supabase
+        .from('announcement_comments' as any)
+        .update({ content: content.trim() })
+        .eq('id', commentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['announcement_comments', announcementId] });
+      showToast('Comment updated successfully', 'success');
+    },
+    onError: (err: any) => {
+      const isLockout = err.message?.includes('Verified Lockout') || err.code === '42501' || err.status === 401;
+      if (isLockout) {
+        showToast('Cannot edit verified or expired comments', 'error');
+      } else {
+        showToast('Failed to update comment', 'error');
       }
     },
   });
