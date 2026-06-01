@@ -8,15 +8,17 @@ import { useSection } from '../../hooks/useSectionMembers';
 import { supabase } from '../../lib/supabase';
 import { isPushSupported, getPushPermission, hasActiveSubscription, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
+import { signOutGlobal } from '../../components/AuthProvider';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { authUser, role, hub, signOut, deferredPrompt, setDeferredPrompt } = useAppStore();
+  const { authUser, role, hub, signOut, deferredPrompt, setDeferredPrompt, refreshProfile } = useAppStore();
   const { data: section } = useSection();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
@@ -81,12 +83,11 @@ export default function ProfilePage() {
     if (deleteInput !== 'DELETE') return;
     setDeleting(true);
     try {
-      const { error } = await supabase.rpc('delete_own_account');
+      const { error } = await supabase.functions.invoke('delete-account');
       if (error) throw error;
-      // Clear all local state and redirect
-      useAppStore.getState().signOut();
+      // Clear all local state and Supabase session, then redirect
+      await signOutGlobal(navigate);
       showToast('Account deleted successfully', 'success');
-      navigate('/');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       showToast(`Delete failed: ${msg}`, 'error');
@@ -96,9 +97,23 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLeaveHub = () => {
-    signOut();
-    navigate('/onboarding/choice');
+  const handleLeaveHub = async () => {
+    setLeaving(true);
+    try {
+      const { error } = await supabase.rpc('leave_section_hub' as any);
+      if (error) throw error;
+      // Refresh profile from DB so Zustand reflects the detached state (no section)
+      await refreshProfile();
+      // Clear hub cache and navigate to onboarding — Supabase session stays alive
+      signOut(); // reset local Zustand hub/offlineCache state only
+      navigate('/onboarding/choice');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`Failed to leave hub: ${msg}`, 'error');
+      console.error('[LeaveHub]', err);
+    } finally {
+      setLeaving(false);
+    }
   };
 
   const handleInstallApp = async () => {
@@ -366,9 +381,11 @@ export default function ProfilePage() {
                   Are you sure? You'll need a new hub code to rejoin.
                 </p>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button id="confirm-leave-btn" className="t-button" style={{ flex: 1, padding: '10px', background: 'var(--status-critical)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
-                    onClick={handleLeaveHub}>Leave</button>
-                  <button id="cancel-leave-btn" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowLeaveConfirm(false)}>Cancel</button>
+                  <button id="confirm-leave-btn" className="t-button"
+                    disabled={leaving}
+                    style={{ flex: 1, padding: '10px', background: 'var(--status-critical)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: leaving ? 'not-allowed' : 'pointer', opacity: leaving ? 0.7 : 1 }}
+                    onClick={handleLeaveHub}>{leaving ? 'Leaving…' : 'Leave'}</button>
+                  <button id="cancel-leave-btn" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowLeaveConfirm(false)} disabled={leaving}>Cancel</button>
                 </div>
               </div>
             )}

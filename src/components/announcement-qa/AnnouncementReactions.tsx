@@ -169,7 +169,6 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
       {/* Floating Reaction Popover */}
       {showPopover && (
         <div
-          box-shadow="var(--shadow-elevated)"
           ref={popoverRef}
           className="reaction-popover"
           style={{

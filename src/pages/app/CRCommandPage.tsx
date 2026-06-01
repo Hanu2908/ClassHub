@@ -1626,8 +1626,6 @@ export default function CRCommandPage() {
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [deletingHub, setDeletingHub] = useState(false);
   const { data: section } = useSection();
-  const refreshProfile = useAppStore(s => s.refreshProfile);
-  const setActiveTab = useAppStore(s => s.setActiveTab);
 
   useEffect(() => {
     if (location.state?.openBroadcast || location.state?.openFlashPost) {
@@ -1647,9 +1645,8 @@ export default function CRCommandPage() {
     try {
       if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
         showToast('[Demo] Section Hub deleted successfully!', 'success');
-        useAppStore.setState({ role: 'student', authUser: null, user: null, hub: null });
-        setActiveTab('home');
-        navigate('/', { replace: true });
+        useAppStore.getState().signOut();
+        navigate('/onboarding/choice', { replace: true });
         return;
       }
 
@@ -1657,10 +1654,9 @@ export default function CRCommandPage() {
       if (error) throw error;
 
       showToast('Section Hub deleted successfully!', 'success');
-      // Refresh profile to pick up the NULL section and student role
-      await refreshProfile();
-      setActiveTab('home');
-      navigate('/', { replace: true });
+      // Purge all stale cached section data from Zustand (does NOT call supabase.auth.signOut)
+      useAppStore.getState().signOut();
+      navigate('/onboarding/choice', { replace: true });
     } catch (err: unknown) {
       console.error('[Delete] Hub deletion failed:', err);
       const errMsg = err instanceof Error ? err.message : 'Failed to delete Section Hub';
