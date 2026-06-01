@@ -61,10 +61,24 @@ Deno.serve(async (req: Request) => {
     const userId = authData.user.id;
     const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Step 1: Delete public.users row.
+    // Step 1: Null out attachments.uploaded_by (ON DELETE RESTRICT → must clear manually)
+    const { error: attachErr } = await serviceClient
+      .from("attachments")
+      .update({ uploaded_by: null })
+      .eq("uploaded_by", userId);
+    if (attachErr) {
+      console.error("[delete-account] Failed to clear attachments.uploaded_by:", attachErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to clear attachment references", detail: attachErr.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Step 2: Delete public.users row.
     // FK cascades clean up:
     //   CASCADE: attendance_records, acknowledgments, submissions, votes, push_subscriptions
-    //   SET NULL: announcements.author_id, assignments.created_by, polls.created_by, timetable_slots.created_by
+    //   SET NULL: announcements.author_id, assignments.created_by, polls.created_by,
+    //             timetable_slots.created_by, sections.created_by, attachments.uploaded_by
     const { error: deleteUserError } = await serviceClient
       .from("users")
       .delete()
