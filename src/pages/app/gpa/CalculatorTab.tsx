@@ -241,6 +241,119 @@ function RowCreditsInput({ value, onChange, disabled, idx, subName }: { value: n
   );
 }
 
+// ── OCR Preprocessing Helpers ─────────────────────────────────────────────────
+
+/** Apply grayscale, contrast stretching, and deskew to a canvas for better OCR accuracy. */
+function preprocessCanvasForOcr(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+): void {
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+
+  // 1. Grayscale (BT.601 luminance)
+  for (let i = 0; i < d.length; i += 4) {
+    const gray = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+    d[i] = d[i + 1] = d[i + 2] = gray;
+  }
+
+  // 2. Percentile-clipped contrast stretching (handles phone-photo shadows/glare)
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < d.length; i += 4) hist[d[i]]++;
+  const total = w * h;
+  let cum = 0, lo = 0, hi = 255;
+  for (let v = 0; v < 256; v++) {
+    cum += hist[v];
+    if (lo === 0 && cum >= total * 0.01) lo = v;
+    if (cum >= total * 0.99) { hi = v; break; }
+  }
+  const rng = hi - lo || 1;
+  for (let i = 0; i < d.length; i += 4) {
+    const s = Math.round(Math.max(0, Math.min(255, ((d[i] - lo) / rng) * 255)));
+    d[i] = d[i + 1] = d[i + 2] = s;
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // 3. Deskew via horizontal projection-profile variance maximisation
+  //    Downsample for speed, test angles -3° to +3° in 0.5° steps
+  const dsW = Math.min(300, w);
+  const dsRatio = dsW / w;
+  const dsH = Math.round(h * dsRatio);
+  const dsC = document.createElement('canvas');
+  dsC.width = dsW;
+  dsC.height = dsH;
+  const dsCtx = dsC.getContext('2d');
+  if (!dsCtx) return;
+  dsCtx.drawImage(canvas, 0, 0, dsW, dsH);
+  const dsData = dsCtx.getImageData(0, 0, dsW, dsH).data;
+
+  let bestAngle = 0;
+  let bestVar = 0;
+  for (let a = -3; a <= 3; a += 0.5) {
+    const rad = (a * Math.PI) / 180;
+    const cosA = Math.cos(rad), sinA = Math.sin(rad);
+    const cx = dsW / 2, cy = dsH / 2;
+    const proj = new Float32Array(dsH);
+    // Sample every 2nd pixel for speed
+    for (let y = 0; y < dsH; y += 2) {
+      for (let x = 0; x < dsW; x += 2) {
+        const sx = Math.round(cosA * (x - cx) - sinA * (y - cy) + cx);
+        const sy = Math.round(sinA * (x - cx) + cosA * (y - cy) + cy);
+        if (sx >= 0 && sx < dsW && sy >= 0 && sy < dsH) {
+          if (dsData[(sy * dsW + sx) * 4] < 128) proj[y]++;
+        }
+      }
+    }
+    let sum = 0, sumSq = 0;
+    for (let y = 0; y < dsH; y++) { sum += proj[y]; sumSq += proj[y] ** 2; }
+    const variance = sumSq / dsH - (sum / dsH) ** 2;
+    if (variance > bestVar) { bestVar = variance; bestAngle = a; }
+  }
+
+  // Rotate only if meaningful skew detected (≥ 0.5°)
+  if (Math.abs(bestAngle) >= 0.5) {
+    const rotC = document.createElement('canvas');
+    rotC.width = w;
+    rotC.height = h;
+    const rCtx = rotC.getContext('2d');
+    if (rCtx) {
+      rCtx.translate(w / 2, h / 2);
+      rCtx.rotate((-bestAngle * Math.PI) / 180);
+      rCtx.drawImage(canvas, -w / 2, -h / 2);
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(rotC, 0, 0);
+    }
+  }
+}
+
+/**
+ * Merge OCR lines where a subject name spans multiple rows.
+ * Heuristic: if a line has no 2–3 digit numbers (marks) and is followed by
+ * a line that does, they likely belong to the same marksheet row.
+ */
+function mergeOcrLines(rawLines: string[]): string[] {
+  const merged: string[] = [];
+  let i = 0;
+  while (i < rawLines.length) {
+    const line = rawLines[i].trim();
+    if (!line) { i++; continue; }
+    const hasNums = /\d{2,3}/.test(line);
+    const next = (i + 1 < rawLines.length) ? rawLines[i + 1].trim() : '';
+    const nextHasNums = /\d{2,3}/.test(next);
+    // Merge if: this line is text-only, next line has marks, and this line has ≥ 3 alpha chars
+    if (!hasNums && next && nextHasNums && line.replace(/[^a-zA-Z]/g, '').length >= 3) {
+      merged.push(line + ' ' + next);
+      i += 2;
+    } else {
+      merged.push(rawLines[i]);
+      i++;
+    }
+  }
+  return merged;
+}
+
 interface CalculatorTabProps {
   sem: number;
 }
@@ -286,7 +399,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
       const { createWorker } = await import('tesseract.js');
       const worker = await createWorker('eng');
       await worker.setParameters({
-        tessedit_pageseg_mode: 6 as any, // PSM 6: Assume a single uniform block of text (keeps table rows together)
+        tessedit_pageseg_mode: 4 as any, // PSM 4: Assume single column of variable-sized text (better for marksheet tables)
       });
       setOcrWorker(worker);
       return worker;
@@ -398,6 +511,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
             const ctx = canvas.getContext('2d');
             if (ctx) {
               await page.render({ canvasContext: ctx, viewport }).promise;
+              preprocessCanvasForOcr(canvas, ctx, viewport.width, viewport.height);
               setScanProgress(`Running OCR on page ${pNum}/${pdfDoc.numPages}…`);
               const worker = await initOcrWorker();
               if (worker) {
@@ -469,11 +583,9 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         preprocessCanvas.height = height;
         const pCtx = preprocessCanvas.getContext('2d');
         if (pCtx) {
-          // Draw downscaled image onto the preprocess canvas
           pCtx.drawImage(imageElement, 0, 0, width, height);
-          
-          // Removed high-contrast binary thresholding because it degrades anti-aliased text.
-          // Tesseract performs its own binarization via Otsu's method which is generally superior.
+          // Grayscale + contrast stretch + deskew for better OCR accuracy
+          preprocessCanvasForOcr(preprocessCanvas, pCtx, width, height);
         }
 
         setScanProgress('Analyzing text…');
@@ -483,7 +595,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
       setScanProgress('Matching subjects…');
 
       const matches: Array<{ id: string; name: string; marks: number; grade: string }> = [];
-      const lines = text.split('\n');
+      const lines = mergeOcrLines(text.split('\n'));
 
       const cleanText = (str: string) => str.toUpperCase().replace(/[^A-Z0-9\-+\s]/g, ' ');
 
@@ -491,11 +603,28 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         const words = str.split(/\s+/);
         const nums: number[] = [];
         words.forEach(w => {
-          const match = w.match(/\d+/);
-          if (match) {
-            const val = parseInt(match[0], 10);
+          // Direct digit extraction first
+          const directMatch = w.match(/\d+/);
+          if (directMatch) {
+            const val = parseInt(directMatch[0], 10);
             if (val >= 0 && val <= 100) {
               nums.push(val);
+              return;
+            }
+          }
+          // OCR misread recovery: for short tokens (2–3 chars) containing at least one digit,
+          // fix common character substitutions (O→0, I→1, S→5, Z→2) and retry
+          if (w.length >= 2 && w.length <= 3 && /\d/.test(w)) {
+            const fixed = w
+              .replace(/[Oo]/g, '0')
+              .replace(/[IlL|]/g, '1')
+              .replace(/[Ss]/g, '5')
+              .replace(/[Zz]/g, '2');
+            if (/^\d+$/.test(fixed)) {
+              const val = parseInt(fixed, 10);
+              if (val >= 0 && val <= 100) {
+                nums.push(val);
+              }
             }
           }
         });
