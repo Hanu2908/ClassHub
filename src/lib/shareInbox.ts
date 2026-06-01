@@ -26,7 +26,8 @@ export function retainFailedShareFiles(
 }
 
 export async function stageShare(files: File[], caption = ''): Promise<ShareInboxEntry> {
-  const validation = validateSharedFiles(files);
+  const isTextShare = caption.trim().length > 0;
+  const validation = validateSharedFiles(files, isTextShare);
   if (!validation.ok) throw new Error(validation.error);
 
   const createdAt = Date.now();

@@ -20,7 +20,23 @@ registerRoute(
       await pruneExpiredShares();
       const formData = await request.formData();
       const files = formData.getAll('files').filter((value) => value instanceof File);
-      const caption = formData.get('caption');
+      
+      // Extract standard PWA share fields (title, text, url)
+      const title = formData.get('title');
+      const text = formData.get('text');
+      const shareUrl = formData.get('url');
+      let caption = formData.get('caption') || '';
+      
+      const parts = [];
+      if (title && typeof title === 'string') parts.push(title.trim());
+      if (text && typeof text === 'string') parts.push(text.trim());
+      if (shareUrl && typeof shareUrl === 'string') parts.push(shareUrl.trim());
+      
+      if (parts.length > 0) {
+        const merged = parts.join('\n');
+        caption = caption ? `${caption.trim()}\n\n${merged}` : merged;
+      }
+      
       const entry = await stageShare(files, typeof caption === 'string' ? caption : '');
       return Response.redirect(new URL(`/share-intake?id=${encodeURIComponent(entry.id)}`, self.location.origin).toString(), 303);
     } catch (error) {

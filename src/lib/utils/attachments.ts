@@ -91,8 +91,14 @@ export function isPreviewableImage(fileType: string | undefined | null, filename
 
 export function validateSharedFiles(
   files: File[],
+  allowEmpty = false,
 ): { ok: true; files: File[] } | { ok: false; error: SharedFileValidationError } {
-  if (files.length === 0) return { ok: false, error: 'empty-share' };
+  if (files.length === 0) {
+    if (allowEmpty) {
+      return { ok: true, files };
+    }
+    return { ok: false, error: 'empty-share' };
+  }
   if (files.length > MAX_FILE_COUNT) return { ok: false, error: 'too-many-files' };
 
   for (const file of files) {
