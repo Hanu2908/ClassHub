@@ -1,7 +1,7 @@
 // src/lib/offlineDb.ts
 
 const DB_NAME = 'classhub-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export interface OfflineAction {
   id: string;
@@ -38,6 +38,9 @@ export function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('offline-actions')) {
         db.createObjectStore('offline-actions', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('share-inbox')) {
+        db.createObjectStore('share-inbox', { keyPath: 'id' });
       }
     };
   });

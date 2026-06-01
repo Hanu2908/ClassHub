@@ -2,6 +2,7 @@ import { precacheAndRoute, cleanupOutdatedCaches, matchPrecache } from 'workbox-
 import { registerRoute } from 'workbox-routing';
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
+import { pruneExpiredShares, stageShare } from './lib/shareInbox';
 
 // Clean up old outdated caches from previous builds
 cleanupOutdatedCaches();
@@ -12,6 +13,24 @@ precacheAndRoute(self.__WB_MANIFEST || []);
 // ── Runtime Caching Rules ──
 
 // Cache Google Fonts stylesheets with Stale-While-Revalidate
+registerRoute(
+  ({ url, request }) => request.method === 'POST' && url.pathname === '/share-target',
+  async ({ request }) => {
+    try {
+      await pruneExpiredShares();
+      const formData = await request.formData();
+      const files = formData.getAll('files').filter((value) => value instanceof File);
+      const caption = formData.get('caption');
+      const entry = await stageShare(files, typeof caption === 'string' ? caption : '');
+      return Response.redirect(new URL(`/share-intake?id=${encodeURIComponent(entry.id)}`, self.location.origin).toString(), 303);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'invalid-share';
+      return Response.redirect(new URL(`/share-intake?error=${encodeURIComponent(code)}`, self.location.origin).toString(), 303);
+    }
+  },
+  'POST'
+);
+
 registerRoute(
   ({ url }) => url.origin === 'https://fonts.googleapis.com',
   new StaleWhileRevalidate({

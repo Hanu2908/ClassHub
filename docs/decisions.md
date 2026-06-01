@@ -310,8 +310,26 @@ polls, timetable) are identical for both ranks.
 
 ---
 
+## ADR-019 - Android PWA Share Inbox
+**Decision:** Register the installed Android ClassHub PWA as a Web Share Target
+for faculty photos and PDFs. Stage incoming files locally in IndexedDB for up to
+24 hours, require CR review, and upload only after the CR chooses announcement
+or assignment and publishes.
+
+**Failure handling:** If the parent post exists but attachment upload partially
+fails, preserve only failed files with the existing parent ID and retry without
+creating a duplicate post.
+
+**Boundaries:** iPhone and unsupported browsers keep the existing picker. No
+server ingestion, schema migration, or RLS policy change is introduced.
+
+**Date:** June 2026
+
+---
+
 ## Change Log
 | Version | Change | Author |
 |---|---|---|
 | 1.0 | Initial 16 decisions locked | Himanshu Saini |
 | 1.1 | ADR-017 (deferred), ADR-018 (Multi-CR) added | Himanshu Saini |
+| 1.2 | ADR-019 (Android PWA Share Inbox) added | Himanshu Saini |

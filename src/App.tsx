@@ -25,6 +25,7 @@ const GPACalculatorPage = lazy(() => import('./pages/app/GPACalculatorPage'));
 const ResourceHubPage = lazy(() => import('./pages/app/ResourceHubPage'));
 const DeveloperConsolePage = lazy(() => import('./pages/app/DeveloperConsolePage'));
 const ExamsPage = lazy(() => import('./pages/app/ExamsPage'));
+const ShareIntakePage = lazy(() => import('./pages/app/ShareIntakePage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -94,6 +95,22 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ShareIntakeRoute() {
+  const session = useAppStore(s => s.session);
+  const authUser = useAppStore(s => s.authUser);
+  const isAuthLoading = useAppStore(s => s.isAuthLoading);
+  const inboxId = new URLSearchParams(window.location.search).get('id');
+
+  if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
+  if (!session && authUser?.sectionId !== 'demo-section') {
+    if (inboxId) sessionStorage.setItem('classhub-pending-share-inbox-id', inboxId);
+    return <Navigate to="/" replace />;
+  }
+  if (!authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
+  if (inboxId) sessionStorage.removeItem('classhub-pending-share-inbox-id');
+  return <ErrorBoundary variant="page"><ShareIntakePage /></ErrorBoundary>;
+}
+
 export default function App() {
   useEffect(() => {
     const handler = (e: Event) => {
@@ -134,6 +151,7 @@ export default function App() {
             <Route path="/app/exams" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/app/gpa" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><DeveloperConsolePage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
+            <Route path="/share-intake" element={<ShareIntakeRoute />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

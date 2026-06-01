@@ -14,6 +14,7 @@ import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { AssignmentsSkeleton } from '../../components/LoadingSkeletons';
+import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
@@ -53,7 +54,8 @@ function autoGenerate(totalStudents: number, numSets: number, excludeFirstPage: 
   return sets;
 }
 
-function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean; onClose: () => void; shareInboxId?: string }) {
+  const navigate = useNavigate();
   const createAssignment = useCreateAssignment();
   const ensureSubjects = useEnsureSubjects();
   const { data: subjectsList = [] } = useSubjects();
@@ -79,6 +81,15 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
   const [numSets, setNumSets] = useState('');
   const [excludeFirstPage, setExcludeFirstPage] = useState(false);
   const [sets, setSets] = useState<AssignmentSet[]>([]);
+
+  useEffect(() => {
+    if (!open || !shareInboxId) return;
+    getShare(shareInboxId).then((entry) => {
+      if (!entry) return;
+      setFiles(entry.files);
+      setDescription(entry.caption);
+    }).catch(() => showToast('Failed to restore shared files', 'error'));
+  }, [open, shareInboxId]);
 
   // Load draft from localStorage on mount (when sheet opens)
   useEffect(() => {
@@ -219,7 +230,25 @@ function CreateAssignmentSheet({ open, onClose }: { open: boolean; onClose: () =
 
         if (uploadResult.failed.length > 0) {
           showToast(`${uploadResult.failed.length} file(s) failed to upload`, 'warning');
+          if (shareInboxId) {
+            const entry = await getShare(shareInboxId);
+            if (entry) {
+              await updateShare({
+                ...entry,
+                files: retainFailedShareFiles(files, uploadResult.failed),
+                state: 'attachment-retry',
+                destination: 'assignment',
+                parentId,
+              });
+              navigate(`/share-intake?id=${encodeURIComponent(shareInboxId)}`, { replace: true });
+              return;
+            }
+          }
+        } else if (shareInboxId) {
+          await deleteShare(shareInboxId);
         }
+      } else if (shareInboxId) {
+        await deleteShare(shareInboxId);
       }
 
       showToast('Assignment published! ✓', 'success');
@@ -737,7 +766,7 @@ export default function AssignmentsPage() {
   const [sortBy, setSortBy] = useState<'due' | 'created'>('due');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [openingSet, setOpeningSet] = useState<string | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(() => Boolean(location.state?.openCreate));
   const [editOpen, setEditOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [now] = useState(() => Date.now());
@@ -1216,7 +1245,7 @@ export default function AssignmentsPage() {
       </main>
 
       {/* Create assignment sheet (CR only) */}
-      <CreateAssignmentSheet open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateAssignmentSheet open={createOpen} shareInboxId={location.state?.shareInboxId} onClose={() => setCreateOpen(false)} />
 
       {/* Edit assignment sheet (CR only) */}
       {editOpen && selectedAssignment && (

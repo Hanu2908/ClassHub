@@ -400,10 +400,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
  */
 export async function signInWithGoogle() {
   try {
+    const pendingShareInboxId = sessionStorage.getItem('classhub-pending-share-inbox-id');
+    const redirectPath = pendingShareInboxId
+      ? `/share-intake?id=${encodeURIComponent(pendingShareInboxId)}`
+      : '/onboarding/choice';
     const result = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/onboarding/choice',
+        redirectTo: window.location.origin + redirectPath,
         queryParams: {
           hd: 'skit.ac.in',
         },

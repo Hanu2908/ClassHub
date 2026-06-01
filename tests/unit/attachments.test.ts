@@ -8,6 +8,7 @@ import {
   MAX_FILE_SIZE_MB,
   MAX_FILE_SIZE_BYTES,
   MAX_FILE_COUNT,
+  validateSharedFiles,
 } from "../../src/lib/utils/attachments";
 
 // ── formatFileSize ───────────────────────────────────────────────────────────
@@ -148,5 +149,38 @@ describe("attachment constants", () => {
 
   it("MAX_FILE_COUNT is 5", () => {
     expect(MAX_FILE_COUNT).toBe(5);
+  });
+});
+
+describe("validateSharedFiles", () => {
+  const file = (name: string, type: string, size = 1024) => new File([new Uint8Array(size)], name, { type });
+
+  it("accepts images and PDFs shared from the OS", () => {
+    const result = validateSharedFiles([
+      file("notice.jpg", "image/jpeg"),
+      file("assignment.pdf", "application/pdf"),
+    ]);
+
+    expect(result).toEqual({ ok: true, files: expect.any(Array) });
+  });
+
+  it("rejects unsupported shared documents", () => {
+    const result = validateSharedFiles([file("notes.txt", "text/plain")]);
+
+    expect(result).toEqual({ ok: false, error: "unsupported-type" });
+  });
+
+  it("rejects empty and oversized shares", () => {
+    expect(validateSharedFiles([])).toEqual({ ok: false, error: "empty-share" });
+    expect(validateSharedFiles([file("large.pdf", "application/pdf", MAX_FILE_SIZE_BYTES + 1)]))
+      .toEqual({ ok: false, error: "file-too-large" });
+  });
+
+  it("rejects shares above the existing file-count limit", () => {
+    const files = Array.from({ length: MAX_FILE_COUNT + 1 }, (_, index) =>
+      file(`notice-${index}.jpg`, "image/jpeg")
+    );
+
+    expect(validateSharedFiles(files)).toEqual({ ok: false, error: "too-many-files" });
   });
 });

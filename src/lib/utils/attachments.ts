@@ -10,6 +10,12 @@ export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 /** Maximum number of files per upload */
 export const MAX_FILE_COUNT = 5;
 
+export type SharedFileValidationError =
+  | 'empty-share'
+  | 'too-many-files'
+  | 'file-too-large'
+  | 'unsupported-type';
+
 /** Allowed MIME type prefixes / extensions */
 export const ALLOWED_MIME_PREFIXES = [
   'application/pdf',
@@ -81,4 +87,21 @@ export function isPreviewableImage(fileType: string | undefined | null, filename
     t.startsWith('image/') ||
     /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|webp)$/.test(name)
   );
+}
+
+export function validateSharedFiles(
+  files: File[],
+): { ok: true; files: File[] } | { ok: false; error: SharedFileValidationError } {
+  if (files.length === 0) return { ok: false, error: 'empty-share' };
+  if (files.length > MAX_FILE_COUNT) return { ok: false, error: 'too-many-files' };
+
+  for (const file of files) {
+    if (isFileTooLarge(file.size)) return { ok: false, error: 'file-too-large' };
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPreviewableImage(file.type, file.name) && !isPdf) {
+      return { ok: false, error: 'unsupported-type' };
+    }
+  }
+
+  return { ok: true, files };
 }

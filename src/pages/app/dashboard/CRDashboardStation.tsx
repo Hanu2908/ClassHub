@@ -4,6 +4,7 @@ import { useAppStore } from '../../../store/appStore';
 import { useSection } from '../../../hooks/useSectionMembers';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchAnnouncementsData } from './prefetchHelper';
+import DirectShareTip from '../../../components/DirectShareTip';
 
 export default function CRDashboardStation() {
   const queryClient = useQueryClient();
@@ -17,6 +18,7 @@ export default function CRDashboardStation() {
 
   return (
     <section style={{ animation: 'fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both', margin: '4px 0 8px' }}>
+      <DirectShareTip />
       <div 
         className="glass-bento"
         style={{

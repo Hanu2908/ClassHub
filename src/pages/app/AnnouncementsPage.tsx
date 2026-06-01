@@ -16,6 +16,7 @@ import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { AnnouncementsSkeleton } from '../../components/LoadingSkeletons';
+import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
 
 const DeleteConfirmationModal = lazy(() => import('../../components/DeleteConfirmationModal'));
 const AcksTrackingSheet = lazy(() => import('../../components/AcksTrackingSheet'));
@@ -23,7 +24,8 @@ const AcksTrackingSheet = lazy(() => import('../../components/AcksTrackingSheet'
 type Filter = 'all' | 'critical' | 'general';
 type ChannelTab = 'active' | 'exams' | 'schedule' | 'campus';
 
-function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
+function CreateAnnouncementSheet({ onClose, shareInboxId }: { onClose: () => void; shareInboxId?: string }) {
+  const navigate = useNavigate();
   const createAnn = useCreateAnnouncement();
   const authUser = useAppStore(s => s.authUser);
   const sectionId = authUser?.sectionId;
@@ -37,6 +39,15 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
   const [files, setFiles] = useState<File[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  useEffect(() => {
+    if (!shareInboxId) return;
+    getShare(shareInboxId).then((entry) => {
+      if (!entry) return;
+      setFiles(entry.files);
+      setBody(entry.caption);
+    }).catch(() => showToast('Failed to restore shared files', 'error'));
+  }, [shareInboxId]);
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -70,7 +81,25 @@ function CreateAnnouncementSheet({ onClose }: { onClose: () => void }) {
 
         if (uploadResult.failed.length > 0) {
           showToast(`${uploadResult.failed.length} file(s) failed to upload`, 'warning');
+          if (shareInboxId) {
+            const entry = await getShare(shareInboxId);
+            if (entry) {
+              await updateShare({
+                ...entry,
+                files: retainFailedShareFiles(files, uploadResult.failed),
+                state: 'attachment-retry',
+                destination: 'announcement',
+                parentId,
+              });
+              navigate(`/share-intake?id=${encodeURIComponent(shareInboxId)}`, { replace: true });
+              return;
+            }
+          }
+        } else if (shareInboxId) {
+          await deleteShare(shareInboxId);
         }
+      } else if (shareInboxId) {
+        await deleteShare(shareInboxId);
       }
 
       showToast('Announcement posted', 'success');
@@ -1311,6 +1340,7 @@ export default function AnnouncementsPage() {
 
       {showCreate && (
         <CreateAnnouncementSheet 
+          shareInboxId={location.state?.shareInboxId}
           onClose={() => {
             setShowCreate(false);
             setActiveTab('active');
