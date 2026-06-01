@@ -4,7 +4,8 @@ import { useAppStore } from '../../store/appStore';
 import {
   useAnnouncementReactions,
   useToggleReaction,
-  type QAReaction
+  type QAReaction,
+  type ToggleReactionInput,
 } from '../../hooks/useAnnouncementsQA';
 
 interface AnnouncementReactionsProps {
@@ -48,8 +49,12 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
   }, [showPopover]);
 
   const handleToggleEmoji = async (emoji: string) => {
+    // Capture the user's CURRENT reaction at click-time (before any optimistic update)
+    // This is passed to the mutation so mutationFn never reads the stale optimistic cache
+    const existingReaction = reactions.find(r => r.userId === currentUserId) ?? null;
+    const input: ToggleReactionInput = { emoji, existingReaction };
     try {
-      await toggleReaction.mutateAsync(emoji);
+      await toggleReaction.mutateAsync(input);
     } catch {
       // Toast handles error in hook
     }
@@ -57,11 +62,12 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
 
   const handleCustomInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    
     if (val.trim().length > 0) {
-      const emoji = Array.from(val)[0]; // Safe Unicode grapheme extraction
+      const emoji = Array.from(val)[0];
+      const existingReaction = reactions.find(r => r.userId === currentUserId) ?? null;
+      const input: ToggleReactionInput = { emoji, existingReaction };
       try {
-        await toggleReaction.mutateAsync(emoji);
+        await toggleReaction.mutateAsync(input);
         setShowPopover(false);
       } catch {
         // Error handled in hook

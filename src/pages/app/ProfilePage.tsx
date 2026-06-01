@@ -83,8 +83,20 @@ export default function ProfilePage() {
     if (deleteInput !== 'DELETE') return;
     setDeleting(true);
     try {
-      const { error } = await supabase.functions.invoke('delete-account');
-      if (error) throw error;
+      const { error, data } = await supabase.functions.invoke('delete-account');
+      if (error) {
+        // Try to extract the real server error message from the response body
+        let detail = error.message;
+        try {
+          const body = typeof (error as any).context?.json === 'function'
+            ? await (error as any).context.json()
+            : null;
+          if (body?.error) detail = body.error;
+          if (body?.detail) detail += `: ${body.detail}`;
+        } catch { /* ignore parse errors */ }
+        throw new Error(detail);
+      }
+      if (data && !data.success) throw new Error(data.error ?? 'Unknown error');
       // Clear all local state and Supabase session, then redirect
       await signOutGlobal(navigate);
       showToast('Account deleted successfully', 'success');

@@ -152,72 +152,66 @@ export function useAnnouncementMuteStatus(announcementId: string) {
 
 // ── 3. Mutations ─────────────────────────────────────────────────────────────
 
+// Input type for the toggle mutation — caller resolves current state before mutating
+export interface ToggleReactionInput {
+  emoji: string;
+  existingReaction: QAReaction | null; // null = no current reaction
+}
+
 export function useToggleReaction(announcementId: string) {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
 
   return useMutation({
-    mutationFn: async (emoji: string) => {
+    mutationFn: async ({ emoji, existingReaction }: ToggleReactionInput) => {
       if (!userId) throw new Error('Not authenticated');
 
-      // 1. Fetch current reaction state for optimistic retraction check
-      const currentReactions = qc.getQueryData<QAReaction[]>(['announcement_reactions', announcementId]) ?? [];
-      const userReaction = currentReactions.find(r => r.userId === userId);
-
-      if (userReaction) {
-        if (userReaction.emoji === emoji) {
-          // Double click same emoji -> Retract reaction
+      if (existingReaction) {
+        if (existingReaction.emoji === emoji) {
+          // Same emoji → retract
           const { error } = await supabase
             .from('announcement_reactions' as any)
             .delete()
-            .eq('id', userReaction.id);
+            .eq('id', existingReaction.id);
           if (error) throw error;
           return { action: 'retract' as const, emoji };
         } else {
-          // Different emoji → Delete old reaction, then insert new one
-          // This avoids needing an UPDATE RLS policy (DELETE + INSERT both have their own policies)
+          // Different emoji → delete old, insert new
           const { error: deleteErr } = await supabase
             .from('announcement_reactions' as any)
             .delete()
-            .eq('id', userReaction.id);
+            .eq('id', existingReaction.id);
           if (deleteErr) throw deleteErr;
 
           const { error: insertErr } = await supabase
             .from('announcement_reactions' as any)
-            .insert({
-              announcement_id: announcementId,
-              user_id: userId,
-              emoji: emoji,
-            });
+            .insert({ announcement_id: announcementId, user_id: userId, emoji });
           if (insertErr) throw insertErr;
           return { action: 'swap' as const, emoji };
         }
       } else {
-        // No reaction -> Create reaction
+        // No existing reaction → insert
         const { error } = await supabase
           .from('announcement_reactions' as any)
-          .insert({
-            announcement_id: announcementId,
-            user_id: userId,
-            emoji: emoji,
-          });
+          .insert({ announcement_id: announcementId, user_id: userId, emoji });
         if (error) throw error;
         return { action: 'add' as const, emoji };
       }
     },
-    // Optimistic UI updates
-    onMutate: async (emoji) => {
+    // Optimistic UI — runs BEFORE mutationFn, but we read cache here BEFORE we change it
+    onMutate: async ({ emoji, existingReaction }: ToggleReactionInput) => {
       await qc.cancelQueries({ queryKey: ['announcement_reactions', announcementId] });
       const previousReactions = qc.getQueryData<QAReaction[]>(['announcement_reactions', announcementId]) ?? [];
 
-      const userReaction = previousReactions.find(r => r.userId === userId);
       let nextReactions = [...previousReactions];
 
-      if (userReaction) {
-        if (userReaction.emoji === emoji) {
-          nextReactions = nextReactions.filter(r => r.id !== userReaction.id);
+      if (existingReaction) {
+        if (existingReaction.emoji === emoji) {
+          nextReactions = nextReactions.filter(r => r.id !== existingReaction.id);
         } else {
-          nextReactions = nextReactions.map(r => r.id === userReaction.id ? { ...r, emoji } : r);
+          nextReactions = nextReactions.map(r =>
+            r.id === existingReaction.id ? { ...r, emoji } : r
+          );
         }
       } else {
         nextReactions.push({
@@ -232,7 +226,7 @@ export function useToggleReaction(announcementId: string) {
       qc.setQueryData(['announcement_reactions', announcementId], nextReactions);
       return { previousReactions };
     },
-    onError: (_err, _emoji, context: any) => {
+    onError: (_err, _vars, context: any) => {
       if (context?.previousReactions) {
         qc.setQueryData(['announcement_reactions', announcementId], context.previousReactions);
       }
