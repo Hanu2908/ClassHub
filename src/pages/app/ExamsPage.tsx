@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Calendar, MapPin, Plus, Trash2, Edit2,
   ChevronDown, ChevronUp, FileText, CheckSquare, Square,
-  Loader2, CalendarDays, BookOpen, AlertCircle
+  Loader2, CalendarDays, BookOpen, AlertCircle, Upload
 } from 'lucide-react';
 import { useExams, useStudentExamPrep, useUpsertExam, useDeleteExam, useUpsertExamOverride, useUpsertStudentExamPrep } from '../../hooks/useExams';
+import { useSubjects } from '../../hooks/useSubjects';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
 import { BottomSheet } from '../../components/BottomSheet';
 import { NavBar } from '../../components/NavBar';
+import { supabase } from '../../lib/supabase';
 
 // Harmonious subject gradient generator
 function generateGradient(str: string) {
@@ -20,6 +22,39 @@ function generateGradient(str: string) {
   const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
   const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
   return `linear-gradient(135deg, ${c1}, ${c2})`;
+}
+
+// Syllabus text extractor heuristics
+function parseSyllabusText(rawText: string): string {
+  if (!rawText) return '';
+  const lines = rawText.split('\n');
+  const extractedUnits: string[] = [];
+  
+  // Heuristic Regex to match units, parts, or chapters
+  const unitRegex = /^\s*(unit|module|chapter|part)\s*[-:–—\dIIVX]+\s*[:–—\s]?/i;
+  
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (unitRegex.test(trimmed) && trimmed.length > 8 && trimmed.length < 150) {
+      extractedUnits.push(trimmed);
+    }
+  });
+
+  // Fallback: If no Unit headers are found, gather substantial lines
+  if (extractedUnits.length === 0) {
+    const cleanParagraphs = lines
+      .map(l => l.trim())
+      .filter(l => l.length > 25 && l.length < 180)
+      .slice(0, 5);
+    extractedUnits.push(...cleanParagraphs);
+  }
+
+  return extractedUnits.slice(0, 6).join('\n');
+}
+
+// Helper to build a unique storage path outside render lifecycle to ensure component purity
+function buildExamStoragePath(sectionId: string, examId: string, prefix: string, fileExt: string): string {
+  return `${sectionId}/exams/${examId}/${prefix}_${Date.now()}.${fileExt}`;
 }
 
 // Zero-dependency premium particle explosion confetti
@@ -210,21 +245,108 @@ export default function ExamsPage() {
   const [overrideRoomVal, setOverrideRoomVal] = useState('');
   const [overrideSeatingPlanVal, setOverrideSeatingPlanVal] = useState('');
 
-  // Fetch Exams
+  // Attachment & Extractor States
+  const [seatingFile, setSeatingFile] = useState<File | null>(null);
+  const [syllabusFile, setSyllabusFile] = useState<File | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  // Fetch Exams & Subjects
   const { data: exams = [], isLoading, error: loadError } = useExams();
+  const { data: subjects = [], isLoading: loadingSubjects } = useSubjects();
   const upsertExam = useUpsertExam();
   const deleteExam = useDeleteExam();
   const upsertOverride = useUpsertExamOverride();
 
-  // Preset semester dynamically matching users active subjects if available
+  // Load pdfjsLib dynamically for background syllabus extraction
   useEffect(() => {
-    if (exams.length > 0) {
-      const semesters = exams.map(e => e.semester).filter(Boolean);
-      if (semesters.length > 0) {
-        setSemesterVal(Math.max(...semesters));
+    if (window.pdfjsLib) return;
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.async = true;
+    script.onload = () => {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       }
+    };
+    document.body.appendChild(script);
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
+  const handleSyllabusFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSyllabusFile(file);
+    setIsExtracting(true);
+
+    const reader = new FileReader();
+
+    if (file.name.toLowerCase().endsWith('.txt')) {
+      reader.onload = (evt) => {
+        try {
+          const text = evt.target?.result as string;
+          const parsed = parseSyllabusText(text);
+          setSyllabusUnitsText(parsed);
+          triggerConfetti();
+          showToast('✨ Text syllabus topics auto-extracted!', 'success');
+        } catch {
+          showToast('Failed to parse text file.', 'warning');
+        } finally {
+          setIsExtracting(false);
+        }
+      };
+      reader.readAsText(file);
+    } else if (file.name.toLowerCase().endsWith('.pdf')) {
+      reader.onload = async (evt) => {
+        try {
+          const arrayBuffer = evt.target?.result as ArrayBuffer;
+          if (!window.pdfjsLib) {
+            throw new Error('PDF parsing engine is still loading. Please try again in a few seconds.');
+          }
+
+          const pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let fullText = '';
+          const pagesToParse = Math.min(pdfDoc.numPages, 6);
+
+          for (let i = 1; i <= pagesToParse; i++) {
+            const page = await pdfDoc.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+            fullText += pageText + '\n';
+          }
+
+          const parsed = parseSyllabusText(fullText);
+          setSyllabusUnitsText(parsed);
+          triggerConfetti();
+          showToast('✨ PDF syllabus topics auto-extracted successfully!', 'success');
+        } catch (err: any) {
+          showToast(err.message || 'Failed to parse PDF syllabus. Please enter manually.', 'warning');
+        } finally {
+          setIsExtracting(false);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      showToast('Please upload a valid PDF or TXT file.', 'error');
+      setIsExtracting(false);
     }
-  }, [exams]);
+  };
+
+  const handleSeatingFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('File is too large. Max size is 10MB.', 'error');
+        return;
+      }
+      setSeatingFile(file);
+      showToast(`Selected seating plan: ${file.name}`, 'info');
+    }
+  };
 
   // Form submission handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -240,18 +362,56 @@ export default function ExamsPage() {
         .map(u => u.trim())
         .filter(Boolean);
 
+      const sectionId = authUser?.sectionId;
+      const userId = authUser?.id;
+      if (!sectionId || !userId) throw new Error('Missing active section or user context');
+
+      // Generate a deterministic UUID if creating a new exam so we can use it in the storage path
+      const examId = editingExam?.id || crypto.randomUUID();
+
+      let seatingPath = isOverrideOnly ? (editingExam?.activeSeatingPlan || null) : (editingExam?.seatingPlanPath || null);
+      let syllabusPath = editingExam?.syllabusPdfPath || null;
+
+      // 1. Upload seating plan file if selected
+      if (seatingFile) {
+        const fileExt = seatingFile.name.split('.').pop() || '';
+        const prefix = isOverrideOnly ? 'override_seating' : 'base_seating';
+        const storagePath = buildExamStoragePath(sectionId, examId, prefix, fileExt);
+        
+        const { error: uploadErr } = await supabase.storage
+          .from('attachments')
+          .upload(storagePath, seatingFile, { cacheControl: '3600', upsert: true });
+
+        if (uploadErr) throw uploadErr;
+        seatingPath = storagePath;
+      }
+
+      // 2. Upload syllabus file if selected
+      if (syllabusFile) {
+        const fileExt = syllabusFile.name.split('.').pop() || '';
+        const storagePath = buildExamStoragePath(sectionId, examId, 'syllabus', fileExt);
+
+        const { error: uploadErr } = await supabase.storage
+          .from('attachments')
+          .upload(storagePath, syllabusFile, { cacheControl: '3600', upsert: true });
+
+        if (uploadErr) throw uploadErr;
+        syllabusPath = storagePath;
+      }
+
       if (isOverrideOnly && editingExam) {
         // Save only Local Section Override
         await upsertOverride.mutateAsync({
-          examId: editingExam.id,
+          examId: examId,
           room: overrideRoomVal || null,
-          seatingPlanPath: overrideSeatingPlanVal || null
+          seatingPlanPath: seatingPath
         });
         showToast('Section room & seating override published!', 'success');
       } else {
         // Save Base Exam
         await upsertExam.mutateAsync({
-          id: editingExam?.id,
+          id: examId,
+          isEdit: !!editingExam,
           semester: Number(semesterVal),
           subjectCode: subjCodeVal.trim().toUpperCase(),
           subjectName: subjNameVal.trim(),
@@ -262,8 +422,8 @@ export default function ExamsPage() {
           maxMarks: maxMarksVal ? Number(maxMarksVal) : null,
           room: roomVal.trim() || null,
           syllabusUnits: units,
-          syllabusPdfPath: editingExam?.syllabusPdfPath || null,
-          seatingPlanPath: editingExam?.seatingPlanPath || null
+          syllabusPdfPath: syllabusPath,
+          seatingPlanPath: seatingPath
         });
         showToast(editingExam ? 'Exam details updated successfully!' : 'Central base exam published!', 'success');
       }
@@ -289,6 +449,8 @@ export default function ExamsPage() {
     setIsOverrideOnly(false);
     setOverrideRoomVal('');
     setOverrideSeatingPlanVal('');
+    setSeatingFile(null);
+    setSyllabusFile(null);
   };
 
   const handleEdit = (exam: any, overrideMode = false) => {
@@ -324,8 +486,24 @@ export default function ExamsPage() {
     }
   };
 
-  const openPdf = (path: string, titleStr: string) => {
-    navigate(`/app/pdf-viewer?url=${encodeURIComponent(path)}&title=${encodeURIComponent(titleStr)}`);
+  const openPdf = async (path: string, titleStr: string) => {
+    try {
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        navigate(`/app/pdf-viewer?url=${encodeURIComponent(path)}&title=${encodeURIComponent(titleStr)}`);
+        return;
+      }
+      
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .createSignedUrl(path, 300);
+        
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error('Could not authorize access.');
+      
+      navigate(`/app/pdf-viewer?url=${encodeURIComponent(data.signedUrl)}&title=${encodeURIComponent(titleStr)}`);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to open PDF', 'error');
+    }
   };
 
   // Divide into upcoming and past
@@ -785,14 +963,40 @@ export default function ExamsPage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Section Seating Plan URL / path:</label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Seating plan storage PDF path"
-                  value={overrideSeatingPlanVal}
-                  onChange={e => setOverrideSeatingPlanVal(e.target.value)}
-                />
+                <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Section Seating Plan:</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <label 
+                    className="btn-secondary" 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 6, 
+                      fontSize: 12, 
+                      padding: '8px 10px', 
+                      cursor: 'pointer',
+                      flex: 1,
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Upload size={13} /> {seatingFile ? 'Change Seating Plan' : 'Upload Seating Plan'}
+                    <input 
+                      type="file" 
+                      accept="application/pdf,image/*" 
+                      onChange={handleSeatingFileChange} 
+                      style={{ display: 'none' }} 
+                    />
+                  </label>
+                </div>
+                {seatingFile && (
+                  <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 11 }}>
+                    📎 {seatingFile.name}
+                  </span>
+                )}
+                {overrideSeatingPlanVal && !seatingFile && (
+                  <span className="t-caption truncate" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                    Active Override: {overrideSeatingPlanVal.split('/').pop()}
+                  </span>
+                )}
               </div>
             </>
           ) : (
@@ -827,30 +1031,45 @@ export default function ExamsPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 10 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Subj Code *:</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="CSUL201"
-                    maxLength={8}
-                    value={subjCodeVal}
-                    onChange={e => setSubjCodeVal(e.target.value)}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Select Active Subject *:</label>
+                {loadingSubjects ? (
+                  <div className="input" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.02)' }}>
+                    <Loader2 className="spin" size={14} color="var(--text-muted)" />
+                    <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Loading section subjects...</span>
+                  </div>
+                ) : subjects.length === 0 ? (
+                  <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: 'var(--radius-sm)' }}>
+                    <p className="t-caption" style={{ color: 'var(--status-critical)', margin: 0 }}>
+                      No subjects set up in this hub yet. Please add subjects first.
+                    </p>
+                  </div>
+                ) : (
+                  <select
+                    className="input select-custom"
+                    value={subjCodeVal ? `${subjCodeVal}|${subjNameVal}` : ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        const [code, name] = val.split('|');
+                        setSubjCodeVal(code);
+                        setSubjNameVal(name);
+                      } else {
+                        setSubjCodeVal('');
+                        setSubjNameVal('');
+                      }
+                    }}
+                    style={{ fontSize: 13, background: 'rgba(255,255,255,0.03)', color: 'var(--text-primary)' }}
                     required
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Subject Name *:</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="e.g. Operating Systems"
-                    value={subjNameVal}
-                    onChange={e => setSubjNameVal(e.target.value)}
-                    required
-                  />
-                </div>
+                  >
+                    <option value="" style={{ background: 'var(--bg-base)' }}>-- Select Hub Subject --</option>
+                    {subjects.map((s) => (
+                      <option key={s.id} value={`${s.code}|${s.name}`} style={{ background: 'var(--bg-base)' }}>
+                        [{s.code}] {s.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -902,16 +1121,99 @@ export default function ExamsPage() {
                   />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Default Room:</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="e.g. D-Block Auditorium"
-                    value={roomVal}
-                    onChange={e => setRoomVal(e.target.value)}
-                  />
+                  <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Seating Notice Physical Location:</label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <MapPin size={14} style={{ position: 'absolute', left: 12, color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ paddingLeft: 34 }}
+                      placeholder="e.g. D-Block Central Notice Board"
+                      value={roomVal}
+                      onChange={e => setRoomVal(e.target.value)}
+                    />
+                  </div>
+                  <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 2 }}>
+                    Where printouts are physically pasted in college. Overridable later.
+                  </span>
                 </div>
               </div>
+
+              {/* Central base exam file attachments */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Syllabus PDF/TXT:</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label 
+                      className="btn-secondary" 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 6, 
+                        fontSize: 12, 
+                        padding: '8px 10px', 
+                        cursor: 'pointer',
+                        flex: 1,
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Upload size={13} /> {syllabusFile ? 'Change Syllabus' : 'Upload Syllabus'}
+                      <input 
+                        type="file" 
+                        accept="application/pdf,text/plain" 
+                        onChange={handleSyllabusFileChange} 
+                        style={{ display: 'none' }} 
+                      />
+                    </label>
+                  </div>
+                  {syllabusFile && (
+                    <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 11 }}>
+                      📎 {syllabusFile.name}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Seating Plan Notice:</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label 
+                      className="btn-secondary" 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 6, 
+                        fontSize: 12, 
+                        padding: '8px 10px', 
+                        cursor: 'pointer',
+                        flex: 1,
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Upload size={13} /> {seatingFile ? 'Change Seating' : 'Upload Plan'}
+                      <input 
+                        type="file" 
+                        accept="application/pdf,image/*" 
+                        onChange={handleSeatingFileChange} 
+                        style={{ display: 'none' }} 
+                      />
+                    </label>
+                  </div>
+                  {seatingFile && (
+                    <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 11 }}>
+                      📎 {seatingFile.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {isExtracting && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(167, 139, 250, 0.06)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(167, 139, 250, 0.15)' }}>
+                  <Loader2 className="spin" size={14} color="var(--accent-primary)" />
+                  <span className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontSize: 11 }}>
+                    Extracting units & topics dynamically from PDF...
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Syllabus checklist units (One per line):</label>

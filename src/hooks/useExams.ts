@@ -123,6 +123,7 @@ export function useUpsertExam() {
   return useMutation({
     mutationFn: async (exam: {
       id?: string;
+      isEdit?: boolean;
       semester: number;
       subjectCode: string;
       subjectName: string;
@@ -138,7 +139,7 @@ export function useUpsertExam() {
     }) => {
       if (!userId) throw new Error('Not authenticated');
 
-      const payload = {
+      const payload: any = {
         semester: exam.semester,
         subject_code: exam.subjectCode,
         subject_name: exam.subjectName,
@@ -154,13 +155,16 @@ export function useUpsertExam() {
         created_by: userId
       };
 
-      if (exam.id) {
+      if (exam.isEdit && exam.id) {
         const { error } = await supabase
           .from('exams')
           .update(payload)
           .eq('id', exam.id);
         if (error) throw error;
       } else {
+        if (exam.id) {
+          payload.id = exam.id;
+        }
         const { error } = await supabase
           .from('exams')
           .insert([payload]);
