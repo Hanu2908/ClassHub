@@ -71,6 +71,7 @@ export interface Attachment {
   fileSize: number;
   fileType: string;
   storagePath: string;
+  signedUrl?: string | null;
 }
 
 export interface Assignment {

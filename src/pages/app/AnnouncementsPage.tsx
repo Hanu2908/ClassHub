@@ -20,6 +20,8 @@ import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../.
 import RichTextBody from '../../components/RichTextBody';
 import { OffscreenSharePortal } from '../../components/announcement-qa/OffscreenSharePortal';
 import { shareAnnouncementCard } from '../../lib/utils/shareCard';
+import { isPreviewableImage } from '../../lib/utils/attachments';
+import { getThumbPath } from '../../lib/utils/imageResize';
 
 const DeleteConfirmationModal = lazy(() => import('../../components/DeleteConfirmationModal'));
 const AcksTrackingSheet = lazy(() => import('../../components/AcksTrackingSheet'));
@@ -795,18 +797,76 @@ export default function AnnouncementsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId]);
 
-  const handleShareAnnouncement = (announcement: Announcement) => {
-    setActiveShareAnn(announcement);
-    setTimeout(async () => {
-      await shareAnnouncementCard(
-        announcement,
-        sharePortalRef,
-        () => {},
-        () => {
-          setActiveShareAnn(null);
+  const handleShareAnnouncement = async (announcement: Announcement) => {
+    try {
+      // 1. Fetch signed URLs for all image attachments
+      const attachmentsWithUrls = announcement.attachments
+        ? await Promise.all(
+            announcement.attachments.map(async (att) => {
+              const isImage = isPreviewableImage(att.fileType, att.filename);
+              if (!isImage) return att;
+              try {
+                const thumbPath = getThumbPath(att.storagePath);
+                // Try thumbnail first
+                const { data: thumbData } = await supabase.storage
+                  .from('attachments')
+                  .createSignedUrl(thumbPath, 60);
+
+                if (thumbData?.signedUrl) {
+                  return { ...att, signedUrl: thumbData.signedUrl };
+                }
+
+                // Fallback to original
+                const { data: origData } = await supabase.storage
+                  .from('attachments')
+                  .createSignedUrl(att.storagePath, 60);
+
+                return { ...att, signedUrl: origData?.signedUrl || null };
+              } catch (e) {
+                console.error('[Share] Failed to get signed URL for attachment:', att.filename, e);
+                return att;
+              }
+            })
+          )
+        : [];
+
+      const enrichedAnnouncement = {
+        ...announcement,
+        attachments: attachmentsWithUrls,
+      };
+
+      setActiveShareAnn(enrichedAnnouncement);
+
+      // 2. Wait a tick for render and wait for all images to fully load
+      setTimeout(async () => {
+        if (sharePortalRef.current) {
+          const imgs = sharePortalRef.current.querySelectorAll('img');
+          if (imgs.length > 0) {
+            await Promise.all(
+              Array.from(imgs).map((img) => {
+                if (img.complete) return Promise.resolve();
+                return new Promise<void>((resolve) => {
+                  img.addEventListener('load', () => resolve(), { once: true });
+                  img.addEventListener('error', () => resolve(), { once: true });
+                });
+              })
+            );
+          }
         }
-      );
-    }, 50);
+
+        await shareAnnouncementCard(
+          enrichedAnnouncement,
+          sharePortalRef,
+          () => {},
+          () => {
+            setActiveShareAnn(null);
+          }
+        );
+      }, 100);
+    } catch (err) {
+      console.error('[Share] Failed to share announcement:', err);
+      showToast('Failed to share announcement notice', 'error');
+    }
   };
 
   const role = useAppStore(s => s.role);
