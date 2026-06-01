@@ -263,12 +263,13 @@ function preprocessCanvasForOcr(
   const hist = new Uint32Array(256);
   for (let i = 0; i < d.length; i += 4) hist[d[i]]++;
   const total = w * h;
-  let cum = 0, lo = 0, hi = 255;
+  let cum = 0, lo = -1, hi = 255;
   for (let v = 0; v < 256; v++) {
     cum += hist[v];
-    if (lo === 0 && cum >= total * 0.01) lo = v;
+    if (lo < 0 && cum >= total * 0.01) lo = v;
     if (cum >= total * 0.99) { hi = v; break; }
   }
+  if (lo < 0) lo = 0;
   const rng = hi - lo || 1;
   for (let i = 0; i < d.length; i += 4) {
     const s = Math.round(Math.max(0, Math.min(255, ((d[i] - lo) / rng) * 255)));
@@ -399,7 +400,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
       const { createWorker } = await import('tesseract.js');
       const worker = await createWorker('eng');
       await worker.setParameters({
-        tessedit_pageseg_mode: 4 as any, // PSM 4: Assume single column of variable-sized text (better for marksheet tables)
+        tessedit_pageseg_mode: 6 as any, // PSM 6: Assume single uniform block of text (keeps table rows together)
       });
       setOcrWorker(worker);
       return worker;
@@ -597,6 +598,10 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
       const matches: Array<{ id: string; name: string; marks: number; grade: string }> = [];
       const lines = mergeOcrLines(text.split('\n'));
 
+      // Debug: log raw OCR output so issues can be diagnosed
+      console.log('[OCR] Raw text extracted (%d lines):', lines.length);
+      console.log(text);
+
       const cleanText = (str: string) => str.toUpperCase().replace(/[^A-Z0-9\-+\s]/g, ' ');
 
       const extractNumbers = (str: string) => {
@@ -652,97 +657,116 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         return nums[nums.length - 1];
       };
 
-      lines.forEach((line: string) => {
-        if (!line.trim()) return;
-        const cleanLine = cleanText(line);
-        
-        subjects.forEach(sub => {
-          const cleanSub = sub.name.toUpperCase();
-          let isMatch = false;
-          let refinedName = sub.name;
-          
-          if (cleanSub.includes('SODECA') && cleanLine.includes('SODECA')) {
-            isMatch = true;
-            refinedName = sub.name;
-          } else if (cleanSub.includes('THINKING') && cleanLine.includes('THINKING')) {
-            isMatch = true;
-            refinedName = 'Computational Thinking and Programming';
-          } else {
-            const options = cleanSub.split('/').map(opt => opt.trim());
-            for (const option of options) {
-              if (option.length < 3) continue;
-              
-              // Strip dashes and non-alphanumeric first so split works on MATHEMATICS-II -> [MATHEMATICS, II]
-              const cleanOption = option.replace(/[^A-Z0-9\s]/g, ' ');
-              
-              // Lower keyword filter to >= 2 to capture electives (AI, IT, ME, EE, CE)
-              const keywords = cleanOption
-                .split(/\s+/)
-                .filter(w => w.length >= 2 && !['AND', 'THE', 'LAB', 'PRACTICAL', 'THEORY', 'ENGINEERING', 'BASIC', 'SKILLS', 'VALUES'].includes(w));
-              
-              if (keywords.length === 0) continue;
-              
-              const matchCount = keywords.filter(w => cleanLine.includes(w)).length;
-              const required = keywords.length === 1 ? 1 : Math.min(2, keywords.length);
-              
-              if (matchCount >= required) {
-                const optionIsLab = option.includes('LAB') || option.includes('WORKSHOP') || option.includes('PRACTICE') || option.includes('GRAPHICS') || option.includes('DRAWING');
-                const lineIsLab = cleanLine.includes('LAB') || cleanLine.includes('WORKSHOP') || cleanLine.includes('PRACTICE') || cleanLine.includes('WORKS') || cleanLine.includes('UP') || cleanLine.includes('MEUP') || cleanLine.includes('CSUP') || cleanLine.includes('CHUP') || cleanLine.includes('HSUP') || cleanLine.includes('DRAWING');
-                
-                if (optionIsLab !== lineIsLab) {
-                  continue;
-                }
-                
-                isMatch = true;
-                
-                if (option.includes('CHEMISTRY') && option.includes('LAB')) {
-                  refinedName = 'Engineering Chemistry Lab';
-                } else if (option.includes('PHYSICS') && option.includes('LAB')) {
-                  refinedName = 'Engineering Physics Lab';
-                } else if (option.includes('CHEMISTRY')) {
-                  refinedName = 'Engineering Chemistry';
-                } else if (option.includes('PHYSICS')) {
-                  refinedName = 'Engineering Physics';
-                } else if (option.includes('UNIVERSAL HUMAN VALUES') && option.includes('LAB')) {
-                  refinedName = 'Universal Human Values Lab';
-                } else if (option.includes('LANGUAGE')) {
-                  refinedName = 'Language Lab';
-                } else if (option.includes('VALUES')) {
-                  refinedName = 'Universal Human Values';
-                } else if (option.includes('COMMUNICATION')) {
-                  refinedName = 'Communication Skills';
-                } else if (option.includes('MANUFACTURING') || option.includes('PRACTICE')) {
-                  refinedName = 'Manufacturing Practice Workshop';
-                } else {
-                  refinedName = sub.name.split('/').find(opt => opt.toUpperCase().includes(option))?.trim() || sub.name;
-                }
-                break;
-              }
-            }
+      const gradeMap: Record<string, number> = {
+        'O': 95, 'A+': 85, 'A': 75, 'B+': 65, 'B': 55, 'C': 47, 'P': 42, 'F': 30
+      };
+
+      const extractGrade = (cleanLine: string): string | null => {
+        // Also treat standalone '0' as grade 'O' (common OCR misread)
+        const gradesRegex = /\b(O|0|A\+|A|B\+|B|C|P|F)\b/;
+        const words = cleanLine.split(/\s+/).filter(Boolean);
+        for (let i = words.length - 1; i >= 0; i--) {
+          if (gradesRegex.test(words[i])) {
+            return words[i] === '0' ? 'O' : words[i];
           }
+        }
+        return null;
+      };
+
+      /** Check if keyword prefix (first N chars) appears anywhere in the line */
+      const fuzzyKeywordMatch = (keyword: string, line: string): boolean => {
+        if (line.includes(keyword)) return true;
+        // Prefix match: at least first 4 chars (or full keyword if shorter)
+        const prefixLen = Math.min(keyword.length, Math.max(4, keyword.length - 2));
+        const prefix = keyword.substring(0, prefixLen);
+        return line.includes(prefix);
+      };
+
+      // ── Pass 1: Strict matching (original logic) ──────────────────────────
+      const tryMatchSubjects = (relaxed: boolean) => {
+        lines.forEach((line: string) => {
+          if (!line.trim()) return;
+          const cleanLine = cleanText(line);
           
-          if (isMatch) {
-            const foundMarks = getMarksFromLine(cleanLine);
+          subjects.forEach(sub => {
+            // Skip if already matched
+            if (matches.some(m => m.id === sub.id)) return;
+
+            const cleanSub = sub.name.toUpperCase();
+            let isMatch = false;
+            let refinedName = sub.name;
             
-            let foundGrade: string | null = null;
-            const gradesRegex = /\b(O|A\+|A|B\+|B|C|P|F)\b/;
-            const words = cleanLine.split(/\s+/).filter(Boolean);
-            for (let i = words.length - 1; i >= 0; i--) {
-              if (gradesRegex.test(words[i])) {
-                foundGrade = words[i];
-                break;
+            if (cleanSub.includes('SODECA') && cleanLine.includes('SODECA')) {
+              isMatch = true;
+              refinedName = sub.name;
+            } else if (cleanSub.includes('THINKING') && cleanLine.includes('THINKING')) {
+              isMatch = true;
+              refinedName = 'Computational Thinking and Programming';
+            } else {
+              const options = cleanSub.split('/').map(opt => opt.trim());
+              for (const option of options) {
+                if (option.length < 3) continue;
+                
+                const cleanOption = option.replace(/[^A-Z0-9\s]/g, ' ');
+                
+                const keywords = cleanOption
+                  .split(/\s+/)
+                  .filter(w => w.length >= 2 && !['AND', 'THE', 'LAB', 'PRACTICAL', 'THEORY', 'ENGINEERING', 'BASIC', 'SKILLS', 'VALUES'].includes(w));
+                
+                if (keywords.length === 0) continue;
+                
+                const matchFn = relaxed ? fuzzyKeywordMatch : (kw: string, ln: string) => ln.includes(kw);
+                const matchCount = keywords.filter(w => matchFn(w, cleanLine)).length;
+                // Relaxed: require only 1 keyword; strict: require min(2, keywords.length)
+                const required = relaxed ? 1 : (keywords.length === 1 ? 1 : Math.min(2, keywords.length));
+                
+                if (matchCount >= required) {
+                  // In relaxed mode, skip lab/theory discrimination (OCR might mangle these words)
+                  if (!relaxed) {
+                    const optionIsLab = option.includes('LAB') || option.includes('WORKSHOP') || option.includes('PRACTICE') || option.includes('GRAPHICS') || option.includes('DRAWING');
+                    const lineIsLab = cleanLine.includes('LAB') || cleanLine.includes('WORKSHOP') || cleanLine.includes('PRACTICE') || cleanLine.includes('WORKS') || cleanLine.includes('UP') || cleanLine.includes('MEUP') || cleanLine.includes('CSUP') || cleanLine.includes('CHUP') || cleanLine.includes('HSUP') || cleanLine.includes('DRAWING');
+                    
+                    if (optionIsLab !== lineIsLab) {
+                      continue;
+                    }
+                  }
+                  
+                  isMatch = true;
+                  
+                  if (option.includes('CHEMISTRY') && option.includes('LAB')) {
+                    refinedName = 'Engineering Chemistry Lab';
+                  } else if (option.includes('PHYSICS') && option.includes('LAB')) {
+                    refinedName = 'Engineering Physics Lab';
+                  } else if (option.includes('CHEMISTRY')) {
+                    refinedName = 'Engineering Chemistry';
+                  } else if (option.includes('PHYSICS')) {
+                    refinedName = 'Engineering Physics';
+                  } else if (option.includes('UNIVERSAL HUMAN VALUES') && option.includes('LAB')) {
+                    refinedName = 'Universal Human Values Lab';
+                  } else if (option.includes('LANGUAGE')) {
+                    refinedName = 'Language Lab';
+                  } else if (option.includes('VALUES')) {
+                    refinedName = 'Universal Human Values';
+                  } else if (option.includes('COMMUNICATION')) {
+                    refinedName = 'Communication Skills';
+                  } else if (option.includes('MANUFACTURING') || option.includes('PRACTICE')) {
+                    refinedName = 'Manufacturing Practice Workshop';
+                  } else {
+                    refinedName = sub.name.split('/').find(opt => opt.toUpperCase().includes(option))?.trim() || sub.name;
+                  }
+                  break;
+                }
               }
             }
             
-            if (foundMarks !== null || foundGrade !== null) {
-              const gradeMap: Record<string, number> = {
-                'O': 95, 'A+': 85, 'A': 75, 'B+': 65, 'B': 55, 'C': 47, 'P': 42, 'F': 30
-              };
+            if (isMatch) {
+              const foundMarks = getMarksFromLine(cleanLine);
+              const foundGrade = extractGrade(cleanLine);
               
-              const finalMarks = foundMarks ?? (foundGrade ? gradeMap[foundGrade] : 0);
-              const finalGrade = foundGrade ?? marksToGrade(finalMarks).label;
-              
-              if (!matches.some(m => m.id === sub.id)) {
+              if (foundMarks !== null || foundGrade !== null) {
+                const finalMarks = foundMarks ?? (foundGrade ? gradeMap[foundGrade] : 0);
+                const finalGrade = foundGrade ?? marksToGrade(finalMarks).label;
+                
                 matches.push({
                   id: sub.id,
                   name: refinedName,
@@ -751,9 +775,66 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
                 });
               }
             }
-          }
+          });
         });
-      });
+      };
+
+      // Run strict pass first
+      tryMatchSubjects(false);
+
+      // ── Pass 2: Relaxed matching (single keyword + fuzzy prefix) ──────────
+      if (matches.length === 0) {
+        console.log('[OCR] Strict matching found 0 subjects, trying relaxed matching…');
+        tryMatchSubjects(true);
+      }
+
+      // ── Pass 3: Auto-discovery fallback ──────────────────────────────────
+      // If nothing matched at all, extract ANY subject-like rows from OCR text
+      // and try to assign them to the closest unmatched pre-loaded subject by order
+      if (matches.length === 0) {
+        console.log('[OCR] Relaxed matching also failed. Running auto-discovery…');
+
+        // Build auto-discovered rows: lines that have marks-range numbers and some text
+        const discovered: Array<{ text: string; marks: number; grade: string }> = [];
+        const skipPatterns = /\b(TOTAL|RESULT|SEMESTER|EXAM|SL|SR|NO|MAX|MIN|PAGE|DATE|ROLL|REG|CREDIT|POINT|SGPA|CGPA|GPA|SPI|CPI|SCHEME)\b/;
+
+        lines.forEach(line => {
+          if (!line.trim()) return;
+          const cl = cleanText(line);
+          if (skipPatterns.test(cl)) return; // skip header/footer lines
+
+          const foundMarks = getMarksFromLine(cl);
+          const foundGrade = extractGrade(cl);
+          if (foundMarks === null && foundGrade === null) return;
+
+          // Extract subject name: strip numbers and grade letters from the line
+          const subjectText = cl
+            .replace(/\b\d+\b/g, '')     // remove all numbers
+            .replace(/\b(O|A\+|A|B\+|B|C|P|F)\b/g, '') // remove grade letters
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (subjectText.length < 3) return; // too short to be a subject
+
+          const finalMarks = foundMarks ?? (foundGrade ? gradeMap[foundGrade] : 0);
+          const finalGrade = foundGrade ?? marksToGrade(finalMarks).label;
+
+          discovered.push({ text: subjectText, marks: finalMarks, grade: finalGrade });
+        });
+
+        console.log('[OCR] Auto-discovered %d potential subject rows', discovered.length);
+
+        // Assign discovered rows to unmatched subjects by position order
+        const unmatchedSubs = subjects.filter(s => !matches.some(m => m.id === s.id));
+        const assignCount = Math.min(discovered.length, unmatchedSubs.length);
+        for (let idx = 0; idx < assignCount; idx++) {
+          matches.push({
+            id: unmatchedSubs[idx].id,
+            name: unmatchedSubs[idx].name, // keep original subject name
+            marks: discovered[idx].marks,
+            grade: discovered[idx].grade,
+          });
+        }
+      }
 
       setIsScanning(false);
       
@@ -761,7 +842,11 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         setExtractedMatches(matches);
         setShowReviewModal(true);
       } else {
-        showToast('Scanning finished but no subjects/grades could be matched.', 'warning');
+        console.log('[OCR] All matching passes failed. Raw text:', text);
+        showToast(
+          `OCR extracted ${lines.filter(l => l.trim()).length} text lines but could not match any subjects. Check console for raw OCR output.`,
+          'warning'
+        );
       }
 
     } catch (err) {
