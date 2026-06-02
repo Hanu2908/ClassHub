@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -1418,6 +1418,15 @@ export type Database = {
       resign_as_cr: { Args: never; Returns: undefined }
       transfer_primary_cr: {
         Args: { new_primary_id: string; old_cr_action?: string }
+        Returns: undefined
+      }
+      upsert_push_subscription: {
+        Args: {
+          sub_endpoint: string
+          sub_p256dh: string
+          sub_auth: string
+          sub_user_agent?: string | null
+        }
         Returns: undefined
       }
     }
