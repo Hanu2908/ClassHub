@@ -87,13 +87,21 @@ export default function ProfilePage() {
       if (error) {
         // Try to extract the real server error message from the response body
         let detail = error.message;
+        let isPartial = false;
         try {
           const body = typeof (error as any).context?.json === 'function'
             ? await (error as any).context.json()
             : null;
           if (body?.error) detail = body.error;
           if (body?.detail) detail += `: ${body.detail}`;
+          if (body?.partial) isPartial = true;
         } catch { /* ignore parse errors */ }
+        if (isPartial) {
+          // public.users deleted but auth.users persists — sign out anyway, warn user
+          await signOutGlobal(navigate);
+          showToast('Account data deleted, but full removal needs admin action. Contact support.', 'error');
+          return;
+        }
         throw new Error(detail);
       }
       if (data && !data.success) throw new Error(data.error ?? 'Unknown error');

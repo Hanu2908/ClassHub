@@ -100,11 +100,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Step 2: Delete auth.users row
+    // Step 3: Delete auth.users row — MUST succeed to avoid orphaned auth identity
     const { error: deleteAuthError } = await serviceClient.auth.admin.deleteUser(userId);
     if (deleteAuthError) {
       console.error("[delete-account] Auth cleanup failed:", deleteAuthError);
-      // public.users already gone — log but return success
+      // public.users already gone but auth.users persists with email — report failure
+      return new Response(
+        JSON.stringify({
+          error: "Account data deleted but auth identity removal failed. Please contact support.",
+          detail: deleteAuthError.message,
+          partial: true,
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     console.log(`[delete-account] Successfully deleted user ${userId}`);
