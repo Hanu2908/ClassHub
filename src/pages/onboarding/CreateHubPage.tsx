@@ -38,7 +38,11 @@ export default function CreateHubPage() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!sectionCode.trim() || sectionCode.length < 1) e.sectionCode = 'Section code is required (e.g. P2)';
+    if (!sectionCode.trim() || sectionCode.length < 1) {
+      e.sectionCode = 'Section code is required (e.g. P2)';
+    } else if (sectionCode.replace(/[^A-Z0-9]/gi, '').length < 1) {
+      e.sectionCode = 'Must contain at least one letter or number';
+    }
     if (!hubName.trim()) e.hubName = 'Hub name is required';
     if (!classRollRegex.test(classRoll)) e.classRoll = 'Class roll must be exactly 2 digits (01–99)';
     if (!uniRollRegex.test(universityRoll.toUpperCase())) e.universityRoll = 'Enter a valid university roll (e.g. 25ESKCX089)';
@@ -52,7 +56,9 @@ export default function CreateHubPage() {
     setLoading(true);
 
     // Generate invite code matching DB regex: ^[A-Z0-9]{2}[A-Z]{4}$
-    const inviteCode = sectionCode.toUpperCase().slice(0, 2) + randomAlpha(4);
+    // Remove any non-alphanumeric characters, pad with X if too short, take first 2 chars
+    const prefix = sectionCode.toUpperCase().replace(/[^A-Z0-9]/g, '').padEnd(2, 'X').slice(0, 2);
+    const inviteCode = prefix + randomAlpha(4);
 
     if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
