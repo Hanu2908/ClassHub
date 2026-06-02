@@ -109,19 +109,32 @@ export function OffscreenSharePortal({ announcement, domRef }: OffscreenSharePor
 
             if (isImage && signedUrl) {
               return (
-                <img
+                <div
                   key={att.id}
-                  src={signedUrl}
-                  alt={att.filename}
                   style={{
                     width: '100%',
-                    maxHeight: '300px',
-                    objectFit: 'cover',
+                    maxHeight: '320px',
                     borderRadius: '12px',
+                    overflow: 'hidden',
                     border: '1px solid var(--border-default, rgba(255,255,255,0.08))',
                     marginTop: '4px',
+                    background: 'rgba(10, 12, 20, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                />
+                >
+                  <img
+                    src={signedUrl}
+                    alt={att.filename}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '320px',
+                      objectFit: 'contain',
+                      display: 'block',
+                    }}
+                  />
+                </div>
               );
             }
 

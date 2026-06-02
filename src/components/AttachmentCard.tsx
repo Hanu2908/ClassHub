@@ -263,7 +263,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
   const getImagePreviewStyle = (): React.CSSProperties => {
     return {
       width: '100%',
-      height: 'auto',
+      height: '100%',
       maxHeight: '380px',
       objectFit: 'contain',
       display: 'block'
@@ -308,8 +308,8 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
           <div 
             style={{
               width: '100%',
-              height: isImageLoaded ? 'auto' : '200px',
-              minHeight: isImageLoaded ? 'unset' : '200px',
+              maxHeight: '380px',
+              minHeight: isImageLoaded ? '120px' : '200px',
               borderRadius: 'var(--radius-md)',
               overflow: 'hidden',
               background: 'rgba(10, 12, 20, 0.55)',
