@@ -70,14 +70,12 @@ export async function subscribeToPush(): Promise<boolean> {
       return false;
     }
 
-    const { error: upsertError } = await supabase
-      .from('push_subscriptions')
-      .upsert({
-        user_id: user.id,
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-      }, { onConflict: 'endpoint' });
+    const { error: upsertError } = await supabase.rpc('upsert_push_subscription', {
+      sub_endpoint: json.endpoint,
+      sub_p256dh: json.keys.p256dh,
+      sub_auth: json.keys.auth,
+      sub_user_agent: navigator.userAgent
+    });
 
     if (upsertError) {
       console.error('[Push] Failed to save subscription:', upsertError);
@@ -161,17 +159,12 @@ export async function ensurePushSubscription(): Promise<void> {
     if (!user) return;
 
     // Upsert the current subscription — idempotent if already present
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert(
-        {
-          user_id: user.id,
-          endpoint: json.endpoint,
-          p256dh: json.keys.p256dh,
-          auth: json.keys.auth,
-        },
-        { onConflict: 'endpoint' }
-      );
+    const { error } = await supabase.rpc('upsert_push_subscription', {
+      sub_endpoint: json.endpoint,
+      sub_p256dh: json.keys.p256dh,
+      sub_auth: json.keys.auth,
+      sub_user_agent: navigator.userAgent
+    });
 
     if (error) {
       console.warn('[Push] ensurePushSubscription upsert failed:', error);
