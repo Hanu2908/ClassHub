@@ -431,6 +431,27 @@ export function useSubmitAssignment() {
   const qc = useQueryClient();
   const { userId } = useAuthContext();
   return useMutation({
+    onMutate: async (input: { assignmentId: string; link: string }) => {
+      await qc.cancelQueries({ queryKey: ['assignments'] });
+
+      const queryCache = qc.getQueryCache();
+      const queries = queryCache.findAll({ queryKey: ['assignments'] });
+      const previousData = queries.map(query => ({
+        queryKey: query.queryKey,
+        data: query.state.data
+      }));
+
+      qc.setQueriesData({ queryKey: ['assignments'] }, (old: Assignment[] | undefined) => {
+        if (!old) return old;
+        return old.map(a => 
+          a.id === input.assignmentId 
+            ? { ...a, status: 'submitted' as const, submittedLink: input.link } 
+            : a
+        );
+      });
+
+      return { previousData };
+    },
     mutationFn: async (input: { assignmentId: string; link: string }) => {
       const key = `${input.assignmentId}-${userId}`;
       if (inFlightSubmissions.has(key)) {
@@ -451,7 +472,64 @@ export function useSubmitAssignment() {
         inFlightSubmissions.delete(key);
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['assignments'] }),
+    onError: (_err, _input, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(({ queryKey, data }) => {
+          qc.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+}
+
+// ── Unsubmit Assignment Mutation ─────────────────────────────────────────────
+
+export function useUnsubmitAssignment() {
+  const qc = useQueryClient();
+  const { userId } = useAuthContext();
+  return useMutation({
+    onMutate: async (input: { assignmentId: string }) => {
+      await qc.cancelQueries({ queryKey: ['assignments'] });
+
+      const queryCache = qc.getQueryCache();
+      const queries = queryCache.findAll({ queryKey: ['assignments'] });
+      const previousData = queries.map(query => ({
+        queryKey: query.queryKey,
+        data: query.state.data
+      }));
+
+      qc.setQueriesData({ queryKey: ['assignments'] }, (old: Assignment[] | undefined) => {
+        if (!old) return old;
+        return old.map(a => 
+          a.id === input.assignmentId 
+            ? { ...a, status: 'pending' as const, submittedLink: null } 
+            : a
+        );
+      });
+
+      return { previousData };
+    },
+    mutationFn: async (input: { assignmentId: string }) => {
+      const { error } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('assignment_id', input.assignmentId)
+        .eq('student_id', userId!);
+      if (error) throw error;
+    },
+    onError: (_err, _input, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(({ queryKey, data }) => {
+          qc.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['assignments'] });
+    },
   });
 }
 

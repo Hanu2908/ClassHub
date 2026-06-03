@@ -11,6 +11,8 @@ import { useSchedule } from '../../hooks/useSchedule';
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { BottomSheet } from '../../components/BottomSheet';
 import { PollsSkeleton } from '../../components/LoadingSkeletons';
+import { haptics } from '../../lib/haptics';
+
 
 type PollTab = 'active' | 'closed';
 
@@ -44,6 +46,11 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
 
   const handleVote = async (optId: string, isSelected: boolean) => {
     if (isClosed) return;
+    if (isSelected) {
+      haptics.heavyClick();
+    } else {
+      haptics.lightClick();
+    }
     try {
       await voteMutation.mutateAsync({
         pollId: poll.id,

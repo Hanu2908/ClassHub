@@ -7,7 +7,8 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
 import type { AssignmentSet, Assignment } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
-import { useAssignments, useCreateAssignment, useDeleteAssignment, useUpdateAssignment, useSubmitAssignment } from '../../hooks/useAssignments';
+import { useAssignments, useCreateAssignment, useDeleteAssignment, useUpdateAssignment, useSubmitAssignment, useUnsubmitAssignment } from '../../hooks/useAssignments';
+import { haptics } from '../../lib/haptics';
 import { useSubjects, useEnsureSubjects } from '../../hooks/useSubjects';
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
@@ -760,6 +761,18 @@ export default function AssignmentsPage() {
   const { data: assignments = [], isLoading } = useAssignments({ limit: 100 });
   const deleteAssignmentMutation = useDeleteAssignment();
   const submitMutation = useSubmitAssignment();
+  const unsubmitMutation = useUnsubmitAssignment();
+
+  const [undoableAssignmentId, setUndoableAssignmentId] = useState<string | null>(null);
+  const undoTimeoutRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
@@ -820,10 +833,33 @@ export default function AssignmentsPage() {
   };
 
   const handleMarkSubmitted = async (id: string) => {
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
     try {
+      haptics.doublePulse();
       await submitMutation.mutateAsync({ assignmentId: id, link: 'marked-submitted' });
-      showToast('Marked as submitted ✓', 'success');
-    } catch { showToast('Failed to submit', 'error'); }
+      setUndoableAssignmentId(id);
+      undoTimeoutRef.current = setTimeout(() => {
+        setUndoableAssignmentId(null);
+      }, 4000);
+    } catch {
+      showToast('Failed to submit', 'error');
+    }
+  };
+
+  const handleUndo = async (id: string) => {
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
+    setUndoableAssignmentId(null);
+    haptics.lightClick();
+    try {
+      await unsubmitMutation.mutateAsync({ assignmentId: id });
+      showToast('Submission undone', 'success');
+    } catch {
+      showToast('Failed to undo submission', 'error');
+    }
   };
 
   // 2-day post-deadline expiry
@@ -1257,6 +1293,76 @@ export default function AssignmentsPage() {
           <Plus size={22} />
         </button>
       </CROnly>
+
+      {undoableAssignmentId && (
+        <div style={{
+          position: 'fixed',
+          bottom: 80,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 999,
+          width: 'calc(100% - 40px)',
+          maxWidth: 360,
+          background: 'rgba(18, 22, 36, 0.85)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(52, 201, 123, 0.3)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+            <CheckCircle2 size={18} color="var(--status-safe)" />
+            <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)' }}>
+              Marked as submitted
+            </span>
+            <button
+              onClick={() => handleUndo(undoableAssignmentId)}
+              style={{
+                background: 'rgba(74, 158, 255, 0.1)',
+                border: '1px solid rgba(74, 158, 255, 0.3)',
+                color: 'var(--accent-primary)',
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                font: 'inherit',
+                fontSize: 12,
+                fontWeight: 600,
+                transition: 'all 0.2s',
+                minHeight: 'fit-content'
+              }}
+            >
+              Undo
+            </button>
+          </div>
+          <div style={{
+            height: 3,
+            background: 'var(--status-safe)',
+            width: '100%',
+            transformOrigin: 'left',
+            animation: 'toastShrink 4s linear forwards'
+          }} />
+          <style>{`
+            @keyframes toastSlideIn {
+              from {
+                transform: translate(-50%, 16px);
+                opacity: 0;
+              }
+              to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+              }
+            }
+            @keyframes toastShrink {
+              from { transform: scaleX(1); }
+              to { transform: scaleX(0); }
+            }
+          `}</style>
+        </div>
+      )}
 
       <NavBar />
     </div>

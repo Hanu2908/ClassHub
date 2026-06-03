@@ -16,6 +16,8 @@ import { useAttendance, useBulkUpsertAttendance, useUpdateSubject } from '../../
 import { useSchedule } from '../../hooks/useSchedule';
 import { useEnsureSubjects } from '../../hooks/useSubjects';
 import { AttendanceSkeleton } from '../../components/LoadingSkeletons';
+import { haptics } from '../../lib/haptics';
+
 
 import { parseERPAttendance } from '../../lib/utils/attendance';
 import type { ParsedSubject } from '../../lib/utils/attendance';
@@ -508,18 +510,23 @@ export default function AttendancePage() {
 
   const handleConfirm = () => {
     if (!parsed) return;
-    bulkUpsert.mutate(parsed.map(p => ({ 
+    haptics.doublePulse();
+    
+    const importItems = parsed.map(p => ({ 
       code: p.code, 
       present: p.present, 
       absent: p.absent, 
       od: p.od, 
       makeup: p.makeup 
-    })), {
+    }));
+    
+    setErpOpen(false);
+    setParsed(null);
+    setErpText('');
+
+    bulkUpsert.mutate(importItems, {
       onSuccess: () => {
         showToast('ERP attendance imported successfully', 'success');
-        setParsed(null);
-        setErpOpen(false);
-        setErpText('');
       },
       onError: (err: Error) => {
         console.error('ERP import error', err);

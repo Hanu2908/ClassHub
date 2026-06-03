@@ -102,6 +102,49 @@ export function useBulkUpsertAttendance() {
   const qc = useQueryClient();
   const { userId, sectionId } = useAuthContext();
   return useMutation({
+    onMutate: async (items) => {
+      await qc.cancelQueries({ queryKey: ['attendance', userId] });
+      const previousAttendance = qc.getQueryData(['attendance', userId]);
+
+      qc.setQueryData(['attendance', userId], (old: any) => {
+        if (!old) return old;
+
+        const updatedSubjects = old.subjects.map((sub: any) => {
+          const match = items.find(item => item.code === sub.code);
+          if (!match) return sub;
+
+          const present = (match.present ?? 0) + (match.od ?? 0) + (match.makeup ?? 0);
+          const absent = match.absent ?? 0;
+          const total = (match.present ?? 0) + (match.od ?? 0) + absent;
+          
+          const percentage = total > 0 ? (present / total) * 100 : 0;
+          const canSkip = total > 0 ? Math.floor((present - 0.75 * total) / 0.75) : 0;
+          const needToAttend = total > 0 ? Math.max(0, Math.ceil((0.75 * total - present) / 0.25)) : 0;
+
+          return {
+            ...sub,
+            present,
+            absent,
+            total,
+            percentage,
+            canSkip: Math.max(0, canSkip),
+            needToAttend
+          };
+        });
+
+        const totalPresent = updatedSubjects.reduce((sum: number, s: any) => sum + s.present, 0);
+        const totalHeld = updatedSubjects.reduce((sum: number, s: any) => sum + s.total, 0);
+        const overall = totalHeld > 0 ? (totalPresent / totalHeld) * 100 : 0;
+
+        return {
+          subjects: updatedSubjects,
+          overall,
+          lastUpdated: new Date().toISOString()
+        };
+      });
+
+      return { previousAttendance };
+    },
     mutationFn: async (items: Array<{ code?: string; subjectId?: string; present: number; absent: number; od?: number; makeup?: number }>) => {
       if (!userId) throw new Error('Not authenticated');
       if (!sectionId) throw new Error('Missing section context');
@@ -132,7 +175,14 @@ export function useBulkUpsertAttendance() {
       const { error } = await supabase.from('attendance_records').upsert(rows, { onConflict: 'user_id,subject_id' });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['attendance'] }),
+    onError: (_err, _items, context) => {
+      if (context?.previousAttendance) {
+        qc.setQueryData(['attendance', userId], context.previousAttendance);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['attendance', userId] });
+    },
   });
 }
 
