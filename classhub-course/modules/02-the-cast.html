@@ -1,0 +1,222 @@
+<section class="module" id="module-2" style="background: var(--color-bg-warm);">
+  <div class="module-content">
+
+    <div class="module-header animate-in">
+      <span class="module-number">02</span>
+      <h1 class="module-title">The Cast — Who Does What in the Codebase</h1>
+      <p class="module-subtitle">Every codebase has characters with specific jobs. Know them and you'll always know which file to tell AI to change.</p>
+    </div>
+
+    <!-- Screen 1: File tree -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">The map of the codebase</h2>
+      <p>ClassHub's source code lives entirely inside <code>src/</code>. It's split into clean folders — each with a specific job. Think of it like a theatre backstage: different areas handle costumes, lighting, scripts, and stage mechanics.</p>
+      <div class="file-tree animate-in">
+        <div class="ft-folder">
+          <div class="ft-name">src/</div>
+          <div class="ft-children">
+            <div class="ft-file"><div class="ft-name">App.tsx <span class="ft-desc">— The director: sets up routing and auth wrappers</span></div></div>
+            <div class="ft-file"><div class="ft-name">main.tsx <span class="ft-desc">— The stage door: mounts React into index.html</span></div></div>
+            <div class="ft-folder">
+              <div class="ft-name">pages/ <span class="ft-desc">— Full-screen views, one per route</span></div>
+              <div class="ft-children">
+                <div class="ft-file"><div class="ft-name">SignIn.tsx <span class="ft-desc">— The login screen</span></div></div>
+                <div class="ft-folder">
+                  <div class="ft-name">app/ <span class="ft-desc">— All authenticated pages</span></div>
+                  <div class="ft-children">
+                    <div class="ft-file"><div class="ft-name">DashboardPage.tsx</div></div>
+                    <div class="ft-file"><div class="ft-name">AnnouncementsPage.tsx</div></div>
+                    <div class="ft-file"><div class="ft-name">PollsPage.tsx</div></div>
+                    <div class="ft-file"><div class="ft-name">AttendancePage.tsx <span class="ft-desc">— and 10 more…</span></div></div>
+                  </div>
+                </div>
+                <div class="ft-folder">
+                  <div class="ft-name">onboarding/ <span class="ft-desc">— Join/create a section hub</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="ft-folder">
+              <div class="ft-name">components/ <span class="ft-desc">— Reusable UI building blocks</span></div>
+              <div class="ft-children">
+                <div class="ft-file"><div class="ft-name">AuthProvider.tsx <span class="ft-desc">— Manages the Google sign-in lifecycle</span></div></div>
+                <div class="ft-file"><div class="ft-name">NavBar.tsx, Toast.tsx, BottomSheet.tsx…</span></div>
+              </div>
+            </div>
+            <div class="ft-folder">
+              <div class="ft-name">hooks/ <span class="ft-desc">— Data-fetching logic, one hook per feature</span></div>
+              <div class="ft-children">
+                <div class="ft-file"><div class="ft-name">useAttendance.ts, usePolls.ts, useAnnouncements.ts…</div></div>
+              </div>
+            </div>
+            <div class="ft-folder">
+              <div class="ft-name">lib/ <span class="ft-desc">— Utilities and service clients</span></div>
+              <div class="ft-children">
+                <div class="ft-file"><div class="ft-name">supabase.ts <span class="ft-desc">— The Supabase client singleton</span></div></div>
+                <div class="ft-file"><div class="ft-name">realtimeBroker.ts <span class="ft-desc">— WebSocket subscription manager</span></div></div>
+                <div class="ft-file"><div class="ft-name">offlineSync.ts <span class="ft-desc">— Replays actions after reconnecting</span></div></div>
+              </div>
+            </div>
+            <div class="ft-folder">
+              <div class="ft-name">store/ <span class="ft-desc">— Global app-wide memory (Zustand)</span></div>
+              <div class="ft-children">
+                <div class="ft-file"><div class="ft-name">appStore.ts <span class="ft-desc">— Session, user profile, offline cache</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2: The architecture diagram -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Click any layer to understand its job</h2>
+      <p>ClassHub has four distinct layers. Data always flows top-to-bottom — <strong>Pages</strong> ask <strong>Hooks</strong> for data, Hooks ask the <strong>Store/Cache</strong>, and the Store talks to <strong>Supabase</strong>. Click each layer to learn more.</p>
+      <div class="arch-diagram">
+        <div class="arch-zone">
+          <div class="arch-zone-label">Layer 1 — What the user sees</div>
+          <div style="display:flex;flex-wrap:wrap;">
+            <div class="arch-component" data-desc="Pages are full-screen views — DashboardPage, AnnouncementsPage, PollsPage, etc. They import hooks to get data and render it as UI. Pages don't talk to Supabase directly. They just display what hooks give them.">
+              <span class="arch-icon">📄</span>Pages
+            </div>
+            <div class="arch-component" data-desc="Components are reusable UI building blocks — NavBar, Toast, BottomSheet, FileUploader. They're like LEGO bricks that multiple pages can use. They receive data as props — they don't fetch anything themselves.">
+              <span class="arch-icon">🧩</span>Components
+            </div>
+          </div>
+        </div>
+        <div class="arch-zone">
+          <div class="arch-zone-label">Layer 2 — Business logic &amp; data fetching</div>
+          <div style="display:flex;flex-wrap:wrap;">
+            <div class="arch-component" data-desc="Hooks (usePolls, useAttendance, useAnnouncements…) are where the data-fetching logic lives. They use TanStack Query to cache results and Supabase to actually run the database queries. When you want to change how data is fetched, you edit a hook.">
+              <span class="arch-icon">🪝</span>Hooks
+            </div>
+          </div>
+        </div>
+        <div class="arch-zone">
+          <div class="arch-zone-label">Layer 3 — Memory &amp; caching</div>
+          <div style="display:flex;flex-wrap:wrap;">
+            <div class="arch-component" data-desc="The Zustand store (appStore.ts) holds global state: your session, your user profile, and the offline data cache. It's the app's working memory — fast, synchronous, and shared across all components without prop drilling.">
+              <span class="arch-icon">🧠</span>Zustand Store
+            </div>
+            <div class="arch-component" data-desc="TanStack Query is the server-state cache. It remembers the results of every database query for a configurable time (staleTime). If you open the Announcements page twice in 5 minutes, it serves the cached result instantly and only re-fetches if the data is 'stale'.">
+              <span class="arch-icon">⚡</span>TanStack Query Cache
+            </div>
+          </div>
+        </div>
+        <div class="arch-zone">
+          <div class="arch-zone-label">Layer 4 — Backend (external service)</div>
+          <div style="display:flex;flex-wrap:wrap;">
+            <div class="arch-component" data-desc="Supabase is the complete backend: PostgreSQL database (12 tables, all with RLS), Google OAuth authentication, file storage (for assignment uploads), and realtime WebSocket subscriptions. The app only talks to Supabase via the supabase.ts client.">
+              <span class="arch-icon">🗄️</span>Supabase
+            </div>
+            <div class="arch-component" data-desc="Edge Functions are small serverless functions that run close to the user. ClassHub uses them for tasks that shouldn't run in the browser — like sending push notifications or generating anonymous poll tokens securely.">
+              <span class="arch-icon">⚙️</span>Edge Functions
+            </div>
+          </div>
+        </div>
+        <div class="arch-description">Click any component above to learn its role.</div>
+      </div>
+      <div class="callout callout-accent animate-in">
+        <span class="callout-icon">🎯</span>
+        <div class="callout-content">
+          <span class="callout-title">The golden rule for directing AI</span>
+          <p>When you say "change how attendance data looks," AI edits a <strong>Page</strong>. When you say "change what attendance data is fetched," AI edits a <strong>Hook</strong>. When you say "add a new database column," AI edits a <strong>Supabase migration</strong>. Knowing the layer prevents AI from editing the wrong file.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: Code translation — page → hook -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">How a page asks a hook for data</h2>
+      <p>Here's a simplified version of how <code>AttendancePage.tsx</code> gets data. This single-import pattern is how all pages in ClassHub work — the page owns the layout, the hook owns the data.</p>
+      <div class="translation-block">
+        <div class="translation-code">
+          <span class="translation-label">TypeScript — AttendancePage.tsx</span>
+          <code>
+            <span class="code-line"><span class="code-keyword">import</span> { <span class="code-function">useAttendance</span> } <span class="code-keyword">from</span> <span class="code-string">'../hooks/useAttendance'</span></span>
+            <span class="code-line">&nbsp;</span>
+            <span class="code-line"><span class="code-keyword">export default function</span> <span class="code-function">AttendancePage</span>() {</span>
+            <span class="code-line">  <span class="code-keyword">const</span> { data, isLoading, error } = <span class="code-function">useAttendance</span>()</span>
+            <span class="code-line">&nbsp;</span>
+            <span class="code-line">  <span class="code-keyword">if</span> (isLoading) <span class="code-keyword">return</span> <span class="code-tag">&lt;LoadingSkeleton /&gt;</span></span>
+            <span class="code-line">  <span class="code-keyword">if</span> (error)     <span class="code-keyword">return</span> <span class="code-tag">&lt;ErrorMessage /&gt;</span></span>
+            <span class="code-line">&nbsp;</span>
+            <span class="code-line">  <span class="code-keyword">return</span> <span class="code-tag">&lt;AttendanceChart</span> <span class="code-attr">subjects</span>=<span class="code-value">{data.subjects}</span> <span class="code-tag">/&gt;</span></span>
+            <span class="code-line">}</span>
+          </code>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">Plain English</span>
+          <div class="translation-lines">
+            <div class="tl">Import the attendance hook from the hooks folder.</div>
+            <div class="tl">Call the hook inside the component — it handles all the fetching behind the scenes.</div>
+            <div class="tl">The hook returns three things: the data itself, a loading flag, and any error.</div>
+            <div class="tl">While loading: show a skeleton placeholder so the screen isn't blank.</div>
+            <div class="tl">If something went wrong: show an error message instead of crashing.</div>
+            <div class="tl">If data arrived: render the chart with the subjects array.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 4: Quiz -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Where does it live?</h2>
+      <p>Test your mental model of the codebase architecture.</p>
+      <div class="quiz-container" id="quiz-m2">
+        <div class="quiz-question-block"
+             data-correct="B"
+             data-explanation-right="Yes! Data-fetching logic belongs in hooks (src/hooks/). The polling hook — usePolls.ts — is exactly where you'd find and modify how poll data is fetched, filtered, and shaped."
+             data-explanation-wrong="Not quite. Pages display data but don't own fetching logic. The store holds already-fetched data in memory. Supabase is the database itself. Data-fetching logic — queries, caching, mutation functions — all live in hooks.">
+          <p class="quiz-question">You want to change how poll data is fetched — for example, to filter out expired polls before they reach the UI. Which layer do you tell AI to edit?</p>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="A" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              src/pages/app/PollsPage.tsx — where the polls are displayed
+            </button>
+            <button class="quiz-option" data-value="B" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              src/hooks/usePolls.ts — where the data fetching logic lives
+            </button>
+            <button class="quiz-option" data-value="C" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              src/store/appStore.ts — where global state is kept
+            </button>
+            <button class="quiz-option" data-value="D" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              supabase/migrations/ — in the database schema
+            </button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+        <div class="quiz-question-block"
+             data-correct="A"
+             data-explanation-right="Correct. The Zustand store (appStore.ts) is the app's working memory — it holds the authenticated user object, the current session token, and the offline data cache. It's the single source of truth for who you are."
+             data-explanation-wrong="Not quite. AuthProvider manages the sign-in lifecycle, but once auth is complete, the authenticated user profile and session token are stored in the Zustand store. Components read from the store, not from AuthProvider.">
+          <p class="quiz-question">After signing in, where does the app store your user profile (name, role, sectionId) so every component can access it?</p>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="A" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              The Zustand store in src/store/appStore.ts
+            </button>
+            <button class="quiz-option" data-value="B" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              The AuthProvider component in src/components/AuthProvider.tsx
+            </button>
+            <button class="quiz-option" data-value="C" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              A React Context created in App.tsx
+            </button>
+            <button class="quiz-option" data-value="D" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              localStorage in the browser
+            </button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+        <button class="quiz-check-btn" onclick="checkQuiz('quiz-m2')">Check Answers</button>
+        <button class="quiz-reset-btn" onclick="resetQuiz('quiz-m2')">Try Again</button>
+      </div>
+    </div>
+
+  </div>
+</section>

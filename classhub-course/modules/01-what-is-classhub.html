@@ -1,0 +1,227 @@
+<section class="module" id="module-1">
+  <div class="module-content">
+
+    <div class="module-header animate-in">
+      <span class="module-number">01</span>
+      <h1 class="module-title">What is ClassHub — and what happens when you open it</h1>
+      <p class="module-subtitle">From a Google tap to your personalized dashboard in under 3 seconds. Let's trace every invisible step.</p>
+    </div>
+
+    <!-- Screen 1: The product -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">A digital command centre for Section P2</h2>
+      <p>
+        ClassHub is a <span class="term" data-definition="Progressive Web App — a website that installs on your phone like a native app, can work offline, and send push notifications. No App Store required.">PWA</span> built exclusively for SKIT Jaipur students.
+        Every student in a section gets the same live feed — announcements, assignments, polls, schedules —
+        locked so students from other sections can never see in.
+      </p>
+      <p>Two types of users exist. Knowing the difference is essential when directing AI to build new features:</p>
+      <div class="pattern-cards stagger-children">
+        <div class="pattern-card animate-in">
+          <div class="pattern-icon" style="background: var(--color-accent-light);">👤</div>
+          <div class="pattern-title">Student</div>
+          <p class="pattern-desc">Views announcements, tracks attendance, submits assignments, votes in polls, calculates GPA. Read-mostly access — they consume information.</p>
+        </div>
+        <div class="pattern-card animate-in">
+          <div class="pattern-icon" style="background: #FFF3E0;">⚡</div>
+          <div class="pattern-title">CR (Class Representative)</div>
+          <p class="pattern-desc">Posts announcements, creates polls, uploads assignments, tracks who submitted, manages subjects. Full write access — they produce information.</p>
+        </div>
+      </div>
+      <div class="callout callout-accent animate-in">
+        <span class="callout-icon">💡</span>
+        <div class="callout-content">
+          <span class="callout-title">Why this matters when you're steering AI</span>
+          <p>When you ask AI to "add a new feature," the user type determines which files change. A CR-only panel lives in different components than a student view — and different <span class="term" data-definition="Row-Level Security — database rules that automatically block queries returning data the current user isn't allowed to see. Enforced inside PostgreSQL, not in app code.">RLS policies</span> control which database rows each role can touch.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2: Features -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Everything ClassHub can do</h2>
+      <div class="icon-rows stagger-children">
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: var(--color-accent-light);">📢</div>
+          <div>
+            <strong>Announcements</strong>
+            <p>Section-wide messages with channels (Exams, Schedule, Campus), priority flags, and acknowledgment tracking so CRs can see who's actually read each post.</p>
+          </div>
+        </div>
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: #FFF3E0;">📝</div>
+          <div>
+            <strong>Assignments &amp; Submissions</strong>
+            <p>CRs group tasks into assignment sets per subject. Students upload files (PDFs, code, images) directly inside the app — stored in <span class="term" data-definition="Supabase Storage — a cloud file storage service, similar to Dropbox, but integrated with your database. Files are stored in 'buckets' and accessed via URLs.">Supabase Storage</span>.</p>
+          </div>
+        </div>
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: var(--color-success-light);">📊</div>
+          <div>
+            <strong>Real-Time Polls</strong>
+            <p>Live vote counts that update the instant someone clicks. General polls hide who voted using <span class="term" data-definition="A mathematical one-way transformation that converts data (like a user ID) into a fixed-length string. You can verify a match, but you cannot reverse it back to the original.">cryptographic hashing</span> — more on this in Module 5.</p>
+          </div>
+        </div>
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: #F3E5FF;">📈</div>
+          <div>
+            <strong>Attendance &amp; GPA</strong>
+            <p>Track attendance per subject with running calculations — how many classes you can still skip, how many you need to attend to reach 75%, and GPA target scenarios.</p>
+          </div>
+        </div>
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: var(--color-error-light);">🔔</div>
+          <div>
+            <strong>Push Notifications &amp; Offline Mode</strong>
+            <p>The app works even without internet. Actions taken offline (votes, acknowledgments) are queued and replayed automatically when you reconnect.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: Sign-in flow animation -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">What happens when you tap "Sign in with Google"</h2>
+      <p>Six invisible steps happen in roughly 2 seconds. Understanding this flow helps you debug authentication bugs and describe requirements precisely — without saying "the login thing is broken."</p>
+      <div class="flow-animation" data-steps='[
+        {"highlight":"flow-you","label":"Step 1 — You tap the button. Your browser is about to temporarily leave the ClassHub page."},
+        {"highlight":"flow-google","packet":true,"from":"you","to":"google","label":"Step 2 — Your browser redirects to Google. Google asks: which account do you want to use?"},
+        {"highlight":"flow-supabase","packet":true,"from":"google","to":"supabase","label":"Step 3 — Google confirms your identity and sends a secure token to Supabase Auth."},
+        {"highlight":"flow-domain","label":"Step 4 — The app checks your email. It must end with @skit.ac.in — no exceptions. Personal Gmail? Rejected."},
+        {"highlight":"flow-db","packet":true,"from":"supabase","to":"db","label":"Step 5 — Your profile (name, role, section ID) is fetched from the users table in PostgreSQL."},
+        {"highlight":"flow-router","packet":true,"from":"db","to":"router","label":"Step 6 — The app router reads your profile. Has a section? → Dashboard. No section yet? → Onboarding."}
+      ]'>
+        <div class="flow-actors">
+          <div class="flow-actor" id="flow-you">
+            <div class="flow-actor-icon">🧑‍🎓</div>
+            <span>You</span>
+          </div>
+          <div class="flow-actor" id="flow-google">
+            <div class="flow-actor-icon" style="font-size:var(--text-lg);font-weight:800;">G</div>
+            <span>Google</span>
+          </div>
+          <div class="flow-actor" id="flow-supabase">
+            <div class="flow-actor-icon">🔒</div>
+            <span>Supabase Auth</span>
+          </div>
+          <div class="flow-actor" id="flow-domain">
+            <div class="flow-actor-icon">✅</div>
+            <span>Domain Check</span>
+          </div>
+          <div class="flow-actor" id="flow-db">
+            <div class="flow-actor-icon">🗄️</div>
+            <span>Profile DB</span>
+          </div>
+          <div class="flow-actor" id="flow-router">
+            <div class="flow-actor-icon">🗺️</div>
+            <span>App Router</span>
+          </div>
+        </div>
+        <div class="flow-step-label">Click "Next Step" to trace the sign-in journey →</div>
+        <div class="flow-controls">
+          <button class="btn btn-primary flow-next-btn">Next Step</button>
+          <button class="btn flow-reset-btn">Reset</button>
+          <span class="flow-progress">Step 0 / 6</span>
+        </div>
+        <div class="flow-packet"></div>
+      </div>
+    </div>
+
+    <!-- Screen 4: Code translation — domain check -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">The @skit.ac.in rule — code and plain English, side by side</h2>
+      <p>This exact snippet lives in <code>src/components/AuthProvider.tsx</code>. It runs immediately after Google confirms your identity — before a single piece of data loads.</p>
+      <div class="translation-block">
+        <div class="translation-code">
+          <span class="translation-label">TypeScript</span>
+          <code>
+            <span class="code-line"><span class="code-keyword">if</span> (!user.email<span class="code-operator">?.</span><span class="code-function">endsWith</span>(<span class="code-string">'@skit.ac.in'</span>)) {</span>
+            <span class="code-line">  <span class="code-keyword">await</span> supabase.auth.<span class="code-function">signOut</span>()</span>
+            <span class="code-line">  store.<span class="code-function">setAuthUser</span>(<span class="code-keyword">null</span>)</span>
+            <span class="code-line">  store.<span class="code-function">setSession</span>(<span class="code-keyword">null</span>)</span>
+            <span class="code-line">  navigateFn<span class="code-operator">?.</span>(<span class="code-string">'/?error=domain'</span>)</span>
+            <span class="code-line">  <span class="code-keyword">return</span></span>
+            <span class="code-line">}</span>
+          </code>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">Plain English</span>
+          <div class="translation-lines">
+            <div class="tl">Check if the email ends in @skit.ac.in. The <code>?.</code> safely skips the check if email is somehow missing.</div>
+            <div class="tl">If it doesn't match: immediately terminate the Google session — no token is stored.</div>
+            <div class="tl">Erase the user and session from the app's memory (the Zustand store).</div>
+            <div class="tl">Send the user back to the login page with <code>?error=domain</code> in the URL so the UI can show a clear message.</div>
+            <div class="tl"><code>return</code> stops all remaining sign-in code from running — nothing leaks through.</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-info animate-in">
+        <span class="callout-icon">🧠</span>
+        <div class="callout-content">
+          <span class="callout-title">A universal pattern: check early, fail loudly</span>
+          <p>Rejecting unauthorized users at the very first moment — before any data loads — is a cornerstone of secure app design. It's cheaper (less code executes), safer (nothing leaks), and easier to debug. You'll find this "guard clause" pattern in virtually every production app.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 5: Quiz -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Quick check — lock in the sign-in flow</h2>
+      <div class="quiz-container" id="quiz-m1">
+        <div class="quiz-question-block"
+             data-correct="C"
+             data-explanation-right="Correct! ClassHub calls signOut() immediately, wipes session memory, and redirects to /?error=domain. The user never touches any data."
+             data-explanation-wrong="Not quite. ClassHub doesn't show a popup or create a guest account — it kills the session entirely and redirects them away. The rejection happens in code, not in a dialog.">
+          <p class="quiz-question">Your friend tries to sign in using their personal @gmail.com account. What does ClassHub do?</p>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="A" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Displays an error popup on the page and lets them try a different account
+            </button>
+            <button class="quiz-option" data-value="B" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Creates a read-only guest account so they can view announcements
+            </button>
+            <button class="quiz-option" data-value="C" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Signs them out immediately, clears session memory, and redirects to /?error=domain
+            </button>
+            <button class="quiz-option" data-value="D" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Lets them in but hides the announcements and polls pages
+            </button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+        <div class="quiz-question-block"
+             data-correct="B"
+             data-explanation-right="Exactly. A valid @skit.ac.in user with no section_id gets redirected to /onboarding/choice — the route that lets them join or create a section hub."
+             data-explanation-wrong="Close, but not right. The session is valid — the domain check passed. The app just doesn't know which section to load. So instead of the Dashboard, it routes to Onboarding.">
+          <p class="quiz-question">A first-time @skit.ac.in student signs in. Their Google account is valid but they haven't joined any section yet. Where does the app route them?</p>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="A" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              /app/home — the dashboard, same as existing students
+            </button>
+            <button class="quiz-option" data-value="B" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              /onboarding/choice — to join or create a class section
+            </button>
+            <button class="quiz-option" data-value="C" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Back to the sign-in page — the app treats them as unauthorized
+            </button>
+            <button class="quiz-option" data-value="D" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              A blank screen while an admin manually approves them
+            </button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+        <button class="quiz-check-btn" onclick="checkQuiz('quiz-m1')">Check Answers</button>
+        <button class="quiz-reset-btn" onclick="resetQuiz('quiz-m1')">Try Again</button>
+      </div>
+    </div>
+
+  </div>
+</section>

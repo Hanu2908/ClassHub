@@ -35,7 +35,7 @@ export function useSchedule() {
   return useQuery<ScheduleMap>({
     queryKey: ['schedule', sectionId],
     enabled: !!sectionId && isAuthenticated,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 3, // 3 minutes
     queryFn: async () => {
       try {
         const { data, error } = await supabase

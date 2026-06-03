@@ -1,0 +1,302 @@
+<section class="module" id="module-5">
+  <div class="module-content">
+
+    <div class="module-header animate-in">
+      <span class="module-number">05</span>
+      <h1 class="module-title">Roles, Guards &amp; the Poll Secret</h1>
+      <p class="module-subtitle">Who can see what, who can do what — and why "anonymous" polls aren't actually anonymous to the database.</p>
+    </div>
+
+    <!-- Screen 1: The role system -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Three concentric rings of access</h2>
+      <p>ClassHub has three nested access levels. Think of them as rings on a security badge — you need the outer ring to get in, the middle ring to access the app, and the inner ring to reach administrative tools.</p>
+      <div class="pattern-cards stagger-children">
+        <div class="pattern-card animate-in" style="border-top-color: var(--color-success);">
+          <div class="pattern-icon" style="background: var(--color-success-light);">🔑</div>
+          <div class="pattern-title">Ring 1: Authentication</div>
+          <p class="pattern-desc">Must have a valid @skit.ac.in Google account and an active session. All other access checks come after this one passes.</p>
+        </div>
+        <div class="pattern-card animate-in" style="border-top-color: var(--color-info);">
+          <div class="pattern-icon" style="background: var(--color-info-light);">🏛️</div>
+          <div class="pattern-title">Ring 2: Section Membership</div>
+          <p class="pattern-desc">Must belong to a section hub. Without a section_id, you're routed to onboarding — you can't access any data pages.</p>
+        </div>
+        <div class="pattern-card animate-in" style="border-top-color: var(--color-actor-3);">
+          <div class="pattern-icon" style="background: #F3E5FF;">⚡</div>
+          <div class="pattern-title">Ring 3: Role (student vs CR)</div>
+          <p class="pattern-desc">CRs have write access — creating polls, posting announcements, managing assignments. Students have read access. The CR Command panel is invisible to students entirely.</p>
+        </div>
+      </div>
+      <div class="callout callout-info animate-in">
+        <span class="callout-icon">🧠</span>
+        <div class="callout-content">
+          <span class="callout-title">An even rarer inner ring: isDeveloper</span>
+          <p>A handful of accounts have <code>isDeveloper: true</code> in their profile. These unlock the Developer Console and Subject Management pages — even if you're a CR, you can't access those without the developer flag. This is useful for app-level debugging without exposing it to all CRs.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2: Route guards -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Route guards — the bouncers at each door</h2>
+      <p>In <code>App.tsx</code>, every route is wrapped in one or more guard components. These are React components that either render their children or redirect. They run before any page content loads.</p>
+      <div class="badge-list stagger-children">
+        <div class="badge-item animate-in">
+          <span class="badge-code">RequireAuth</span>
+          <span class="badge-desc">No active session? Redirect to /. Blocks all app pages.</span>
+        </div>
+        <div class="badge-item animate-in">
+          <span class="badge-code">RequireHub</span>
+          <span class="badge-desc">No section_id? Redirect to /onboarding/choice. Blocks all data pages.</span>
+        </div>
+        <div class="badge-item animate-in">
+          <span class="badge-code">RequireDeveloper</span>
+          <span class="badge-desc">Not a developer? Redirect to /app/home. Blocks console and subject management.</span>
+        </div>
+        <div class="badge-item animate-in">
+          <span class="badge-code">RequireNoHub</span>
+          <span class="badge-desc">Already in a section? Redirect to /app/home. Prevents re-onboarding.</span>
+        </div>
+        <div class="badge-item animate-in">
+          <span class="badge-code">PublicRoute</span>
+          <span class="badge-desc">Already authenticated? Skip the login page and redirect to the app.</span>
+        </div>
+      </div>
+      <div class="translation-block animate-in">
+        <div class="translation-code">
+          <span class="translation-label">App.tsx — route definition</span>
+          <code>
+            <span class="code-line"><span class="code-tag">&lt;Route</span> <span class="code-attr">path</span>=<span class="code-string">"/app/home"</span></span>
+            <span class="code-line">  <span class="code-attr">element</span>=<span class="code-value">{</span></span>
+            <span class="code-line">    <span class="code-tag">&lt;RequireAuth&gt;</span></span>
+            <span class="code-line">      <span class="code-tag">&lt;RequireHub&gt;</span></span>
+            <span class="code-line">        <span class="code-tag">&lt;ErrorBoundary&gt;</span></span>
+            <span class="code-line">          <span class="code-tag">&lt;DashboardPage /&gt;</span></span>
+            <span class="code-line">        <span class="code-tag">&lt;/ErrorBoundary&gt;</span></span>
+            <span class="code-line">      <span class="code-tag">&lt;/RequireHub&gt;</span></span>
+            <span class="code-line">    <span class="code-tag">&lt;/RequireAuth&gt;</span></span>
+            <span class="code-line">  <span class="code-value">}</span> <span class="code-tag">/&gt;</span></span>
+          </code>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">Plain English</span>
+          <div class="translation-lines">
+            <div class="tl">To reach the Dashboard, you must pass through two bouncers in sequence.</div>
+            <div class="tl"><strong>RequireAuth</strong> checks first: do you have a valid @skit.ac.in session? No → login page.</div>
+            <div class="tl"><strong>RequireHub</strong> checks next: do you have a section_id? No → onboarding.</div>
+            <div class="tl"><strong>ErrorBoundary</strong> wraps the page in a crash net — if DashboardPage throws an error, it shows a friendly message instead of a blank screen.</div>
+            <div class="tl">Only if both guards pass does DashboardPage actually render.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: RLS -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Row-Level Security — the database's own bouncer</h2>
+      <p>Route guards protect URLs in the browser. But what if someone bypasses the UI and calls the Supabase API directly with a valid session token? This is where <span class="term" data-definition="Row-Level Security (RLS) — a PostgreSQL feature that attaches a policy to each table. Before returning any row, the database checks if the current user's auth.uid() satisfies the policy. If not, the row is invisible — as if it doesn't exist.">Row-Level Security</span> becomes the critical last line of defence.</p>
+      <div class="step-cards stagger-children">
+        <div class="step-card animate-in">
+          <div class="step-num">🔒</div>
+          <div class="step-body">
+            <strong>Every table has RLS enabled</strong>
+            <p>All 12 tables in ClassHub's schema have RLS turned on. By default, RLS blocks <em>everything</em> — no reads, no writes. Policies must explicitly grant access.</p>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">🏷️</div>
+          <div class="step-body">
+            <strong>Section scoping on every query</strong>
+            <p>Every policy checks <code>section_id = (SELECT section_id FROM users WHERE id = auth.uid())</code>. Even if a student crafts a raw SQL query, they can only see rows from their own section.</p>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">✍️</div>
+          <div class="step-body">
+            <strong>Role-gated writes</strong>
+            <p>INSERT and UPDATE policies on announcements, polls, and assignments check <code>role = 'cr'</code>. Students physically cannot insert announcement rows — the database rejects the attempt, no matter what the UI says.</p>
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-warning animate-in">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-content">
+          <span class="callout-title">Why client-side role checks aren't enough</span>
+          <p>Hiding the "Post Announcement" button in the UI is nice for usability — but it's not security. A skilled person can open DevTools, call Supabase's REST API directly with their session token, and bypass every UI check. Only RLS, running inside PostgreSQL itself, is truly tamper-proof.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 4: The anonymous poll trick + drag-and-drop -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">The anonymous poll trick — how ClassHub hides your vote without losing it</h2>
+      <p>General polls display live vote counts but don't show who voted for what. Yet the database must prevent the same person voting twice. How do you prove uniqueness without storing the voter's identity?</p>
+      <p>ClassHub uses a <span class="term" data-definition="Hash function — a mathematical algorithm that converts any input (like a user ID + poll ID) into a fixed-length string. The same input always produces the same output, but you cannot reverse-engineer the original input from the hash.">hash function</span> called <code>calculate_anonymous_token</code>, running in a secure <span class="term" data-definition="Edge Function — a small piece of server-side code that runs on Supabase's servers, not in the browser. It can access sensitive data (like a secret salt key) that should never reach the client.">Edge Function</span>:</p>
+      <div class="step-cards stagger-children">
+        <div class="step-card animate-in">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Token generation</strong>
+            <p>When you vote, the app calls <code>supabase.rpc('calculate_anonymous_token', { user_id, poll_id })</code>. The Edge Function combines your user ID, the poll ID, and a secret server-side salt, hashes them together, and returns a token.</p>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Vote stored with token, not user ID</strong>
+            <p>The vote row is inserted with <code>student_id: null</code> and <code>anonymous_token: &lt;hash&gt;</code>. Your identity is never written to the votes table for general polls.</p>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Duplicate prevention</strong>
+            <p>The votes table has a unique constraint on <code>anonymous_token</code>. If you try to vote again, your token is the same (same inputs → same hash), and the database rejects the duplicate with a <code>23505</code> unique key violation.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- DnD matching quiz -->
+      <p style="margin-top: var(--space-8);">Match each piece of the anonymous poll system to its purpose:</p>
+      <div class="dnd-container" id="dnd-poll">
+        <div class="dnd-chips">
+          <div class="dnd-chip" data-answer="salt" draggable="true">Secret salt</div>
+          <div class="dnd-chip" data-answer="hash" draggable="true">Hash function</div>
+          <div class="dnd-chip" data-answer="null" draggable="true">student_id: null</div>
+          <div class="dnd-chip" data-answer="unique" draggable="true">Unique constraint</div>
+        </div>
+        <div class="dnd-zones">
+          <div class="dnd-zone" data-correct="salt">
+            <div class="dnd-zone-label">Makes the token impossible to reverse-engineer, even if someone knows the user ID and poll ID</div>
+            <div class="dnd-zone-target">Drop here</div>
+          </div>
+          <div class="dnd-zone" data-correct="hash">
+            <div class="dnd-zone-label">Converts (user_id + poll_id + salt) into a fixed-length token — same inputs always produce the same token</div>
+            <div class="dnd-zone-target">Drop here</div>
+          </div>
+          <div class="dnd-zone" data-correct="null">
+            <div class="dnd-zone-label">Stored in the votes row to confirm this is an anonymous vote — the real voter identity is never written</div>
+            <div class="dnd-zone-target">Drop here</div>
+          </div>
+          <div class="dnd-zone" data-correct="unique">
+            <div class="dnd-zone-label">Database-level rule that rejects a second vote if the anonymous_token already exists</div>
+            <div class="dnd-zone-target">Drop here</div>
+          </div>
+        </div>
+        <div style="margin-top: var(--space-4);">
+          <button class="btn btn-primary" onclick="checkDnD('dnd-poll')" style="margin-right:var(--space-3);">Check Matches</button>
+          <button class="btn" onclick="resetDnD('dnd-poll')">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 5: Code translation — anonymous vote -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">The anonymous vote in code</h2>
+      <p>This is the voting logic from <code>src/hooks/usePolls.ts</code>. Notice how the path forks based on whether the poll is anonymous.</p>
+      <div class="translation-block">
+        <div class="translation-code">
+          <span class="translation-label">TypeScript — useVotePoll mutation</span>
+          <code>
+            <span class="code-line"><span class="code-keyword">const</span> isAnonymous = pollType === <span class="code-string">'general'</span></span>
+            <span class="code-line">                 <span class="code-operator">||</span> pollType === <span class="code-string">'anonymous'</span></span>
+            <span class="code-line"><span class="code-keyword">let</span> token = <span class="code-keyword">null</span></span>
+            <span class="code-line">&nbsp;</span>
+            <span class="code-line"><span class="code-keyword">if</span> (isAnonymous) {</span>
+            <span class="code-line">  <span class="code-keyword">const</span> { data } = <span class="code-keyword">await</span> supabase.<span class="code-function">rpc</span>(</span>
+            <span class="code-line">    <span class="code-string">'calculate_anonymous_token'</span>,</span>
+            <span class="code-line">    { user_id: userId, poll_id: pollId }</span>
+            <span class="code-line">  )</span>
+            <span class="code-line">  token = data</span>
+            <span class="code-line">}</span>
+            <span class="code-line">&nbsp;</span>
+            <span class="code-line"><span class="code-keyword">await</span> supabase.<span class="code-function">from</span>(<span class="code-string">'votes'</span>).<span class="code-function">insert</span>({</span>
+            <span class="code-line">  poll_id:          pollId,</span>
+            <span class="code-line">  option_id:        optionId,</span>
+            <span class="code-line">  student_id:       isAnonymous ? <span class="code-keyword">null</span> : userId,</span>
+            <span class="code-line">  anonymous_token:  token,</span>
+            <span class="code-line">})</span>
+          </code>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">Plain English</span>
+          <div class="translation-lines">
+            <div class="tl"><strong>isAnonymous:</strong> True if the poll type is "general" or "anonymous." Named polls (like attendance check-ins) store the real student_id.</div>
+            <div class="tl"><strong>supabase.rpc(...):</strong> Call the calculate_anonymous_token Edge Function securely. It runs on Supabase's servers — the secret salt never reaches the browser.</div>
+            <div class="tl"><strong>token = data:</strong> The hash comes back as a string. It's deterministic — voting again produces the same token.</div>
+            <div class="tl"><strong>student_id: isAnonymous ? null : userId:</strong> Named polls store your real ID. Anonymous polls deliberately leave this null.</div>
+            <div class="tl"><strong>anonymous_token: token:</strong> The hash is stored instead. The unique constraint on this column prevents duplicate votes without needing the real user ID.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 6: Final quiz -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Final check — security &amp; roles</h2>
+      <div class="quiz-container" id="quiz-m5">
+        <div class="quiz-question-block"
+             data-correct="D"
+             data-explanation-right="Correct! RLS policies run inside PostgreSQL itself. Even a direct API call with a valid session token is blocked at the database level if the policy conditions aren't met. UI guards only protect the interface — RLS protects the actual data."
+             data-explanation-wrong="Not quite. The route guard only protects the URL in the browser. Someone with a valid session token can still call the Supabase REST API directly from DevTools or a script. RLS, running inside PostgreSQL, is the real protection — it rejects the database query regardless of how it was sent.">
+          <p class="quiz-question">A student has a valid @skit.ac.in session. They open DevTools and manually call the Supabase API to try to INSERT a row into the announcements table. What stops them?</p>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="A" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              The RequireAuth route guard blocks all API calls from students
+            </button>
+            <button class="quiz-option" data-value="B" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              The CR Command page is hidden in the UI, so students can't find the endpoint
+            </button>
+            <button class="quiz-option" data-value="C" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Supabase checks the anon key and rejects requests from non-CR accounts
+            </button>
+            <button class="quiz-option" data-value="D" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              The RLS INSERT policy on announcements checks role = 'cr' and rejects the write inside PostgreSQL
+            </button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+        <div class="quiz-question-block"
+             data-correct="B"
+             data-explanation-right="Exactly. The hash of (user_id + poll_id + salt) is deterministic — the same inputs always produce the same output. The unique constraint on anonymous_token then rejects the second INSERT with error code 23505."
+             data-explanation-wrong="Not quite. The app doesn't track votes in localStorage or check a 'hasVoted' flag. Duplicate prevention happens at the database layer using the unique constraint on anonymous_token.">
+          <p class="quiz-question">What prevents a student from voting twice in an anonymous poll?</p>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="A" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              The app stores a "hasVoted" flag in localStorage that disables the vote button
+            </button>
+            <button class="quiz-option" data-value="B" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Their anonymous_token is deterministic — a second vote generates the same token, which the unique constraint rejects
+            </button>
+            <button class="quiz-option" data-value="C" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              CRs manually review duplicate votes and delete them
+            </button>
+            <button class="quiz-option" data-value="D" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              The poll closes automatically after the first vote from each device
+            </button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+        <button class="quiz-check-btn" onclick="checkQuiz('quiz-m5')">Check Answers</button>
+        <button class="quiz-reset-btn" onclick="resetQuiz('quiz-m5')">Try Again</button>
+      </div>
+      <div class="callout callout-accent animate-in" style="margin-top: var(--space-12);">
+        <span class="callout-icon">🎓</span>
+        <div class="callout-content">
+          <span class="callout-title">You've finished the course — here's what you can now do</span>
+          <p>You can trace a sign-in from Google to Dashboard. You know which layer to edit for any change. You understand why TanStack Query caches, why realtime works without a refresh, why RLS matters more than UI guards, and how ClassHub keeps your vote private without losing it. You're ready to steer AI with precision — and catch it when it's wrong.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>

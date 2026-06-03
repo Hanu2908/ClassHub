@@ -1,0 +1,225 @@
+<section class="module" id="module-3">
+  <div class="module-content">
+
+    <div class="module-header animate-in">
+      <span class="module-number">03</span>
+      <h1 class="module-title">Data Journeys — From Database to Your Screen</h1>
+      <p class="module-subtitle">How do attendance percentages get from a PostgreSQL table in a Supabase data centre to a coloured bar on your phone? Let's trace every hop.</p>
+    </div>
+
+    <!-- Screen 1: The data problem -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">The problem every app has to solve</h2>
+      <p>
+        The <span class="term" data-definition="PostgreSQL — a powerful open-source relational database. Data is stored in tables with rows and columns, like a spreadsheet, but with SQL queries, relationships between tables, and strong security rules.">database</span> lives thousands of kilometres away on a Supabase server.
+        Your phone screen updates in milliseconds. Bridging that gap involves three hard problems:
+      </p>
+      <div class="step-cards stagger-children">
+        <div class="step-card animate-in">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Loading states</strong>
+            <p>The query takes 200–800ms. During that time the UI should show a skeleton, not a blank white screen or a crash.</p>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Stale data</strong>
+            <p>If you navigate away and come back, should the app re-fetch from scratch? That wastes bandwidth. But if it always shows cached data, you might see outdated information.</p>
+          </div>
+        </div>
+        <div class="step-card animate-in">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Synchronisation</strong>
+            <p>If a CR posts a new announcement while you're on the Dashboard, your screen should update automatically — without you refreshing the page.</p>
+          </div>
+        </div>
+      </div>
+      <p>ClassHub solves all three with two tools working together: <span class="term" data-definition="TanStack Query (formerly React Query) — a library that manages server state in React. It handles caching, background refetching, loading states, and error handling so you don't have to write that logic yourself.">TanStack Query</span> and <span class="term" data-definition="Supabase Realtime — a feature that keeps a WebSocket connection open to the database, so the app receives instant notifications when any table row changes.">Supabase Realtime</span>.</p>
+    </div>
+
+    <!-- Screen 2: TanStack Query explained -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">TanStack Query: the app's personal librarian</h2>
+      <p>Imagine a librarian who remembers every book you've ever borrowed. Ask for the same book twice in an hour and they hand it right back from memory — no trip to the shelves. But ask again tomorrow and they fetch a fresh copy, just in case it was updated. TanStack Query works exactly like that librarian.</p>
+      <div class="icon-rows stagger-children">
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: var(--color-accent-light);">📦</div>
+          <div>
+            <strong>Cache</strong>
+            <p>Every query result is stored in memory under a <span class="term" data-definition="queryKey — a unique label for a cached result, like ['attendance', userId]. If two components use the same queryKey, they share the same cached data and fetch it only once.">queryKey</span>. Open the Attendance page twice in 5 minutes? Second visit is instant — served from cache.</p>
+          </div>
+        </div>
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: #FFF3E0;">⏱️</div>
+          <div>
+            <strong>staleTime</strong>
+            <p>After 5 minutes (configured per-hook), cached data is considered "stale." The next time you visit that page, a background refetch runs silently — you still see instant data, but it gets updated.</p>
+          </div>
+        </div>
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: var(--color-success-light);">🔄</div>
+          <div>
+            <strong>invalidateQueries</strong>
+            <p>When the <span class="term" data-definition="Supabase Realtime sends a signal whenever a database row is inserted, updated, or deleted. ClassHub listens for these signals and uses them to trigger cache invalidation.">realtime event</span> fires, ClassHub calls <code>queryClient.invalidateQueries()</code>. This immediately marks the cache as stale and triggers a silent background refetch — your screen updates without a page reload.</p>
+          </div>
+        </div>
+        <div class="icon-row animate-in">
+          <div class="icon-circle" style="background: var(--color-error-light);">🔁</div>
+          <div>
+            <strong>Mutations</strong>
+            <p>When you submit data (vote in a poll, acknowledge an announcement), TanStack Query's <span class="term" data-definition="useMutation — a TanStack Query hook for write operations. It handles loading states, error handling, optimistic updates, and cache invalidation after the database write succeeds.">useMutation</span> hook handles the write, shows a loading state, and then refreshes the relevant cache on success.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: Data flow animation -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Trace a real data journey: attendance page loading</h2>
+      <p>Follow exactly what happens when you open <code>/app/attendance</code> for the first time today.</p>
+      <div class="flow-animation" data-steps='[
+        {"highlight":"flow-page","label":"Step 1 — AttendancePage mounts. It calls useAttendance() — a custom React hook in src/hooks/useAttendance.ts."},
+        {"highlight":"flow-query","label":"Step 2 — TanStack Query checks its cache for the key [\"attendance\", userId]. Cache is empty (first visit today). It sets isLoading = true."},
+        {"highlight":"flow-supabase","packet":true,"from":"query","to":"supabase","label":"Step 3 — The queryFn runs. It calls supabase.from(\"attendance_records\").select(...).eq(\"user_id\", userId)."},
+        {"highlight":"flow-pg","packet":true,"from":"supabase","to":"pg","label":"Step 4 — Supabase translates the JS call into a SQL query and sends it to the PostgreSQL database. RLS policies run to verify the userId can see these rows."},
+        {"highlight":"flow-supabase","packet":true,"from":"pg","to":"supabase","label":"Step 5 — PostgreSQL returns the rows as JSON. Supabase adds auth headers and sends the response back to the browser."},
+        {"highlight":"flow-query","packet":true,"from":"supabase","to":"query","label":"Step 6 — TanStack Query receives the data, stores it in cache under [\"attendance\", userId], and sets isLoading = false."},
+        {"highlight":"flow-page","label":"Step 7 — React re-renders AttendancePage with the real data. The skeleton disappears. The percentage bars animate in."}
+      ]'>
+        <div class="flow-actors">
+          <div class="flow-actor" id="flow-page">
+            <div class="flow-actor-icon">📄</div>
+            <span>Page</span>
+          </div>
+          <div class="flow-actor" id="flow-query">
+            <div class="flow-actor-icon">⚡</div>
+            <span>TanStack Query</span>
+          </div>
+          <div class="flow-actor" id="flow-supabase">
+            <div class="flow-actor-icon">🔌</div>
+            <span>Supabase Client</span>
+          </div>
+          <div class="flow-actor" id="flow-pg">
+            <div class="flow-actor-icon">🗄️</div>
+            <span>PostgreSQL</span>
+          </div>
+        </div>
+        <div class="flow-step-label">Click "Next Step" to trace the attendance data journey →</div>
+        <div class="flow-controls">
+          <button class="btn btn-primary flow-next-btn">Next Step</button>
+          <button class="btn flow-reset-btn">Reset</button>
+          <span class="flow-progress">Step 0 / 7</span>
+        </div>
+        <div class="flow-packet"></div>
+      </div>
+    </div>
+
+    <!-- Screen 4: Code translation — useAttendance -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">The hook in code — useAttendance.ts</h2>
+      <p>Here is the core of how ClassHub fetches attendance data. This lives in <code>src/hooks/useAttendance.ts</code> and is the exact code that runs in Step 3 of the animation above.</p>
+      <div class="translation-block">
+        <div class="translation-code">
+          <span class="translation-label">TypeScript — useAttendance.ts</span>
+          <code>
+            <span class="code-line"><span class="code-function">useQuery</span>({</span>
+            <span class="code-line">  queryKey: [<span class="code-string">'attendance'</span>, userId],</span>
+            <span class="code-line">  enabled: !!userId <span class="code-operator">&amp;&amp;</span> isAuthenticated,</span>
+            <span class="code-line">  staleTime: <span class="code-number">1000</span> <span class="code-operator">*</span> <span class="code-number">60</span> <span class="code-operator">*</span> <span class="code-number">5</span>,</span>
+            <span class="code-line">  queryFn: <span class="code-keyword">async</span> () =&gt; {</span>
+            <span class="code-line">    <span class="code-keyword">const</span> { data, error } = <span class="code-keyword">await</span> supabase</span>
+            <span class="code-line">      .<span class="code-function">from</span>(<span class="code-string">'attendance_records'</span>)</span>
+            <span class="code-line">      .<span class="code-function">select</span>(<span class="code-string">`present, absent, od, makeup,</span></span>
+            <span class="code-line"><span class="code-string">        subjects:subject_id (code, name)`</span>)</span>
+            <span class="code-line">      .<span class="code-function">eq</span>(<span class="code-string">'user_id'</span>, userId)</span>
+            <span class="code-line">    <span class="code-keyword">if</span> (error) <span class="code-keyword">throw</span> error</span>
+            <span class="code-line">    <span class="code-keyword">return</span> <span class="code-function">processAttendance</span>(data)</span>
+            <span class="code-line">  }</span>
+            <span class="code-line">})</span>
+          </code>
+        </div>
+        <div class="translation-english">
+          <span class="translation-label">Plain English</span>
+          <div class="translation-lines">
+            <div class="tl"><strong>queryKey:</strong> The cache label. Results are stored under "attendance + this user's ID." Different users get separate cache entries.</div>
+            <div class="tl"><strong>enabled:</strong> Don't run the query until we have a userId AND the user is authenticated. Prevents spurious requests on page load.</div>
+            <div class="tl"><strong>staleTime:</strong> 5 minutes (1000ms × 60 × 5). Data younger than 5 minutes is served from cache without a network request.</div>
+            <div class="tl"><strong>queryFn:</strong> The actual database call. Fetches attendance records for this user, and also pulls in the subject name using a join (subjects:subject_id).</div>
+            <div class="tl"><strong>if (error) throw error:</strong> If Supabase returns an error (network failure, RLS rejection), throw it so TanStack Query can surface it as the error state.</div>
+            <div class="tl"><strong>processAttendance:</strong> Raw database rows become a clean JavaScript object — percentages calculated, "can skip" counts derived.</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-info animate-in">
+        <span class="callout-icon">🧠</span>
+        <div class="callout-content">
+          <span class="callout-title">The join syntax: subjects:subject_id (code, name)</span>
+          <p>This is Supabase's PostgREST join syntax. It means: "also fetch the related row from the subjects table via the subject_id foreign key, and return only the code and name columns." One query, two tables — no second network request needed.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 5: Quiz -->
+    <div class="screen animate-in">
+      <h2 class="screen-heading">Lock in the data journey</h2>
+      <div class="quiz-container" id="quiz-m3">
+        <div class="quiz-question-block"
+             data-correct="C"
+             data-explanation-right="Correct! queryClient.invalidateQueries() marks the cached data as stale, which triggers a silent background refetch. The UI updates without any user action."
+             data-explanation-wrong="Not quite. The app doesn't do a full reload or ask the user to refresh. It marks the cache entry as stale, which automatically triggers a background refetch — the UI quietly updates.">
+          <p class="quiz-question">A CR posts a new announcement. The realtime event fires. What does ClassHub do to update the Announcements page you're currently viewing?</p>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="A" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Forces a full browser reload (window.location.reload())
+            </button>
+            <button class="quiz-option" data-value="B" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Shows a "New announcement" toast and waits for you to manually refresh
+            </button>
+            <button class="quiz-option" data-value="C" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Calls queryClient.invalidateQueries() to mark the cache stale, triggering a silent background refetch
+            </button>
+            <button class="quiz-option" data-value="D" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Directly appends the new announcement to the TanStack Query cache without a network call
+            </button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+        <div class="quiz-question-block"
+             data-correct="B"
+             data-explanation-right="Right. staleTime: 5 * 60 * 1000 means cached data is considered fresh for 5 minutes. Re-opening the page within that window skips the network request entirely."
+             data-explanation-wrong="Not quite. The staleTime setting determines how long cache is considered 'fresh.' Within the stale window, TanStack Query serves the cached result without a network trip — then revalidates in the background once the stale window expires.">
+          <p class="quiz-question">You open the Attendance page, see your percentages, and navigate to another page. 2 minutes later you come back to Attendance. What happens?</p>
+          <div class="quiz-options">
+            <button class="quiz-option" data-value="A" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              A full database query runs again — ClassHub never caches attendance data
+            </button>
+            <button class="quiz-option" data-value="B" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              Cached data is displayed instantly — staleTime is 5 minutes, so no refetch yet
+            </button>
+            <button class="quiz-option" data-value="C" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              A loading skeleton appears while a background refresh runs
+            </button>
+            <button class="quiz-option" data-value="D" onclick="selectOption(this)">
+              <span class="quiz-option-radio"></span>
+              The hook errors because the query key has already been used
+            </button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+        <button class="quiz-check-btn" onclick="checkQuiz('quiz-m3')">Check Answers</button>
+        <button class="quiz-reset-btn" onclick="resetQuiz('quiz-m3')">Try Again</button>
+      </div>
+    </div>
+
+  </div>
+</section>

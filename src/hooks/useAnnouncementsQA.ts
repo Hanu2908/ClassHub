@@ -186,7 +186,7 @@ export function useToggleReaction(announcementId: string) {
 
       if (fetchError) throw fetchError;
 
-      const dbReaction = rawDbReaction as { id: string; emoji: string } | null;
+      const dbReaction = rawDbReaction as unknown as { id: string; emoji: string } | null;
 
       if (dbReaction) {
         if (dbReaction.emoji === emoji) {
