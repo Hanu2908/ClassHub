@@ -26,6 +26,7 @@ const ResourceHubPage = lazy(() => import('./pages/app/ResourceHubPage'));
 const DeveloperConsolePage = lazy(() => import('./pages/app/DeveloperConsolePage'));
 const ExamsPage = lazy(() => import('./pages/app/ExamsPage'));
 const ShareIntakePage = lazy(() => import('./pages/app/ShareIntakePage'));
+const SectionDirectoryPage = lazy(() => import('./pages/app/SectionDirectoryPage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -142,6 +143,7 @@ export default function App() {
             <Route path="/app/exams" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/app/gpa" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><DeveloperConsolePage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
+            <Route path="/app/members" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SectionDirectoryPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/share-intake" element={<ShareIntakeRoute />} />
 
             {/* Fallback */}

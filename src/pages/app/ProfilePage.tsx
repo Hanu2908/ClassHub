@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
@@ -9,6 +9,9 @@ import { supabase } from '../../lib/supabase';
 import { isPushSupported, getPushPermission, hasActiveSubscription, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
 import { signOutGlobal } from '../../components/AuthProvider';
+import { useUserTags, useDeleteTag, MAX_ACTIVE_TAGS } from '../../hooks/useUserTags';
+import { TagPill } from '../../components/TagPill';
+import { AddTagSheet } from '../../components/AddTagSheet';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -22,6 +25,11 @@ export default function ProfilePage() {
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
+  const [showAddTagSheet, setShowAddTagSheet] = useState(false);
+
+  // Tags
+  const { data: myTags = [] } = useUserTags();
+  const deleteTag = useDeleteTag();
 
   // Check push subscription state on mount and sync with global profile setting
   useEffect(() => {
@@ -215,6 +223,59 @@ export default function ProfilePage() {
             <span className="t-mono" style={{ color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
               Roll {classRoll}
             </span>
+          </div>
+        </div>
+
+        {/* My Tags */}
+        <div>
+          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>MY TAGS</p>
+          <div className="card" style={{ padding: '16px' }}>
+            {myTags.length === 0 ? (
+              <p className="t-caption" style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '8px 0' }}>
+                No tags yet — add one to let your section know what you're into
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                {myTags.map(tag => (
+                  <TagPill
+                    key={tag.id}
+                    tagText={tag.tagText}
+                    expiresAt={tag.expiresAt}
+                    showExpiry
+                    onRemove={() => {
+                      deleteTag.mutate(tag.id, {
+                        onSuccess: () => showToast('Tag removed', 'info'),
+                        onError: (err) => showToast(`Failed: ${err.message}`, 'error'),
+                      });
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            <button
+              id="add-tag-btn"
+              onClick={() => setShowAddTagSheet(true)}
+              disabled={myTags.length >= MAX_ACTIVE_TAGS}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                width: '100%',
+                padding: '10px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: myTags.length >= MAX_ACTIVE_TAGS ? 'var(--text-muted)' : 'var(--accent-primary)',
+                background: 'rgba(74, 158, 255, 0.06)',
+                border: '1px dashed rgba(74, 158, 255, 0.2)',
+                borderRadius: 'var(--radius-md)',
+                cursor: myTags.length >= MAX_ACTIVE_TAGS ? 'not-allowed' : 'pointer',
+                transition: 'all var(--transition-fast)',
+              }}
+            >
+              <Plus size={14} />
+              <span>{myTags.length >= MAX_ACTIVE_TAGS ? `Max ${MAX_ACTIVE_TAGS} tags reached` : 'Add Tag'}</span>
+            </button>
           </div>
         </div>
 
@@ -456,6 +517,7 @@ export default function ProfilePage() {
 
       <NavBar />
       <FeedbackSheet open={showFeedbackSheet} onClose={() => setShowFeedbackSheet(false)} />
+      <AddTagSheet open={showAddTagSheet} onClose={() => setShowAddTagSheet(false)} />
     </div>
   );
 }

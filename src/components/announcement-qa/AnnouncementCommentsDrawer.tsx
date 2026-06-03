@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, BellOff, Check, Trash2, CornerDownRight, Pencil } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../Toast';
@@ -15,6 +16,8 @@ import {
   useAnnouncementQARealtime
 } from '../../hooks/useAnnouncementsQA';
 import { useSectionMembers } from '../../hooks/useSectionMembers';
+import { useUserTagsBatch } from '../../hooks/useUserTags';
+import { TagPill, TagOverflow } from '../TagPill';
 
 interface AnnouncementCommentsDrawerProps {
   announcementId: string;
@@ -30,6 +33,7 @@ export function AnnouncementCommentsDrawer({
   const authUser = useAppStore(s => s.authUser);
   const currentUserId = authUser?.id;
   const userRole = authUser?.role ?? 'student';
+  const navigate = useNavigate();
 
   const { data: comments = [], isLoading } = useAnnouncementComments(announcementId);
   const { data: isMuted = false } = useAnnouncementMuteStatus(announcementId);
@@ -58,6 +62,13 @@ export function AnnouncementCommentsDrawer({
   const { data: sectionMembers = [] } = useSectionMembers();
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   const [mentionFilterText, setMentionFilterText] = useState('');
+
+  // Batch-fetch tags for comment authors
+  const commentAuthorIds = useMemo(
+    () => [...new Set(comments.map(c => c.authorId))],
+    [comments]
+  );
+  const { data: authorTags = {} } = useUserTagsBatch(commentAuthorIds);
   const [mentionTriggerIndex, setMentionTriggerIndex] = useState(-1);
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -361,6 +372,27 @@ export function AnnouncementCommentsDrawer({
                         )}
                       </div>
                     </div>
+
+                    {/* Author tags */}
+                    {(() => {
+                      const tags = authorTags[comment.authorId] ?? [];
+                      if (tags.length === 0) return null;
+                      const visible = tags.slice(0, 2);
+                      const overflow = tags.length - 2;
+                      return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
+                          {visible.map(tag => (
+                            <TagPill
+                              key={tag.id}
+                              tagText={tag.tagText}
+                              size="sm"
+                              onTap={() => { onClose(); navigate(`/app/members?tag=${encodeURIComponent(tag.tagText)}`); }}
+                            />
+                          ))}
+                          {overflow > 0 && <TagOverflow count={overflow} size="sm" />}
+                        </div>
+                      );
+                    })()}
 
                     {/* Comment Content or Editor */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -66,26 +66,11 @@ CSS variable declarations, and base resets.
 
 ---
 
-## ADR-004 — Schema: 12 Tables, Locked for V1.0
-**Decision:** The V1.0 database schema consists of exactly 12 tables.
-No tables are added or removed without PM sign-off and a new ADR entry.
-**Tables:**
-1.  `sections` — Section workspaces
-2.  `users` — All users (students + CRs), linked to Supabase auth
-3.  `subjects` — Subject source of truth, eliminates raw text codes
-4.  `attendance_records` — Per-student, per-subject aggregate attendance
-5.  `announcements` — Notices + Quick-Cast templates
-6.  `acknowledgments` — Read receipts for Critical notices
-7.  `assignments` — Task definitions
-8.  `assignment_sets` — Roll-range routing for "Chaotic Professor" sets
-9.  `submissions` — Student submission links and status
-10. `polls` — Poll definitions (two types)
-11. `votes` — Poll responses
-12. `push_subscriptions` — Device endpoints for Web Push (V1.1 feature)
-**Rationale:** Each table has a single clear responsibility. Junction
-tables have UNIQUE constraints. All `created_by` fields are proper
-FKs with `ON DELETE RESTRICT` to prevent ghost records.
-**Date:** May 2026
+## ~~ADR-004 — Schema: 12 Tables, Locked for V1.0~~ (REMOVED)
+**Status:** Removed — June 2026. The database has grown organically to 25+
+tables as features shipped. A fixed table count is no longer a meaningful
+constraint. Each new table is documented via its own ADR.
+
 
 ---
 
@@ -327,9 +312,24 @@ server ingestion, schema migration, or RLS policy change is introduced.
 
 ---
 
+## ADR-020 — Profile Tags: `user_tags` Table
+**Decision:** Add a `user_tags` table to support freeform, section-scoped
+profile tags with optional expiry. Students can add up to 5 tags visible
+to their section. Tags enable member discovery via tap-to-filter.
+**Schema:** `id`, `user_id`, `section_id`, `tag_text` (max 24 chars),
+`expires_at` (nullable), `created_at`. Case-insensitive unique index on
+`(user_id, lower(tag_text))`. Trigger enforces max 5 active tags.
+**RLS:** Section-scoped reads, self-only inserts, self-delete + CR moderation.
+**Expired tags:** Client-side filtering (`WHERE expires_at IS NULL OR
+expires_at > NOW()`), consistent with announcement expiry pattern.
+**Date:** June 2026
+
+---
+
 ## Change Log
 | Version | Change | Author |
 |---|---|---|
 | 1.0 | Initial 16 decisions locked | Himanshu Saini |
 | 1.1 | ADR-017 (deferred), ADR-018 (Multi-CR) added | Himanshu Saini |
 | 1.2 | ADR-019 (Android PWA Share Inbox) added | Himanshu Saini |
+| 1.3 | ADR-004 removed (obsolete), ADR-020 (Profile Tags) added | Himanshu Saini |
