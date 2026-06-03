@@ -292,7 +292,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       onAssignment: () => queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] }),
       onPoll: () => queryClient.invalidateQueries({ queryKey: ['polls', sectionId] }),
       onVote: () => queryClient.invalidateQueries({ queryKey: ['polls', sectionId] }),
-      onSubmission: () => queryClient.invalidateQueries({ queryKey: ['submissions'] }),
+      onSubmission: () => {
+        queryClient.invalidateQueries({ queryKey: ['submissions'] });
+        queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      },
       onAcknowledgment: () => queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] }),
     });
 

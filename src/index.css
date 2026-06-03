@@ -655,9 +655,27 @@ animation: slideUp 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05);
   animation: toastPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  background: rgba(20, 24, 40, 0.92);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  background: #0F121C; /* Solid premium background to prevent background clashing */
+}
+
+.toast.exiting {
+  animation: toastSlideOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-16px) scale(0.95);
+    opacity: 0;
+  }
+}
+
+@keyframes toastShrink {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 
 .toast-success {
