@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, BookOpen, Cpu, BookMarked, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -19,10 +19,27 @@ import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../.
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
-function getSubjectIcon(subject: string) {
-  if (subject.includes('DBMS')) return <BookOpen size={22} color="var(--accent-primary)" />;
-  if (subject.includes('OS') || subject.includes('Operating')) return <Cpu size={22} color="var(--status-safe)" />;
-  return <BookMarked size={22} color="var(--status-warning)" />;
+function generateGradient(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
+  const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
+  return `linear-gradient(135deg, ${c1}, ${c2})`;
+}
+
+function getSubjectAcronym(name: string) {
+  if (!name) return '??';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return name.slice(0, 2).toUpperCase();
+  }
+  return words
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 4);
 }
 
 function getUserSet(classRoll: string, sets: AssignmentSet[]) {
@@ -1120,8 +1137,22 @@ export default function AssignmentsPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {getSubjectIcon(a.subject)}
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: generateGradient(a.subjectCode || a.subject),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    <span className="t-mono" style={{ color: '#fff', fontSize: 14, fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                      {getSubjectAcronym(a.subject)}
+                    </span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>

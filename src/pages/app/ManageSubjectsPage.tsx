@@ -8,8 +8,6 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import { ManageSubjectsSkeleton } from '../../components/LoadingSkeletons';
 
-// ── Gradient Generator ────────────────────────────────────────────────────────
-// Generates a deterministic, vibrant CSS gradient from a string (e.g. subject code)
 function generateGradient(str: string) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -18,6 +16,19 @@ function generateGradient(str: string) {
   const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
   const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
   return `linear-gradient(135deg, ${c1}, ${c2})`;
+}
+
+function getSubjectAcronym(name: string) {
+  if (!name) return '??';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return name.slice(0, 2).toUpperCase();
+  }
+  return words
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 4);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -192,7 +203,7 @@ export default function ManageSubjectsPage() {
                   boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)'
                 }}>
                   <span className="t-card-title" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                    {subject.code.slice(0, 2)}
+                    {getSubjectAcronym(subject.name)}
                   </span>
                 </div>
 

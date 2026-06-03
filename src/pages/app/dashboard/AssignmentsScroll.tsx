@@ -15,6 +15,19 @@ function generateGradient(str: string) {
   return `linear-gradient(135deg, ${c1}, ${c2})`;
 }
 
+function getSubjectAcronym(name: string) {
+  if (!name) return '??';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return name.slice(0, 2).toUpperCase();
+  }
+  return words
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 4);
+}
+
 export default function AssignmentsScroll() {
   const navigate = useNavigate();
   const { data: assignments = [], isLoading } = useAssignments({ limit: 8 });
@@ -74,7 +87,7 @@ export default function AssignmentsScroll() {
                       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)'
                     }}>
                       <span className="t-mono" style={{ color: '#fff', fontSize: 13, fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                        {(a.subjectCode || a.subject || '??').slice(0, 2).toUpperCase()}
+                        {getSubjectAcronym(a.subject)}
                       </span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
