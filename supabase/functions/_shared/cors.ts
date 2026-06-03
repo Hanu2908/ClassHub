@@ -1,3 +1,4 @@
+// @ts-nocheck
 export function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
   const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "")

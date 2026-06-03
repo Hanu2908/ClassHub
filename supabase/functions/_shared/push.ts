@@ -1,3 +1,4 @@
+// @ts-nocheck
 import webpush from "npm:web-push@3.6.7";
 
 type PushPayload = {

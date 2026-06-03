@@ -33,12 +33,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const authUser = useAppStore(s => s.authUser);
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
   
-  // Cache-first: render children immediately if valid session/user already in store, bypass spinner
-  if (isAuthLoading && !(session && authUser)) return (
-    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
-      <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
-    </div>
-  );
+  if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   
   // Allow through if active session exists OR we are in a persisted demo session
   const isDemo = authUser?.sectionId === 'demo-section';
@@ -80,11 +75,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthLoading = useAppStore(s => s.isAuthLoading);
   
   // Cache-first: bypass spinner if session and authUser are already cached
-  if (isAuthLoading && !(session && authUser)) return (
-    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
-      <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
-    </div>
-  );
+  if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   
   // If user has active session OR we are in a persisted demo session, redirect to appropriate page
   const isDemo = authUser?.sectionId === 'demo-section';

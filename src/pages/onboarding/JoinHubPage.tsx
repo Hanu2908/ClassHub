@@ -4,6 +4,7 @@ import { ArrowLeft, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
+import OnboardingLoader from '../../components/OnboardingLoader';
 
 const classRollRegex = /^\d{2}$/;
 const uniRollRegex = /^[0-9]{2}[A-Z]{5}[0-9]{3}$/;
@@ -36,6 +37,7 @@ export default function JoinHubPage() {
   const [dayScholar, setDayScholar] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
 
   const validate = (): boolean => {
     const e: FormErrors = {};
@@ -50,6 +52,7 @@ export default function JoinHubPage() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
+    setIsComplete(false);
 
     if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
@@ -66,8 +69,7 @@ export default function JoinHubPage() {
         classRoll: classRoll,
         universityRoll: universityRoll.toUpperCase(),
       });
-      showToast('Joined hub successfully! Welcome 🎉', 'success');
-      navigate('/app/home');
+      setIsComplete(true);
       return;
     }
 
@@ -91,17 +93,15 @@ export default function JoinHubPage() {
 
       // Refresh profile from backend so route guard sees new sectionId
       await refreshProfile();
-      showToast('Joined hub successfully! Welcome 🎉', 'success');
-      navigate('/app/home');
+      setIsComplete(true);
     } catch (err: unknown) {
+      setLoading(false);
       const message = err instanceof Error ? err.message : 'Failed to join hub';
       if (message.includes('Invalid invite code')) {
         setErrors({ hubCode: 'Invalid invite code. Double-check with your CR.' });
       } else {
         showToast(message, 'error');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -281,6 +281,17 @@ export default function JoinHubPage() {
           {loading ? <><Loader2 size={18} className="animate-spin" /> Joining…</> : 'Join Hub'}
         </button>
       </form>
+
+      {loading && (
+        <OnboardingLoader
+          type="join"
+          isComplete={isComplete}
+          onFinished={() => {
+            showToast('Joined hub successfully! Welcome 🎉', 'success');
+            navigate('/app/home');
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Share2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
+import OnboardingLoader from '../../components/OnboardingLoader';
 
 const classRollRegex = /^\d{2}$/;
 const uniRollRegex = /^[0-9]{2}[A-Z]{5}[0-9]{3}$/;
@@ -34,7 +35,9 @@ export default function CreateHubPage() {
   const [dayScholar, setDayScholar] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const pendingCodeRef = useRef<string>('');
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -54,6 +57,7 @@ export default function CreateHubPage() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
+    setIsComplete(false);
 
     // Generate invite code matching DB regex: ^[A-Z0-9]{2}[A-Z]{4}$
     // Remove any non-alphanumeric characters, pad with X if too short, take first 2 chars
@@ -75,8 +79,8 @@ export default function CreateHubPage() {
         classRoll: classRoll,
         universityRoll: universityRoll.toUpperCase(),
       });
-      setGeneratedCode(inviteCode);
-      setLoading(false);
+      pendingCodeRef.current = inviteCode;
+      setIsComplete(true);
       return;
     }
 
@@ -92,7 +96,7 @@ export default function CreateHubPage() {
 
       // Use the invite_code from the returned section
       const returnedCode = data?.invite_code ?? inviteCode;
-      setGeneratedCode(returnedCode);
+      pendingCodeRef.current = returnedCode;
 
       // Update day_scholar status in profile
       const { data: { user: authUserObj } } = await supabase.auth.getUser();
@@ -105,11 +109,11 @@ export default function CreateHubPage() {
 
       // Refresh profile from backend so route guard sees new sectionId + CR role
       await refreshProfile();
+      setIsComplete(true);
     } catch (err: unknown) {
+      setLoading(false);
       const message = err instanceof Error ? err.message : 'Failed to create hub';
       showToast(message, 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -288,6 +292,17 @@ export default function CreateHubPage() {
           {loading ? <><Loader2 size={18} className="animate-spin" /> Creating…</> : 'Create Hub'}
         </button>
       </form>
+
+      {loading && (
+        <OnboardingLoader
+          type="create"
+          isComplete={isComplete}
+          onFinished={() => {
+            setGeneratedCode(pendingCodeRef.current);
+            setLoading(false);
+          }}
+        />
+      )}
     </div>
   );
 }
