@@ -158,6 +158,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     _navigateFn = navigate;
   }, [navigate]);
 
+  // Capture invite code from URL parameters as early as possible
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteCode = params.get('invite') || params.get('code');
+    // Valid ClassHub invite codes are exactly 6 alphanumeric characters
+    if (inviteCode && /^[A-Za-z0-9]{2}[A-Za-z]{4}$/.test(inviteCode)) {
+      sessionStorage.setItem('classhub-pending-invite-code', inviteCode.toUpperCase());
+      if (import.meta.env.DEV) {
+        console.log('[Auth] Captured pending invite code:', inviteCode.toUpperCase());
+      }
+    }
+  }, []);
+
   // Initialize auth exactly once
   useEffect(() => {
     const store = useAppStore.getState();
@@ -404,9 +417,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export async function signInWithGoogle() {
   try {
     const pendingShareInboxId = sessionStorage.getItem('classhub-pending-share-inbox-id');
+    const pendingInviteCode = sessionStorage.getItem('classhub-pending-invite-code');
     const redirectPath = pendingShareInboxId
       ? `/share-intake?id=${encodeURIComponent(pendingShareInboxId)}`
-      : '/onboarding/choice';
+      : (pendingInviteCode ? '/onboarding/join' : '/onboarding/choice');
     const result = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

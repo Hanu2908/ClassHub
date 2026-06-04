@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -38,6 +38,31 @@ export default function JoinHubPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+
+  // Load and pre-fill pending invite code from URL parameters or sessionStorage
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlCode = params.get('invite') || params.get('code');
+    const storedCode = sessionStorage.getItem('classhub-pending-invite-code');
+    const activeCode = urlCode || storedCode;
+
+    if (activeCode && hubCodeRegex.test(activeCode.toUpperCase())) {
+      setHubCode(activeCode.toUpperCase());
+      
+      // Clean up sessionStorage
+      sessionStorage.removeItem('classhub-pending-invite-code');
+      
+      // Clean up URL parameters to keep the URL address bar clean
+      if (urlCode) {
+        const newParams = new URLSearchParams(window.location.search);
+        newParams.delete('invite');
+        newParams.delete('code');
+        const cleanSearch = newParams.toString();
+        const cleanUrl = window.location.pathname + (cleanSearch ? `?${cleanSearch}` : '');
+        window.history.replaceState(null, '', cleanUrl);
+      }
+    }
+  }, []);
 
   const validate = (): boolean => {
     const e: FormErrors = {};

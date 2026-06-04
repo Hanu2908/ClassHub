@@ -1021,10 +1021,11 @@ function InviteCodeCard() {
 
   const shareCode = async () => {
     try {
+      const inviteUrl = `${window.location.origin}/onboarding/join?invite=${inviteCode}`;
       if (navigator.share) {
         await navigator.share({
           title: 'Join ClassHub!',
-          text: `Use this invite code to join Section ${section?.name || ''} on ClassHub: ${inviteCode}`,
+          text: `Join your Section's Hub ${section?.name || ''} on ClassHub! Use this direct link to access it : ${inviteUrl} (Invite Code: ${inviteCode})`,
         });
       } else {
         throw new Error('Not supported');
