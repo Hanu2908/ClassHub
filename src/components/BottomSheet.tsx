@@ -23,11 +23,12 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   useEffect(() => {
     if (open) {
       setShouldRender(true);
-      // Let the DOM mount, then trigger transition active class on next animation frame
-      const frame = requestAnimationFrame(() => {
+      setOffsetY(0); // Reset drag offset on open so it doesn't render off-screen if previously swiped
+      // Defer transition active state to let the DOM mount and paint in its initial state
+      const timer = setTimeout(() => {
         setIsActive(true);
-      });
-      return () => cancelAnimationFrame(frame);
+      }, 30);
+      return () => clearTimeout(timer);
     } else {
       setIsActive(false);
       // Wait for exit animations to complete before unmounting (matches CSS transition)
@@ -49,6 +50,22 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
       document.body.style.overflow = '';
     };
   }, [shouldRender, open]);
+
+  // Dismiss on Escape key press (keyboard accessibility)
+  useEffect(() => {
+    if (!shouldRender || !open) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [shouldRender, open, onClose]);
 
   if (!shouldRender) return null;
 
