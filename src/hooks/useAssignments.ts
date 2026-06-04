@@ -549,17 +549,33 @@ export function useCRToggleSubmission() {
         throw new Error('Unauthorized: Only Class Representatives can verify submissions');
       }
 
-      const { error } = await supabase
+      // Step 1: Try to UPDATE the existing submission row.
+      // Only set cr_verified — never touch status or submission_link, which
+      // must satisfy the DB check constraint: (status='pending' AND link IS NULL)
+      // OR (status='submitted' AND link IS NOT NULL). Overwriting status would
+      // break rows where the student already submitted with a link.
+      const { data: updated, error: updateError } = await supabase
         .from('submissions')
-        .upsert({
-          assignment_id: input.assignmentId,
-          student_id: input.studentId,
-          cr_verified: input.crVerified,
-          // status must be present to satisfy the check constraint when inserting
-          // a new row for a student who hasn't submitted yet (pending students).
-          status: 'pending' as const,
-        }, { onConflict: 'assignment_id,student_id', ignoreDuplicates: false });
-      if (error) throw error;
+        .update({ cr_verified: input.crVerified })
+        .eq('assignment_id', input.assignmentId)
+        .eq('student_id', input.studentId)
+        .select('id');
+      if (updateError) throw updateError;
+
+      // Step 2: If no row existed yet (truly pending, never submitted), INSERT
+      // a placeholder. status='pending' + submission_link=null satisfies the
+      // check constraint. The CR INSERT RLS policy allows this.
+      if (!updated || updated.length === 0) {
+        const { error: insertError } = await supabase
+          .from('submissions')
+          .insert({
+            assignment_id: input.assignmentId,
+            student_id: input.studentId,
+            cr_verified: input.crVerified,
+            status: 'pending' as const,
+          });
+        if (insertError) throw insertError;
+      }
     },
     onSuccess: (_, vars) => {
       // Invalidate both the CR submissions view AND the student assignments cache
