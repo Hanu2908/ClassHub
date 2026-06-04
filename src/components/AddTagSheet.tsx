@@ -73,10 +73,8 @@ export function AddTagSheet({ open, onClose }: AddTagSheetProps) {
 
   const canSubmit = inputVal.trim().length > 0 && !addTag.isPending;
 
-  if (!open) return null;
-
   return (
-    <BottomSheet onClose={onClose} title="Add a Tag">
+    <BottomSheet open={open} onClose={onClose} title="Add a Tag">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Tag input with autocomplete */}

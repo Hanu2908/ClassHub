@@ -337,7 +337,7 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
   );
 }
 
-export function CreatePollSheet({ onClose }: { onClose: () => void }) {
+export function CreatePollSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createPoll = useCreatePoll();
   const [question, setQuestion] = useState('');
   const [pollType, setPollType] = useState<'general' | 'actionable'>('general');
@@ -436,6 +436,7 @@ export function CreatePollSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <BottomSheet 
+      open={open}
       onClose={onClose} 
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', position: 'relative' }}>
@@ -1007,7 +1008,7 @@ export default function PollsPage() {
         </button>
       </CROnly>
 
-      {showCreateSheet && <CreatePollSheet onClose={() => setShowCreateSheet(false)} />}
+      <CreatePollSheet open={showCreateSheet} onClose={() => setShowCreateSheet(false)} />
 
       <NavBar />
     </div>

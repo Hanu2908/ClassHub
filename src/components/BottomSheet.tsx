@@ -14,27 +14,45 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   const velocityRef = useRef(0);
   const panelRef = useRef<HTMLDivElement>(null);
   
+  const [shouldRender, setShouldRender] = useState(open);
+  const [isActive, setIsActive] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [offsetY, setOffsetY] = useState(0);
 
+  // Synchronize internal rendering state with parent's open prop
   useEffect(() => {
-    let frame = 0;
     if (open) {
-      frame = requestAnimationFrame(() => setOffsetY(0));
+      setShouldRender(true);
+      // Let the DOM mount, then trigger transition active class on next animation frame
+      const frame = requestAnimationFrame(() => {
+        setIsActive(true);
+      });
+      return () => cancelAnimationFrame(frame);
+    } else {
+      setIsActive(false);
+      // Wait for exit animations to complete before unmounting (matches CSS transition)
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+      }, 280);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
+  // Synchronize document scroll locking
+  useEffect(() => {
+    if (shouldRender && open) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => {
-      if (frame) cancelAnimationFrame(frame);
       document.body.style.overflow = '';
     };
-  }, [open]);
+  }, [shouldRender, open]);
 
-  if (!open) return null;
+  if (!shouldRender) return null;
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    // Only drag with left mouse button click or touch
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     
     setDragging(true);
@@ -53,7 +71,6 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
     const currentTime = Date.now();
     const timeDelta = currentTime - lastTimeRef.current;
     
-    // Calculate swipe velocity in px/ms
     if (timeDelta > 0) {
       velocityRef.current = (currentY - lastYRef.current) / timeDelta;
     }
@@ -77,16 +94,21 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
     setDragging(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
     
+    const delta = e.clientY - startY.current;
+    
     // Dismiss if dragged down > 100px OR flicked down with velocity > 0.4px/ms and minimum displacement
-   // Let the panel slide out with a faster, dedicated linear-glide exit transition
-  if (panelRef.current) {
-    panelRef.current.style.transition = 'transform 0.24s cubic-bezier(0.25, 1, 0.5, 1)';
-  }
-  setOffsetY(window.innerHeight); 
-  
-  setTimeout(() => {
-    onClose();
-  }, 240); // Wait for the full 240ms exit slide-down to finish completely
+    const shouldDismiss = delta > 100 || (velocityRef.current > 0.4 && delta > 30);
+    
+    if (shouldDismiss) {
+      setIsActive(false);
+      setOffsetY(window.innerHeight);
+      
+      setTimeout(() => {
+        onClose();
+      }, 240);
+    } else {
+      setOffsetY(0);
+    }
   };
 
   const handlePointerCancel = (e: React.PointerEvent) => {
@@ -98,17 +120,20 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
 
   return (
     <>
-      <div className="sheet-backdrop" onClick={onClose} />
+      <div 
+        className={`sheet-backdrop ${isActive ? 'active' : ''}`} 
+        onClick={onClose} 
+      />
       <div
         ref={panelRef}
-        className="sheet-panel"
+        className={`sheet-panel ${isActive ? 'active' : ''}`}
         style={{
-          transform: `translateX(-50%) translateY(${offsetY}px)`,
-// NEW SMOOTH TWEAK:
-transition: dragging ? 'none' : 'transform 0.32s cubic-bezier(0.25, 1, 0.5, 1)',
+          transform: isActive 
+            ? `translate3d(-50%, ${offsetY}px, 0)` 
+            : `translate3d(-50%, 100%, 0)`,
+          transition: dragging ? 'none' : 'transform 0.28s cubic-bezier(0.25, 1, 0.5, 1)',
         }}
       >
-        {/* Enforce Option A: Drag zone restricted only to the handle and header area */}
         <div
           className="sheet-drag-zone"
           style={{
@@ -134,7 +159,6 @@ transition: dragging ? 'none' : 'transform 0.32s cubic-bezier(0.25, 1, 0.5, 1)',
           )}
         </div>
         
-        {/* Content area: safe from drag triggers, supporting standard scrolling */}
         <div style={{ padding: '20px' }}>{children}</div>
       </div>
     </>

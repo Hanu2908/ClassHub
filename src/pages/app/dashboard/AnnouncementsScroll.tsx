@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, type CSSProperties } from 'react';
+import React, { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Megaphone, Award, Calendar, Coffee, Paperclip, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../../components/Shared';
@@ -16,6 +16,7 @@ import { shareAnnouncementCard } from '../../../lib/utils/shareCard';
 import { isPreviewableImage } from '../../../lib/utils/attachments';
 import { getThumbPath } from '../../../lib/utils/imageResize';
 import { supabase } from '../../../lib/supabase';
+import { BottomSheet } from '../../../components/BottomSheet';
 
 interface CategoryInfo {
   name: string;
@@ -93,6 +94,13 @@ export default function AnnouncementsScroll() {
   const [dragOffset, setDragOffset] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [selectedAnn, setSelectedAnn] = useState<(Announcement & { isAcknowledged: boolean }) | null>(null);
+  const [prevSelectedAnn, setPrevSelectedAnn] = useState<(Announcement & { isAcknowledged: boolean }) | null>(null);
+
+  useEffect(() => {
+    if (selectedAnn) {
+      setPrevSelectedAnn(selectedAnn);
+    }
+  }, [selectedAnn]);
 
   // Announcement sharing states
   const sharePortalRef = useRef<HTMLDivElement>(null);
@@ -491,21 +499,14 @@ export default function AnnouncementsScroll() {
         </div>
       )}
 
-      {/* Bottom Sheet Drawer Overlay */}
-      <div 
-        className={`drawer-backdrop ${selectedAnn ? 'active' : ''}`} 
-        onClick={() => setSelectedAnn(null)} 
-      />
-      <div className={`bottom-sheet-drawer ${selectedAnn ? 'active' : ''}`}>
-        <div className="drawer-drag-handle" onClick={() => setSelectedAnn(null)} />
-        
-        {selectedAnn && (
+      <BottomSheet open={Boolean(selectedAnn)} onClose={() => setSelectedAnn(null)} title="Announcement Details">
+        {prevSelectedAnn && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Category and Title */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 {(() => {
-                  const category = getAnnouncementCategory(selectedAnn.title, selectedAnn.priority);
+                  const category = getAnnouncementCategory(prevSelectedAnn.title, prevSelectedAnn.priority);
                   return (
                     <>
                       <div style={{ 
@@ -524,38 +525,38 @@ export default function AnnouncementsScroll() {
                       </div>
                       <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>·</span>
                       <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
-                        {timeAgo(selectedAnn.postedAt)}
+                        {timeAgo(prevSelectedAnn.postedAt)}
                       </span>
                     </>
                   );
                 })()}
               </div>
               <h2 className="t-card-title" style={{ fontSize: 20, color: 'var(--text-primary)', lineHeight: 1.3, textAlign: 'left' }}>
-                {selectedAnn.title}
+                {prevSelectedAnn.title}
               </h2>
             </div>
 
             {/* Rich Body Content */}
             <div className="t-body" style={{ color: 'var(--text-primary)', lineHeight: 1.6, maxHeight: '30vh', overflowY: 'auto', paddingRight: 4, textAlign: 'left' }}>
-              <RichTextBody text={selectedAnn.body} />
+              <RichTextBody text={prevSelectedAnn.body} />
             </div>
 
             {/* Deadline Badge */}
-            {selectedAnn.deadline && (
+            {prevSelectedAnn.deadline && (
               <div style={{ textAlign: 'left' }}>
                 <span className="t-caption" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Notice Deadline</span>
-                <span className={`badge ${deadlineBadgeClass(selectedAnn.deadline)}`}>
-                  {deadlineLabel(selectedAnn.deadline)}
+                <span className={`badge ${deadlineBadgeClass(prevSelectedAnn.deadline)}`}>
+                  {deadlineLabel(prevSelectedAnn.deadline)}
                 </span>
               </div>
             )}
 
             {/* Attachments Section */}
-            {selectedAnn.attachments && selectedAnn.attachments.length > 0 && (
+            {prevSelectedAnn.attachments && prevSelectedAnn.attachments.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
-                <span className="t-caption" style={{ color: 'var(--text-muted)' }}>Attachments ({selectedAnn.attachments.length})</span>
+                <span className="t-caption" style={{ color: 'var(--text-muted)' }}>Attachments ({prevSelectedAnn.attachments.length})</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {selectedAnn.attachments.map((att: Attachment) => (
+                  {prevSelectedAnn.attachments.map((att: Attachment) => (
                     <AttachmentCard key={att.id} attachment={att} />
                   ))}
                 </div>
@@ -575,19 +576,19 @@ export default function AnnouncementsScroll() {
               textAlign: 'left'
             }}>
               <AnnouncementQAFooter 
-                announcementId={selectedAnn.id} 
+                announcementId={prevSelectedAnn.id} 
                 onOpenComments={() => {
                   setSelectedAnn(null);
-                  navigate(`/app/announcements?id=${selectedAnn.id}&expand_qa=true`);
+                  navigate(`/app/announcements?id=${prevSelectedAnn.id}&expand_qa=true`);
                 }}
-                onShare={() => handleShareAnnouncement(selectedAnn)}
+                onShare={() => handleShareAnnouncement(prevSelectedAnn)}
                 style={{ justifyContent: 'space-between', width: '100%' }}
               />
             </div>
 
             {/* Action / Acknowledgment CTAs */}
             <div style={{ marginTop: 8 }}>
-              {selectedAnn.isAcknowledged ? (
+              {prevSelectedAnn.isAcknowledged ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', borderRadius: 12, background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', color: '#34d399' }}>
                   <CheckCircle2 size={18} />
                   <span className="t-mono-sm">Notice Acknowledged</span>
@@ -596,8 +597,9 @@ export default function AnnouncementsScroll() {
                 <button
                   onClick={async () => {
                     try {
-                      await acknowledgeMutation.mutateAsync(selectedAnn.id);
-                      setSelectedAnn({ ...selectedAnn, isAcknowledged: true });
+                      await acknowledgeMutation.mutateAsync(prevSelectedAnn.id);
+                      setSelectedAnn(prev => prev ? { ...prev, isAcknowledged: true } : null);
+                      setPrevSelectedAnn(prev => prev ? { ...prev, isAcknowledged: true } : null);
                       showToast('Notice acknowledged successfully!', 'success');
                     } catch {
                       showToast('Failed to acknowledge notice', 'error');
@@ -628,7 +630,7 @@ export default function AnnouncementsScroll() {
           </div>
         )}
         <OffscreenSharePortal announcement={activeShareAnn} domRef={sharePortalRef} />
-      </div>
+      </BottomSheet>
     </section>
   );
 }

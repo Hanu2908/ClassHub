@@ -29,7 +29,7 @@ const AcksTrackingSheet = lazy(() => import('../../components/AcksTrackingSheet'
 type Filter = 'all' | 'critical' | 'general';
 type ChannelTab = 'active' | 'exams' | 'schedule' | 'campus';
 
-function CreateAnnouncementSheet({ onClose, shareInboxId }: { onClose: () => void; shareInboxId?: string }) {
+function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolean; onClose: () => void; shareInboxId?: string }) {
   const navigate = useNavigate();
   const createAnn = useCreateAnnouncement();
   const authUser = useAppStore(s => s.authUser);
@@ -120,7 +120,7 @@ function CreateAnnouncementSheet({ onClose, shareInboxId }: { onClose: () => voi
   const pending = createAnn.isPending || isPosting;
 
   return (
-    <BottomSheet onClose={onClose} title="Post Announcement">
+    <BottomSheet open={open} onClose={onClose} title="Post Announcement">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 20 }}>
         <div>
           <label htmlFor="composer-title" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
@@ -755,6 +755,13 @@ export default function AnnouncementsPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'priority' | 'deadline'>('newest');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [trackingAnnouncement, setTrackingAnnouncement] = useState<Announcement | null>(null);
+  const [prevTrackingAnnouncement, setPrevTrackingAnnouncement] = useState<Announcement | null>(null);
+
+  useEffect(() => {
+    if (trackingAnnouncement) {
+      setPrevTrackingAnnouncement(trackingAnnouncement);
+    }
+  }, [trackingAnnouncement]);
   // Pending delete target state for confirmation dialog
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [highlightId] = useState<string | null>(() => new URLSearchParams(location.search).get('highlight'));
@@ -762,7 +769,14 @@ export default function AnnouncementsPage() {
 
   // Q&A Comments Drawer States
   const [openCommentsAnnId, setOpenCommentsAnnId] = useState<string | null>(null);
+  const [prevOpenCommentsAnnId, setPrevOpenCommentsAnnId] = useState<string | null>(null);
   const [focusCommentId, setFocusCommentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openCommentsAnnId) {
+      setPrevOpenCommentsAnnId(openCommentsAnnId);
+    }
+  }, [openCommentsAnnId]);
 
   // Announcement Card Share states
   const sharePortalRef = useRef<HTMLDivElement>(null);
@@ -1421,58 +1435,54 @@ export default function AnnouncementsPage() {
         </button>
       </CROnly>
 
-      {showCreate && (
-        <CreateAnnouncementSheet 
-          shareInboxId={location.state?.shareInboxId}
-          onClose={() => {
-            setShowCreate(false);
-            setActiveTab('active');
-          }} 
-        />
-      )}
+      <CreateAnnouncementSheet 
+        open={showCreate}
+        shareInboxId={location.state?.shareInboxId}
+        onClose={() => {
+          setShowCreate(false);
+          setActiveTab('active');
+        }} 
+      />
       
       <Suspense fallback={null}>
-        {trackingAnnouncement && (
-          <AcksTrackingSheet 
-            announcement={trackingAnnouncement} 
-            onClose={() => setTrackingAnnouncement(null)}
-            sectionAcks={sectionAcks}
-            members={members}
-          />
-        )}
+        <AcksTrackingSheet 
+          open={Boolean(trackingAnnouncement)}
+          announcement={prevTrackingAnnouncement || ({} as any)} 
+          onClose={() => setTrackingAnnouncement(null)}
+          sectionAcks={sectionAcks}
+          members={members}
+        />
 
         {/* Adaptive confirmation dialog / bottom-sheet for CR deletions */}
-        {pendingDeleteId && (
-          <DeleteConfirmationModal
-            onClose={() => setPendingDeleteId(null)}
-            onConfirm={async () => {
-              if (pendingDeleteId) {
-                await handleDelete(pendingDeleteId);
-                setPendingDeleteId(null);
-              }
-            }}
-          />
-        )}
-      </Suspense>
-
-      {openCommentsAnnId && (
-        <AnnouncementCommentsDrawer
-          announcementId={openCommentsAnnId}
-          focusCommentId={focusCommentId}
-          onClose={() => {
-            setOpenCommentsAnnId(null);
-            setFocusCommentId(null);
-            // Clear URL search params without page reload
-            const params = new URLSearchParams(window.location.search);
-            params.delete('id');
-            params.delete('expand_qa');
-            params.delete('focus_comment');
-            const newSearch = params.toString();
-            const newPath = window.location.pathname + (newSearch ? `?${newSearch}` : '');
-            window.history.replaceState({}, '', newPath);
+        <DeleteConfirmationModal
+          open={Boolean(pendingDeleteId)}
+          onClose={() => setPendingDeleteId(null)}
+          onConfirm={async () => {
+            if (pendingDeleteId) {
+              await handleDelete(pendingDeleteId);
+              setPendingDeleteId(null);
+            }
           }}
         />
-      )}
+      </Suspense>
+
+      <AnnouncementCommentsDrawer
+        open={Boolean(openCommentsAnnId)}
+        announcementId={prevOpenCommentsAnnId || ''}
+        focusCommentId={focusCommentId}
+        onClose={() => {
+          setOpenCommentsAnnId(null);
+          setFocusCommentId(null);
+          // Clear URL search params without page reload
+          const params = new URLSearchParams(window.location.search);
+          params.delete('id');
+          params.delete('expand_qa');
+          params.delete('focus_comment');
+          const newSearch = params.toString();
+          const newPath = window.location.pathname + (newSearch ? `?${newSearch}` : '');
+          window.history.replaceState({}, '', newPath);
+        }}
+      />
 
       <OffscreenSharePortal announcement={activeShareAnn} domRef={sharePortalRef} />
 

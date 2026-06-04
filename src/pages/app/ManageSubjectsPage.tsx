@@ -241,65 +241,63 @@ export default function ManageSubjectsPage() {
       </main>
 
       {/* Add/Edit Form BottomSheet */}
-      {formOpen ? (
-        <BottomSheet onClose={() => setFormOpen(false)} title={editingId ? 'Edit Subject' : 'Add Subject'}>
-          <div style={{ paddingBottom: 24 }}>
-            <div style={{ marginBottom: 16 }}>
-              <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Subject Code
-              </label>
-              <input className="t-card-title" 
-                type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                placeholder="e.g. CSUL201"
-                style={{
-                  width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                  color: '#fff', outline: 'none'
-                }}
-              />
-            </div>
-            
-            <div style={{ marginBottom: 16 }}>
-              <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Subject Name
-              </label>
-              <input className="t-body" 
-                type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g. Problem Solving Using OOP"
-                style={{
-                  width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                  color: '#fff', outline: 'none'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Semester (Auto-detected: {maxSemester})
-              </label>
-              <input className="t-card-title" 
-                type="number" min="1" max="10" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}
-                style={{
-                  width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                  color: 'var(--accent-primary)', outline: 'none'
-                }}
-              />
-            </div>
-
-            <button 
-              onClick={handleSave}
-              disabled={mutateSubjects.isPending} className="t-card-title" style={{ width: '100%', padding: '16px', background: '#fff', color: '#000',
-                border: 'none', borderRadius: 12, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            >
-              <Check size={18} />
-              {mutateSubjects.isPending ? 'Saving...' : 'Save Curriculum'}
-            </button>
+      <BottomSheet open={formOpen} onClose={() => setFormOpen(false)} title={editingId ? 'Edit Subject' : 'Add Subject'}>
+        <div style={{ paddingBottom: 24 }}>
+          <div style={{ marginBottom: 16 }}>
+            <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Subject Code
+            </label>
+            <input className="t-card-title" 
+              type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              placeholder="e.g. CSUL201"
+              style={{
+                width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+                color: '#fff', outline: 'none'
+              }}
+            />
           </div>
-        </BottomSheet>
-      ) : null}
+          
+          <div style={{ marginBottom: 16 }}>
+            <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Subject Name
+            </label>
+            <input className="t-body" 
+              type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g. Problem Solving Using OOP"
+              style={{
+                width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+                color: '#fff', outline: 'none'
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Semester (Auto-detected: {maxSemester})
+            </label>
+            <input className="t-card-title" 
+              type="number" min="1" max="10" value={formData.semester} onChange={e => setFormData({ ...formData, semester: e.target.value })}
+              style={{
+                width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+                color: 'var(--accent-primary)', outline: 'none'
+              }}
+            />
+          </div>
+
+          <button 
+            onClick={handleSave}
+            disabled={mutateSubjects.isPending} className="t-card-title" style={{ width: '100%', padding: '16px', background: '#fff', color: '#000',
+              border: 'none', borderRadius: 12, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          >
+            <Check size={18} />
+            {mutateSubjects.isPending ? 'Saving...' : 'Save Curriculum'}
+          </button>
+        </div>
+      </BottomSheet>
 
       {/* Destructive Deletion Modal overlay */}
       {deleteConfirmId ? (

@@ -593,42 +593,52 @@ body {
 }
 
 /* ── Bottom Sheet — glassmorphism ── */
+/* ── Bottom Sheet Backdrop ── */
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.70);
+  background: rgba(0, 0, 0, 0.75);
   z-index: 200;
-  animation: fadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.24s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+.sheet-backdrop.active {
+  opacity: 1;
+}
+
+/* ── Bottom Sheet Panel ── */
 .sheet-panel {
   position: fixed;
   bottom: 0;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 100%, 0);
   width: 100%;
   max-width: var(--frame-w);
-  background: rgba(18, 22, 36, 0.96);
-  backdrop-filter: var(--glass-blur-heavy);
-  -webkit-backdrop-filter: var(--glass-blur-heavy);
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -12px 64px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  max-height: 88vh;
+  background: linear-gradient(180deg, rgba(18, 18, 22, 0.98) 0%, rgba(10, 10, 12, 1) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+  max-height: 85vh;
   overflow-y: auto;
   z-index: 201;
-animation: slideUp 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.sheet-panel.active {
+  transform: translate3d(-50%, 0, 0);
 }
 
 .sheet-handle {
-  width: 36px;
+  width: 40px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
   margin: 12px auto 16px;
+  cursor: pointer;
 }
 
 /* ── Toast ── */
@@ -2784,61 +2794,7 @@ animation: slideUp 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.05);
   animation: neon-dot-pulse 2s infinite ease-in-out;
 }
 
-/* ── Bottom Sheet Drawer Overlay ── */
-.drawer-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  z-index: 1000;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.4s ease, visibility 0.4s ease;
-}
-
-.drawer-backdrop.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.bottom-sheet-drawer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 85vh;
-  background: linear-gradient(180deg, rgba(18, 18, 22, 0.98) 0%, rgba(10, 10, 12, 1) 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px 24px 0 0;
-  z-index: 1001;
-  transform: translate3d(0, 100%, 0);
-  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow-y: auto;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
-  padding: 12px 24px 32px 24px;
-}
-
-.bottom-sheet-drawer.active {
-  transform: translate3d(0, 0, 0);
-}
-
-.drawer-drag-handle {
-  width: 40px;
-  height: 4px;
-  background-color: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-  margin: 0 auto 20px auto;
-  cursor: pointer;
-  transition: background-color var(--transition-base);
-}
-
-.drawer-drag-handle:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-}
+/* ── Bottom Sheet Drawer Overlay Deprecated (Consolidated into core BottomSheet) ── */
 
 .drawer-attachment-card {
   background: rgba(255, 255, 255, 0.02);

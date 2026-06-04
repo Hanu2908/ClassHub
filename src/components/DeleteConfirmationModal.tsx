@@ -4,11 +4,12 @@ import { X } from 'lucide-react';
 import { BottomSheet } from './BottomSheet';
 
 interface DeleteConfirmationProps {
+  open: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export default function DeleteConfirmationModal({ onClose, onConfirm }: DeleteConfirmationProps) {
+export default function DeleteConfirmationModal({ open, onClose, onConfirm }: DeleteConfirmationProps) {
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
@@ -59,7 +60,7 @@ export default function DeleteConfirmationModal({ onClose, onConfirm }: DeleteCo
 
   if (isMobile) {
     return (
-      <BottomSheet onClose={onClose} title="Confirm Deletion">
+      <BottomSheet open={open} onClose={onClose} title="Confirm Deletion">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 24 }}>
           {messageText}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -92,6 +93,8 @@ export default function DeleteConfirmationModal({ onClose, onConfirm }: DeleteCo
       </BottomSheet>
     );
   }
+
+  if (!open) return null;
 
   return createPortal(
     <div

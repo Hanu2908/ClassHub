@@ -656,7 +656,7 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {showNotifs ? <NotificationSheet onClose={() => setShowNotifs(false)} /> : null}
+      <NotificationSheet open={showNotifs} onClose={() => setShowNotifs(false)} />
 
       <NavBar />
       <FeedbackSheet open={showFeedbackSheet} onClose={() => setShowFeedbackSheet(false)} />

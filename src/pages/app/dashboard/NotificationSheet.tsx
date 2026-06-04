@@ -7,10 +7,11 @@ import { BottomSheet } from '../../../components/BottomSheet';
 import { timeAgo } from '../../../components/Shared';
 
 interface NotificationSheetProps {
+  open: boolean;
   onClose: () => void;
 }
 
-export default function NotificationSheet({ onClose }: NotificationSheetProps) {
+export default function NotificationSheet({ open, onClose }: NotificationSheetProps) {
   const navigate = useNavigate();
   const { notifications, markAllRead, clear, clearAll } = useNotifications();
 
@@ -48,7 +49,7 @@ export default function NotificationSheet({ onClose }: NotificationSheetProps) {
   }
 
   return (
-    <BottomSheet onClose={onClose} title="Notifications">
+    <BottomSheet open={open} onClose={onClose} title="Notifications">
       <div style={{ paddingBottom: 20 }}>
         {visibleNotifications.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)' }}>

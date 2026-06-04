@@ -20,12 +20,14 @@ import { useUserTagsBatch } from '../../hooks/useUserTags';
 import { TagPill, TagOverflow } from '../TagPill';
 
 interface AnnouncementCommentsDrawerProps {
+  open: boolean;
   announcementId: string;
   focusCommentId?: string | null;
   onClose: () => void;
 }
 
 export function AnnouncementCommentsDrawer({
+  open,
   announcementId,
   focusCommentId,
   onClose
@@ -231,7 +233,7 @@ export function AnnouncementCommentsDrawer({
   };
 
   return (
-    <BottomSheet onClose={onClose} title="Notice Q&A Thread">
+    <BottomSheet open={open} onClose={onClose} title="Notice Q&A Thread">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '70vh', maxBlockSize: '650px', paddingBottom: 16 }}>
         
         {/* HEADER TOOLBAR: MUTE CONTROLS */}

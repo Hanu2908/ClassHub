@@ -65,12 +65,13 @@ const labelStyle: React.CSSProperties = {
 };
 
 interface AddSlotSheetProps {
+  open: boolean;
   day: string;
   existingSlots: { subject: string; code: string; startTime: string; endTime: string; type: string }[];
   onClose: () => void;
 }
 
-function AddSlotSheet({ day, existingSlots, onClose }: AddSlotSheetProps) {
+function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) {
   const { data: subjects = [] } = useSubjects();
   const upsertSlot = useUpsertScheduleSlot();
   const [subjectId, setSubjectId] = useState('');
@@ -134,7 +135,7 @@ function AddSlotSheet({ day, existingSlots, onClose }: AddSlotSheetProps) {
   };
 
   return (
-    <BottomSheet onClose={onClose} title={`Add Classes — ${DAY_FULL[day] ?? day}`}>
+    <BottomSheet open={open} onClose={onClose} title={`Add Classes — ${DAY_FULL[day] ?? day}`}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
         {/* Mini timeline preview */}
         {existingSlots.length > 0 && (
@@ -265,7 +266,8 @@ function AddSlotSheet({ day, existingSlots, onClose }: AddSlotSheetProps) {
 
 // ── Copy Day sheet ───────────────────────────────────────────────────────────
 
-function CopyDaySheet({ targetDay, schedule, onClose }: {
+function CopyDaySheet({ open, targetDay, schedule, onClose }: {
+  open: boolean;
   targetDay: string;
   schedule: Record<string, { id: string }[]>;
   onClose: () => void;
@@ -286,7 +288,7 @@ function CopyDaySheet({ targetDay, schedule, onClose }: {
   };
 
   return (
-    <BottomSheet onClose={onClose} title={`Copy to ${DAY_FULL[targetDay]}`}>
+    <BottomSheet open={open} onClose={onClose} title={`Copy to ${DAY_FULL[targetDay]}`}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
         <div>
           <label htmlFor="copy-source-select" style={labelStyle}>Copy from</label>
@@ -479,6 +481,14 @@ export default function SchedulePage() {
   const [showJumpToNow, setShowJumpToNow] = useState(false);
   const [confirmClearDay, setConfirmClearDay] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState<SwipeableCardSlot | null>(null);
+  const [prevSlotToDelete, setPrevSlotToDelete] = useState<SwipeableCardSlot | null>(null);
+
+  useEffect(() => {
+    if (slotToDelete) {
+      setPrevSlotToDelete(slotToDelete);
+    }
+  }, [slotToDelete]);
+
   const timelineRef = useRef<HTMLDivElement>(null);
   const nowLineRef = useRef<HTMLDivElement>(null);
 
@@ -917,24 +927,22 @@ export default function SchedulePage() {
       </CROnly>
 
       {/* Bottom sheets */}
-      {showAddSheet && (
-        <AddSlotSheet
-          day={selectedDay}
-          existingSlots={classes.map(c => ({ subject: c.subject, code: c.code, startTime: c.startTime, endTime: c.endTime, type: c.type }))}
-          onClose={() => setShowAddSheet(false)}
-        />
-      )}
+      <AddSlotSheet
+        open={showAddSheet}
+        day={selectedDay}
+        existingSlots={classes.map(c => ({ subject: c.subject, code: c.code, startTime: c.startTime, endTime: c.endTime, type: c.type }))}
+        onClose={() => setShowAddSheet(false)}
+      />
 
-      {showCopySheet && (
-        <CopyDaySheet
-          targetDay={selectedDay}
-          schedule={schedule}
-          onClose={() => setShowCopySheet(false)}
-        />
-      )}
+      <CopyDaySheet
+        open={showCopySheet}
+        targetDay={selectedDay}
+        schedule={schedule}
+        onClose={() => setShowCopySheet(false)}
+      />
 
-      {slotToDelete && (
-        <BottomSheet onClose={() => setSlotToDelete(null)} title="Remove Class from Timetable">
+      <BottomSheet open={Boolean(slotToDelete)} onClose={() => setSlotToDelete(null)} title="Remove Class from Timetable">
+        {prevSlotToDelete && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 0 20px' }}>
             <div style={{
               display: 'flex',
@@ -967,13 +975,13 @@ export default function SchedulePage() {
                 <div style={{
                   width: 4,
                   alignSelf: 'stretch',
-                  background: CATEGORY_COLORS[getCategory(slotToDelete.code, slotToDelete.type)].color,
+                  background: CATEGORY_COLORS[getCategory(prevSlotToDelete.code, prevSlotToDelete.type)].color,
                   borderRadius: 2
                 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="t-button" style={{ color: 'var(--text-primary)', margin: 0 }}>{slotToDelete.subject}</p>
+                  <p className="t-button" style={{ color: 'var(--text-primary)', margin: 0 }}>{prevSlotToDelete.subject}</p>
                   <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>
-                    {formatTime(slotToDelete.startTime)} – {formatTime(slotToDelete.endTime)} · {slotToDelete.room || 'No Room'}
+                    {formatTime(prevSlotToDelete.startTime)} – {formatTime(prevSlotToDelete.endTime)} · {prevSlotToDelete.room || 'No Room'}
                   </p>
                 </div>
               </div>
@@ -998,9 +1006,9 @@ export default function SchedulePage() {
               </button>
               <button
                 onClick={async () => {
-                  if (slotToDelete) {
+                  if (prevSlotToDelete) {
                     try {
-                      await deleteSlotMutation.mutateAsync(slotToDelete.id);
+                      await deleteSlotMutation.mutateAsync(prevSlotToDelete.id);
                       showToast('Class successfully removed', 'info');
                     } catch (err: any) {
                       showToast(`Failed to remove class: ${err.message || 'Unknown'}`, 'error');
@@ -1032,40 +1040,37 @@ export default function SchedulePage() {
               </button>
             </div>
           </div>
-        </BottomSheet>
-      )}
+        )}
+      </BottomSheet>
 
-      {/* Clear day confirmation */}
-      {confirmClearDay && (
-        <BottomSheet onClose={() => setConfirmClearDay(false)} title="Clear All Classes">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 14, background: 'var(--status-critical-bg)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-md)' }}>
-              <AlertTriangle size={18} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 1 }} />
-              <span className="t-body" style={{ color: 'var(--text-secondary)' }}>
-                This will permanently remove all {classes.length} class{classes.length !== 1 ? 'es' : ''} from {DAY_FULL[selectedDay]}. This cannot be undone.
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setConfirmClearDay(false)}
-                className="t-button"
-                style={{ flex: 1, padding: 13, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleClearDay}
-                disabled={clearDayMutation.isPending}
-                className="t-button"
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 13, background: 'var(--status-critical)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: '#fff' }}
-              >
-                {clearDayMutation.isPending ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
-                {clearDayMutation.isPending ? 'Clearing…' : 'Clear All'}
-              </button>
-            </div>
+      <BottomSheet open={confirmClearDay} onClose={() => setConfirmClearDay(false)} title="Clear All Classes">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 14, background: 'var(--status-critical-bg)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-md)' }}>
+            <AlertTriangle size={18} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 1 }} />
+            <span className="t-body" style={{ color: 'var(--text-secondary)' }}>
+              This will permanently remove all {classes.length} class{classes.length !== 1 ? 'es' : ''} from {DAY_FULL[selectedDay]}. This cannot be undone.
+            </span>
           </div>
-        </BottomSheet>
-      )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setConfirmClearDay(false)}
+              className="t-button"
+              style={{ flex: 1, padding: 13, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleClearDay}
+              disabled={clearDayMutation.isPending}
+              className="t-button"
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 13, background: 'var(--status-critical)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: '#fff' }}
+            >
+              {clearDayMutation.isPending ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
+              {clearDayMutation.isPending ? 'Clearing…' : 'Clear All'}
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
 
       <NavBar />
     </div>

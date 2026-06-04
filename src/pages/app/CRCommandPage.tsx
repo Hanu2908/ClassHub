@@ -781,7 +781,7 @@ function ClassAttendance() {
   );
 }
 
-function SendNotificationSheet({ onClose }: { onClose: () => void }) {
+function SendNotificationSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -861,7 +861,7 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <BottomSheet onClose={onClose} title="Send Notification">
+    <BottomSheet open={open} onClose={onClose} title="Send Notification">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 20 }}>
         <div>
           <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
@@ -892,7 +892,7 @@ function SendNotificationSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-function FlashPostSheet({ onClose }: { onClose: () => void }) {
+function FlashPostSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [timer, setTimer] = useState<string>('30m'); // 30m, 1h, 3h, 6h
@@ -942,7 +942,7 @@ function FlashPostSheet({ onClose }: { onClose: () => void }) {
   const sending = createAnnouncement.isPending;
 
   return (
-    <BottomSheet onClose={onClose} title="Send Flash Post">
+    <BottomSheet open={open} onClose={onClose} title="Send Flash Post">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 20 }}>
         <div>
           <label className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Title *</label>
@@ -1151,8 +1151,7 @@ function InviteCodeCard() {
         </div>
       </div>
 
-      {confirmOpen && (
-        <BottomSheet onClose={() => setConfirmOpen(false)} title="Rotate Invite Code?">
+      <BottomSheet open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Rotate Invite Code?">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>
             <div style={{
               background: 'rgba(255, 68, 68, 0.05)',
@@ -1197,8 +1196,7 @@ function InviteCodeCard() {
               </button>
             </div>
           </div>
-        </BottomSheet>
-      )}
+      </BottomSheet>
     </>
   );
 }
@@ -1439,8 +1437,7 @@ function ManageCRs() {
       </div>
 
       {/* Add Co-CR Bottom Sheet */}
-      {showAddCR ? (
-        <BottomSheet onClose={() => setShowAddCR(false)} title="Add Co-CR">
+      <BottomSheet open={showAddCR} onClose={() => setShowAddCR(false)} title="Add Co-CR">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto', paddingBottom: 16 }}>
             {eligibleStudents.length === 0 ? (
               <p className="t-body" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20 }}>
@@ -1479,12 +1476,10 @@ function ManageCRs() {
               </div>
             ))}
           </div>
-        </BottomSheet>
-      ) : null}
+      </BottomSheet>
 
       {/* Transfer Primary Bottom Sheet */}
-      {showTransfer ? (
-        <BottomSheet onClose={() => setShowTransfer(false)} title="Transfer Primary Role">
+      <BottomSheet open={showTransfer} onClose={() => setShowTransfer(false)} title="Transfer Primary Role">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 16 }}>
             <div style={{
               background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)',
@@ -1570,12 +1565,10 @@ function ManageCRs() {
               Confirm Transfer
             </button>
           </div>
-        </BottomSheet>
-      ) : null}
+      </BottomSheet>
 
       {/* Resign Confirmation Bottom Sheet */}
-      {showResign ? (
-        <BottomSheet onClose={() => setShowResign(false)} title="Resign as CR?">
+      <BottomSheet open={showResign} onClose={() => setShowResign(false)} title="Resign as CR?">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 16 }}>
             <div style={{
               background: 'rgba(255,68,68,0.05)', border: '1px solid rgba(255,68,68,0.2)',
@@ -1610,8 +1603,7 @@ function ManageCRs() {
               </button>
             </div>
           </div>
-        </BottomSheet>
-      ) : null}
+      </BottomSheet>
     </>
   );
 }
@@ -1762,11 +1754,10 @@ export default function CRCommandPage() {
         <div style={{ height: 24 }} />
       </main>
 
-      {showNotifSheet ? <SendNotificationSheet onClose={() => setShowNotifSheet(false)} /> : null}
-      {showFlashPostSheet ? <FlashPostSheet onClose={() => setShowFlashPostSheet(false)} /> : null}
+      <SendNotificationSheet open={showNotifSheet} onClose={() => setShowNotifSheet(false)} />
+      <FlashPostSheet open={showFlashPostSheet} onClose={() => setShowFlashPostSheet(false)} />
 
-      {showDeleteSheet && (
-        <BottomSheet onClose={() => setShowDeleteSheet(false)} title="Delete Section Hub?">
+      <BottomSheet open={showDeleteSheet} onClose={() => setShowDeleteSheet(false)} title="Delete Section Hub?">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>
             <div style={{
               background: 'rgba(255, 68, 68, 0.05)',
@@ -1825,8 +1816,7 @@ export default function CRCommandPage() {
               </button>
             </div>
           </div>
-        </BottomSheet>
-      )}
+      </BottomSheet>
 
       <NavBar />
     </div>

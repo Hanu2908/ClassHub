@@ -14,13 +14,14 @@ export interface SectionAck {
 }
 
 interface AcksTrackingSheetProps {
+  open: boolean;
   announcement: Announcement;
   onClose: () => void;
   sectionAcks: SectionAck[];
   members: SectionMember[];
 }
 
-export default function AcksTrackingSheet({ announcement, onClose, sectionAcks, members }: AcksTrackingSheetProps) {
+export default function AcksTrackingSheet({ open, announcement, onClose, sectionAcks, members }: AcksTrackingSheetProps) {
   const [activeTab, setActiveTab] = useState<'acknowledged' | 'pending'>('acknowledged');
   const [studentSearch, setStudentSearch] = useState('');
   const [nudgingIds, setNudgingIds] = useState<Set<string>>(new Set());
@@ -112,7 +113,7 @@ export default function AcksTrackingSheet({ announcement, onClose, sectionAcks, 
   };
 
   return (
-    <BottomSheet onClose={onClose} title="Acknowledgment Status">
+    <BottomSheet open={open} onClose={onClose} title="Acknowledgment Status">
       <div style={{ paddingBottom: 24 }}>
         <div style={{ marginBottom: 12 }}>
           <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
