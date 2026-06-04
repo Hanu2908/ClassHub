@@ -555,11 +555,17 @@ export function useCRToggleSubmission() {
           assignment_id: input.assignmentId,
           student_id: input.studentId,
           cr_verified: input.crVerified,
+          // status must be present to satisfy the check constraint when inserting
+          // a new row for a student who hasn't submitted yet (pending students).
+          status: 'pending' as const,
         }, { onConflict: 'assignment_id,student_id', ignoreDuplicates: false });
       if (error) throw error;
     },
     onSuccess: (_, vars) => {
+      // Invalidate both the CR submissions view AND the student assignments cache
+      // so the pending/submitted lists in the tracker update immediately.
       qc.invalidateQueries({ queryKey: ['assignment_submissions', vars.assignmentId] });
+      qc.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 }
