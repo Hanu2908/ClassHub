@@ -192,9 +192,8 @@ export default function LegalPage() {
             will be refused and the session will be immediately terminated.
           </P>
           <P>
-            By signing in you confirm that you are a current student or authorised staff
-            member of SKIT Jaipur and that you will use ClassHub solely for lawful academic
-            purposes.
+            By signing in you confirm that you are a current student of SKIT Jaipur
+            and that you will use ClassHub solely for lawful academic purposes.
           </P>
         </Section>
 
@@ -423,7 +422,7 @@ export default function LegalPage() {
             or the in-app developer console.
             <br />
             <span style={{ color: 'var(--text-tertiary)' }}>
-              ClassHub v1.0 · Closed Beta · SKIT Jaipur, Section P2
+              ClassHub v1.0 · Closed Beta · SKIT Jaipur
             </span>
           </p>
         </div>
