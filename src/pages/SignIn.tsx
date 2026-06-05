@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-
+import { Link } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
 import { signInWithGoogle } from '../components/AuthProvider';
 
@@ -235,7 +235,7 @@ export default function SignIn() {
         </TiltCard>
 
         <p className="stagger-4 t-mono-sm" style={{ marginTop: 24, color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.04em' }}>
-          v1.0 &nbsp;·&nbsp; <a href="#" style={{ color: 'inherit' }}>Privacy</a> &nbsp;·&nbsp; <a href="#" style={{ color: 'inherit' }}>Terms</a>
+          v1.0 &nbsp;·&nbsp; <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'rgba(116,124,144,0.4)' }}>Terms &amp; Privacy</Link>
         </p>
       </div>
     </div>

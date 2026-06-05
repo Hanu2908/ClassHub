@@ -169,7 +169,7 @@ self.addEventListener("push", (e) => {
   const options = {
     body: data.body || "",
     icon: "/icon_192.png",
-    badge: "/badge.svg",
+    badge: "/badge-cropped.svg",
     data: { 
       url: data.url || "/app/home",
       announcementId: data.announcementId,
