@@ -49,7 +49,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
   return useQuery<Assignment[]>({
     queryKey: ['assignments', sectionId, userId, page, limit],
     enabled: !!sectionId && isAuthenticated,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60, // 1 minute
     queryFn: async () => {
       try {
         const from = page * limit;

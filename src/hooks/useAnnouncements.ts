@@ -39,7 +39,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
   const queryResult = useQuery<(Announcement & { isAcknowledged: boolean })[]>({
     queryKey: ['announcements', sectionId, userId, page, limit],
     enabled: !!sectionId && isAuthenticated,
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 1000 * 60, // 1 minute
     queryFn: async () => {
       try {
         const from = page * limit;

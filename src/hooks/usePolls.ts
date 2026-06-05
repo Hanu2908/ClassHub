@@ -40,7 +40,7 @@ export function usePolls() {
   const queryResult = useQuery<Poll[]>({
     queryKey: ['polls', sectionId, userId],
     enabled: !!sectionId && isAuthenticated,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60, // 1 minute
     queryFn: async () => {
       try {
         const { data: polls, error } = await supabase
@@ -198,7 +198,6 @@ export function usePollsRealtime(sectionId: string | null) {
           event: '*',
           schema: 'public',
           table: 'polls',
-          filter: `section_id=eq.${sectionId}`,
         },
         () => {
           qc.invalidateQueries({ queryKey: ['polls', sectionId] });
