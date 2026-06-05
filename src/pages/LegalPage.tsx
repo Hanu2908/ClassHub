@@ -157,7 +157,7 @@ export default function LegalPage() {
             className="t-mono-sm"
             style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}
           >
-            Last updated: June 2026 &nbsp;·&nbsp; Effective for ClassHub v1.0 closed beta, Section P2, SKIT Jaipur.
+            Last updated: June 2026
           </p>
         </div>
 
