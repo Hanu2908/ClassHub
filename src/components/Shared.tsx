@@ -169,10 +169,17 @@ export function deadlineBadgeClass(iso: string | null): string {
 
 export function deadlineLabel(iso: string | null): string {
   if (!iso) return 'No deadline';
-  const diff = new Date(iso).getTime() - Date.now();
-  const days = diff / (1000 * 60 * 60 * 24);
-  if (diff < 0) return 'Overdue';
-  if (days < 1) return 'Due Today';
-  if (days < 2) return 'Due Tomorrow';
-  return `Due ${new Date(iso).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`;
+  
+  const targetDate = new Date(iso);
+  const now = new Date();
+  
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const targetDayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).getTime();
+  
+  const diffDays = Math.round((targetDayStart - todayStart) / (1000 * 60 * 60 * 24));
+  
+  if (targetDate.getTime() < now.getTime()) return 'Overdue';
+  if (diffDays === 0) return 'Due Today';
+  if (diffDays === 1) return 'Due Tomorrow';
+  return `Due ${targetDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`;
 }
