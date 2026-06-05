@@ -17,6 +17,7 @@ import type { SectionInfo } from '../../store/appStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { SubmissionsSkeleton } from '../../components/LoadingSkeletons';
+import { haptics } from '../../lib/haptics';
 
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
@@ -276,6 +277,7 @@ function SubmissionTracker() {
                           <button
                             onClick={async () => {
                               if (!selected) return;
+                              haptics.lightClick();
                               try {
                                 await crToggle.mutateAsync({
                                   assignmentId: selected.id,
@@ -287,12 +289,12 @@ function SubmissionTracker() {
                                 showToast('Failed to update', 'error');
                               }
                             }}
-                            disabled={crToggle.isPending}
+                            disabled={crToggle.isPending && crToggle.variables?.studentId === st.id}
                             style={{
                               background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
-                              borderRadius: 6, padding: '3px 8px', cursor: crToggle.isPending ? 'not-allowed' : 'pointer',
+                              borderRadius: 6, padding: '3px 8px', cursor: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 'not-allowed' : 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: '#f59e0b', fontSize: 11, fontWeight: 600, gap: 4, opacity: crToggle.isPending ? 0.6 : 1
+                              color: '#f59e0b', fontSize: 11, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
                             }}
                             title={`Unmark ${st.name} as submitted`}
                           >
@@ -312,6 +314,9 @@ function SubmissionTracker() {
                               try {
                                 const { error } = await supabase.functions.invoke('send-assignment-reminders', {
                                   body: { assignmentId: selected?.id, studentId: st.id },
+                                  headers: {
+                                    Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                                  }
                                 });
                                 if (error) throw error;
                                 showToast(`Nudged ${st.name}!`, 'success');
@@ -331,6 +336,7 @@ function SubmissionTracker() {
                           <button
                             onClick={async () => {
                               if (!selected) return;
+                              haptics.doublePulse();
                               try {
                                 await crToggle.mutateAsync({
                                   assignmentId: selected.id,
@@ -342,12 +348,12 @@ function SubmissionTracker() {
                                 showToast('Failed to update', 'error');
                               }
                             }}
-                            disabled={crToggle.isPending}
+                            disabled={crToggle.isPending && crToggle.variables?.studentId === st.id}
                             style={{
                               background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.25)',
-                              borderRadius: 6, padding: '3px 8px', cursor: crToggle.isPending ? 'not-allowed' : 'pointer',
+                              borderRadius: 6, padding: '3px 8px', cursor: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 'not-allowed' : 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600, gap: 4, opacity: crToggle.isPending ? 0.6 : 1
+                              color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
                             }}
                             title={`Mark ${st.name} as submitted`}
                           >

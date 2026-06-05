@@ -537,8 +537,67 @@ export function useUnsubmitAssignment() {
 
 export function useCRToggleSubmission() {
   const qc = useQueryClient();
-  const { role } = useAuthContext();
+  const { role, userId } = useAuthContext();
   return useMutation({
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await qc.cancelQueries({ queryKey: ['assignment_submissions', variables.assignmentId] });
+      await qc.cancelQueries({ queryKey: ['assignments'] });
+
+      // Snapshot the previous value
+      const previousSubmissions = qc.getQueryData<AssignmentSubmission[]>(['assignment_submissions', variables.assignmentId]);
+      const previousAssignments = qc.getQueryData<Assignment[]>(['assignments']);
+
+      // Optimistically update to the new value in assignment_submissions
+      qc.setQueryData<AssignmentSubmission[]>(
+        ['assignment_submissions', variables.assignmentId],
+        (old) => {
+          if (!old) return old;
+          
+          const exists = old.some(s => s.studentId === variables.studentId);
+          if (exists) {
+            return old.map(s =>
+              s.studentId === variables.studentId
+                ? { ...s, crVerified: variables.crVerified }
+                : s
+            );
+          } else {
+            // Add a placeholder submission row
+            return [
+              ...old,
+              {
+                id: `temp-${Date.now()}`,
+                assignmentId: variables.assignmentId,
+                studentId: variables.studentId,
+                submissionLink: null,
+                status: 'pending' as const,
+                submittedAt: null,
+                nudgeSent: false,
+                crVerified: variables.crVerified,
+              },
+            ];
+          }
+        }
+      );
+
+      // Optimistically update the user's assignments query if they verified/unmarked themselves
+      if (userId && variables.studentId === userId) {
+        qc.setQueryData<Assignment[]>(
+          ['assignments'],
+          (old) => {
+            if (!old) return old;
+            return old.map(a =>
+              a.id === variables.assignmentId
+                ? { ...a, crVerified: variables.crVerified }
+                : a
+            );
+          }
+        );
+      }
+
+      // Return context object with snapshotted values
+      return { previousSubmissions, previousAssignments };
+    },
     mutationFn: async (input: {
       assignmentId: string;
       studentId: string;
@@ -577,10 +636,16 @@ export function useCRToggleSubmission() {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: (_, vars) => {
-      // Invalidate both the CR submissions view AND the student assignments cache
-      // so the pending/submitted lists in the tracker update immediately.
-      qc.invalidateQueries({ queryKey: ['assignment_submissions', vars.assignmentId] });
+    onError: (_err, variables, context) => {
+      if (context?.previousSubmissions) {
+        qc.setQueryData(['assignment_submissions', variables.assignmentId], context.previousSubmissions);
+      }
+      if (context?.previousAssignments) {
+        qc.setQueryData(['assignments'], context.previousAssignments);
+      }
+    },
+    onSettled: (_data, _error, variables) => {
+      qc.invalidateQueries({ queryKey: ['assignment_submissions', variables.assignmentId] });
       qc.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
