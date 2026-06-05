@@ -192,12 +192,13 @@ export default function DashboardPage() {
 
   const closestExam = upcomingExams[0] || null;
 
-  const isExamSoon = useMemo(() => {
+  const shouldShowExam = useMemo(() => {
     if (!closestExam) return false;
-    const diffTime = new Date(closestExam.examDate).getTime() - new Date().getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays >= 0 && diffDays <= 7;
-  }, [closestExam]);
+    if (!primaryDeadline) return true;
+    const examTime = new Date(`${closestExam.examDate}T${closestExam.startTime}`).getTime();
+    const deadlineTime = new Date(primaryDeadline.dueDate).getTime();
+    return examTime < deadlineTime;
+  }, [closestExam, primaryDeadline]);
 
   const overallPercent = attendance?.overall ?? 0;
   const isLowAttendance = overallPercent < 75;
@@ -365,7 +366,7 @@ export default function DashboardPage() {
 
           {/* Right Panel: Unified Deadline Hurdle & Quick Links */}
           <div className="hero-panel-right">
-            {isExamSoon && closestExam ? (
+            {shouldShowExam && closestExam ? (
               <NextExamHeroCard exam={closestExam} navigate={navigate} />
             ) : primaryDeadline ? (
               (() => {
