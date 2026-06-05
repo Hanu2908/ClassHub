@@ -27,6 +27,7 @@ const DeveloperConsolePage = lazy(() => import('./pages/app/DeveloperConsolePage
 const ExamsPage = lazy(() => import('./pages/app/ExamsPage'));
 const ShareIntakePage = lazy(() => import('./pages/app/ShareIntakePage'));
 const SectionDirectoryPage = lazy(() => import('./pages/app/SectionDirectoryPage'));
+const LegalPage = lazy(() => import('./pages/LegalPage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -145,6 +146,7 @@ export default function App() {
             <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><DeveloperConsolePage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
             <Route path="/app/members" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SectionDirectoryPage /></ErrorBoundary></RequireHub></RequireAuth>} />
             <Route path="/share-intake" element={<ShareIntakeRoute />} />
+            <Route path="/legal" element={<LegalPage />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
