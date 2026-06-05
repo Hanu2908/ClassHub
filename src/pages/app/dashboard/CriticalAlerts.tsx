@@ -107,29 +107,12 @@ export function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCa
   return (
     <>
       <style>{`
-        @keyframes pulsate-glow {
-          0% {
-            box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.08), 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 4px rgba(239, 68, 68, 0.02);
-          }
-          100% {
-            box-shadow: inset 0 0 16px rgba(239, 68, 68, 0.25), 0 4px 24px rgba(0, 0, 0, 0.45), 0 0 12px rgba(239, 68, 68, 0.15);
-          }
-        }
-        @keyframes pulsate-alert {
-          0%, 100% { transform: scale(1); opacity: 0.95; }
-          50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.45)); }
-        }
-        @keyframes pulse-bell {
-          0%, 100% { transform: rotate(0deg); }
-          10% { transform: rotate(15deg); }
-          20% { transform: rotate(-10deg); }
-          30% { transform: rotate(10deg); }
-          40% { transform: rotate(-5deg); }
-          50% { transform: rotate(5deg); }
-          60% { transform: rotate(0deg); }
-        }
         .critical-carousel-container {
           outline: none;
+          transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .critical-carousel-container:hover {
+          transform: scale(1.005);
         }
         .critical-carousel-container:focus-visible {
           outline: 2px solid rgba(239, 68, 68, 0.5) !important;
@@ -205,13 +188,13 @@ export function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCa
           position: 'relative',
           margin: '4px 8px 8px',
           borderRadius: 'var(--radius-lg)',
-          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(15, 17, 26, 0.95) 100%)',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
+          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(15, 17, 26, 0.95) 100%)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 8px rgba(239, 68, 68, 0.08)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           overflow: 'hidden',
           transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-          animation: 'pulsate-glow 4s infinite alternate',
           cursor: 'pointer',
         }}
         onClick={() => navigate('/app/announcements')}
@@ -231,7 +214,7 @@ export function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCa
               background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.25)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
-              <AlertTriangle size={16} color="var(--status-critical)" style={{ animation: 'pulsate-alert 3s infinite ease-in-out' }} />
+              <AlertTriangle size={16} color="var(--status-critical)" />
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>

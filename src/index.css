@@ -2355,19 +2355,13 @@ body {
   width: 100%;
 }
 
-@media (min-width: 640px) {
-  .academic-hero-container {
-    grid-template-columns: 1.1fr 0.9fr;
-  }
-}
-
 .hero-panel-left,
 .hero-panel-right {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 195px;
-  padding: 18px;
+  min-height: 120px;
+  padding: 14px 18px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-default);
   backdrop-filter: var(--glass-blur);

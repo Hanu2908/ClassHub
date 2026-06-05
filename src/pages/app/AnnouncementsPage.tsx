@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { NavBar } from '../../components/NavBar';
@@ -1098,6 +1098,25 @@ export default function AnnouncementsPage() {
             <Megaphone size={18} color="var(--accent-primary)" />
             <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Announcements</h1>
           </div>
+          <button
+            onClick={() => navigate('/app/polls')}
+            style={{
+              background: 'rgba(99, 102, 241, 0.08)',
+              border: '1px solid rgba(99, 102, 241, 0.2)',
+              color: 'var(--accent-primary)',
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-pill)',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <BarChart2 size={13} />
+            <span>Polls</span>
+          </button>
         </div>
 
         {/* Row 1: Channel Tabs (horizontal scrolling) */}

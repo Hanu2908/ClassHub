@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { showToast } from '../../components/Toast';
@@ -285,7 +285,20 @@ export default function ProfilePage() {
           <div className="card" style={{ padding: 0 }}>
             {[
               { label: 'Hub Code', value: hubCode, action: <button id="copy-hub-code" onClick={handleCopy} className="t-label" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}><Copy size={13} /> Copy</button> },
-              { label: 'Section', value: sectionName },
+              { 
+                label: 'Section', 
+                value: sectionName,
+                action: (
+                  <button 
+                    id="view-members-btn" 
+                    onClick={() => navigate('/app/members')} 
+                    className="t-label" 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <Users size={13} /> View
+                  </button>
+                )
+              },
               { label: 'Institution', value: institution },
               { label: 'University Roll', value: universityRoll },
               { 
