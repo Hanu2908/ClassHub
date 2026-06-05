@@ -32,8 +32,8 @@
 
   --text-primary: #F0F2F8;
   --text-secondary: #8B93A8;
-  --text-muted: #4A5268;
-  --text-tertiary: #4A5268;
+  --text-muted: #747C90;
+  --text-tertiary: #747C90;
   --text-accent: #60A5FA;
 
   --border-default: rgba(255, 255, 255, 0.08);
@@ -298,16 +298,16 @@ body {
   flex: 1;
 }
 
-/* ── Card — glassmorphism ── */
+/* ── Card — solid/opaque ── */
 .card {
-  background: var(--bg-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: #121520;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   border: 1px solid var(--border-default);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-lg);
   padding: 16px;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
   position: relative;
   overflow: hidden;
   transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-base), background var(--transition-fast);
@@ -315,12 +315,13 @@ body {
 
 .card:hover {
   border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(20, 24, 38, 0.55);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 1px var(--accent-primary-glow);
+  background: #171B27;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(96, 165, 250, 0.1);
+  transform: translateY(-2px);
 }
 
 .card:active {
-  transform: scale(0.995);
+  transform: scale(0.99) translateY(0);
 }
 
 .card-glare {
@@ -1028,16 +1029,20 @@ body {
   gap: 12px;
   padding: 14px 16px;
   min-height: 56px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  background: #121520 !important; /* Solid opaque card background */
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: var(--radius-md);
   transition: border-color var(--transition-fast), transform var(--transition-fast), background var(--transition-fast);
 }
 
+.list-row:hover {
+  background: #171B27 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
 .list-row:active {
-  transform: scale(0.98);
-  border-color: var(--border-active);
-  background: rgba(96, 165, 250, 0.03);
+  transform: scale(0.985);
+  background: #121520 !important;
 }
 
 /* ── Onboarding card ── */
@@ -2364,8 +2369,9 @@ body {
   padding: 14px 18px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-default);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: #121520; /* Solid opaque card background */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   position: relative;
   overflow: hidden;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-base), background var(--transition-fast);
@@ -2375,7 +2381,8 @@ body {
 .hero-panel-right:hover {
   transform: translateY(-2px);
   border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(20, 24, 38, 0.55);
+  background: #171B27; /* Solid hover background */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(96, 165, 250, 0.1);
 }
 
 .hero-arrow-btn {
@@ -2562,30 +2569,107 @@ body {
 /* ── Custom Zenith & Status Glows ── */
 .attendance-zenith {
   --tier-color: #c084fc; /* Light Purple / Amethyst */
-  --tier-bg-glow: rgba(192, 132, 252, 0.06);
-  --tier-border: rgba(192, 132, 252, 0.2);
-  --tier-shadow: var(--shadow-card);
+  background: #151220 !important; /* Solid dark amethyst tint */
+  border: 1px solid rgba(192, 132, 252, 0.25) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(192, 132, 252, 0.06) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.attendance-zenith:hover {
+  background: #1B1728 !important;
+  border-color: rgba(192, 132, 252, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(192, 132, 252, 0.12), inset 0 0 14px rgba(192, 132, 252, 0.1) !important;
 }
 
 .attendance-gold {
   --tier-color: #fbbf24; /* Golden Amber */
-  --tier-bg-glow: rgba(251, 191, 36, 0.06);
-  --tier-border: rgba(251, 191, 36, 0.2);
-  --tier-shadow: var(--shadow-card);
+  background: #191512 !important; /* Solid dark gold tint */
+  border: 1px solid rgba(251, 191, 36, 0.25) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(251, 191, 36, 0.06) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.attendance-gold:hover {
+  background: #201A15 !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.12), inset 0 0 14px rgba(251, 191, 36, 0.1) !important;
 }
 
 .attendance-silver {
   --tier-color: #cbd5e1; /* Elegant Slate Silver */
-  --tier-bg-glow: rgba(203, 213, 225, 0.04);
-  --tier-border: rgba(203, 213, 225, 0.15);
-  --tier-shadow: var(--shadow-card);
+  background: #131519 !important; /* Solid dark slate tint */
+  border: 1px solid rgba(203, 213, 225, 0.2) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(203, 213, 225, 0.05) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.attendance-silver:hover {
+  background: #191B21 !important;
+  border-color: rgba(203, 213, 225, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(203, 213, 225, 0.1), inset 0 0 14px rgba(203, 213, 225, 0.08) !important;
 }
 
 .attendance-warned {
   --tier-color: #ef4444; /* Crimson Red */
-  --tier-bg-glow: rgba(239, 68, 68, 0.05);
-  --tier-border: rgba(239, 68, 68, 0.2);
-  --tier-shadow: var(--shadow-card);
+  background: #1A1212 !important; /* Solid dark crimson tint */
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(239, 68, 68, 0.06) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.attendance-warned:hover {
+  background: #221616 !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.12), inset 0 0 14px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* ── Themed Solid Opaque Cards ── */
+.card-solid-critical {
+  background: #181316 !important; /* Solid dark red tint */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(248, 113, 113, 0.25) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(248, 113, 113, 0.06) !important;
+  transition: all var(--transition-base);
+}
+.card-solid-critical:hover {
+  background: #1E161B !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(248, 113, 113, 0.12), inset 0 0 14px rgba(248, 113, 113, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+.card-solid-cr {
+  background: #111624 !important; /* Solid dark blue/cyan tint */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(96, 165, 250, 0.25) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(96, 165, 250, 0.06) !important;
+  transition: all var(--transition-base);
+}
+.card-solid-cr:hover {
+  background: #141C31 !important;
+  border-color: rgba(96, 165, 250, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.12), inset 0 0 14px rgba(96, 165, 250, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+.card-solid-push {
+  background: #111822 !important; /* Solid dark teal tint */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(74, 158, 255, 0.25) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(74, 158, 255, 0.06) !important;
+  transition: all var(--transition-base);
+}
+.card-solid-push:hover {
+  background: #13202E !important;
+  border-color: rgba(74, 158, 255, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(74, 158, 255, 0.12), inset 0 0 14px rgba(74, 158, 255, 0.1) !important;
+  transform: translateY(-2px);
 }
 
 /* Pulsing Flame Breathing Glow */
@@ -2714,35 +2798,37 @@ body {
 
 /* Opaque Solid Charcoal Theming */
 .card-solid-charcoal {
-  background: #111318 !important;
+  background: #121520 !important; /* Solid dark charcoal matching base card */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
 .card-critical-solid {
-  background: #111318 !important;
+  background: #181316 !important; /* Solid red tint background */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(248, 113, 113, 0.45) !important;
-  box-shadow: 0 4px 16px rgba(248, 113, 113, 0.08), inset 0 0 8px rgba(248, 113, 113, 0.04) !important;
+  border: 1px solid rgba(248, 113, 113, 0.25) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(248, 113, 113, 0.06) !important;
 }
 
 .card-critical-solid:hover {
-  border-color: rgba(248, 113, 113, 0.65) !important;
-  box-shadow: 0 8px 24px rgba(248, 113, 113, 0.15), inset 0 0 12px rgba(248, 113, 113, 0.08) !important;
+  background: #1E161B !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(248, 113, 113, 0.12), inset 0 0 14px rgba(248, 113, 113, 0.1) !important;
 }
 
 .card-general-solid {
-  background: #111318 !important;
+  background: #121520 !important; /* Solid base background */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(96, 165, 250, 0.35) !important;
-  box-shadow: 0 4px 16px rgba(96, 165, 250, 0.05) !important;
+  border: 1px solid rgba(96, 165, 250, 0.25) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(96, 165, 250, 0.06) !important;
 }
 
 .card-general-solid:hover {
-  border-color: rgba(96, 165, 250, 0.55) !important;
-  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.1) !important;
+  background: #171B27 !important;
+  border-color: rgba(96, 165, 250, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.12), inset 0 0 14px rgba(96, 165, 250, 0.1) !important;
 }
 
 /* Deletion Reveal behind Class Cards */

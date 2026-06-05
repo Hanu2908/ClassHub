@@ -20,11 +20,8 @@ export default function CRDashboardStation() {
     <section style={{ animation: 'fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both', margin: '4px 0 8px' }}>
       <DirectShareTip />
       <div 
-        className="glass-bento"
+        className="card-solid-cr"
         style={{
-          background: 'linear-gradient(135deg, rgba(96, 165, 250, 0.08) 0%, rgba(20, 24, 38, 0.75) 100%)',
-          border: '1px solid rgba(96, 165, 250, 0.25)',
-          boxShadow: 'var(--shadow-glow-blue), 0 8px 32px rgba(0, 0, 0, 0.4)',
           padding: '16px 18px',
           display: 'flex',
           flexDirection: 'column',

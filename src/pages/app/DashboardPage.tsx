@@ -184,10 +184,31 @@ export default function DashboardPage() {
   const { data: exams = [] } = useExams();
 
   const upcomingExams = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    /* eslint-disable-next-line react-hooks/purity */
+    const now = Date.now();
     return exams
-      .filter(e => e.examDate >= todayStr)
-      .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
+      .filter(e => {
+        const [year, month, day] = e.examDate.split('-').map(Number);
+        const timeStr = e.endTime || e.startTime;
+        const [hours, minutes, seconds = 0] = timeStr.split(':').map(Number);
+        const examEnd = new Date(year, month - 1, day, hours, minutes, seconds);
+        if (!e.endTime) {
+          // Fallback to start time + 3 hours if end time is not provided
+          examEnd.setHours(examEnd.getHours() + 3);
+        }
+        return examEnd.getTime() > now;
+      })
+      .sort((a, b) => {
+        const [ay, am, ad] = a.examDate.split('-').map(Number);
+        const [ahh, amm, ass = 0] = a.startTime.split(':').map(Number);
+        const aStart = new Date(ay, am - 1, ad, ahh, amm, ass).getTime();
+
+        const [by, bm, bd] = b.examDate.split('-').map(Number);
+        const [bhh, bmm, bss = 0] = b.startTime.split(':').map(Number);
+        const bStart = new Date(by, bm - 1, bd, bhh, bmm, bss).getTime();
+
+        return aStart - bStart;
+      });
   }, [exams]);
 
   const closestExam = upcomingExams[0] || null;
@@ -195,7 +216,11 @@ export default function DashboardPage() {
   const shouldShowExam = useMemo(() => {
     if (!closestExam) return false;
     if (!primaryDeadline) return true;
-    const examTime = new Date(`${closestExam.examDate}T${closestExam.startTime}`).getTime();
+    
+    const [ey, em, ed] = closestExam.examDate.split('-').map(Number);
+    const [ehh, emm, ess = 0] = closestExam.startTime.split(':').map(Number);
+    const examTime = new Date(ey, em - 1, ed, ehh, emm, ess).getTime();
+    
     const deadlineTime = new Date(primaryDeadline.dueDate).getTime();
     return examTime < deadlineTime;
   }, [closestExam, primaryDeadline]);
@@ -211,9 +236,7 @@ export default function DashboardPage() {
   else if (overallPercent >= 75) { statusLabel = 'Silver'; tierClass = 'attendance-silver'; statusColor = 'var(--tier-color)'; }
   else { statusLabel = 'Warned'; tierClass = 'attendance-warned'; statusColor = 'var(--tier-color)'; }
 
-  const cardBg = `linear-gradient(135deg, var(--tier-bg-glow) 0%, rgba(13, 15, 20, 0.4) 100%)`;
-  const borderColor = `var(--tier-border)`;
-  const glowColor = `var(--tier-shadow)`;
+
 
   return (
     <div className="page-shell">
@@ -270,11 +293,6 @@ export default function DashboardPage() {
             }}
             role="button"
             tabIndex={0}
-            style={{ 
-              background: cardBg,
-              borderColor: borderColor,
-              boxShadow: `0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 0 12px ${glowColor}`,
-            }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', height: '100%', gap: 14 }}>
               {/* Top Row: Info */}
@@ -521,6 +539,13 @@ export default function DashboardPage() {
   );
 }
 
+// Helper to parse date (YYYY-MM-DD) and time (HH:mm:ss) in local timezone
+function parseLocalCustomDateTime(dateStr: string, timeStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hours, minutes, seconds = 0] = timeStr.split(':').map(Number);
+  return new Date(year, month - 1, day, hours, minutes, seconds);
+}
+
 // Harmonious gradient generator helper for subject avatars
 function generateGradient(str: string) {
   let hash = 0;
@@ -545,7 +570,7 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
   }, []);
 
   const countdownText = useMemo(() => {
-    const examDateTime = new Date(`${exam.examDate}T${exam.startTime}`).getTime();
+    const examDateTime = parseLocalCustomDateTime(exam.examDate, exam.startTime).getTime();
     const diffMs = examDateTime - nowTime;
     if (diffMs <= 0) return 'Active';
 
@@ -567,7 +592,7 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
   const progressPercent = totalUnits > 0 ? (preparedCount / totalUnits) * 100 : 0;
   const examGradient = generateGradient(exam.subjectCode);
 
-  const examDateTime = new Date(`${exam.examDate}T${exam.startTime}`).getTime();
+  const examDateTime = parseLocalCustomDateTime(exam.examDate, exam.startTime).getTime();
   const diffMs = examDateTime - nowTime;
   const diffHours = diffMs / (1000 * 60 * 60);
   const urgencyColor = diffHours <= 24 ? 'var(--status-critical)' : diffHours <= 72 ? 'var(--status-warning)' : 'var(--text-secondary)';

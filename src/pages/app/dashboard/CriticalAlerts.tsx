@@ -180,21 +180,14 @@ export function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCa
       `}</style>
 
       <div
-        className="critical-carousel-container"
+        className="critical-carousel-container card-solid-critical"
         tabIndex={0}
         role="link"
         aria-label={`Urgent announcement: ${current.title}. Click to read all announcements.`}
         style={{
           position: 'relative',
           margin: '4px 8px 8px',
-          borderRadius: 'var(--radius-lg)',
-          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(15, 17, 26, 0.95) 100%)',
-          border: '1px solid rgba(239, 68, 68, 0.25)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 8px rgba(239, 68, 68, 0.08)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
           overflow: 'hidden',
-          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
           cursor: 'pointer',
         }}
         onClick={() => navigate('/app/announcements')}
@@ -388,21 +381,16 @@ export function PushPermissionCTA({ onDismiss }: PushPermissionCTAProps) {
   };
 
   return (
-    <div style={{
-      margin: '12px 16px 4px',
-      padding: '16px 20px',
-      borderRadius: 'var(--radius-md)',
-      background: 'linear-gradient(135deg, rgba(74, 158, 255, 0.08) 0%, rgba(13, 15, 20, 0.75) 100%)',
-      border: '1px solid rgba(74, 158, 255, 0.25)',
-      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.25), 0 0 10px 0 rgba(74, 158, 255, 0.05)',
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)',
-      position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 12,
-      transition: 'all 0.3s ease',
-    }}>
+    <div 
+      className="card-solid-push"
+      style={{
+        margin: '12px 16px 4px',
+        padding: '16px 20px',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}>
       <button
         onClick={onDismiss}
         style={{
