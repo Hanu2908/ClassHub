@@ -378,22 +378,18 @@ export default function DashboardPage() {
 
                 let barColor: string;
                 let urgencyColor: string;
-                let deadlineStatusLabel: string;
                 let pulseAnimation = 'none';
 
                 if (diffHours <= 24) {
                   barColor = 'linear-gradient(90deg, var(--status-warning) 0%, var(--status-critical) 100%)';
                   urgencyColor = 'var(--status-critical)';
-                  deadlineStatusLabel = 'Due Soon';
                   pulseAnimation = 'nowPulse 1.2s infinite alternate';
                 } else if (diffHours <= 72) {
                   barColor = 'linear-gradient(90deg, var(--accent-primary) 0%, var(--status-warning) 100%)';
                   urgencyColor = 'var(--status-warning)';
-                  deadlineStatusLabel = 'Approaching';
                 } else {
                   barColor = 'linear-gradient(90deg, #2563EB 0%, var(--accent-primary) 100%)';
                   urgencyColor = 'var(--accent-primary)';
-                  deadlineStatusLabel = 'Upcoming';
                 }
 
                 // Dynamic Scaling Window based on remaining hours (Approach B)
@@ -414,13 +410,13 @@ export default function DashboardPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', width: '100%', gap: 14 }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                        <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '10px' }}>
+                        <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '11px' }}>
                           Next Deadline
                         </span>
                         <span
                           className="t-mono-sm"
                           style={{
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: 700,
                             color: urgencyColor,
                             animation: pulseAnimation
@@ -448,7 +444,7 @@ export default function DashboardPage() {
                           transition: 'color 0.2s ease' 
                         }}
                       >
-                        <PrimaryIcon size={15} style={{ color: urgencyColor, flexShrink: 0 }} />
+                        <PrimaryIcon size={16} style={{ color: urgencyColor, flexShrink: 0 }} />
                         <span style={{ 
                           display: '-webkit-box', 
                           WebkitLineClamp: 1, 
@@ -456,7 +452,7 @@ export default function DashboardPage() {
                           overflow: 'hidden', 
                           textOverflow: 'ellipsis', 
                           fontWeight: 700,
-                          fontSize: '14px',
+                          fontSize: '15px',
                           color: 'var(--text-primary)'
                         }}>
                           {primaryDeadline.type === 'assignment' && primaryDeadline.subject 
@@ -469,11 +465,8 @@ export default function DashboardPage() {
 
                     <div style={{ marginTop: 2 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                           Type: <strong style={{ color: 'var(--text-secondary)' }}>{primaryDeadline.type}</strong>
-                        </span>
-                        <span className="t-mono-sm" style={{ fontSize: 9, color: urgencyColor, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          {deadlineStatusLabel}
                         </span>
                       </div>
                       <div style={{ height: 3, borderRadius: 1.5, border: 'none', background: 'rgba(255,255,255,0.03)', width: '100%', overflow: 'hidden' }}>
@@ -603,13 +596,13 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
     >
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '10px' }}>
+          <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '11px' }}>
             Next Exam
           </span>
           <span
             className="t-mono-sm"
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 700,
               color: urgencyColor,
               animation: pulseAnimation
@@ -636,10 +629,10 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
             </span>
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <h4 className="t-card-title truncate" style={{ color: 'var(--text-primary)', margin: 0, fontSize: 14, fontWeight: 700 }}>
+            <h4 className="t-card-title truncate" style={{ color: 'var(--text-primary)', margin: 0, fontSize: 15, fontWeight: 700 }}>
               {exam.subjectName}
             </h4>
-            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
               {exam.examType} • {exam.subjectCode}
             </span>
           </div>
@@ -648,10 +641,10 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
 
       <div style={{ marginTop: 2 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+          <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
             Room: <strong style={{ color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>{exam.activeRoom || 'N/A'}</strong>
           </span>
-          <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+          <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             {preparedCount}/{totalUnits} units
           </span>
         </div>
