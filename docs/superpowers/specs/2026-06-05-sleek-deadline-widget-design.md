@@ -15,6 +15,11 @@ This specification outlines the visual design changes to refine the **Next Deadl
 ### 2. Progress Gauge & Whitespace
 - **Bottom Row**:
   - An ultra-thin **`3px` linear progress bar** running across the bottom of the card, color-coded by urgency.
+  - **Dynamic Scaling Window**: The percentage of the progress bar is calculated dynamically based on the remaining time to keep the bar active and visually meaningful:
+    - If remaining time is `> 7 days`: Scale relative to a **14-day** window.
+    - If remaining time is `3 to 7 days`: Scale relative to a **7-day** window.
+    - If remaining time is `24h to 3 days`: Scale relative to a **3-day** window.
+    - If remaining time is `< 24h`: Scale relative to a **24-hour** window.
   - All bottom status/urgency text labels (such as `Approaching` or `Due Soon`) are completely removed to maximize card whitespace and keep it clean.
 
 ### 3. Clear State (No Deadlines)
