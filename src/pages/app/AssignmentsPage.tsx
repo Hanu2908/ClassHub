@@ -1107,7 +1107,7 @@ export default function AssignmentsPage() {
             if (isSubmitted) {
               if (a.crVerified) {
                 bdg = 'badge-safe';
-                lbl = 'Verified Safely ✓';
+                lbl = 'Marked ✓';
               } else {
                 bdg = 'badge-warning';
                 lbl = 'Submitted';
@@ -1218,11 +1218,11 @@ export default function AssignmentsPage() {
                     <p className="t-badge" style={{ color: 'rgba(255,171,64,0.9)', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <AlertTriangle size={10} color="rgba(255,171,64,0.9)" /> YOUR ASSIGNMENT
                     </p>
-                    <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
+                    {/* <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
                       Based on Roll #{classRoll}, you are in{' '}
                       <span style={{ color: 'var(--accent-primary)' }}>{userSet.label}</span>
-                    </p>
-                    <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>
+                    </p> */}
+                    <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>
                       Complete the questions on{' '}
                       <strong style={{ color: 'var(--text-primary)' }}>
                         Pages {userSet.pageNumbers || '—'}
@@ -1285,7 +1285,7 @@ export default function AssignmentsPage() {
                   >
                     <CheckCircle2 size={15} color={a.crVerified ? 'var(--status-safe)' : 'var(--status-warning)'} />
                     <p className="t-button" style={{ color: a.crVerified ? 'var(--status-safe)' : 'var(--status-warning)' }}>
-                      {a.crVerified ? 'Verified Safely ✓' : 'Submitted (Pending Verification)'}
+                      {a.crVerified ? 'Marked ✓' : 'Submitted (Pending from CR)'}
                     </p>
                   </div>
                 ) : (
