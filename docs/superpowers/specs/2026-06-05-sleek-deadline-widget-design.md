@@ -8,7 +8,7 @@ This specification outlines the visual design changes to refine the **Next Deadl
 - Keep the standard horizontal list card structure (no giant numbers on the left).
 - **Header Row**:
   - **Left**: Metadata label `NEXT DEADLINE` or `NEXT EXAM` in small `10px var(--font-mono)` style with a muted color (`var(--text-muted)`).
-  - **Right**: A lightweight, borderless countdown badge (e.g. `Due Tomorrow`, `Due in 2 days`, or ticking timer for exams) using the matching urgency text color (no colored background container).
+  - **Right**: A lightweight, borderless countdown badge showing relative time remaining (e.g. `in 6h`, `in 2d`, or ticking timer for exams) using the matching urgency text color (no colored background container).
 - **Body Row**:
   - A clean horizontal flow featuring a Lucide icon (e.g. `ClipboardList` or `MapPin`) in status/urgency color, followed by the Subject name and Title (bold, regular size `14px`, `700` weight).
 
