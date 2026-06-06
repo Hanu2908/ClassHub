@@ -152,9 +152,13 @@ export function timeUntil(iso: string): string {
   const mins = Math.floor(diff / 60000);
   if (mins < 60) return `in ${mins}m`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `in ${hrs}h ${mins % 60}m`;
+  if (hrs < 24) {
+    const remainingMins = mins % 60;
+    return remainingMins > 0 ? `in ${hrs}h ${remainingMins}m` : `in ${hrs}h`;
+  }
   const days = Math.floor(hrs / 24);
-  return `in ${days}d ${hrs % 24}h`;
+  const remainingHrs = hrs % 24;
+  return remainingHrs > 0 ? `in ${days}d ${remainingHrs}h` : `in ${days}d`;
 }
 
 export function deadlineBadgeClass(iso: string | null): string {

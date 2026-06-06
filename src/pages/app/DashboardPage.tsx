@@ -2,7 +2,7 @@ import { useState, useMemo, type CSSProperties, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Megaphone, BarChart2, ClipboardList, CheckCircle2 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
-import { deadlineLabel } from '../../components/Shared';
+import { timeUntil } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { useAnnouncements, useAcknowledge } from '../../hooks/useAnnouncements';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -431,7 +431,7 @@ export default function DashboardPage() {
                             animation: pulseAnimation
                           }}
                         >
-                          {deadlineLabel(primaryDeadline.dueDate)}
+                          {timeUntil(primaryDeadline.dueDate)}
                         </span>
                       </div>
 
