@@ -136,13 +136,13 @@ export function timeAgo(iso: string): string {
   const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
   if (targetDate === today) {
-    return `Today at ${timeStr}`;
+    return `Today • ${timeStr}`;
   } else if (targetDate === yesterday) {
-    return `Yesterday at ${timeStr}`;
+    return `Yesterday • ${timeStr}`;
   } else {
-    // Older: e.g. "31 May at 2:30 PM"
+    // Older: e.g. "31 May • 2:30 PM"
     const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-    return `${dateStr} at ${timeStr}`;
+    return `${dateStr} • ${timeStr}`;
   }
 }
 

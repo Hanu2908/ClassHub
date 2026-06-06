@@ -631,7 +631,7 @@ export function AnnouncementCardComponent({
 
       {/* 5. Time Ago Indicator */}
       <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10.5px' }}>
-        Posted {timeAgo(ann.postedAt)}
+        {timeAgo(ann.postedAt)}
       </span>
 
       {/* 6. Footer Block: Reactions (left), Comments (middle), Acknowledge (right) */}
