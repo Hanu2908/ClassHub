@@ -8,7 +8,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { showToast } from '../../components/Toast';
 import { useSchedule, useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSchedule';
 import { useSubjects } from '../../hooks/useSubjects';
-import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS } from '../../lib/scheduleUtils';
+import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS, formatTime, formatTimeRange } from '../../lib/scheduleUtils';
 import { ScheduleSkeleton } from '../../components/LoadingSkeletons';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -37,12 +37,6 @@ function isScheduleDay(day: string): day is ScheduleDay {
 function toMinutes(timeStr: string): number {
   const [h, m] = timeStr.split(':').map(Number);
   return h * 60 + m;
-}
-
-function formatTime(t: string): string {
-  const [h, m] = t.split(':').map(Number);
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${suffix}`;
 }
 
 function formatDuration(minutes: number): string {
@@ -148,7 +142,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
               return (
                 <div key={i} className="mini-timeline-slot">
                   <div className="slot-accent" style={{ background: CATEGORY_COLORS[cat].color }} />
-                  <span>{formatTime(s.startTime)} – {formatTime(s.endTime)}</span>
+                  <span>{formatTimeRange(s.startTime, s.endTime)}</span>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.subject}</span>
                 </div>
               );
@@ -456,7 +450,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
         <div className="schedule-card-body">
           <div className="schedule-subject">{cls.subject}</div>
           <div className="schedule-meta">
-            {formatTime(cls.startTime)} – {formatTime(cls.endTime)} · {cls.code}{cls.room ? ` · ${cls.room}` : ''}{cls.teacher ? ` · ${cls.teacher}` : ''}
+            {formatTimeRange(cls.startTime, cls.endTime)} · {cls.code}{cls.room ? ` · ${cls.room}` : ''}{cls.teacher ? ` · ${cls.teacher}` : ''}
           </div>
           <div className="schedule-type">{CATEGORY_LABELS[cat] || cls.type}</div>
         </div>

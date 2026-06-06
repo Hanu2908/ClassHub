@@ -185,5 +185,5 @@ export function deadlineLabel(iso: string | null): string {
   if (targetDate.getTime() < now.getTime()) return 'Overdue';
   if (diffDays === 0) return 'Due Today';
   if (diffDays === 1) return 'Due Tomorrow';
-  return `Due ${targetDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`;
+  return `in ${diffDays} days`;
 }

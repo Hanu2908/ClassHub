@@ -46,3 +46,25 @@ export function calculateEndTime(startTime: string, type: string): string {
   const em = totalMin % 60;
   return `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
 }
+
+export function formatTime(t: string): string {
+  const [h, m] = t.split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${suffix}`;
+}
+
+export function formatTimeRange(startStr: string, endStr: string): string {
+  const [sh, sm] = startStr.split(':').map(Number);
+  const [eh, em] = endStr.split(':').map(Number);
+
+  const startSuffix = sh >= 12 ? 'PM' : 'AM';
+  const endSuffix = eh >= 12 ? 'PM' : 'AM';
+
+  const sFormatted = `${sh % 12 || 12}:${sm.toString().padStart(2, '0')}`;
+  const eFormatted = `${eh % 12 || 12}:${em.toString().padStart(2, '0')}`;
+
+  if (startSuffix === endSuffix) {
+    return `${sFormatted} – ${eFormatted} ${endSuffix}`;
+  }
+  return `${sFormatted} ${startSuffix} – ${eFormatted} ${endSuffix}`;
+}

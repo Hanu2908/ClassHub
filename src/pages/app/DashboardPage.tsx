@@ -658,10 +658,9 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
       <div style={{ marginTop: 2 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-            Room: <strong style={{ color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>{exam.activeRoom || 'N/A'}</strong>
-          </span>
-          <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            {preparedCount}/{totalUnits} units
+            Room <strong style={{ color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>{exam.activeRoom || 'N/A'}</strong>
+            {' '}•{' '}
+            <span style={{ color: 'var(--text-muted)' }}>{preparedCount} of {totalUnits} units</span>
           </span>
         </div>
 

@@ -1202,7 +1202,7 @@ export default function AssignmentsPage() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span className={`badge ${bdg}`}>{lbl}</span>
                       <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
-                        Due {new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        Due • {new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                   </div>
