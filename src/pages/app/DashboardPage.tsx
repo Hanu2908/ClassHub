@@ -410,18 +410,9 @@ export default function DashboardPage() {
                   urgencyColor = 'var(--accent-primary)';
                 }
 
-                // Dynamic Scaling Window based on remaining hours (Approach B)
-                let windowHours: number;
-                if (diffHours > 168) {
-                  windowHours = 14 * 24; // 14 days
-                } else if (diffHours > 72) {
-                  windowHours = 7 * 24;  // 7 days
-                } else if (diffHours > 24) {
-                  windowHours = 3 * 24;  // 3 days
-                } else {
-                  windowHours = 24;      // 24 hours
-                }
-                const barPercent = Math.min(100, Math.max(0, (diffHours / windowHours) * 100));
+                // Continuous square-root decay curve anchored to a 14-day horizon (336 hours)
+                const horizonHours = 14 * 24;
+                const barPercent = Math.min(100, Math.max(0, Math.sqrt(diffHours / horizonHours) * 100));
                 const PrimaryIcon = primaryDeadline.icon;
 
                 return (
