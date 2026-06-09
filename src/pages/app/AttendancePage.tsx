@@ -314,13 +314,6 @@ export default function AttendancePage() {
     return 'attendance-warned';
   }, [safeOverall]);
 
-  const tierBadgeText = useMemo(() => {
-    if (safeOverall >= 90) return '✨ ZENITH STUDENT';
-    if (safeOverall >= 80) return '🏆 GOLD STANDING';
-    if (safeOverall >= 75) return '🥈 SILVER STANDING';
-    return '⚠️ WARNED STANDING';
-  }, [safeOverall]);
-
   const tierMessage = useMemo(() => {
     if (safeOverall >= 90) {
       return `Attendance so high HOD is asking for your autograph. Nerd alert! 🤓 Status clear: you can skip up to ${canSkipOverall} classes without dropping below 75%.`;
@@ -556,33 +549,23 @@ export default function AttendancePage() {
               {/* CELL 1: STANDING */}
               <div className="zenith-stat-cell">
                 <span className="t-mono-sm" style={{
-                  color: 'var(--tier-color)',
+                  color: 'var(--text-secondary)',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
                   fontSize: '9px',
                   fontWeight: 700,
-                  marginBottom: 8,
-                  opacity: 0.9
+                  marginBottom: 8
                 }}>
                   Standing
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <TierIcon size={16} style={{ color: 'var(--tier-color)' }} />
+                  <UserCheck size={16} style={{ color: 'var(--accent-primary)' }} />
                   <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
                     {safeOverall.toFixed(1)}%
                   </span>
                 </div>
-                <span className="t-badge" style={{
-                  color: 'var(--tier-color)',
-                  fontSize: '8px',
-                  fontWeight: 800,
-                  letterSpacing: '0.5px',
-                  padding: '2px 6px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--tier-border)',
-                  borderRadius: '100px'
-                }}>
-                  {tierBadgeText.replace(/👑 |✨ |🏆 |🥈 |⚠️ /g, '')}
+                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '9px' }}>
+                  Current Overall
                 </span>
               </div>
 
@@ -632,50 +615,43 @@ export default function AttendancePage() {
                 </span>
               </div>
 
-              {/* CELL 4: TIERS */}
-              <div className="zenith-stat-cell" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', padding: '12px 10px' }}>
+              {/* CELL 4: TIER STATUS */}
+              <div className="zenith-stat-cell">
                 <span className="t-mono-sm" style={{
-                  color: 'var(--text-secondary)',
+                  color: 'var(--tier-color)',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
                   fontSize: '9px',
                   fontWeight: 700,
-                  marginBottom: 6,
-                  width: '100%',
-                  textAlign: 'center'
+                  marginBottom: 8,
+                  opacity: 0.9
                 }}>
-                  Tiers
+                  Standing Tier
                 </span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                  {[
-                    { key: 'zenith', label: 'Zenith', range: '≥ 90%', color: '#c084fc', icon: '✨' },
-                    { key: 'gold', label: 'Gold', range: '≥ 80%', color: '#fbbf24', icon: '🏆' },
-                    { key: 'silver', label: 'Silver', range: '≥ 75%', color: '#cbd5e1', icon: '🥈' },
-                    { key: 'warned', label: 'Warned', range: '< 75%', color: '#ef4444', icon: '⚠️' }
-                  ].map(t => {
-                    const isActive = tierStyleClass === `attendance-${t.key}`;
-                    return (
-                      <div key={t.key} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '9px',
-                        fontFamily: 'var(--font-mono)',
-                        padding: '2px 4px',
-                        borderRadius: '4px',
-                        background: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-                        border: isActive ? `1px solid ${t.color}40` : '1px solid transparent',
-                        color: isActive ? 'var(--text-primary)' : 'var(--text-muted)'
-                      }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span>{t.icon}</span>
-                          <span style={{ fontWeight: isActive ? 700 : 400, color: isActive ? t.color : 'inherit' }}>{t.label}</span>
-                        </span>
-                        <span style={{ fontSize: '8px', color: isActive ? 'var(--text-secondary)' : 'var(--text-muted)' }}>{t.range}</span>
-                      </div>
-                    );
-                  })}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <TierIcon size={16} style={{ color: 'var(--tier-color)' }} />
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
+                    {(() => {
+                      const activeTierName = tierStyleClass.replace('attendance-', '');
+                      return activeTierName.charAt(0).toUpperCase() + activeTierName.slice(1);
+                    })()}
+                  </span>
                 </div>
+                <span className="t-badge" style={{
+                  color: 'var(--tier-color)',
+                  fontSize: '8px',
+                  fontWeight: 800,
+                  letterSpacing: '0.5px',
+                  padding: '2px 6px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--tier-border)',
+                  borderRadius: '100px'
+                }}>
+                  {tierStyleClass === 'attendance-zenith' ? 'Max Rank Reached 👑' : 
+                   tierStyleClass === 'attendance-gold' ? 'Next: Zenith (≥90%)' :
+                   tierStyleClass === 'attendance-silver' ? 'Next: Gold (≥80%)' :
+                   'Next: Silver (≥75%)'}
+                </span>
               </div>
             </div>
 
