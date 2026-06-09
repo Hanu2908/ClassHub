@@ -4,7 +4,7 @@ import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, Edit3,
   TrendingUp, TrendingDown, Target, Info, ChevronDown, ChevronUp,
   BarChart3, PieChart, Calendar, Plus, Minus, Calculator,
-  Crown, Trophy, Sparkles, Flame, BookOpen, Clock, UserCheck
+  Crown, Trophy, Sparkles, BookOpen, Clock, UserCheck
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing } from '../../components/Shared';
@@ -138,55 +138,6 @@ export default function AttendancePage() {
   const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
   const [selectedImportSemester, setSelectedImportSemester] = useState<number>(1);
 
-  // LocalStorage-based timezone-resilient daily review streak
-  const [streakCount, setStreakCount] = useState<number>(0);
-
-  useEffect(() => {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const storedStreakStr = localStorage.getItem('classhub_attendance_streak_count');
-      const storedLastDateStr = localStorage.getItem('classhub_attendance_streak_last_date');
-
-      let currentStreak = storedStreakStr ? parseInt(storedStreakStr, 10) : 0;
-
-      if (storedLastDateStr) {
-        const lastDate = new Date(storedLastDateStr);
-        lastDate.setHours(0, 0, 0, 0);
-
-        const diffTime = today.getTime() - lastDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 1) {
-          // Increment streak
-          currentStreak += 1;
-          localStorage.setItem('classhub_attendance_streak_count', currentStreak.toString());
-          localStorage.setItem('classhub_attendance_streak_last_date', today.toISOString());
-        } else if (diffDays > 1) {
-          // Reset streak to 1
-          currentStreak = 1;
-          localStorage.setItem('classhub_attendance_streak_count', '1');
-          localStorage.setItem('classhub_attendance_streak_last_date', today.toISOString());
-        } else if (diffDays === 0 && currentStreak === 0) {
-          // Safeguard
-          currentStreak = 1;
-          localStorage.setItem('classhub_attendance_streak_count', '1');
-          localStorage.setItem('classhub_attendance_streak_last_date', today.toISOString());
-        }
-      } else {
-        // First ever check-in
-        currentStreak = 1;
-        localStorage.setItem('classhub_attendance_streak_count', '1');
-        localStorage.setItem('classhub_attendance_streak_last_date', today.toISOString());
-      }
-      setTimeout(() => {
-        setStreakCount(currentStreak);
-      }, 0);
-    } catch (err) {
-      console.error('Failed to run daily attendance streak engine:', err);
-    }
-  }, []);
 
   // Playground / Sandbox States
   const [activePlaygroundTab, setActivePlaygroundTab] = useState<'boost' | 'bunk' | 'target' | 'od' | 'mix'>('boost');
@@ -681,27 +632,50 @@ export default function AttendancePage() {
                 </span>
               </div>
 
-              {/* CELL 4: STREAK */}
-              <div className="zenith-stat-cell">
+              {/* CELL 4: TIERS */}
+              <div className="zenith-stat-cell" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', padding: '12px 10px' }}>
                 <span className="t-mono-sm" style={{
                   color: 'var(--text-secondary)',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
                   fontSize: '9px',
                   fontWeight: 700,
-                  marginBottom: 8
+                  marginBottom: 6,
+                  width: '100%',
+                  textAlign: 'center'
                 }}>
-                  Streak
+                  Tiers
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <Flame size={16} className="flame-glow-pulse" />
-                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
-                    {streakCount}
-                  </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                  {[
+                    { key: 'zenith', label: 'Zenith', range: '≥ 90%', color: '#c084fc', icon: '✨' },
+                    { key: 'gold', label: 'Gold', range: '≥ 80%', color: '#fbbf24', icon: '🏆' },
+                    { key: 'silver', label: 'Silver', range: '≥ 75%', color: '#cbd5e1', icon: '🥈' },
+                    { key: 'warned', label: 'Warned', range: '< 75%', color: '#ef4444', icon: '⚠️' }
+                  ].map(t => {
+                    const isActive = tierStyleClass === `attendance-${t.key}`;
+                    return (
+                      <div key={t.key} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '9px',
+                        fontFamily: 'var(--font-mono)',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        background: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                        border: isActive ? `1px solid ${t.color}40` : '1px solid transparent',
+                        color: isActive ? 'var(--text-primary)' : 'var(--text-muted)'
+                      }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span>{t.icon}</span>
+                          <span style={{ fontWeight: isActive ? 700 : 400, color: isActive ? t.color : 'inherit' }}>{t.label}</span>
+                        </span>
+                        <span style={{ fontSize: '8px', color: isActive ? 'var(--text-secondary)' : 'var(--text-muted)' }}>{t.range}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '9px' }}>
-                  Daily Visits
-                </span>
               </div>
             </div>
 
