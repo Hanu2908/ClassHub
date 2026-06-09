@@ -26,7 +26,7 @@ export default function ChoicePage() {
         <div style={{ textAlign: 'center', marginBottom: 48 }} className="stagger-1">
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div className="logo-wrap">
-              <img src="/app_icon.svg" alt="ClassHub" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <img src="/app_icon.svg" alt="ClassHub" width="88" height="88" fetchPriority="high" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
           </div>
           <h1 className="text-display" style={{ marginBottom: 8 }}>ClassHub</h1>

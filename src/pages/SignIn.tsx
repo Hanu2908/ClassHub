@@ -185,7 +185,7 @@ export default function SignIn() {
         {/* Logo — tap 5× for demo mode */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
           <div className="logo-wrap" onClick={handleDemoBypass} style={{ cursor: 'default' }}>
-            <img src="/app_icon.svg" alt="ClassHub" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src="/app_icon.svg" alt="ClassHub" width="88" height="88" fetchPriority="high" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
         </div>
 

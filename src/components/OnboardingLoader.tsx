@@ -91,6 +91,8 @@ export default function OnboardingLoader({ type, isComplete, onFinished }: Onboa
             <img 
               src="/app_icon.svg" 
               alt="ClassHub" 
+              width="40"
+              height="40"
               style={{ width: '55%', height: '55%', objectFit: 'contain' }} 
             />
           </div>

@@ -31,7 +31,7 @@ const customTheme = {
   accent: '#8B5CF6', // Electric violet
   statusLive: '#4ADE80',
   fontDisplay: "'Bebas Neue', sans-serif", // Intended bold condensed block style!
-  fontMono: "'IBM Plex Mono', monospace",
+  fontMono: "var(--font-mono)",
 };
 
 export default function ResourceHubPage() {
