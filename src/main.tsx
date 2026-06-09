@@ -35,8 +35,17 @@ if (typeof window !== 'undefined') {
 }
 
 // Initialize Vercel edge telemetry
-inject();
-injectSpeedInsights();
+if (typeof window !== 'undefined') {
+  const initTelemetry = () => {
+    inject();
+    injectSpeedInsights();
+  };
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(initTelemetry);
+  } else {
+    setTimeout(initTelemetry, 1500);
+  }
+}
 
 // Register the PWA service worker automatically in production
 if (import.meta.env.PROD) {

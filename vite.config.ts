@@ -29,6 +29,22 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@supabase')) return 'vendor-supabase';
+            if (id.includes('lucide-react')) return 'vendor-lucide';
+            if (id.includes('html2canvas')) return 'vendor-html2canvas';
+            if (id.includes('recharts')) return 'vendor-recharts';
+            if (id.includes('pdf-lib')) return 'vendor-pdflib';
+            if (id.includes('tesseract.js') || id.includes('tesseract.js-core')) return 'vendor-tesseract';
+          }
+        }
+      }
+    }
+  },
   test: {
     setupFiles: ['./tests/setup.ts'],
   },
