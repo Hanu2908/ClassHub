@@ -2567,58 +2567,30 @@ body {
 /* ── Custom Zenith & Status Glows ── */
 .attendance-zenith {
   --tier-color: #c084fc; /* Light Purple / Amethyst */
-  background: #151220 !important; /* Solid dark amethyst tint */
-  border: 1px solid rgba(192, 132, 252, 0.25) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(192, 132, 252, 0.06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.attendance-zenith:hover {
-  background: #1B1728 !important;
-  border-color: rgba(192, 132, 252, 0.45) !important;
-  box-shadow: 0 8px 24px rgba(192, 132, 252, 0.12), inset 0 0 14px rgba(192, 132, 252, 0.1) !important;
+  --tier-bg-glow: rgba(192, 132, 252, 0.05);
+  --tier-border: rgba(192, 132, 252, 0.25);
+  --tier-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(192, 132, 252, 0.06);
 }
 
 .attendance-gold {
   --tier-color: #fbbf24; /* Golden Amber */
-  background: #191512 !important; /* Solid dark gold tint */
-  border: 1px solid rgba(251, 191, 36, 0.25) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(251, 191, 36, 0.06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.attendance-gold:hover {
-  background: #201A15 !important;
-  border-color: rgba(251, 191, 36, 0.45) !important;
-  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.12), inset 0 0 14px rgba(251, 191, 36, 0.1) !important;
+  --tier-bg-glow: rgba(251, 191, 36, 0.05);
+  --tier-border: rgba(251, 191, 36, 0.25);
+  --tier-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(251, 191, 36, 0.06);
 }
 
 .attendance-silver {
   --tier-color: #cbd5e1; /* Elegant Slate Silver */
-  background: #131519 !important; /* Solid dark slate tint */
-  border: 1px solid rgba(203, 213, 225, 0.2) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(203, 213, 225, 0.05) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.attendance-silver:hover {
-  background: #191B21 !important;
-  border-color: rgba(203, 213, 225, 0.35) !important;
-  box-shadow: 0 8px 24px rgba(203, 213, 225, 0.1), inset 0 0 14px rgba(203, 213, 225, 0.08) !important;
+  --tier-bg-glow: rgba(203, 213, 225, 0.03);
+  --tier-border: rgba(203, 213, 225, 0.2);
+  --tier-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(203, 213, 225, 0.05);
 }
 
 .attendance-warned {
   --tier-color: #ef4444; /* Crimson Red */
-  background: #1A1212 !important; /* Solid dark crimson tint */
-  border: 1px solid rgba(239, 68, 68, 0.25) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(239, 68, 68, 0.06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.attendance-warned:hover {
-  background: #221616 !important;
-  border-color: rgba(239, 68, 68, 0.45) !important;
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.12), inset 0 0 14px rgba(239, 68, 68, 0.1) !important;
+  --tier-bg-glow: rgba(239, 68, 68, 0.05);
+  --tier-border: rgba(239, 68, 68, 0.25);
+  --tier-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(239, 68, 68, 0.06);
 }
 
 /* ── Themed Solid Opaque Cards ── */
