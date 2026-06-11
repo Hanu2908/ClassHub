@@ -13,6 +13,7 @@ import { useExams, useStudentExamPrep } from '../../hooks/useExams';
 import { toast } from 'sonner';
 import { isPushSupported, getPushPermission } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
+import { generateGradient } from '../../lib/utils';
 
 
 // Dashboard sub-components
@@ -537,16 +538,6 @@ function parseLocalCustomDateTime(dateStr: string, timeStr: string): Date {
   return new Date(year, month - 1, day, hours, minutes, seconds);
 }
 
-// Harmonious gradient generator helper for subject avatars
-function generateGradient(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
-  const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
-  return `linear-gradient(135deg, ${c1}, ${c2})`;
-}
 
 // Next Exam Hero Card inner component with dynamic isolated 1-minute ticking countdown timer
 function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: string) => void }) {

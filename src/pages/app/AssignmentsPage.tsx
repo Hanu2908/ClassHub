@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2, ChevronDown, Check } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -16,18 +17,11 @@ import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import Skeleton from 'react-loading-skeleton';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
+import { generateGradient } from '../../lib/utils';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
-function generateGradient(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
-  const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
-  return `linear-gradient(135deg, ${c1}, ${c2})`;
-}
+
 
 function getSubjectAcronym(name: string) {
   if (!name) return '??';
@@ -832,7 +826,6 @@ export default function AssignmentsPage() {
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'due' | 'created'>('due');
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [openingSet, setOpeningSet] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(() => Boolean(location.state?.openCreate));
   const [editOpen, setEditOpen] = useState(false);
@@ -959,7 +952,7 @@ export default function AssignmentsPage() {
 
   return (
     <div className="page-shell">
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border-default)', padding: '16px 0 0' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border-default)', padding: '16px 0 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '0 20px' }}>
           <button id="assign-back-btn" onClick={() => navigate('/app/home')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }} aria-label="Back">
             <ArrowLeft size={20} />
@@ -970,171 +963,231 @@ export default function AssignmentsPage() {
           </div>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 12px', gap: 12 }}>
-          <div className="filter-tabs" style={{ margin: 0, paddingBottom: 0 }}>
-            {(['all', 'pending', 'submitted', 'overdue'] as Filter[]).map(f => (
-              <button key={f} id={`assign-filter-${f}`} className={`filter-tab${filter === f ? ' active' : ''}`} onClick={() => handleFilterChange(f)} style={{ textTransform: 'capitalize' }}>{f}</button>
-            ))}
-          </div>
-
-          <div className="sort-dropdown-container">
-            <button
-              id="sort-dropdown-trigger"
-              onClick={() => setShowSortDropdown(!showSortDropdown)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 14px',
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-pill)',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontFamily: 'inherit',
-                fontWeight: 500,
-                minHeight: 32,
-                userSelect: 'none',
-                transition: 'all 0.2s',
-                whiteSpace: 'nowrap'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
-            >
-              <ArrowUpDown size={11} color="var(--accent-primary)" />
-              <span>Sort: {sortBy === 'due' ? 'Due' : 'Created'}</span>
-            </button>
-            {showSortDropdown && (
-              <div className="sort-dropdown-menu" style={{ right: 0, top: 'calc(100% + 6px)', background: 'rgba(18, 22, 36, 0.98)' }}>
-                <button
-                  className={`sort-dropdown-item${sortBy === 'due' ? ' active' : ''}`}
-                  onClick={() => { setSortBy('due'); setShowSortDropdown(false); }}
-                  style={{
-                    color: sortBy === 'due' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                    background: sortBy === 'due' ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
-                    fontWeight: sortBy === 'due' ? 600 : 400
-                  }}
-                >
-                  <span>Due Date</span>
-                </button>
-                <button
-                  className={`sort-dropdown-item${sortBy === 'created' ? ' active' : ''}`}
-                  onClick={() => { setSortBy('created'); setShowSortDropdown(false); }}
-                  style={{
-                    color: sortBy === 'created' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                    background: sortBy === 'created' ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
-                    fontWeight: sortBy === 'created' ? 600 : 400
-                  }}
-                >
-                  <span>Date Created</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Swipeable Subject Scroller */}
-        <div 
-          className="no-scrollbar"
-          style={{
-            display: 'flex',
-            gap: 8,
-            overflowX: 'auto',
-            padding: '4px 20px 12px',
-            WebkitOverflowScrolling: 'touch',
-            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-          }}
-        >
-          <button
-            onClick={() => setSelectedSubject('all')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-pill)',
-              border: selectedSubject === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-              background: selectedSubject === 'all' ? 'var(--accent-primary-glow)' : 'rgba(255, 255, 255, 0.02)',
-              color: selectedSubject === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: selectedSubject === 'all' ? 600 : 400,
-              transition: 'all 0.2s ease',
-              minHeight: 32,
-            }}
-          >
-            All Subjects
-            <span 
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '16px',
-                height: '16px',
-                borderRadius: '50%',
-                fontSize: '9px',
-                fontWeight: 700,
-                background: selectedSubject === 'all' ? 'var(--accent-primary)' : 'var(--border-default)',
-                color: selectedSubject === 'all' ? '#000' : 'var(--text-muted)',
-                marginLeft: '6px',
-                padding: '0 4px',
-              }}
-            >
-              {statusFiltered.length}
-            </span>
-          </button>
-
-          {uniqueSubjects.map(subj => {
-            const isSelected = selectedSubject === subj;
-            const count = subjectCounts[subj];
-            return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0', gap: 12 }}>
+          {/* Status Dropdown Filter */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
               <button
-                key={subj}
-                onClick={() => setSelectedSubject(subj)}
+                className="filter-tab"
                 style={{
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 12px',
+                  gap: 8,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-default)',
                   borderRadius: 'var(--radius-pill)',
-                  border: isSelected ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                  background: isSelected ? 'var(--accent-primary-glow)' : 'rgba(255, 255, 255, 0.02)',
-                  color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  whiteSpace: 'nowrap',
+                  padding: '0 14px',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  fontWeight: 500,
                   cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: isSelected ? 600 : 400,
-                  transition: 'all 0.2s ease',
-                  minHeight: 32,
+                  height: '38px',
+                  userSelect: 'none',
                 }}
               >
-                {subj}
-                <span 
+                <span style={{ textTransform: 'capitalize' }}>
+                  {filter === 'all' ? 'All' : filter}
+                </span>
+                <ChevronDown size={14} style={{ opacity: 0.6 }} />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="start"
+                sideOffset={6}
+                className="dropdown-content animate-slide-up"
+                style={{ zIndex: 10000, minWidth: '180px' }}
+              >
+                {(['all', 'pending', 'submitted', 'overdue'] as Filter[]).map(f => {
+                  const isSelected = filter === f;
+                  return (
+                    <DropdownMenu.Item
+                      key={f}
+                      onClick={() => handleFilterChange(f)}
+                      className="dropdown-item"
+                      style={{
+                        color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        background: isSelected ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                        fontWeight: isSelected ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      <span>{f === 'all' ? 'All Assignments' : f}</span>
+                      {isSelected && <Check size={14} />}
+                    </DropdownMenu.Item>
+                  );
+                })}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+
+          {/* Right Filters Container */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Subject Dropdown Selector */}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    fontSize: '9px',
-                    fontWeight: 700,
-                    background: isSelected ? 'var(--accent-primary)' : 'var(--border-default)',
-                    color: isSelected ? '#000' : 'var(--text-muted)',
-                    marginLeft: '6px',
-                    padding: '0 4px',
+                    gap: 8,
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '0 14px',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    height: '38px',
+                    maxWidth: '160px',
+                    userSelect: 'none',
                   }}
                 >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedSubject === 'all' ? 'All Subjects' : getSubjectAcronym(selectedSubject)}
+                  </span>
+                  <ChevronDown size={14} style={{ opacity: 0.6 }} />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={6}
+                  className="dropdown-content animate-slide-up no-scrollbar"
+                  style={{ zIndex: 10000, minWidth: '220px', maxWidth: '300px', maxHeight: '300px', overflowY: 'auto' }}
+                >
+                  {/* All Subjects Item */}
+                  <DropdownMenu.Item
+                    onClick={() => setSelectedSubject('all')}
+                    className="dropdown-item"
+                    style={{
+                      color: selectedSubject === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                      background: selectedSubject === 'all' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                      fontWeight: selectedSubject === 'all' ? 600 : 400,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <span>All Subjects</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '11px' }}>
+                        {statusFiltered.length}
+                      </span>
+                      {selectedSubject === 'all' && <Check size={14} />}
+                    </div>
+                  </DropdownMenu.Item>
+
+                  {/* List of Subjects */}
+                  {uniqueSubjects.map(subj => {
+                    const isSelected = selectedSubject === subj;
+                    const count = subjectCounts[subj];
+                    return (
+                      <DropdownMenu.Item
+                        key={subj}
+                        onClick={() => setSelectedSubject(subj)}
+                        className="dropdown-item"
+                        style={{
+                          color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          background: isSelected ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                          fontWeight: isSelected ? 600 : 400,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                        }}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                          {subj}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '11px' }}>
+                            {count}
+                          </span>
+                          {isSelected && <Check size={14} />}
+                        </div>
+                      </DropdownMenu.Item>
+                    );
+                  })}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+
+            {/* Sort Dropdown Selector */}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '0 14px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-pill)',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    height: '38px',
+                    userSelect: 'none',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <ArrowUpDown size={14} color="var(--accent-primary)" />
+                  <span>Sort: {sortBy === 'due' ? 'Due' : 'Created'}</span>
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={6}
+                  className="dropdown-content animate-slide-up"
+                  style={{ zIndex: 10000, minWidth: '150px' }}
+                >
+                  <DropdownMenu.Item
+                    onClick={() => setSortBy('due')}
+                    className="dropdown-item"
+                    style={{
+                      color: sortBy === 'due' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                      background: sortBy === 'due' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                      fontWeight: sortBy === 'due' ? 600 : 400,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <span>Due Date</span>
+                    {sortBy === 'due' && <Check size={14} />}
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    onClick={() => setSortBy('created')}
+                    className="dropdown-item"
+                    style={{
+                      color: sortBy === 'created' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                      background: sortBy === 'created' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                      fontWeight: sortBy === 'created' ? 600 : 400,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <span>Date Created</span>
+                    {sortBy === 'created' && <Check size={14} />}
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          </div>
         </div>
-
-
       </header>
 
       <main className="page-content">
@@ -1204,14 +1257,14 @@ export default function AssignmentsPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
                         {/* Subject is the primary heading */}
-                        <h2 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{a.subject}</h2>
+                        <h2 className="t-card-title truncate" style={{ color: 'var(--text-primary)', marginBottom: 6 }} title={a.subject}>{a.subject}</h2>
                         {/* Assignment title is secondary */}
                         <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>{a.title}</p>
                       </div>
                       {role === 'cr' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                           <button
                             id={`edit-assign-${a.id}`}
                             onClick={() => {
@@ -1220,12 +1273,12 @@ export default function AssignmentsPage() {
                             }}
                             style={{
                               background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.2)',
-                              borderRadius: 8, padding: '5px', cursor: 'pointer',
+                              borderRadius: 10, width: 40, height: 40, cursor: 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}
                             title="Edit assignment"
                           >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                           </button>
                           <button
                             id={`del-assign-${a.id}`}
@@ -1236,12 +1289,12 @@ export default function AssignmentsPage() {
                             }}
                             style={{
                               background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
-                              borderRadius: 8, padding: '5px', cursor: 'pointer',
+                              borderRadius: 10, width: 40, height: 40, cursor: 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}
                             title="Delete assignment"
                           >
-                            <Trash2 size={13} color="var(--status-critical)" />
+                            <Trash2 size={15} color="var(--status-critical)" />
                           </button>
                         </div>
                       ) : null}
@@ -1262,14 +1315,10 @@ export default function AssignmentsPage() {
 
                 {/* ── Student set banner ── */}
                 {a.hasSets && userSet ? (
-                  <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,171,64,0.35)', background: 'rgba(255,171,64,0.07)', padding: '14px 14px 12px', marginBottom: 12 }}>
+                  <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,171,64,0.15)', background: 'rgba(255,171,64,0.03)', backdropFilter: 'blur(8px)', padding: '16px', marginBottom: 12 }}>
                     <p className="t-badge" style={{ color: 'rgba(255,171,64,0.9)', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <AlertTriangle size={10} color="rgba(255,171,64,0.9)" /> YOUR ASSIGNMENT
                     </p>
-                    {/* <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
-                      Based on Roll #{classRoll}, you are in{' '}
-                      <span style={{ color: 'var(--accent-primary)' }}>{userSet.label}</span>
-                    </p> */}
                     <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>
                       Complete the questions on{' '}
                       <strong style={{ color: 'var(--text-primary)' }}>
@@ -1337,11 +1386,11 @@ export default function AssignmentsPage() {
                     </p>
                   </div>
                 ) : (
-                  <button className="t-button"
+                  <button className="t-button active:scale-[0.98] transition-transform duration-150"
                     id={`submit-btn-${a.id}`}
                     onClick={() => handleMarkSubmitted(a.id)}
                     disabled={submitMutation.isPending}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.4)', borderRadius: 'var(--radius-md)', cursor: submitMutation.isPending ? 'not-allowed' : 'pointer', color: 'var(--accent-primary)', width: '100%', transition: 'all 0.2s ease', opacity: submitMutation.isPending ? 0.6 : 1 }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.4)', borderRadius: 'var(--radius-md)', cursor: submitMutation.isPending ? 'not-allowed' : 'pointer', color: 'var(--accent-primary)', width: '100%', opacity: submitMutation.isPending ? 0.6 : 1 }}
                     onMouseEnter={e => { if (!submitMutation.isPending) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,158,255,0.18)'; }}
                     onMouseLeave={e => { if (!submitMutation.isPending) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary-glow)'; }}
                   >

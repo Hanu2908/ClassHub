@@ -89,3 +89,21 @@ export function generateAnonymousToken(userId: string, pollId: string): string {
   const hash = md5(`${userId}-${pollId}`);
   return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20)}`;
 }
+
+export function generateGradient(str: string): string {
+  if (!str) return 'linear-gradient(135deg, #a78bfa 0%, #6366f1 100%)';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const gradients = [
+    'linear-gradient(135deg, #a78bfa 0%, #6366f1 100%)', // Violet-to-Indigo
+    'linear-gradient(135deg, #2dd4bf 0%, #10b981 100%)', // Teal-to-Emerald
+    'linear-gradient(135deg, #fb923c 0%, #ef4444 100%)', // Orange-to-Red
+    'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)', // Blue-to-Cyan
+    'linear-gradient(135deg, #f472b6 0%, #f43f5e 100%)', // Pink-to-Rose
+    'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', // Amber-to-Yellow
+  ];
+  const index = Math.abs(hash) % gradients.length;
+  return gradients[index];
+}

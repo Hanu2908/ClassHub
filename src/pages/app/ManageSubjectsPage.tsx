@@ -7,16 +7,8 @@ import { useSubjects, useMutateSubjects } from '../../hooks/useSubjects';
 import { BottomSheet } from '../../components/BottomSheet';
 import Skeleton from 'react-loading-skeleton';
 import { toast } from 'sonner';
+import { generateGradient } from '../../lib/utils';
 
-function generateGradient(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
-  const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
-  return `linear-gradient(135deg, ${c1}, ${c2})`;
-}
 
 function getSubjectAcronym(name: string) {
   if (!name) return '??';

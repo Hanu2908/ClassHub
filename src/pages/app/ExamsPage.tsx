@@ -13,17 +13,8 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { NavBar } from '../../components/NavBar';
 import { supabase } from '../../lib/supabase';
 import { DatePicker } from '../../components/ui/DatePicker';
+import { generateGradient } from '../../lib/utils';
 
-// Harmonious subject gradient generator
-function generateGradient(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const c1 = `hsl(${Math.abs(hash) % 360}, 85%, 60%)`;
-  const c2 = `hsl(${Math.abs(hash * 2) % 360}, 85%, 50%)`;
-  return `linear-gradient(135deg, ${c1}, ${c2})`;
-}
 
 // Syllabus text extractor heuristics
 function parseSyllabusText(rawText: string): string {
