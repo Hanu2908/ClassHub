@@ -186,6 +186,7 @@ const PDFPageContainer = memo(function PDFPageContainer({
     try {
       drawingRef.current = true;
       const page = await pdf.getPage(pageLayout.pageNumber);
+      if (!isInCacheBufferRef.current) return;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
 
@@ -228,6 +229,8 @@ const PDFPageContainer = memo(function PDFPageContainer({
       await renderTask.promise;
       renderTaskRef.current = null;
 
+      if (!isInCacheBufferRef.current) return;
+
       // Synchronously write back to DOM canvas in single paint step
       canvas.width = finalViewport.width;
       canvas.height = finalViewport.height;
@@ -248,11 +251,13 @@ const PDFPageContainer = memo(function PDFPageContainer({
   }, [pdf, renderPageScale, pageLayout, rotation, layoutWidth]);
 
   const drawTextLayer = useCallback(async () => {
-    if (!pdf || !textLayerRef.current || !isRendered) return;
+    if (!pdf || !textLayerRef.current || !isRendered || !isInCacheBufferRef.current) return;
     try {
       textLayerRef.current.innerHTML = '';
       const page = await pdf.getPage(pageLayout.pageNumber);
+      if (!isInCacheBufferRef.current) return;
       const textContent = await page.getTextContent();
+      if (!isInCacheBufferRef.current) return;
       const safeRenderPageScale = isNaN(renderPageScale) || renderPageScale <= 0 ? 1.0 : renderPageScale;
       const cssViewport = page.getViewport({ scale: safeRenderPageScale, rotation: rotation });
       
@@ -263,6 +268,8 @@ const PDFPageContainer = memo(function PDFPageContainer({
         viewport: cssViewport,
         textDivs: []
       }).promise;
+
+      if (!isInCacheBufferRef.current) return;
 
       if (searchQuery) {
         applyHighlighting(textLayerRef.current, searchQuery);
@@ -297,12 +304,17 @@ const PDFPageContainer = memo(function PDFPageContainer({
     }
   }, [searchQuery, isRendered, rotation, drawTextLayer]);
 
-  // Redraw canvas/text-layer on rotation change
+  // Redraw canvas/text-layer on rotation or scale changes
+  const isRenderedRef = useRef(isRendered);
   useEffect(() => {
-    if (isRendered) {
+    isRenderedRef.current = isRendered;
+  }, [isRendered]);
+
+  useEffect(() => {
+    if (isRenderedRef.current) {
       drawPage();
     }
-  }, [rotation, isRendered, drawPage]);
+  }, [rotation, drawPage]);
 
   const canvasFilter = displayMode === 'dark' 
     ? 'invert(0.9) hue-rotate(180deg)' 
@@ -618,24 +630,38 @@ export default function PDFViewerPage() {
 
     lastScaleRef.current = scale;
   }, [scale, pageLayouts]);
-
   // Instantly jump to initial target page offset without scroll jumps
   useEffect(() => {
-    if (loading || pageLayouts.length === 0) return;
+    if (loading || pageLayouts.length === 0 || initialScrollDone) return;
 
     const timer = setTimeout(() => {
       const container = scrollContainerRef.current;
       if (container) {
+        // Temporarily disable smooth scroll behavior for the initial jump
+        const originalScrollBehavior = container.style.scrollBehavior;
+        container.style.scrollBehavior = 'auto';
+
         const offset = getPageOffsetTop(initialPage - 1);
         container.scrollTop = offset;
+
+        // Initialize scroll tracker values to prevent false velocity spikes
+        lastScrollTopRef.current = offset;
+        lastScrollTimeRef.current = performance.now();
+
         setActivePageNum(initialPage);
         setInitialScrollDone(true);
+
+        // Restore smooth scrolling behavior after the layout has settled
+        setTimeout(() => {
+          if (container) {
+            container.style.scrollBehavior = originalScrollBehavior || 'smooth';
+          }
+        }, 50);
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [loading, pageLayouts, initialPage, getPageOffsetTop]);
-
+  }, [loading, pageLayouts, initialPage, getPageOffsetTop, initialScrollDone]);
   // Scroll Listener: Active-page tracker and velocity rendering limiter
   const handleScroll = useCallback(() => {
     if (!initialScrollDone) return;
@@ -671,7 +697,7 @@ export default function PDFViewerPage() {
     const containerHeight = container.clientHeight;
     const viewportMiddle = scrollTop + containerHeight / 2;
 
-    let currentActive = 1;
+    let currentActive = activePageNum;
     const isRotated90 = rotation === 90 || rotation === 270;
     const safeScale = isNaN(scale) || scale <= 0 ? 1.0 : scale;
     const currentContainerWidth = containerWidth * safeScale;
