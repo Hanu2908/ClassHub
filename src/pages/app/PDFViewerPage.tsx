@@ -442,9 +442,9 @@ export default function PDFViewerPage() {
   const [numPages, setNumPages] = useState<number>(1);
   
   // Real-time scale for layout container widths
-  const [scale, setScale] = useState<number>(1.2);
+  const [scale, setScale] = useState<number>(1.0);
   // Debounced scale for high-res rendering
-  const [renderScale, setRenderScale] = useState<number>(1.2);
+  const [renderScale, setRenderScale] = useState<number>(1.0);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [scriptLoaded, setScriptLoaded] = useState<boolean>(false);
@@ -691,7 +691,7 @@ export default function PDFViewerPage() {
     if (!container) return;
 
     let startDist = 0;
-    let startScale = 1.2;
+    let startScale = 1.0;
 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
@@ -792,7 +792,7 @@ export default function PDFViewerPage() {
   };
 
   const handleResetZoom = () => {
-    setScale(1.2);
+    setScale(1.0);
   };
 
   const handleDownload = () => {
