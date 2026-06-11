@@ -2946,14 +2946,6 @@ body {
   color: var(--text-muted);
 }
 
-.rdp-custom-tbody {
-  /* Let table body render naturally for cell alignment */
-}
-
-.rdp-custom-week {
-  /* Let table row render naturally for cell alignment */
-}
-
 .rdp-custom-day {
   width: var(--rdp-size);
   height: var(--rdp-size);
