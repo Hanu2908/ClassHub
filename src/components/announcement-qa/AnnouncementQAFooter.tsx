@@ -27,43 +27,43 @@ export function AnnouncementQAFooter({ announcementId, onOpenComments, onShare, 
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', ...style }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', ...style }}>
       <AnnouncementReactions announcementId={announcementId} />
       <AnnouncementCommentTrigger announcementId={announcementId} onOpenComments={onOpenComments} />
       
       <button
         onClick={handleShareClick}
+        aria-label={showCheck ? "Announcement shared" : "Share announcement card as image"}
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '6px 12px',
+          justifyContent: 'center',
+          width: '38px',
+          height: '38px',
+          padding: 0,
           background: showCheck ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 255, 255, 0.03)',
-          border: showCheck ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid var(--border-default)',
-          borderRadius: 'var(--radius-md)',
+          border: 'none',
+          borderRadius: '8px',
           cursor: 'pointer',
           color: showCheck ? 'var(--status-safe)' : 'var(--text-secondary)',
-          fontSize: '12px',
-          fontWeight: 500,
           transition: 'all var(--transition-fast)',
           outline: 'none',
         }}
         onMouseEnter={(e) => {
           if (!showCheck) {
-            e.currentTarget.style.borderColor = 'var(--accent-primary-muted)';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
             e.currentTarget.style.color = 'var(--text-primary)';
           }
         }}
         onMouseLeave={(e) => {
           if (!showCheck) {
-            e.currentTarget.style.borderColor = 'var(--border-default)';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
             e.currentTarget.style.color = 'var(--text-secondary)';
           }
         }}
         title="Share announcement card as image"
       >
-        {showCheck ? <Check size={14} strokeWidth={3} /> : <Share2 size={14} />}
-        <span>{showCheck ? 'Shared ✓' : 'Share'}</span>
+        {showCheck ? <Check size={16} strokeWidth={3} /> : <Share2 size={16} />}
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, BellOff, Check, Trash2, CornerDownRight, Pencil } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '../../store/appStore';
 import { toast } from 'sonner';
 import { BottomSheet } from '../BottomSheet';
@@ -305,285 +306,294 @@ export function AnnouncementCommentsDrawer({
               </p>
             </div>
           ) : (
-            comments.map((comment) => {
-              const isSelf = comment.authorId === currentUserId;
-              const isAuthorCR = comment.authorRole === 'cr';
-              const isCommentVerified = comment.isVerified;
-              const canEdit = isSelf && !isCommentVerified && (now - new Date(comment.createdAt).getTime() <= 15 * 60 * 1000);
-              
-              return (
-                <div
-                  key={comment.id}
-                  ref={el => { commentRefs.current[comment.id] = el; }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 8,
-                    padding: '12px 14px',
-                    background: isCommentVerified ? 'rgba(52, 211, 153, 0.05)' : 'var(--bg-elevated)',
-                    border: isCommentVerified 
-                      ? '1px solid rgba(52, 211, 153, 0.25)' 
-                      : '1px solid var(--border-default)',
-                    borderRadius: 'var(--radius-md)',
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  {/* Replied UI Indicator */}
-                  {isCommentVerified && (
-                    <CornerDownRight 
-                      size={14} 
-                      color="var(--status-safe)" 
-                      style={{ marginTop: 4, flexShrink: 0 }} 
-                    />
-                  )}
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Verified header badge */}
+            <AnimatePresence initial={false} mode="popLayout">
+              {comments.map((comment) => {
+                const isSelf = comment.authorId === currentUserId;
+                const isAuthorCR = comment.authorRole === 'cr';
+                const isCommentVerified = comment.isVerified;
+                const canEdit = isSelf && !isCommentVerified && (now - new Date(comment.createdAt).getTime() <= 15 * 60 * 1000);
+                
+                return (
+                  <motion.div
+                    key={comment.id}
+                    ref={el => { commentRefs.current[comment.id] = el; }}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    transition={{
+                      layout: { type: 'spring', stiffness: 300, damping: 30 }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                      padding: '12px 14px',
+                      background: isCommentVerified ? 'rgba(52, 211, 153, 0.05)' : 'var(--bg-elevated)',
+                      border: isCommentVerified 
+                        ? '1px solid rgba(52, 211, 153, 0.25)' 
+                        : '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-md)',
+                      transition: 'background-color 0.3s ease, border-color 0.3s ease',
+                    }}
+                  >
+                    {/* Replied UI Indicator */}
                     {isCommentVerified && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--status-safe)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-                        <Check size={11} strokeWidth={3} />
-                        <span>Verified Answer</span>
-                      </div>
+                      <CornerDownRight 
+                        size={14} 
+                        color="var(--status-safe)" 
+                        style={{ marginTop: 4, flexShrink: 0 }} 
+                      />
                     )}
 
-                    {/* Header: Author + Roll + CR tag */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span className="t-body-medium" style={{ fontWeight: 600, color: isAuthorCR ? 'var(--status-announcement)' : 'var(--text-primary)', fontSize: '13px' }}>
-                          {comment.authorName} {isSelf && '(You)'}
-                        </span>
-                        {comment.authorRoll && (
-                          <span className="t-mono-sm" style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: 4, fontSize: '10px', color: 'var(--text-secondary)' }}>
-                            {comment.authorRoll}
-                          </span>
-                        )}
-                        {isAuthorCR && (
-                          <span className="t-mono-sm" style={{ background: 'rgba(167, 139, 250, 0.15)', color: 'var(--status-announcement)', padding: '1px 5px', borderRadius: 4, fontSize: '9px', fontWeight: 700, letterSpacing: '0.05em' }}>
-                            CR
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
-                          {timeAgo(comment.createdAt)}
-                        </span>
-                        {comment.editedAt && (
-                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px', fontStyle: 'italic' }}>
-                            • (Edited)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Author tags */}
-                    {(() => {
-                      const tags = authorTags[comment.authorId] ?? [];
-                      if (tags.length === 0) return null;
-                      const visible = tags.slice(0, 2);
-                      const overflow = tags.length - 2;
-                      return (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
-                          {visible.map(tag => (
-                            <TagPill
-                              key={tag.id}
-                              tagText={tag.tagText}
-                              size="sm"
-                              onTap={() => { onClose(); navigate(`/app/members?tag=${encodeURIComponent(tag.tagText)}`); }}
-                            />
-                          ))}
-                          {overflow > 0 && <TagOverflow count={overflow} size="sm" />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Verified header badge */}
+                      {isCommentVerified && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--status-safe)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                          <Check size={11} strokeWidth={3} />
+                          <span>Verified Answer</span>
                         </div>
-                      );
-                    })()}
-
-                    {/* Comment Content or Editor */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {editingCommentId === comment.id ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                          <textarea
-                            autoFocus
-                            rows={2}
-                            value={editInputVal}
-                            onChange={(e) => setEditInputVal(e.target.value)}
-                            style={{
-                              width: '100%',
-                              background: 'var(--bg-base)',
-                              border: '1px solid var(--border-default)',
-                              borderRadius: 'var(--radius-sm)',
-                              color: 'var(--text-primary)',
-                              padding: '8px 10px',
-                              fontSize: '13px',
-                              lineHeight: 1.5,
-                              outline: 'none',
-                              resize: 'none',
-                              fontFamily: 'var(--font-body)',
-                            }}
-                            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent-primary-muted)')}
-                            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-default)')}
-                          />
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span
-                              className="t-mono-sm"
-                              style={{
-                                fontSize: '9px',
-                                color: editInputVal.length > 500 ? 'var(--status-critical)' : 'var(--text-muted)',
-                                fontWeight: 600,
-                              }}
-                            >
-                              {editInputVal.length}/500
-                            </span>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <button
-                                type="button"
-                                onClick={() => setEditingCommentId(null)}
-                                className="t-button-secondary"
-                                style={{
-                                  padding: '4px 12px',
-                                  fontSize: '11px',
-                                  height: 'auto',
-                                  lineHeight: 'normal',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveEdit(comment.id)}
-                                disabled={editComment.isPending || !editInputVal.trim() || editInputVal.length > 500}
-                                className="t-button"
-                                style={{
-                                  padding: '4px 12px',
-                                  fontSize: '11px',
-                                  height: 'auto',
-                                  lineHeight: 'normal',
-                                  background: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
-                                    ? 'rgba(255, 255, 255, 0.05)' 
-                                    : 'var(--accent-primary)',
-                                  color: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
-                                    ? 'var(--text-muted)' 
-                                    : '#000',
-                                  cursor: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 ? 'not-allowed' : 'pointer',
-                                }}
-                              >
-                                {editComment.isPending ? 'Saving...' : 'Save'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="t-body" style={{ color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                          {comment.content.split(/(\s+)/).map((word, idx) => {
-                            // Colorize @mentions beautifully
-                            if (word.startsWith('@')) {
-                              return <span key={idx} style={{ color: 'var(--text-accent)', fontWeight: 500 }}>{word}</span>;
-                            }
-                            return word;
-                          })}
-                        </p>
                       )}
 
-                      {/* Controls Footer */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                        {/* CR Verify action */}
-                        {userRole === 'cr' ? (
-                          <button
-                            onClick={() => handleToggleVerify(comment.id, isCommentVerified)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: isCommentVerified ? 'var(--text-muted)' : 'var(--status-safe)',
-                              fontSize: '10px',
-                              fontWeight: 600,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 3,
-                              outline: 'none',
-                              padding: 0
-                            }}
-                          >
-                            <Check size={10} strokeWidth={3} />
-                            <span>{isCommentVerified ? 'Unverify Answer' : 'Verify Answer'}</span>
-                          </button>
-                        ) : <div />}
+                      {/* Header: Author + Roll + CR tag */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span className="t-body-medium" style={{ fontWeight: 600, color: isAuthorCR ? 'var(--status-announcement)' : 'var(--text-primary)', fontSize: '13px' }}>
+                            {comment.authorName} {isSelf && '(You)'}
+                          </span>
+                          {comment.authorRoll && (
+                            <span className="t-mono-sm" style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: 4, fontSize: '10px', color: 'var(--text-secondary)' }}>
+                              {comment.authorRoll}
+                            </span>
+                          )}
+                          {isAuthorCR && (
+                            <span className="t-mono-sm" style={{ background: 'rgba(167, 139, 250, 0.15)', color: 'var(--status-announcement)', padding: '1px 5px', borderRadius: 4, fontSize: '9px', fontWeight: 700, letterSpacing: '0.05em' }}>
+                              CR
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                            {timeAgo(comment.createdAt)}
+                          </span>
+                          {comment.editedAt && (
+                            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px', fontStyle: 'italic' }}>
+                              • (Edited)
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                        {/* Right side actions (Edit and Delete) */}
-                        {editingCommentId !== comment.id && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {canEdit && (
-                              <button
-                                onClick={() => {
-                                  setEditingCommentId(comment.id);
-                                  setEditInputVal(comment.content);
-                                }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: 'var(--text-muted)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  width: 32,
-                                  height: 32,
-                                  borderRadius: '50%',
-                                  transition: 'all var(--transition-fast)',
-                                  outline: 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.color = 'var(--accent-primary)';
-                                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.color = 'var(--text-muted)';
-                                  e.currentTarget.style.background = 'none';
-                                }}
-                                title="Edit comment"
-                              >
-                                <Pencil size={12} />
-                              </button>
-                            )}
-
-                            {/* Delete action (CR or Self) */}
-                            {(userRole === 'cr' || isSelf) && (
-                              <button
-                                onClick={() => handleDeleteComment(comment.id)}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: 'rgba(255, 68, 68, 0.6)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  width: 32,
-                                  height: 32,
-                                  borderRadius: '50%',
-                                  transition: 'all var(--transition-fast)',
-                                  outline: 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.color = 'var(--status-critical)';
-                                  e.currentTarget.style.background = 'rgba(255, 68, 68, 0.08)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.color = 'rgba(255, 68, 68, 0.6)';
-                                  e.currentTarget.style.background = 'none';
-                                }}
-                                title={isCommentVerified ? 'Delete verified comment (CR Only)' : 'Delete comment'}
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            )}
+                      {/* Author tags */}
+                      {(() => {
+                        const tags = authorTags[comment.authorId] ?? [];
+                        if (tags.length === 0) return null;
+                        const visible = tags.slice(0, 2);
+                        const overflow = tags.length - 2;
+                        return (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
+                            {visible.map(tag => (
+                              <TagPill
+                                key={tag.id}
+                                tagText={tag.tagText}
+                                size="sm"
+                                onTap={() => { onClose(); navigate(`/app/members?tag=${encodeURIComponent(tag.tagText)}`); }}
+                              />
+                            ))}
+                            {overflow > 0 && <TagOverflow count={overflow} size="sm" />}
                           </div>
+                        );
+                      })()}
+
+                      {/* Comment Content or Editor */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {editingCommentId === comment.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                            <textarea
+                              autoFocus
+                              rows={2}
+                              value={editInputVal}
+                              onChange={(e) => setEditInputVal(e.target.value)}
+                              style={{
+                                width: '100%',
+                                background: 'var(--bg-base)',
+                                border: '1px solid var(--border-default)',
+                                borderRadius: 'var(--radius-sm)',
+                                color: 'var(--text-primary)',
+                                padding: '8px 10px',
+                                fontSize: '13px',
+                                lineHeight: 1.5,
+                                outline: 'none',
+                                resize: 'none',
+                                fontFamily: 'var(--font-body)',
+                              }}
+                              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent-primary-muted)')}
+                              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-default)')}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span
+                                className="t-mono-sm"
+                                style={{
+                                  fontSize: '9px',
+                                  color: editInputVal.length > 500 ? 'var(--status-critical)' : 'var(--text-muted)',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {editInputVal.length}/500
+                              </span>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCommentId(null)}
+                                  className="t-button-secondary"
+                                  style={{
+                                    padding: '4px 12px',
+                                    fontSize: '11px',
+                                    height: 'auto',
+                                    lineHeight: 'normal',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEdit(comment.id)}
+                                  disabled={editComment.isPending || !editInputVal.trim() || editInputVal.length > 500}
+                                  className="t-button"
+                                  style={{
+                                    padding: '4px 12px',
+                                    fontSize: '11px',
+                                    height: 'auto',
+                                    lineHeight: 'normal',
+                                    background: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
+                                      ? 'rgba(255, 255, 255, 0.05)' 
+                                      : 'var(--accent-primary)',
+                                    color: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
+                                      ? 'var(--text-muted)' 
+                                      : '#000',
+                                    cursor: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 ? 'not-allowed' : 'pointer',
+                                  }}
+                                >
+                                  {editComment.isPending ? 'Saving...' : 'Save'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="t-body" style={{ color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                            {comment.content.split(/(\s+)/).map((word, idx) => {
+                              // Colorize @mentions beautifully
+                              if (word.startsWith('@')) {
+                                return <span key={idx} style={{ color: 'var(--text-accent)', fontWeight: 500 }}>{word}</span>;
+                              }
+                              return word;
+                            })}
+                          </p>
                         )}
+
+                        {/* Controls Footer */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                          {/* CR Verify action */}
+                          {userRole === 'cr' ? (
+                            <button
+                              onClick={() => handleToggleVerify(comment.id, isCommentVerified)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: isCommentVerified ? 'var(--text-muted)' : 'var(--status-safe)',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                outline: 'none',
+                                padding: 0
+                              }}
+                            >
+                              <Check size={10} strokeWidth={3} />
+                              <span>{isCommentVerified ? 'Unverify Answer' : 'Verify Answer'}</span>
+                            </button>
+                          ) : <div />}
+
+                          {/* Right side actions (Edit and Delete) */}
+                          {editingCommentId !== comment.id && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              {canEdit && (
+                                <button
+                                  onClick={() => {
+                                    setEditingCommentId(comment.id);
+                                    setEditInputVal(comment.content);
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-muted)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: '50%',
+                                    transition: 'all var(--transition-fast)',
+                                    outline: 'none',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = 'var(--accent-primary)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = 'var(--text-muted)';
+                                    e.currentTarget.style.background = 'none';
+                                  }}
+                                  title="Edit comment"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                              )}
+
+                              {/* Delete action (CR or Self) */}
+                              {(userRole === 'cr' || isSelf) && (
+                                <button
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'rgba(255, 68, 68, 0.6)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: '50%',
+                                    transition: 'all var(--transition-fast)',
+                                    outline: 'none',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = 'var(--status-critical)';
+                                    e.currentTarget.style.background = 'rgba(255, 68, 68, 0.08)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = 'rgba(255, 68, 68, 0.6)';
+                                    e.currentTarget.style.background = 'none';
+                                  }}
+                                  title={isCommentVerified ? 'Delete verified comment (CR Only)' : 'Delete comment'}
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           )}
         </div>
 
@@ -600,99 +610,105 @@ export function AnnouncementCommentsDrawer({
             gap: 8,
           }}
         >
-          {showMentionSuggestions && filteredMembers.length > 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '100%',
-                left: 0,
-                right: 0,
-                marginBottom: '8px',
-                maxHeight: '180px',
-                overflowY: 'auto',
-                background: 'rgba(10, 11, 18, 0.92)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                boxShadow: 'var(--shadow-elevated)',
-                zIndex: 50,
-                display: 'flex',
-                flexDirection: 'column',
-                scrollbarWidth: 'thin',
-              }}
-            >
-              {filteredMembers.map(member => (
-                <button
-                  key={member.id}
-                  type="button"
-                  onClick={() => handleSelectMention(member.name)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    background: 'none',
-                    border: 'none',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-                    color: 'var(--text-primary)',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    transition: 'background var(--transition-fast)',
-                    outline: 'none',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'none';
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {member.avatarUrl ? (
-                      <img 
-                        src={member.avatarUrl} 
-                        alt={member.name} 
-                        style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} 
-                      />
-                    ) : (
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '9px',
-                        fontWeight: 600
-                      }}>
-                        {member.name.charAt(0)}
-                      </div>
-                    )}
-                    <span style={{ fontWeight: 500 }}>{member.name}</span>
-                    {member.role === 'cr' && (
-                      <span style={{
-                        background: 'rgba(167, 139, 250, 0.15)',
-                        color: 'var(--status-announcement)',
-                        padding: '1px 4px',
-                        borderRadius: '4px',
-                        fontSize: '8px',
-                        fontWeight: 700,
-                      }}>
-                        CR
+          <AnimatePresence>
+            {showMentionSuggestions && filteredMembers.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  right: 0,
+                  marginBottom: '8px',
+                  maxHeight: '180px',
+                  overflowY: 'auto',
+                  background: 'rgba(10, 11, 18, 0.92)',
+                  backdropFilter: 'blur(16px)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: 'var(--shadow-elevated)',
+                  zIndex: 50,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  scrollbarWidth: 'thin',
+                }}
+              >
+                {filteredMembers.map(member => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => handleSelectMention(member.name)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                      color: 'var(--text-primary)',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      transition: 'background var(--transition-fast)',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'none';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {member.avatarUrl ? (
+                        <img 
+                          src={member.avatarUrl} 
+                          alt={member.name} 
+                          style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} 
+                        />
+                      ) : (
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '9px',
+                          fontWeight: 600
+                        }}>
+                          {member.name.charAt(0)}
+                        </div>
+                      )}
+                      <span style={{ fontWeight: 500 }}>{member.name}</span>
+                      {member.role === 'cr' && (
+                        <span style={{
+                          background: 'rgba(167, 139, 250, 0.15)',
+                          color: 'var(--status-announcement)',
+                          padding: '1px 4px',
+                          borderRadius: '4px',
+                          fontSize: '8px',
+                          fontWeight: 700,
+                        }}>
+                          CR
+                        </span>
+                      )}
+                    </div>
+                    {member.classRoll && (
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                        {member.classRoll}
                       </span>
                     )}
-                  </div>
-                  {member.classRoll && (
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
-                      {member.classRoll}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div style={{ position: 'relative', width: '100%' }}>
             <textarea
@@ -739,9 +755,10 @@ export function AnnouncementCommentsDrawer({
             <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
               💡 Use @Name to tag section members
             </p>
-            <button
+            <motion.button
               type="submit"
               disabled={isSubmitting || !inputVal.trim() || inputVal.length > 500}
+              whileTap={isSubmitting || !inputVal.trim() || inputVal.length > 500 ? undefined : { scale: 0.97 }}
               className="t-button"
               style={{
                 padding: '6px 16px',
@@ -764,7 +781,7 @@ export function AnnouncementCommentsDrawer({
             >
               {isSubmitting && <span className="spin" style={{ display: 'inline-block', width: 10, height: 10, border: '2.5px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }} />}
               <span>Post Comment</span>
-            </button>
+            </motion.button>
           </div>
         </form>
 

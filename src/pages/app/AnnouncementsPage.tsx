@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2 } from 'lucide-react';
+import { ArrowLeft, Plus, Check, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2, Filter as FilterIcon } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -431,17 +432,16 @@ export function AnnouncementCardComponent({
 
   const glowingOutlineStyle: React.CSSProperties = {
     position: 'relative',
-    border: hovered ? `1px solid ${category.color}` : '1px solid var(--border-default)',
-    borderLeft: `4px solid ${category.color}`,
+    border: hovered ? `1px solid ${category.color}` : `1px solid ${category.borderColor}`,
     boxShadow: hovered 
       ? `0 12px 30px rgba(0, 0, 0, 0.25), 0 0 15px ${category.bgColor}`
-      : `0 4px 20px rgba(0, 0, 0, 0.15), inset 2px 0 8px ${category.bgColor}`,
+      : '0 4px 20px rgba(0, 0, 0, 0.15)',
     transform: hovered ? 'scale(1.012)' : 'scale(1)',
     transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
     animation: 'fadeSlideUp 0.35s ease both',
     padding: '18px',
     borderRadius: 'var(--radius-lg)',
-    background: isCritical ? 'var(--status-critical-bg)' : 'var(--bg-elevated)',
+    background: isCritical ? 'var(--status-critical-bg)' : 'linear-gradient(145deg, #121522 0%, #0A0C14 100%)',
     outline: isHighlighted ? '2px solid var(--accent-primary)' : undefined,
     outlineOffset: isHighlighted ? '2px' : undefined,
     opacity: isExpiredAlert ? 0.65 : 1,
@@ -631,7 +631,7 @@ export function AnnouncementCardComponent({
       )}
 
       {/* 5. Time Ago Indicator */}
-      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10.5px' }}>
+      <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontSize: '10.5px' }}>
         {timeAgo(ann.postedAt)}
       </span>
 
@@ -656,16 +656,18 @@ export function AnnouncementCardComponent({
         <div>
           {isExpiredAlert ? (
             <div style={{ 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
+              justifyContent: 'center',
               gap: 6, 
-              padding: '6px 12px', 
+              height: '38px',
+              padding: '0 16px', 
               background: 'rgba(255,255,255,0.03)', 
               border: '1px solid var(--border-default)', 
-              borderRadius: 'var(--radius-md)', 
+              borderRadius: '8px', 
               boxSizing: 'border-box'
             }}>
-              <Clock size={13} color="var(--text-muted)" />
+              <Clock size={16} color="var(--text-muted)" />
               <span className="t-label" style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 600 }}>Expired</span>
             </div>
           ) : !isAcked ? (
@@ -673,14 +675,17 @@ export function AnnouncementCardComponent({
               id={`ack-btn-${ann.id}`}
               onClick={() => handleAcknowledge(ann.id)}
               className="btn-ack-btn"
+              aria-label="Acknowledge announcement"
               style={{
-                display: 'flex', 
+                display: 'inline-flex', 
                 alignItems: 'center', 
+                justifyContent: 'center',
                 gap: 6, 
-                padding: '6px 12px',
+                height: '38px',
+                padding: '0 16px',
                 background: 'var(--bg-elevated)', 
                 border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)', 
+                borderRadius: '8px', 
                 cursor: 'pointer',
                 color: 'var(--text-primary)',
                 fontSize: '12px',
@@ -697,20 +702,22 @@ export function AnnouncementCardComponent({
                 e.currentTarget.style.borderColor = 'var(--border-default)';
               }}
             >
-              <CheckCircle2 size={13} /> Acknowledge
+              <CheckCircle2 size={16} /> Acknowledge
             </button>
           ) : (
             <div style={{ 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
+              justifyContent: 'center',
               gap: 6, 
-              padding: '6px 12px', 
+              height: '38px',
+              padding: '0 16px', 
               background: 'var(--status-safe-bg)', 
               border: '1px solid rgba(52,201,123,0.25)', 
-              borderRadius: 'var(--radius-md)', 
+              borderRadius: '8px', 
               boxSizing: 'border-box'
             }}>
-              <CheckCircle2 size={13} color="var(--status-safe)" />
+              <CheckCircle2 size={16} color="var(--status-safe)" />
               <span className="t-label" style={{ color: 'var(--status-safe)', fontSize: '11px', fontWeight: 600 }}>Acked</span>
             </div>
           )}
@@ -772,7 +779,6 @@ export default function AnnouncementsPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'priority' | 'deadline'>('newest');
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [trackingAnnouncement, setTrackingAnnouncement] = useState<Announcement | null>(null);
   const [prevTrackingAnnouncement, setPrevTrackingAnnouncement] = useState<Announcement | null>(null);
 
@@ -911,8 +917,7 @@ export default function AnnouncementsPage() {
   const ackMutation = useAcknowledge();
   const queryClient = useQueryClient();
 
-  // Sort dropdown reference for click outside dismissed behaviour
-  const sortContainerRef = useRef<HTMLDivElement>(null);
+
 
   // Fetch section members to compute stats & nudge lists
   const { data: members = [] } = useSectionMembers();
@@ -930,29 +935,7 @@ export default function AnnouncementsPage() {
     }
   });
 
-  // Handle click outside and Escape key dismissals for sorting dropdown
-  useEffect(() => {
-    const handleOutside = (e: MouseEvent | TouchEvent) => {
-      if (showSortDropdown && sortContainerRef.current && !sortContainerRef.current.contains(e.target as Node)) {
-        setShowSortDropdown(false);
-      }
-    };
-    const handleKeys = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showSortDropdown) {
-        setShowSortDropdown(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('touchstart', handleOutside, { passive: true });
-    window.addEventListener('keydown', handleKeys);
-
-    return () => {
-      document.removeEventListener('mousedown', handleOutside);
-      document.removeEventListener('touchstart', handleOutside);
-      window.removeEventListener('keydown', handleKeys);
-    };
-  }, [showSortDropdown]);
 
   // Filter out CRs to count students
   const totalStudents = members.filter(m => m.role === 'student');
@@ -1120,7 +1103,7 @@ export default function AnnouncementsPage() {
     if (containerRef.current) {
       setScrollMargin(containerRef.current.offsetTop);
     }
-  }, [showSearch, searchQuery, activeTab, filter, activeFlashPosts.length]);
+  }, [showSearch, searchQuery, activeTab, filter, activeFlashPosts.length, layoutMode]);
 
   const virtualizer = useWindowVirtualizer({
     count: flatItems.length,
@@ -1189,69 +1172,242 @@ export default function AnnouncementsPage() {
           </button>
         </div>
 
-        {/* Row 1: Channel Tabs (horizontal scrolling) */}
-        <div className="filter-tabs" style={{ marginBottom: 12, paddingBottom: 2 }}>
-          {(['active', 'exams', 'schedule', 'campus'] as ChannelTab[]).map(t => {
-            let label: string;
-            let icon: React.ReactNode;
-            if (t === 'exams') { label = 'Exams'; icon = <Award size={13} />; }
-            else if (t === 'schedule') { label = 'Schedule'; icon = <Calendar size={13} />; }
-            else if (t === 'campus') { label = 'Campus'; icon = <Coffee size={13} />; }
-            else { label = 'Active Feed'; icon = <Megaphone size={13} />; }
-
-            const criticalCount = criticalCounts[t];
-
-            return (
+        {/* Consolidated Header Controls Row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
+          {/* Category Dropdown Selector (Left side) */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
               <button
-                key={t}
-                id={`channel-tab-${t}`}
-                className={`filter-tab${activeTab === t ? ' active' : ''}`}
-                onClick={() => setActiveTab(t)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                className="filter-tab"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '0 14px',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  height: '38px',
+                }}
               >
-                {icon}
-                <span>{label}</span>
-                {criticalCount > 0 && (
-                  <span style={{ 
-                    background: 'var(--status-critical)', 
-                    color: '#fff', 
-                    fontSize: '9px', 
-                    fontWeight: 700, 
-                    padding: '1px 5px', 
-                    borderRadius: '8px',
-                    marginLeft: '2px',
-                    display: 'inline-flex',
+                {activeTab === 'exams' && <Award size={14} />}
+                {activeTab === 'schedule' && <Calendar size={14} />}
+                {activeTab === 'campus' && <Coffee size={14} />}
+                {activeTab === 'active' && <Megaphone size={14} />}
+                <span style={{ textTransform: 'capitalize' }}>
+                  {activeTab === 'active' ? 'Active Feed' : activeTab}
+                </span>
+                <ChevronDown size={14} style={{ opacity: 0.6 }} />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="start"
+                sideOffset={6}
+                className="dropdown-content animate-slide-up"
+                style={{ zIndex: 10000, minWidth: '180px' }}
+              >
+                {(['active', 'exams', 'schedule', 'campus'] as ChannelTab[]).map(t => {
+                  let label: string;
+                  let icon: React.ReactNode;
+                  if (t === 'exams') { label = 'Exams'; icon = <Award size={14} />; }
+                  else if (t === 'schedule') { label = 'Schedule'; icon = <Calendar size={14} />; }
+                  else if (t === 'campus') { label = 'Campus'; icon = <Coffee size={14} />; }
+                  else { label = 'Active Feed'; icon = <Megaphone size={14} />; }
+
+                  const criticalCount = criticalCounts[t];
+                  const isSelected = activeTab === t;
+
+                  return (
+                    <DropdownMenu.Item
+                      key={t}
+                      onClick={() => setActiveTab(t)}
+                      className="dropdown-item"
+                      style={{
+                        color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        background: isSelected ? 'rgba(99, 102, 241, 0.08)' : undefined,
+                        fontWeight: isSelected ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {icon}
+                        <span>{label}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {criticalCount > 0 && (
+                          <span style={{ 
+                            background: 'var(--status-critical)', 
+                            color: '#fff', 
+                            fontSize: '9px', 
+                            fontWeight: 700, 
+                            padding: '1px 5px', 
+                            borderRadius: '8px',
+                            boxShadow: '0 0 6px var(--status-critical)',
+                          }}>
+                            {criticalCount}
+                          </span>
+                        )}
+                        {isSelected && <Check size={14} />}
+                      </div>
+                    </DropdownMenu.Item>
+                  );
+                })}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+
+          {/* Action Icons (Right side - Spacious gaps) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            {/* Search Toggle Button */}
+            <button
+              onClick={() => {
+                setShowSearch(!showSearch);
+                if (showSearch) setSearchQuery(''); // Clear search on collapse
+              }}
+              className={`header-action-btn${(showSearch || searchQuery) ? ' active' : ''}`}
+              style={{
+                width: '38px',
+                height: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label="Toggle Search"
+              title="Search Announcements"
+            >
+              <Search size={18} />
+            </button>
+
+            {/* Sorting Dropdown Trigger */}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  className={`header-action-btn${sortBy !== 'newest' ? ' active' : ''}`}
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 0 8px var(--status-critical)',
-                  }}>
-                    {criticalCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                  }}
+                  aria-label="Sort Options"
+                  title="Sort Announcements"
+                >
+                  <ArrowUpDown size={18} />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={6}
+                  className="dropdown-content animate-slide-up"
+                  style={{ zIndex: 10000 }}
+                >
+                  {(['newest', 'priority', 'deadline'] as const).map(option => {
+                    let label = '';
+                    if (option === 'newest') label = 'Newest First';
+                    else if (option === 'priority') label = 'Priority First';
+                    else if (option === 'deadline') label = 'Closest Deadline';
 
-        {/* Row 2: Sub-filters, Layout Toggle, Sorting, Search Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          {/* Sub-filters (All / Critical / General) */}
-          <div className="filter-tabs" style={{ margin: 0, paddingBottom: 0 }}>
-            {(['all', 'critical', 'general'] as Filter[]).map(f => (
-              <button
-                key={f}
-                id={`ann-filter-${f}`}
-                className={`filter-tab${filter === f ? ' active' : ''}`}
-                onClick={() => setFilter(f)}
-                style={{ textTransform: 'capitalize', padding: '6px 12px', fontSize: '11px' }}
-              >
-                {f === 'critical' ? 'immediate' : f}
-              </button>
-            ))}
-          </div>
+                    const isSelected = sortBy === option;
 
-          {/* Header Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    return (
+                      <DropdownMenu.Item
+                        key={option}
+                        onClick={() => setSortBy(option)}
+                        className="dropdown-item"
+                        style={{
+                          color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          background: isSelected ? 'rgba(99, 102, 241, 0.08)' : undefined,
+                          fontWeight: isSelected ? 600 : 400,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                        }}
+                      >
+                        <span>{label}</span>
+                        {isSelected && <Check size={14} />}
+                      </DropdownMenu.Item>
+                    );
+                  })}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+
+            {/* Priority Filtering Dropdown Trigger */}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  className={`header-action-btn${filter !== 'all' ? ' active' : ''}`}
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  aria-label="Filter Priority"
+                  title="Filter Priority"
+                >
+                  <FilterIcon size={18} />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={6}
+                  className="dropdown-content animate-slide-up"
+                  style={{ zIndex: 10000 }}
+                >
+                  {(['all', 'critical', 'general'] as Filter[]).map(f => {
+                    const isSelected = filter === f;
+                    let label = '';
+                    if (f === 'all') label = 'All Priorities';
+                    else if (f === 'critical') label = 'Immediate Alerts';
+                    else if (f === 'general') label = 'General Notices';
+
+                    return (
+                      <DropdownMenu.Item
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className="dropdown-item"
+                        style={{
+                          color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          background: isSelected ? 'rgba(99, 102, 241, 0.08)' : undefined,
+                          fontWeight: isSelected ? 600 : 400,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {f === 'critical' && (
+                            <span style={{ 
+                              width: 6, height: 6, borderRadius: '50%', 
+                              background: 'var(--status-critical)',
+                              boxShadow: '0 0 6px var(--status-critical)'
+                            }} />
+                          )}
+                          <span>{label}</span>
+                        </div>
+                        {isSelected && <Check size={14} />}
+                      </DropdownMenu.Item>
+                    );
+                  })}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+
             {/* Layout Mode Toggle */}
             <button
               onClick={toggleLayoutMode}
@@ -1259,65 +1415,14 @@ export default function AnnouncementsPage() {
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--text-secondary)',
-                padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all var(--transition-fast)'
+                borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all var(--transition-fast)',
+                width: '38px', height: '38px',
               }}
               aria-label={`Switch to ${layoutMode === 'timeline' ? 'Feed' : 'Timeline'} Mode`}
               title={`Switch to ${layoutMode === 'timeline' ? 'Feed' : 'Timeline'} Mode`}
             >
               {layoutMode === 'timeline' ? <LayoutList size={18} /> : <CalendarDays size={18} />}
-            </button>
-
-            {/* Sorting Dropdown Trigger */}
-            <div className="sort-dropdown-container" ref={sortContainerRef}>
-              <button
-                onClick={() => {
-                  setShowSortDropdown(!showSortDropdown);
-                  setShowSearch(false);
-                }}
-                className={`header-action-btn${(showSortDropdown || sortBy !== 'newest') ? ' active' : ''}`}
-                aria-label="Sort Options"
-              >
-                <ArrowUpDown size={18} />
-              </button>
-              {showSortDropdown && (
-                <div className="sort-dropdown-menu" role="menu" aria-label="Sort Options Menu">
-                  <button
-                    role="menuitem"
-                    className={`sort-dropdown-item${sortBy === 'newest' ? ' active' : ''}`}
-                    onClick={() => { setSortBy('newest'); setShowSortDropdown(false); }}
-                  >
-                    <span>Newest First</span>
-                  </button>
-                  <button
-                    role="menuitem"
-                    className={`sort-dropdown-item${sortBy === 'priority' ? ' active' : ''}`}
-                    onClick={() => { setSortBy('priority'); setShowSortDropdown(false); }}
-                  >
-                    <span>Priority First</span>
-                  </button>
-                  <button
-                    role="menuitem"
-                    className={`sort-dropdown-item${sortBy === 'deadline' ? ' active' : ''}`}
-                    onClick={() => { setSortBy('deadline'); setShowSortDropdown(false); }}
-                  >
-                    <span>Closest Deadline</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Search Toggle Button */}
-            <button
-              onClick={() => {
-                setShowSearch(!showSearch);
-                setShowSortDropdown(false);
-                if (showSearch) setSearchQuery(''); // Clear search on collapse
-              }}
-              className={`header-action-btn${(showSearch || searchQuery) ? ' active' : ''}`}
-              aria-label="Toggle Search"
-            >
-              <Search size={18} />
             </button>
           </div>
         </div>
@@ -1471,7 +1576,7 @@ export default function AnnouncementsPage() {
             <div
               ref={containerRef}
               style={{
-                height: `${virtualizer.getTotalSize()}px`,
+                height: `${virtualizer.getTotalSize() - scrollMargin}px`,
                 width: '100%',
                 position: 'relative',
               }}
@@ -1490,7 +1595,7 @@ export default function AnnouncementsPage() {
                       top: 0,
                       left: 0,
                       width: '100%',
-                      transform: `translateY(${virtualItem.start}px)`,
+                      transform: `translateY(${virtualItem.start - scrollMargin}px)`,
                       paddingBottom: '16px',
                     }}
                   >

@@ -210,7 +210,7 @@ export default function SectionDirectoryPage() {
             className="card"
             style={{
               padding: 0,
-              height: `${virtualizer.getTotalSize()}px`,
+              height: `${virtualizer.getTotalSize() - scrollMargin}px`,
               position: 'relative',
             }}
           >
@@ -232,7 +232,7 @@ export default function SectionDirectoryPage() {
                     top: 0,
                     left: 0,
                     width: '100%',
-                    transform: `translateY(${virtualItem.start}px)`,
+                    transform: `translateY(${virtualItem.start - scrollMargin}px)`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,

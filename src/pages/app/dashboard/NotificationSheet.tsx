@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { type AppNotification } from '../../../store/appStore';
 import { useNotifications } from '../../../hooks/useNotifications';
 import { BottomSheet } from '../../../components/BottomSheet';
@@ -74,39 +75,52 @@ export default function NotificationSheet({ open, onClose }: NotificationSheetPr
               Clear all
             </button>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {visibleNotifications.map(n => {
-                const hasLink = !!getNotificationUrl(n);
-                return (
-                  <div key={n.id} style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 10,
-                    padding: '12px 14px',
-                    background: n.read ? 'var(--bg-elevated)' : 'rgba(74,158,255,0.07)',
-                    border: `1px solid ${n.read ? 'var(--border-default)' : 'rgba(74,158,255,0.2)'}`,
-                    borderRadius: 'var(--radius-md)',
-                    cursor: hasLink ? 'pointer' : 'default',
-                    transition: 'background 0.15s',
-                  }}
-                  onClick={() => handleNotificationClick(n)}
-                  >
-                    {!n.read ? (
-                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent-primary)', flexShrink: 0, marginTop: 4 }} />
-                    ) : null}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p className="t-subtitle" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{n.title}</p>
-                      <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>{n.body}</p>
-                      <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</p>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); clear(n.id); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}
+              <AnimatePresence mode="popLayout">
+                {visibleNotifications.map((n, index) => {
+                  const hasLink = !!getNotificationUrl(n);
+                  return (
+                    <motion.div
+                      key={n.id}
+                      layout
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ x: 80, opacity: 0 }}
+                      transition={{
+                        layout: { type: 'spring', stiffness: 300, damping: 30 },
+                        x: { delay: index * 0.025, duration: 0.15 },
+                        opacity: { delay: index * 0.025, duration: 0.15 }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        padding: '12px 14px',
+                        background: n.read ? 'var(--bg-elevated)' : 'rgba(74,158,255,0.07)',
+                        border: `1px solid ${n.read ? 'var(--border-default)' : 'rgba(74,158,255,0.2)'}`,
+                        borderRadius: 'var(--radius-md)',
+                        cursor: hasLink ? 'pointer' : 'default',
+                        transition: 'background 0.15s, border-color 0.15s',
+                      }}
+                      onClick={() => handleNotificationClick(n)}
                     >
-                      <X size={14} />
-                    </button>
-                  </div>
-                );
-              })}
+                      {!n.read ? (
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent-primary)', flexShrink: 0, marginTop: 4 }} />
+                      ) : null}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p className="t-subtitle" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{n.title}</p>
+                        <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>{n.body}</p>
+                        <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(n.createdAt)}</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); clear(n.id); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </>
         )}

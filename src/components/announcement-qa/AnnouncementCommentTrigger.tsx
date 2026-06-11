@@ -12,36 +12,43 @@ export function AnnouncementCommentTrigger({ announcementId, onOpenComments }: A
   const count = comments.length;
   const verifiedCount = comments.filter(c => c.isVerified).length;
 
+  const hasComments = count > 0;
+
   return (
     <button
       onClick={onOpenComments}
+      aria-label={hasComments ? `View comments (${count} comments)` : "View comments (0 comments)"}
       style={{
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 6,
-        padding: '6px 12px',
+        width: hasComments ? 'auto' : '38px',
+        height: '38px',
+        padding: hasComments ? '0 12px' : '0',
         background: 'rgba(255, 255, 255, 0.03)',
-        border: '1px solid var(--border-default)',
-        borderRadius: 'var(--radius-md)',
+        border: 'none',
+        borderRadius: '8px',
         cursor: 'pointer',
         color: 'var(--text-secondary)',
         fontSize: '12px',
-        fontWeight: 500,
+        fontWeight: 600,
         transition: 'all var(--transition-fast)',
         outline: 'none',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'var(--accent-primary-muted)';
+        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
         e.currentTarget.style.color = 'var(--text-primary)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border-default)';
+        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
         e.currentTarget.style.color = 'var(--text-secondary)';
       }}
+      title={hasComments ? `${count} comments` : 'Ask a question'}
     >
-      <MessageSquare size={14} />
-      <span>{count > 0 ? `${count} ${count === 1 ? 'Comment' : 'Comments'}` : 'Ask'}</span>
-      {verifiedCount > 0 && (
+      <MessageSquare size={16} />
+      {hasComments && <span>{count}</span>}
+      {hasComments && verifiedCount > 0 && (
         <span
           style={{
             background: 'var(--status-safe-bg)',

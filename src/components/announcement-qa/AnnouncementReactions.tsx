@@ -84,32 +84,39 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
   const hasReactions = reactions.length > 0;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', position: 'relative' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', position: 'relative' }}>
       {/* 0 Reactions Empty State: Desaturated smiley icon */}
       {!hasReactions ? (
         <button
           onClick={() => setShowPopover(prev => !prev)}
           className="reaction-btn-empty"
+          aria-label="Add emoji reaction"
           style={{
             background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-pill)',
-            padding: '6px 10px',
+            border: 'none',
+            borderRadius: '8px',
+            width: '38px',
+            height: '38px',
+            padding: 0,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--text-secondary)',
-            opacity: 0.6,
             transition: 'all var(--transition-fast)',
             outline: 'none',
           }}
-          aria-label="Add reaction"
           title="Add reaction"
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+            e.currentTarget.style.color = 'var(--text-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
         >
-          <Smile size={15} />
+          <Smile size={16} />
         </button>
       ) : (
         /* Render active reaction pills */
@@ -121,13 +128,15 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
                 key={emoji}
                 onClick={() => handleToggleEmoji(emoji)}
                 className={`reaction-pill ${hasReacted ? 'active' : ''}`}
+                aria-label={`${reactors.length} reactions of ${emoji}. ${hasReacted ? 'You reacted.' : 'Click to react.'}`}
                 style={{
                   background: hasReacted ? 'var(--accent-primary-glow)' : 'rgba(255, 255, 255, 0.03)',
                   border: hasReacted 
                     ? '1px solid rgba(96, 165, 250, 0.4)' 
                     : '1px solid var(--border-default)',
                   borderRadius: 'var(--radius-pill)',
-                  padding: '4px 10px',
+                  padding: '0 10px',
+                  height: '38px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -151,11 +160,14 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
           <button
             onClick={() => setShowPopover(prev => !prev)}
             className="reaction-btn-add"
+            aria-label="Add emoji reaction"
             style={{
               background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-pill)',
-              padding: '4px 8px',
+              border: 'none',
+              borderRadius: '8px',
+              width: '38px',
+              height: '38px',
+              padding: 0,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -164,10 +176,17 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
               transition: 'all var(--transition-fast)',
               outline: 'none',
             }}
-            aria-label="Add reaction"
             title="Add reaction"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
           >
-            <Plus size={13} />
+            <Plus size={16} />
           </button>
         </>
       )}
