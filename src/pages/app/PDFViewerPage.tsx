@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ZoomIn, ZoomOut, Download, Share2, Loader2, AlertCircle } from 'lucide-react';
+import { 
+  ArrowLeft, ZoomIn, ZoomOut, Download, Share2, Loader2, AlertCircle,
+  ChevronUp, ChevronDown, Check, RotateCw, Sun, Moon, Eye, MoreVertical, Search, X
+} from 'lucide-react';
 import { toast } from 'sonner';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 declare global {
   interface Window {
@@ -19,33 +24,137 @@ interface PageLayout {
 interface PDFPageContainerProps {
   pageLayout: PageLayout;
   pdf: any;
-  scale: number;
   isLowEnd: boolean;
   isFastScrolling: boolean;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   isInRange: boolean;
+  isInCacheBuffer: boolean;
+  searchQuery: string;
+  displayMode: 'original' | 'dark' | 'sepia';
+  rotation: number;
 }
+
+const textLayerStyles = `
+  .pdf-container {
+    position: relative;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .textLayer {
+    position: absolute;
+    text-align: initial;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    opacity: 1;
+    line-height: 1;
+    text-size-adjust: none;
+    forced-color-adjust: none;
+    transform-origin: 0 0;
+    z-index: 10;
+    pointer-events: auto;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .textLayer span,
+  .textLayer br {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .textLayer ::selection {
+    background: rgba(59, 130, 246, 0.4) !important;
+  }
+
+  /* search match highlights */
+  .textLayer .highlight {
+    background-color: rgba(254, 240, 138, 0.6) !important;
+    border-radius: 2px;
+    box-shadow: 0 0 2px rgba(254, 240, 138, 0.8);
+    display: inline-block;
+  }
+`;
+
+const applyHighlighting = (container: HTMLDivElement, query: string) => {
+  if (!query || !query.trim()) return;
+  const cleanQuery = query.trim();
+  const escapedQuery = cleanQuery.replace(/[\\^$*+?.()|[\]{}]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'gi');
+  
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const nodesToReplace: { node: Text; parent: HTMLElement; parts: Node[] }[] = [];
+  
+  let node;
+  while ((node = walker.nextNode())) {
+    const text = node.nodeValue;
+    if (text && regex.test(text)) {
+      regex.lastIndex = 0; // Reset
+      const parent = node.parentNode as HTMLElement;
+      if (parent && !parent.classList.contains('highlight') && parent.tagName !== 'SCRIPT' && parent.tagName !== 'STYLE') {
+        const parts: Node[] = [];
+        const rawParts = text.split(regex);
+        rawParts.forEach((part) => {
+          if (part.toLowerCase() === cleanQuery.toLowerCase()) {
+            const span = document.createElement('span');
+            span.className = 'highlight';
+            span.textContent = part;
+            parts.push(span);
+          } else {
+            parts.push(document.createTextNode(part));
+          }
+        });
+        nodesToReplace.push({ node: node as Text, parent, parts });
+      }
+    }
+  }
+  
+  nodesToReplace.forEach(({ node, parent, parts }) => {
+    parts.forEach((part) => {
+      parent.insertBefore(part, node);
+    });
+    parent.removeChild(node);
+  });
+};
 
 // Dedicated virtualized wrapper for high-performance canvas page rendering
 function PDFPageContainer({
   pageLayout,
   pdf,
-  scale,
   isLowEnd,
   isFastScrolling,
   scrollContainerRef,
-  isInRange
+  isInRange,
+  isInCacheBuffer,
+  searchQuery,
+  displayMode,
+  rotation
 }: PDFPageContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isRendered, setIsRendered] = useState(false);
   const [renderError, setRenderError] = useState(false);
 
-  // Calculate dynamic dimensions at current scale
-  const containerWidth = Math.min(window.innerWidth - 32, 800) * scale;
-  const pageScale = containerWidth / pageLayout.width;
-  const height = pageLayout.height * pageScale;
+  // Swap width and height if rotated by 90 or 270 degrees
+  const isRotated90 = rotation === 90 || rotation === 270;
+  const layoutWidth = isRotated90 ? pageLayout.height : pageLayout.width;
+  const layoutHeight = isRotated90 ? pageLayout.width : pageLayout.height;
+
+  // Calculate dynamic dimensions at base layout scale (zooming is done via CSS transform wrapper)
+  const baseLayoutScale = 1.2;
+  const containerWidth = Math.min(window.innerWidth - 32, 800) * baseLayoutScale;
+  const pageScale = containerWidth / layoutWidth;
+  const height = layoutHeight * pageScale;
   const width = containerWidth;
 
   // Mount/Unmount observer with adaptive thresholds
@@ -78,7 +187,7 @@ function PDFPageContainer({
   const drawingRef = useRef(false);
 
   const drawPage = useCallback(async () => {
-    if (!isVisible || isFastScrolling || !pdf || !canvasRef.current || drawingRef.current) return;
+    if ((!isVisible && !isInCacheBuffer) || isFastScrolling || !pdf || !canvasRef.current || drawingRef.current) return;
 
     try {
       drawingRef.current = true;
@@ -95,15 +204,15 @@ function PDFPageContainer({
 
       // Cap DPI scaling at 2.0 to protect GPU texture buffer
       const dpr = Math.min(2.0, window.devicePixelRatio || 1);
-      const viewport = page.getViewport({ scale: pageScale * dpr });
+      const viewport = page.getViewport({ scale: pageScale * dpr, rotation: rotation });
 
       // Enforce physical width ceiling to prevent mobile Safari out-of-memory crash
       const MAX_PHYSICAL_CANVAS_WIDTH = 2048;
       let finalViewport = viewport;
 
       if (viewport.width > MAX_PHYSICAL_CANVAS_WIDTH) {
-        const maxScale = MAX_PHYSICAL_CANVAS_WIDTH / (pageLayout.width * pageScale);
-        finalViewport = page.getViewport({ scale: maxScale });
+        const maxScale = MAX_PHYSICAL_CANVAS_WIDTH / (layoutWidth * pageScale);
+        finalViewport = page.getViewport({ scale: maxScale, rotation: rotation });
       }
 
       // Double-buffered canvas drawing to eliminate rendering flicker
@@ -141,24 +250,74 @@ function PDFPageContainer({
     } finally {
       drawingRef.current = false;
     }
-  }, [pdf, isVisible, isFastScrolling, pageScale, pageLayout]);
+  }, [pdf, isVisible, isInCacheBuffer, isFastScrolling, pageScale, pageLayout, rotation, layoutWidth]);
+
+  const drawTextLayer = useCallback(async () => {
+    if (!pdf || !textLayerRef.current || !isRendered) return;
+    try {
+      textLayerRef.current.innerHTML = '';
+      const page = await pdf.getPage(pageLayout.pageNumber);
+      const textContent = await page.getTextContent();
+      const cssViewport = page.getViewport({ scale: pageScale, rotation: rotation });
+      
+      await window.pdfjsLib.renderTextLayer({
+        textContentSource: textContent,
+        container: textLayerRef.current,
+        viewport: cssViewport,
+        textDivs: []
+      }).promise;
+
+      if (searchQuery) {
+        applyHighlighting(textLayerRef.current, searchQuery);
+      }
+    } catch (err) {
+      console.error(`[PDFViewer] Text layer redraw error on page ${pageLayout.pageNumber}:`, err);
+    }
+  }, [pdf, pageLayout.pageNumber, pageScale, searchQuery, rotation, isRendered]);
 
   useEffect(() => {
-    if (isVisible && !isFastScrolling) {
-      drawPage();
-    } else if (!isVisible) {
-      // Free memory immediately once page leaves active observer threshold
+    if (isVisible || isInCacheBuffer) {
+      if (!isRendered && !isFastScrolling) {
+        drawPage();
+      }
+    } else {
+      // Free memory immediately once page leaves active observer and buffer threshold
       setIsRendered(false);
       if (canvasRef.current) {
         canvasRef.current.width = 0;
         canvasRef.current.height = 0;
       }
+      if (textLayerRef.current) {
+        textLayerRef.current.innerHTML = '';
+      }
     }
-  }, [isVisible, isFastScrolling, drawPage]);
+  }, [isVisible, isInCacheBuffer, isFastScrolling, isRendered, drawPage]);
+
+  // Redraw text layer on search query changes or when rotation updates
+  useEffect(() => {
+    if (isRendered) {
+      drawTextLayer();
+    }
+  }, [searchQuery, isRendered, rotation, drawTextLayer]);
+
+  // Redraw canvas/text-layer on rotation change
+  useEffect(() => {
+    if (isRendered) {
+      drawPage();
+    }
+  }, [rotation, isRendered, drawPage]);
+
+  const canvasFilter = displayMode === 'dark' 
+    ? 'invert(0.9) hue-rotate(180deg)' 
+    : displayMode === 'sepia' 
+      ? 'sepia(0.6) contrast(0.95)' 
+      : 'none';
 
   return (
     <div
       ref={containerRef}
+      className="pdf-container"
+      data-page-number={pageLayout.pageNumber}
       style={{
         width: `${width}px`,
         height: `${height}px`,
@@ -182,7 +341,7 @@ function PDFPageContainer({
           position: 'absolute',
           top: 8,
           left: 8,
-          zIndex: 10,
+          zIndex: 20,
           background: 'var(--status-warning)',
           color: '#000',
           fontSize: '9px',
@@ -198,9 +357,35 @@ function PDFPageContainer({
         </span>
       )}
 
-      {isVisible && !renderError ? (
-        <canvas ref={canvasRef} style={{ display: isRendered ? 'block' : 'none' }} />
+      {(isVisible || isInCacheBuffer) && !renderError ? (
+        <canvas 
+          ref={canvasRef} 
+          style={{ 
+            display: isRendered ? 'block' : 'none',
+            filter: canvasFilter,
+            transition: 'filter var(--transition-fast)',
+            width: '100%',
+            height: '100%'
+          }} 
+        />
       ) : null}
+
+      {(isVisible || isInCacheBuffer) && isRendered && !renderError && (
+        <div 
+          ref={textLayerRef} 
+          className="textLayer" 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden',
+            pointerEvents: 'auto',
+            zIndex: 10
+          }}
+        />
+      )}
 
       {/* Loading Skeleton */}
       {!isRendered && !renderError && (
@@ -211,7 +396,7 @@ function PDFPageContainer({
           gap: '8px',
           color: 'var(--text-muted)'
         }}>
-          <Loader2 className="spin" size={24} />
+          <Loader2 className="animate-spin" size={24} />
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Page {pageLayout.pageNumber}</span>
         </div>
       )}
@@ -248,12 +433,21 @@ export default function PDFViewerPage() {
   const [pageLayouts, setPageLayouts] = useState<PageLayout[]>([]);
   const [activePageNum, setActivePageNum] = useState<number>(initialPage);
   const [numPages, setNumPages] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.2);
+  const [scale, setScale] = useState<number>(1.0);
   const [loading, setLoading] = useState<boolean>(true);
   const [scriptLoaded, setScriptLoaded] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Performance configurations (lazy initial state to detect low-end devices synchronously)
+  // Advanced features states
+  const [displayMode, setDisplayMode] = useState<'original' | 'dark' | 'sepia'>('original');
+  const [rotation, setRotation] = useState<number>(0);
+  const [searchOpen, setSearchOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<{ pageNumber: number; index: number }[]>([]);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(-1);
+  const [pageInputValue, setPageInputValue] = useState<string>(initialPage.toString());
+
+  // Performance configurations
   const [isLowEnd] = useState<boolean>(() => {
     const cores = navigator.hardwareConcurrency || 4;
     const ram = (navigator as any).deviceMemory || 4;
@@ -265,6 +459,7 @@ export default function PDFViewerPage() {
   const lastScrollTopRef = useRef(0);
   const lastScrollTimeRef = useRef(0);
   const velocityTimerRef = useRef<number | null>(null);
+  const transformRef = useRef<any>(null);
 
   // 2. Load PDF.js CDN Scripts dynamically
   useEffect(() => {
@@ -294,19 +489,23 @@ export default function PDFViewerPage() {
     };
   }, []);
 
-  // Helper: Get offset y value for a given page index at the current scale factor
+  // Helper: Get offset y value for a given page index at the base scale factor, adjusted for rotation
   const getPageOffsetTop = useCallback((pageIndex: number) => {
     if (pageLayouts.length === 0) return 0;
     const spacing = 16;
     let offset = 0;
-    const containerWidth = Math.min(window.innerWidth - 32, 800) * scale;
+    const baseLayoutScale = 1.2;
+    const containerWidth = Math.min(window.innerWidth - 32, 800) * baseLayoutScale;
+    const isRotated90 = rotation === 90 || rotation === 270;
     for (let i = 0; i < pageIndex; i++) {
       const layout = pageLayouts[i];
-      const pageScale = containerWidth / layout.width;
-      offset += (layout.height * pageScale) + spacing;
+      const layoutWidth = isRotated90 ? layout.height : layout.width;
+      const layoutHeight = isRotated90 ? layout.width : layout.height;
+      const pageScale = containerWidth / layoutWidth;
+      offset += (layoutHeight * pageScale) + spacing;
     }
     return offset;
-  }, [pageLayouts, scale]);
+  }, [pageLayouts, rotation]);
 
   // 3. Load PDF and do pre-layout sizing pre-calculation
   useEffect(() => {
@@ -368,21 +567,6 @@ export default function PDFViewerPage() {
     };
   }, [scriptLoaded, url]);
 
-  // 4. Proportional scroll adjustments during scale zooming
-  const lastScaleRef = useRef(scale);
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || pageLayouts.length === 0) return;
-
-    const prevScale = lastScaleRef.current;
-    if (prevScale === scale) return;
-
-    const ratio = scale / prevScale;
-    container.scrollTop = container.scrollTop * ratio;
-
-    lastScaleRef.current = scale;
-  }, [scale, pageLayouts]);
-
   // 5. Instantly jump to initial target page offset without scroll jumps
   useEffect(() => {
     if (loading || pageLayouts.length === 0) return;
@@ -399,61 +583,36 @@ export default function PDFViewerPage() {
     return () => clearTimeout(timer);
   }, [loading, pageLayouts, initialPage, getPageOffsetTop]);
 
-  // Track scale in a ref to keep event listeners stable
-  const scaleRef = useRef(scale);
-  useEffect(() => {
-    scaleRef.current = scale;
-  }, [scale]);
-
-  // 6. Pinch-to-zoom on scrollContainer
+  // 6. IntersectionObserver to track Active Page dynamically (supports scroll & pan scale translations)
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!container || pageLayouts.length === 0 || loading) return;
 
-    let startDist = 0;
-    let startScale = 1.2;
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        startDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        startScale = scaleRef.current;
+    const activeObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const pageNum = parseInt(entry.target.getAttribute('data-page-number') || '1', 10);
+            setActivePageNum(pageNum);
+          }
+        });
+      },
+      {
+        root: container,
+        rootMargin: '-40% 0px -40% 0px', // detects page in the center 20% band of viewport
+        threshold: 0
       }
-    };
+    );
 
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && startDist > 0) {
-        e.preventDefault();
-        const dist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        const factor = dist / startDist;
-        const newScale = Math.min(Math.max(startScale * factor, 0.6), 3.0);
-        setScale(Math.round(newScale * 10) / 10);
-      }
-    };
-
-    const onTouchEnd = () => {
-      startDist = 0;
-    };
-
-    container.addEventListener('touchstart', onTouchStart, { passive: true });
-    container.addEventListener('touchmove', onTouchMove, { passive: false });
-    container.addEventListener('touchend', onTouchEnd);
-    container.addEventListener('touchcancel', onTouchEnd);
+    const wrappers = container.querySelectorAll('[data-page-number]');
+    wrappers.forEach((el) => activeObserver.observe(el));
 
     return () => {
-      container.removeEventListener('touchstart', onTouchStart);
-      container.removeEventListener('touchmove', onTouchMove);
-      container.removeEventListener('touchend', onTouchEnd);
-      container.removeEventListener('touchcancel', onTouchEnd);
+      activeObserver.disconnect();
     };
-  }, [pageLayouts]);
+  }, [pageLayouts, loading]);
 
-  // 7. Scroll Listener: Velocity rendering limiter and active-page tracker
+  // 7. Scroll Listener: Velocity rendering limiter
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container || pageLayouts.length === 0) return;
@@ -461,7 +620,6 @@ export default function PDFViewerPage() {
     const scrollTop = container.scrollTop;
     const scrollTime = performance.now();
 
-    // Calculate Scroll Velocity
     const dist = Math.abs(scrollTop - lastScrollTopRef.current);
     const time = scrollTime - lastScrollTimeRef.current;
     const velocity = time > 0 ? dist / time : 0;
@@ -482,29 +640,7 @@ export default function PDFViewerPage() {
         setIsFastScrolling(false);
       }, 100);
     }
-
-    // Active Page Intersector calculations
-    const containerHeight = container.clientHeight;
-    const viewportMiddle = scrollTop + containerHeight / 2;
-
-    let currentActive = 1;
-    for (let i = 0; i < pageLayouts.length; i++) {
-      const layout = pageLayouts[i];
-      const pageTop = getPageOffsetTop(i);
-      const containerWidth = Math.min(window.innerWidth - 32, 800) * scale;
-      const pageScale = containerWidth / layout.width;
-      const pageBottom = pageTop + (layout.height * pageScale);
-
-      if (viewportMiddle >= pageTop && viewportMiddle <= pageBottom) {
-        currentActive = layout.pageNumber;
-        break;
-      }
-    }
-
-    if (currentActive !== activePageNum) {
-      setActivePageNum(currentActive);
-    }
-  }, [pageLayouts, activePageNum, getPageOffsetTop, isFastScrolling, scale]);
+  }, [pageLayouts, isFastScrolling]);
 
   useEffect(() => {
     return () => {
@@ -514,12 +650,78 @@ export default function PDFViewerPage() {
     };
   }, []);
 
+  // Sync floating page input number with actual active page
+  useEffect(() => {
+    setPageInputValue(activePageNum.toString());
+  }, [activePageNum]);
+
+  // Paging controls logic
+  const jumpToPage = useCallback((pageNum: number) => {
+    let target = pageNum;
+    if (isNaN(target) || target < 1) target = 1;
+    if (target > numPages) target = numPages;
+
+    const offset = getPageOffsetTop(target - 1);
+    scrollContainerRef.current?.scrollTo({
+      top: offset,
+      behavior: 'smooth'
+    });
+    setActivePageNum(target);
+    setPageInputValue(target.toString());
+  }, [numPages, getPageOffsetTop]);
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === '' || /^\d+$/.test(val)) {
+      setPageInputValue(val);
+    }
+  };
+
+  const handlePageInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      jumpToPage(parseInt(pageInputValue, 10));
+      e.currentTarget.blur();
+    }
+  };
+
+  const handlePageInputBlur = () => {
+    jumpToPage(parseInt(pageInputValue, 10));
+  };
+
+  const goToPrevPage = () => {
+    if (activePageNum > 1) {
+      jumpToPage(activePageNum - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (activePageNum < numPages) {
+      jumpToPage(activePageNum + 1);
+    }
+  };
+
+  // Zoom wrapper scaling adjustments
+  const handleTransform = (ref: any) => {
+    setScale(ref.state.scale);
+  };
+
   const handleZoomIn = () => {
-    setScale(prev => Math.min(prev + 0.2, 3.0));
+    if (transformRef.current) {
+      transformRef.current.zoomIn();
+    }
   };
 
   const handleZoomOut = () => {
-    setScale(prev => Math.max(prev - 0.2, 0.6));
+    if (transformRef.current) {
+      transformRef.current.zoomOut();
+    }
+  };
+
+  const handleResetZoom = () => {
+    if (transformRef.current) {
+      transformRef.current.resetTransform();
+      setScale(1.0);
+    }
   };
 
   const handleDownload = () => {
@@ -562,6 +764,77 @@ export default function PDFViewerPage() {
     }
   };
 
+  // Text search algorithms
+  const handleSearch = useCallback(async (query: string) => {
+    if (!query.trim() || !pdf) {
+      setSearchResults([]);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const matches: { pageNumber: number; index: number }[] = [];
+    const cleanQuery = query.toLowerCase().trim();
+
+    try {
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => item.str).join(' ').toLowerCase();
+
+        if (pageText.includes(cleanQuery)) {
+          // Count total matches on page
+          let count = 0;
+          let pos = pageText.indexOf(cleanQuery);
+          while (pos !== -1) {
+            count++;
+            pos = pageText.indexOf(cleanQuery, pos + cleanQuery.length);
+          }
+          
+          for (let c = 0; c < count; c++) {
+            matches.push({ pageNumber: i, index: matches.length });
+          }
+        }
+      }
+      setSearchResults(matches);
+      if (matches.length > 0) {
+        setCurrentMatchIndex(0);
+        jumpToPage(matches[0].pageNumber);
+      } else {
+        setCurrentMatchIndex(-1);
+        toast.error('No matches found');
+      }
+    } catch (err) {
+      console.error('[PDFViewer] Search error:', err);
+    }
+  }, [pdf, numPages, jumpToPage]);
+
+  // Debounced search trigger
+  useEffect(() => {
+    if (!searchQuery) {
+      setSearchResults([]);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+    const timer = setTimeout(() => {
+      handleSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, handleSearch]);
+
+  const handleSearchNext = () => {
+    if (searchResults.length === 0) return;
+    const nextIdx = (currentMatchIndex + 1) % searchResults.length;
+    setCurrentMatchIndex(nextIdx);
+    jumpToPage(searchResults[nextIdx].pageNumber);
+  };
+
+  const handleSearchPrev = () => {
+    if (searchResults.length === 0) return;
+    const prevIdx = (currentMatchIndex - 1 + searchResults.length) % searchResults.length;
+    setCurrentMatchIndex(prevIdx);
+    jumpToPage(searchResults[prevIdx].pageNumber);
+  };
+
   // Helper Range parser
   const isPageInRange = useCallback((pageNum: number) => {
     if (!range) return false;
@@ -577,272 +850,363 @@ export default function PDFViewerPage() {
     }
   }, [range]);
 
+  // Slide buffer coordinates calculations
+  const isPageInCacheBuffer = (pageNum: number) => {
+    const rangeLimit = isLowEnd ? 1 : 2;
+    return Math.abs(pageNum - activePageNum) <= rangeLimit;
+  };
+
   return (
-    <div style={{
-      minHeight: '100dvh',
-      height: '100dvh',
-      background: 'var(--bg-base)',
-      display: 'flex',
-      flexDirection: 'column',
-      color: 'var(--text-primary)',
-      fontFamily: 'var(--font-body)',
-      boxSizing: 'border-box',
-      overflow: 'hidden'
-    }}>
+    <div className="min-h-screen h-screen bg-[var(--bg-base)] flex flex-col text-[var(--text-primary)] font-[var(--font-body)] box-border overflow-hidden select-none">
+      <style dangerouslySetInnerHTML={{ __html: textLayerStyles }} />
+
       {/* Sticky Top Header */}
-      <header style={{
-        position: 'relative',
-        zIndex: 50,
-        background: 'rgba(13, 15, 20, 0.95)',
-        backdropFilter: 'var(--glass-blur)',
-        borderBottom: '1px solid var(--border-default)',
-        padding: '12px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+      <header className="relative z-50 bg-[#0d0f14]/95 backdrop-blur-md border-b border-[var(--border-default)] px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <button
             onClick={() => navigate(-1)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              padding: '6px',
-              display: 'flex',
-              borderRadius: '50%',
-              transition: 'background var(--transition-fast)'
-            }}
+            className="p-1.5 rounded-full text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] transition-colors"
             aria-label="Go Back"
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
           >
             <ArrowLeft size={20} />
           </button>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <h1 style={{
-              fontSize: '15px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              margin: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>{title}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[15px] font-semibold text-[var(--text-primary)] m-0 overflow-hidden text-ellipsis whitespace-nowrap">
+              {title}
+            </h1>
             {range && (
-              <span className="t-mono-sm" style={{
-                color: 'var(--status-warning)',
-                fontSize: '11px',
-                fontWeight: 500,
-                marginTop: '2px',
-                display: 'block'
-              }}>
+              <span className="text-[var(--status-warning)] text-[11px] font-medium font-mono mt-0.5 block">
                 Your Set: Pages {range}
               </span>
             )}
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setSearchOpen(prev => !prev)}
+            className={`p-2 rounded-full transition-all ${searchOpen ? 'bg-[var(--accent-primary-glow)] text-[var(--accent-primary)]' : 'text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)]'}`}
+            title="Search PDF"
+          >
+            <Search size={18} />
+          </button>
+          
           <button
             onClick={handleShare}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              padding: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              borderRadius: '50%',
-              transition: 'all var(--transition-fast)'
-            }}
+            className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] transition-all"
             title="Share PDF link"
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >
             <Share2 size={18} />
           </button>
+
           <button
             onClick={handleDownload}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              padding: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              borderRadius: '50%',
-              transition: 'all var(--transition-fast)'
-            }}
+            className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] transition-all"
             title="Download PDF"
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >
             <Download size={18} />
           </button>
+
+          {/* More options dropdown trigger */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] transition-all"
+                title="Options"
+              >
+                <MoreVertical size={18} />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={6}
+                className="dropdown-content animate-slide-up bg-[#0f121c]/95 border border-[var(--border-default)] backdrop-blur-md rounded-xl p-1 z-[10000] min-w-[180px] shadow-2xl"
+              >
+                <div className="px-2.5 py-1.5 text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Display Mode</div>
+                
+                <DropdownMenu.Item
+                  onClick={() => setDisplayMode('original')}
+                  className="dropdown-item"
+                  style={{
+                    color: displayMode === 'original' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    background: displayMode === 'original' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                    fontWeight: displayMode === 'original' ? 600 : 400,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                  }}
+                >
+                  <span className="flex items-center gap-2">
+                    <Sun size={14} />
+                    Original (Light)
+                  </span>
+                  {displayMode === 'original' && <Check size={14} />}
+                </DropdownMenu.Item>
+
+                <DropdownMenu.Item
+                  onClick={() => setDisplayMode('dark')}
+                  className="dropdown-item"
+                  style={{
+                    color: displayMode === 'dark' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    background: displayMode === 'dark' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                    fontWeight: displayMode === 'dark' ? 600 : 400,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                  }}
+                >
+                  <span className="flex items-center gap-2">
+                    <Moon size={14} />
+                    Dark Mode
+                  </span>
+                  {displayMode === 'dark' && <Check size={14} />}
+                </DropdownMenu.Item>
+
+                <DropdownMenu.Item
+                  onClick={() => setDisplayMode('sepia')}
+                  className="dropdown-item"
+                  style={{
+                    color: displayMode === 'sepia' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    background: displayMode === 'sepia' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                    fontWeight: displayMode === 'sepia' ? 600 : 400,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                  }}
+                >
+                  <span className="flex items-center gap-2">
+                    <Eye size={14} />
+                    Sepia
+                  </span>
+                  {displayMode === 'sepia' && <Check size={14} />}
+                </DropdownMenu.Item>
+
+                <div className="h-px bg-[var(--border-default)] my-1" />
+
+                <DropdownMenu.Item
+                  onClick={() => setRotation(prev => (prev + 90) % 360)}
+                  className="dropdown-item"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <RotateCw size={14} />
+                  <span>Rotate Clockwise</span>
+                </DropdownMenu.Item>
+
+                <DropdownMenu.Item
+                  onClick={handleResetZoom}
+                  className="dropdown-item"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <ZoomOut size={14} />
+                  <span>Reset Zoom</span>
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
       </header>
 
-      {/* Main Virtualized Continuous Scroll Viewport */}
+      {/* Animated Search Bar Toolbar */}
+      {searchOpen && (
+        <div className="bg-[#121624]/90 border-b border-[var(--border-default)] px-4 py-2 flex items-center justify-between gap-4 animate-slide-down z-40 relative">
+          <div className="flex items-center gap-2 flex-1 max-w-md bg-white/5 border border-[var(--border-default)] rounded-lg px-3 py-1">
+            <Search size={16} className="text-[var(--text-muted)]" />
+            <input
+              type="text"
+              placeholder="Search in PDF..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none outline-none text-[var(--text-primary)] text-sm flex-1"
+              autoFocus
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          
+          {searchResults.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-[var(--text-secondary)] font-mono">
+                {currentMatchIndex + 1} of {searchResults.length}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleSearchPrev}
+                  className="p-1 rounded bg-white/5 hover:bg-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+                  title="Previous Match"
+                >
+                  <ChevronUp size={16} />
+                </button>
+                <button
+                  onClick={handleSearchNext}
+                  className="p-1 rounded bg-white/5 hover:bg-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+                  title="Next Match"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+          
+          <button
+            onClick={() => {
+              setSearchOpen(false);
+              setSearchQuery('');
+            }}
+            className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded hover:bg-white/5 transition-all"
+            title="Close Search"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
+      {/* Main Virtualized Continuous Scroll Viewport wrapped in Transform scale layers */}
       <main
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          padding: '16px 8px',
-          position: 'relative',
-          display: 'block',
-          scrollBehavior: 'auto',
-          WebkitOverflowScrolling: 'touch'
-        }}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 relative block scroll-smooth"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {loading ? (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px'
-          }}>
-            <Loader2 className="spin" size={32} color="var(--accent-primary)" />
-            <p className="t-mono-sm" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="animate-spin text-[var(--accent-primary)]" size={32} />
+            <p className="font-mono text-xs text-[var(--text-secondary)] m-0">
               {scriptLoaded ? 'Analyzing document layouts...' : 'Initializing canvas engine...'}
             </p>
           </div>
         ) : loadError ? (
-          <div style={{
-            maxWidth: '340px',
-            margin: '80px auto',
-            padding: '24px',
-            background: 'var(--status-critical-bg)',
-            border: '1px solid rgba(248, 113, 113, 0.2)',
-            borderRadius: 'var(--radius-md)',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <AlertCircle size={32} color="var(--status-critical)" />
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Error loading document</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0, lineHeight: 1.5 }}>{loadError}</p>
+          <div className="max-w-[340px] mx-auto my-20 p-6 bg-[var(--status-critical-bg)] border border-red-500/20 rounded-[var(--radius-md)] text-center flex flex-col items-center gap-3">
+            <AlertCircle size={32} className="text-[var(--status-critical)]" />
+            <h3 className="m-0 text-base font-semibold">Error loading document</h3>
+            <p className="text-[var(--text-secondary)] text-xs m-0 leading-relaxed">{loadError}</p>
             <button
-              className="btn-secondary"
+              className="btn-secondary mt-2 px-4 py-2"
               onClick={() => navigate(-1)}
-              style={{ marginTop: '8px', padding: '8px 16px' }}
             >
               Go Back
             </button>
           </div>
         ) : (
-          <div style={{ display: 'block', margin: '0 auto', maxWidth: '100%' }}>
-            {pageLayouts.map((layout) => (
-              <PDFPageContainer
-                key={layout.pageNumber}
-                pageLayout={layout}
-                pdf={pdf}
-                scale={scale}
-                isLowEnd={isLowEnd}
-                isFastScrolling={isFastScrolling}
-                scrollContainerRef={scrollContainerRef}
-                isInRange={isPageInRange(layout.pageNumber)}
-              />
-            ))}
-          </div>
+          <TransformWrapper
+            ref={transformRef}
+            initialScale={1.0}
+            minScale={0.6}
+            maxScale={3.0}
+            centerOnInit={false}
+            onTransform={handleTransform}
+            panning={{
+              disabled: scale === 1.0,
+              velocityDisabled: true
+            }}
+            doubleClick={{
+              disabled: false,
+              step: 0.5
+            }}
+          >
+            <TransformComponent
+              wrapperStyle={{
+                width: '100%',
+                overflow: 'visible'
+              }}
+              contentStyle={{
+                width: '100%',
+                display: 'block'
+              }}
+            >
+              <div className="block mx-auto max-w-full">
+                {pageLayouts.map((layout) => (
+                  <PDFPageContainer
+                    key={layout.pageNumber}
+                    pageLayout={layout}
+                    pdf={pdf}
+                    isLowEnd={isLowEnd}
+                    isFastScrolling={isFastScrolling}
+                    scrollContainerRef={scrollContainerRef}
+                    isInRange={isPageInRange(layout.pageNumber)}
+                    isInCacheBuffer={isPageInCacheBuffer(layout.pageNumber)}
+                    searchQuery={searchQuery}
+                    displayMode={displayMode}
+                    rotation={rotation}
+                  />
+                ))}
+              </div>
+            </TransformComponent>
+          </TransformWrapper>
         )}
       </main>
 
-      {/* Floating Active-Page overlay pill (Adobe style) */}
+      {/* Floating Active-Page overlay controls (Adobe interactive style) */}
       {!loading && !loadError && (
-        <div style={{
-          position: 'fixed',
-          bottom: 80,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(15, 18, 28, 0.9)',
-          border: '1px solid var(--border-default)',
-          backdropFilter: 'var(--glass-blur)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          padding: '6px 16px',
-          borderRadius: '20px',
-          zIndex: 99,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span className="t-mono-sm" style={{
-            fontSize: '12px',
-            color: 'var(--text-secondary)',
-            fontWeight: 600
-          }}>
-            Page <span style={{ color: 'var(--accent-primary)' }}>{activePageNum}</span> of {numPages}
-          </span>
+        <div className="fixed bottom-[80px] left-1/2 -translate-x-1/2 bg-[#0f121c]/95 border border-[var(--border-default)] backdrop-blur-md shadow-2xl px-3 py-1.5 rounded-full z-[99] flex items-center gap-3 animate-fade-in">
+          <button
+            onClick={goToPrevPage}
+            disabled={activePageNum === 1}
+            className="p-1 rounded-full text-[var(--text-secondary)] hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+            title="Previous Page"
+          >
+            <ChevronUp size={20} />
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            <input
+              type="text"
+              value={pageInputValue}
+              onChange={handlePageInputChange}
+              onKeyDown={handlePageInputKeyDown}
+              onBlur={handlePageInputBlur}
+              className="w-10 bg-white/5 border border-[var(--border-default)] rounded text-center text-[var(--text-primary)] font-mono text-xs py-0.5 font-bold outline-none focus:border-[var(--accent-primary)] focus:bg-white/10 transition-all"
+            />
+            <span className="text-xs text-[var(--text-secondary)] font-mono">/ {numPages}</span>
+          </div>
+
+          <button
+            onClick={goToNextPage}
+            disabled={activePageNum === numPages}
+            className="p-1 rounded-full text-[var(--text-secondary)] hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+            title="Next Page"
+          >
+            <ChevronDown size={20} />
+          </button>
         </div>
       )}
 
-      {/* Static Footer (Zoom controls only, no next/prev buttons needed!) */}
+      {/* Static Footer (Zoom Percent indicator) */}
       {!loading && !loadError && (
-        <footer style={{
-          background: 'rgba(13, 15, 20, 0.95)',
-          backdropFilter: 'var(--glass-blur)',
-          borderTop: '1px solid var(--border-default)',
-          padding: '12px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 40
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <footer className="bg-[#0d0f14]/95 backdrop-blur-md border-t border-[var(--border-default)] py-2 flex items-center justify-center z-40">
+          <div className="flex items-center gap-3">
             <button
               onClick={handleZoomOut}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                padding: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                borderRadius: 'var(--radius-sm)',
-                transition: 'all var(--transition-fast)'
-              }}
+              className="p-1.5 rounded text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] transition-all"
               title="Zoom Out"
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
-              <ZoomOut size={18} />
+              <ZoomOut size={16} />
             </button>
-            <span className="t-mono-sm" style={{
-              color: 'var(--text-secondary)',
-              fontSize: '12px',
-              minWidth: '42px',
-              textAlign: 'center',
-              fontWeight: 600
-            }}>
+            <span className="font-mono text-xs text-[var(--text-secondary)] min-w-[42px] text-center font-semibold">
               {Math.round(scale * 100)}%
             </span>
             <button
               onClick={handleZoomIn}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                padding: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                borderRadius: 'var(--radius-sm)',
-                transition: 'all var(--transition-fast)'
-              }}
+              className="p-1.5 rounded text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] transition-all"
               title="Zoom In"
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
-              <ZoomIn size={18} />
+              <ZoomIn size={16} />
             </button>
           </div>
         </footer>
