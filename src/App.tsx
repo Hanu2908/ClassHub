@@ -135,8 +135,9 @@ export default function App() {
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-display)',
                 fontSize: '13px',
-                width: 'calc(100vw - 32px)',
+                width: 'calc(100% - 32px)',
                 maxWidth: '448px',
+                margin: '0 auto',
               },
             }}
             offset={72}

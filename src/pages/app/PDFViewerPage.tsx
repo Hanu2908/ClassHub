@@ -287,6 +287,7 @@ const PDFPageContainer = memo(function PDFPageContainer({
     } else {
       // Free memory immediately once page leaves cache buffer threshold
       setIsRendered(false);
+      setRenderError(false); // Reset error status so it retries automatically when scrolling back
       if (canvasRef.current) {
         canvasRef.current.width = 0;
         canvasRef.current.height = 0;
@@ -366,11 +367,11 @@ const PDFPageContainer = memo(function PDFPageContainer({
         </span>
       )}
 
-      {isInCacheBuffer && !renderError ? (
+      {isInCacheBuffer ? (
         <canvas 
           ref={canvasRef} 
           style={{ 
-            display: isRendered ? 'block' : 'none',
+            display: isRendered && !renderError ? 'block' : 'none',
             filter: canvasFilter,
             transition: 'filter var(--transition-fast)',
             width: '100%',
@@ -420,10 +421,39 @@ const PDFPageContainer = memo(function PDFPageContainer({
           gap: '8px',
           color: 'var(--status-critical)',
           padding: '16px',
-          textAlign: 'center'
+          textAlign: 'center',
+          zIndex: 30
         }}>
           <AlertCircle size={24} />
           <span style={{ fontSize: '12px', fontWeight: 500 }}>Failed to draw page</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setRenderError(false);
+              drawPage();
+            }}
+            style={{
+              marginTop: '4px',
+              padding: '6px 12px',
+              background: 'rgba(248, 113, 113, 0.15)',
+              border: '1px solid var(--status-critical)',
+              borderRadius: '6px',
+              color: 'var(--text-primary)',
+              fontSize: '11px',
+              fontWeight: 600,
+              fontFamily: 'var(--font-body)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248, 113, 113, 0.25)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(248, 113, 113, 0.15)'; }}
+          >
+            <RotateCw size={12} />
+            Retry
+          </button>
         </div>
       )}
     </div>
@@ -540,7 +570,7 @@ export default function PDFViewerPage() {
   const getPageOffsetTop = useCallback((pageIndex: number) => {
     if (pageLayouts.length === 0) return 0;
     const spacing = 16;
-    let offset = 0;
+    let offset = 16; // Start at 16 to account for main padding-top: 16px
     const safeScale = isNaN(scale) || scale <= 0 ? 1.0 : scale;
     const currentContainerWidth = containerWidth * safeScale;
     const isRotated90 = rotation === 90 || rotation === 270;
@@ -707,7 +737,7 @@ export default function PDFViewerPage() {
       const layoutWidth = (isRotated90 ? layout.height : layout.width) || 595;
       const layoutHeight = (isRotated90 ? layout.width : layout.height) || 842;
       const pageScale = layoutWidth > 0 ? currentContainerWidth / layoutWidth : 1.0;
-      const pageBottom = pageTop + (layoutHeight * pageScale);
+      const pageBottom = pageTop + (layoutHeight * pageScale) + 16;
 
       if (viewportMiddle >= pageTop && viewportMiddle <= pageBottom) {
         currentActive = layout.pageNumber;
@@ -743,6 +773,7 @@ export default function PDFViewerPage() {
 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
+        e.preventDefault();
         startDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
@@ -768,16 +799,24 @@ export default function PDFViewerPage() {
       startDist = 0;
     };
 
-    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    const onGesture = (e: Event) => {
+      e.preventDefault();
+    };
+
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
     container.addEventListener('touchmove', onTouchMove, { passive: false });
     container.addEventListener('touchend', onTouchEnd);
     container.addEventListener('touchcancel', onTouchEnd);
+    container.addEventListener('gesturestart', onGesture, { passive: false });
+    container.addEventListener('gesturechange', onGesture, { passive: false });
 
     return () => {
       container.removeEventListener('touchstart', onTouchStart);
       container.removeEventListener('touchmove', onTouchMove);
       container.removeEventListener('touchend', onTouchEnd);
       container.removeEventListener('touchcancel', onTouchEnd);
+      container.removeEventListener('gesturestart', onGesture);
+      container.removeEventListener('gesturechange', onGesture);
     };
   }, [pageLayouts]);
 
