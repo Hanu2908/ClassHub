@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import OnboardingLoader from '../../components/OnboardingLoader';
 
 const classRollRegex = /^\d{2}$/;
@@ -125,7 +125,7 @@ export default function JoinHubPage() {
       if (message.includes('Invalid invite code')) {
         setErrors({ hubCode: 'Invalid invite code. Double-check with your CR.' });
       } else {
-        showToast(message, 'error');
+        toast.error(message);
       }
     }
   };
@@ -312,7 +312,7 @@ export default function JoinHubPage() {
           type="join"
           isComplete={isComplete}
           onFinished={() => {
-            showToast('Joined hub successfully! Welcome 🎉', 'success');
+            toast.success('Joined hub successfully! Welcome 🎉');
             navigate('/app/home');
           }}
         />

@@ -4,7 +4,7 @@ import { AlertTriangle, Clock, ChevronLeft, ChevronRight, X, Bell } from 'lucide
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore, type Announcement } from '../../../store/appStore';
 import { isPushSupported, getPushPermission, subscribeToPush } from '../../../lib/pushNotifications';
-import { showToast } from '../../../components/Toast';
+import { toast } from 'sonner';
 import { prefetchAnnouncementsData } from './prefetchHelper';
 
 interface CountdownTimerProps {
@@ -366,15 +366,15 @@ export function PushPermissionCTA({ onDismiss }: PushPermissionCTAProps) {
       const ok = await subscribeToPush();
       if (ok) {
         setPermission('granted');
-        showToast('Push notifications successfully enabled!', 'success');
+        toast.success('Push notifications successfully enabled!');
         onDismiss();
       } else {
-        showToast('Failed to enable push notifications', 'error');
+        toast.error('Failed to enable push notifications');
         setPermission(isPushSupported() ? getPushPermission() : 'denied');
       }
     } catch (err) {
       console.error('[Push] CTA subscribe failed:', err);
-      showToast('An error occurred while enabling push notifications', 'error');
+      toast.error('An error occurred while enabling push notifications');
     } finally {
       setIsSubscribing(false);
     }

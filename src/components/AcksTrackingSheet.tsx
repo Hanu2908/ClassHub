@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Bell, Search, Loader } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BottomSheet } from './BottomSheet';
-import { showToast } from './Toast';
+import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import type { Announcement } from '../store/appStore';
 import type { SectionMember } from '../hooks/useSectionMembers';
@@ -81,9 +81,9 @@ export default function AcksTrackingSheet({ open, announcement, onClose, section
         body: { announcementId: announcement.id, studentId }
       });
       if (error) throw error;
-      showToast(`Nudge sent to ${studentName}`, 'success');
+      toast.success(`Nudge sent to ${studentName}`);
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to send nudge', 'error');
+      toast.error(err instanceof Error ? err.message : 'Failed to send nudge');
     } finally {
       setNudgingIds(prev => {
         const next = new Set(prev);
@@ -95,7 +95,7 @@ export default function AcksTrackingSheet({ open, announcement, onClose, section
 
   const handleNudgeAll = async () => {
     if (pendingStudents.length === 0) {
-      showToast('All students have already acknowledged', 'info');
+      toast.info('All students have already acknowledged');
       return;
     }
     setIsNudgingAll(true);
@@ -104,9 +104,9 @@ export default function AcksTrackingSheet({ open, announcement, onClose, section
         body: { announcementId: announcement.id }
       });
       if (error) throw error;
-      showToast(`Nudge sent to all unacknowledged students (${pendingStudents.length})`, 'success');
+      toast.success(`Nudge sent to all unacknowledged students (${pendingStudents.length})`);
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to send bulk nudge', 'error');
+      toast.error(err instanceof Error ? err.message : 'Failed to send bulk nudge');
     } finally {
       setIsNudgingAll(false);
     }

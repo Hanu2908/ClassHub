@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef, useEffect } from 'react';
+import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 
 interface BottomSheetProps {
   open?: boolean;
@@ -14,46 +15,24 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   const velocityRef = useRef(0);
   const panelRef = useRef<HTMLDivElement>(null);
   
-  const [shouldRender, setShouldRender] = useState(open);
-  const [isActive, setIsActive] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const [offsetY, setOffsetY] = useState(0);
-
-  // Synchronize internal rendering state with parent's open prop
-  useEffect(() => {
-    if (open) {
-      setShouldRender(true);
-      setOffsetY(0); // Reset drag offset on open so it doesn't render off-screen if previously swiped
-      // Defer transition active state to let the DOM mount and paint in its initial state
-      const timer = setTimeout(() => {
-        setIsActive(true);
-      }, 30);
-      return () => clearTimeout(timer);
-    } else {
-      setIsActive(false);
-      // Wait for exit animations to complete before unmounting (matches CSS transition)
-      const timer = setTimeout(() => {
-        setShouldRender(false);
-      }, 280);
-      return () => clearTimeout(timer);
-    }
-  }, [open]);
+  const offsetY = useMotionValue(0);
 
   // Synchronize document scroll locking
   useEffect(() => {
-    if (shouldRender && open) {
+    if (open) {
       document.body.style.overflow = 'hidden';
+      offsetY.set(0); // Reset drag offset on open
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
     };
-  }, [shouldRender, open]);
+  }, [open, offsetY]);
 
   // Dismiss on Escape key press (keyboard accessibility)
   useEffect(() => {
-    if (!shouldRender || !open) return;
+    if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -65,14 +44,11 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [shouldRender, open, onClose]);
-
-  if (!shouldRender) return null;
+  }, [open, onClose]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     
-    setDragging(true);
     startY.current = e.clientY;
     lastYRef.current = e.clientY;
     lastTimeRef.current = Date.now();
@@ -82,7 +58,7 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragging) return;
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
     
     const currentY = e.clientY;
     const currentTime = Date.now();
@@ -103,12 +79,11 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
       targetOffsetY = targetOffsetY * 0.15;
     }
     
-    setOffsetY(targetOffsetY);
+    offsetY.set(targetOffsetY);
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (!dragging) return;
-    setDragging(false);
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
     e.currentTarget.releasePointerCapture(e.pointerId);
     
     const delta = e.clientY - startY.current;
@@ -117,67 +92,75 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
     const shouldDismiss = delta > 100 || (velocityRef.current > 0.4 && delta > 30);
     
     if (shouldDismiss) {
-      setIsActive(false);
-      setOffsetY(window.innerHeight);
-      
-      setTimeout(() => {
+      animate(offsetY, window.innerHeight, { duration: 0.2 }).then(() => {
         onClose();
-      }, 240);
+      });
     } else {
-      setOffsetY(0);
+      animate(offsetY, 0, { type: 'spring', stiffness: 300, damping: 30 });
     }
   };
 
   const handlePointerCancel = (e: React.PointerEvent) => {
-    if (!dragging) return;
-    setDragging(false);
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
     e.currentTarget.releasePointerCapture(e.pointerId);
-    setOffsetY(0);
+    animate(offsetY, 0, { type: 'spring', stiffness: 300, damping: 30 });
   };
 
   return (
-    <>
-      <div 
-        className={`sheet-backdrop ${isActive ? 'active' : ''}`} 
-        onClick={onClose} 
-      />
-      <div
-        ref={panelRef}
-        className={`sheet-panel ${isActive ? 'active' : ''}`}
-        style={{
-          transform: isActive 
-            ? `translate3d(-50%, ${offsetY}px, 0)` 
-            : `translate3d(-50%, 100%, 0)`,
-          transition: dragging ? 'none' : 'transform 0.28s cubic-bezier(0.25, 1, 0.5, 1)',
-        }}
-      >
-        <div
-          className="sheet-drag-zone"
-          style={{
-            cursor: dragging ? 'grabbing' : 'grab',
-            touchAction: 'none',
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-          }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
-        >
-          <div className="sheet-handle" />
-          {title && (
-            <div style={{ padding: '0 20px 16px', borderBottom: '1px solid var(--border-default)' }}>
-              {typeof title === 'string' ? (
-                <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
-              ) : (
-                title
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div 
+            className="sheet-backdrop" 
+            style={{ transition: 'none' }} // Prevents CSS transitions from interfering
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose} 
+          />
+          <motion.div
+            ref={panelRef}
+            className="sheet-panel"
+            initial={{ y: '100%', x: '-50%' }}
+            animate={{ y: 0, x: '-50%' }}
+            exit={{ y: '100%', x: '-50%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+            style={{
+              transition: 'none', // Prevents CSS transitions from interfering
+              y: offsetY,
+              x: '-50%'
+            }}
+          >
+            <div
+              className="sheet-drag-zone"
+              style={{
+                cursor: 'grab',
+                touchAction: 'none',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+              }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+            >
+              <div className="sheet-handle" />
+              {title && (
+                <div style={{ padding: '0 20px 16px', borderBottom: '1px solid var(--border-default)' }}>
+                  {typeof title === 'string' ? (
+                    <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
+                  ) : (
+                    title
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-        
-        <div style={{ padding: '20px' }}>{children}</div>
-      </div>
-    </>
+            
+            <div style={{ padding: '20px' }}>{children}</div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

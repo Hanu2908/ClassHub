@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAppStore } from "../store/appStore";
-import { showToast } from "../components/Toast";
+import { toast } from 'sonner';
 import { subscribeToAnnouncementQA } from "../lib/realtimeBroker";
 
 // Helper to access auth context from Zustand appStore
@@ -270,7 +270,7 @@ export function useToggleReaction(announcementId: string) {
           context.previousReactions,
         );
       }
-      showToast("Failed to save reaction", "error");
+      toast.error("Failed to save reaction");
     },
     onSuccess: () => {
       qc.invalidateQueries({
@@ -308,7 +308,7 @@ export function useAddComment(announcementId: string) {
       });
     },
     onError: () => {
-      showToast("Failed to post question", "error");
+      toast.error("Failed to post question");
     },
   });
 }
@@ -329,7 +329,7 @@ export function useDeleteComment(announcementId: string) {
       qc.invalidateQueries({
         queryKey: ["announcement_comments", announcementId],
       });
-      showToast("Comment deleted successfully", "success");
+      toast.success("Comment deleted successfully");
     },
     onError: (err: any) => {
       const isLockout =
@@ -337,9 +337,9 @@ export function useDeleteComment(announcementId: string) {
         err.code === "42501" ||
         err.status === 401;
       if (isLockout) {
-        showToast("Cannot delete verified comments", "error");
+        toast.error("Cannot delete verified comments");
       } else {
-        showToast("Failed to delete comment", "error");
+        toast.error("Failed to delete comment");
       }
     },
   });
@@ -367,7 +367,7 @@ export function useEditComment(announcementId: string) {
       qc.invalidateQueries({
         queryKey: ["announcement_comments", announcementId],
       });
-      showToast("Comment updated successfully", "success");
+      toast.success("Comment updated successfully");
     },
     onError: (err: any) => {
       const isLockout =
@@ -375,9 +375,9 @@ export function useEditComment(announcementId: string) {
         err.code === "42501" ||
         err.status === 401;
       if (isLockout) {
-        showToast("Cannot edit verified or expired comments", "error");
+        toast.error("Cannot edit verified or expired comments");
       } else {
-        showToast("Failed to update comment", "error");
+        toast.error("Failed to update comment");
       }
     },
   });
@@ -430,15 +430,14 @@ export function useToggleVerifyComment(announcementId: string) {
           context.previousComments,
         );
       }
-      showToast("Failed to update verification status", "error");
+      toast.error("Failed to update verification status");
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({
         queryKey: ["announcement_comments", announcementId],
       });
-      showToast(
+      toast.success(
         vars.isVerified ? "Answer marked as verified!" : "Answer unverified",
-        "success",
       );
     },
   });
@@ -501,7 +500,7 @@ export function useToggleThreadMute(announcementId: string) {
           context.previousStatus,
         );
       }
-      showToast("Failed to toggle mute state", "error");
+      toast.error("Failed to toggle mute state");
     },
     onSuccess: () => {
       qc.invalidateQueries({

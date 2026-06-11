@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import * as Sentry from '@sentry/react';
+
 
 export interface CrashDiagnostics {
   userAgent: string;
@@ -33,6 +35,22 @@ export async function reportAutomatedCrash(params: {
 }) {
   try {
     const diagnostics = getBrowserDiagnostics();
+
+    // Log to Sentry
+    Sentry.captureException(params.error, {
+      extra: {
+        title: params.title,
+        componentStack: params.componentStack,
+        diagnostics,
+      },
+    });
+
+    // Log to browser developer console
+    console.error(`[Crash Telemetry] ${params.title}`, {
+      error: params.error,
+      componentStack: params.componentStack,
+      diagnostics
+    });
     
     // Get currently logged-in user session if active
     const { data: { session } } = await supabase.auth.getSession();

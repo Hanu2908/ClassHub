@@ -2,9 +2,12 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './components/AuthProvider';
 import { useAppStore, type BeforeInstallPromptEvent } from './store/appStore';
-import { ToastContainer } from './components/Toast';
+import { Toaster } from 'sonner';
 import ErrorBoundary from './components/ErrorBoundary';
 import PageSkeleton from './components/PageSkeleton';
+import { LazyMotion, domAnimation } from 'motion/react';
+import { SkeletonTheme } from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
 // Pages (Lazy Loaded for Code Splitting)
 const SignIn = lazy(() => import('./pages/SignIn'));
@@ -88,6 +91,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ── Share intake route ──
 function ShareIntakeRoute() {
   const session = useAppStore(s => s.session);
   const authUser = useAppStore(s => s.authUser);
@@ -118,40 +122,61 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ToastContainer />
-        <Suspense fallback={<PageSkeleton />}>
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<PublicRoute><SignIn /></PublicRoute>} />
+        <LazyMotion features={domAnimation}>
+          <Toaster
+            position="bottom-center"
+            theme="dark"
+            richColors
+            closeButton
+            toastOptions={{
+              style: {
+                background: '#121520',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-display)',
+                fontSize: '13px',
+                width: 'calc(100vw - 32px)',
+                maxWidth: '448px',
+              },
+            }}
+            offset={72}
+          />
+          <SkeletonTheme baseColor="#121520" highlightColor="rgba(255, 255, 255, 0.05)">
+            <Suspense fallback={<PageSkeleton />}>
+              <Routes>
+                {/* Public */}
+                <Route path="/" element={<PublicRoute><SignIn /></PublicRoute>} />
 
-            {/* Onboarding — needs auth but no hub yet */}
-            <Route path="/onboarding/choice" element={<RequireAuth><RequireNoHub><ErrorBoundary variant="page"><ChoicePage /></ErrorBoundary></RequireNoHub></RequireAuth>} />
-            <Route path="/onboarding/join" element={<RequireAuth><RequireNoHub><ErrorBoundary variant="page"><JoinHubPage /></ErrorBoundary></RequireNoHub></RequireAuth>} />
-            <Route path="/onboarding/create" element={<RequireAuth><RequireNoHub><ErrorBoundary variant="page"><CreateHubPage /></ErrorBoundary></RequireNoHub></RequireAuth>} />
+                {/* Onboarding — needs auth but no hub yet */}
+                <Route path="/onboarding/choice" element={<RequireAuth><RequireNoHub><ErrorBoundary variant="page"><ChoicePage /></ErrorBoundary></RequireNoHub></RequireAuth>} />
+                <Route path="/onboarding/join" element={<RequireAuth><RequireNoHub><ErrorBoundary variant="page"><JoinHubPage /></ErrorBoundary></RequireNoHub></RequireAuth>} />
+                <Route path="/onboarding/create" element={<RequireAuth><RequireNoHub><ErrorBoundary variant="page"><CreateHubPage /></ErrorBoundary></RequireNoHub></RequireAuth>} />
 
-            {/* App shell — needs auth + hub */}
-            <Route path="/app/home" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><DashboardPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/schedule" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SchedulePage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/polls" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PollsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/profile" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ProfilePage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/resource-hub" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ResourceHubPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/announcements" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AnnouncementsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/assignments" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AssignmentsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/attendance" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AttendancePage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/cr-command" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><CRCommandPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><ManageSubjectsPage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
-            <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PDFViewerPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/exams" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/gpa" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><DeveloperConsolePage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
-            <Route path="/app/members" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SectionDirectoryPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-            <Route path="/share-intake" element={<ShareIntakeRoute />} />
-            <Route path="/legal" element={<LegalPage />} />
+                {/* App shell — needs auth + hub */}
+                <Route path="/app/home" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><DashboardPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/schedule" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SchedulePage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/polls" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PollsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/profile" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ProfilePage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/resource-hub" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ResourceHubPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/announcements" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AnnouncementsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/assignments" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AssignmentsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/attendance" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AttendancePage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/cr-command" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><CRCommandPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><ManageSubjectsPage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
+                <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PDFViewerPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/exams" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/gpa" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><DeveloperConsolePage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
+                <Route path="/app/members" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SectionDirectoryPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/share-intake" element={<ShareIntakeRoute />} />
+                <Route path="/legal" element={<LegalPage />} />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </SkeletonTheme>
+        </LazyMotion>
       </AuthProvider>
     </BrowserRouter>
   );

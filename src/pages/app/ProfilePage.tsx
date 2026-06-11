@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { useSection } from '../../hooks/useSectionMembers';
 import { supabase } from '../../lib/supabase';
 import { isPushSupported, getPushPermission, hasActiveSubscription, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
@@ -50,18 +50,18 @@ export default function ProfilePage() {
       if (notificationsOn) {
         await unsubscribeFromPush();
         setNotificationsOn(false);
-        showToast('Notifications disabled', 'info');
+        toast.info('Notifications disabled');
       } else {
         if (pushBlocked) {
-          showToast('Notifications blocked in browser settings. Please enable them manually.', 'error');
+          toast.error('Notifications blocked in browser settings. Please enable them manually.');
           return;
         }
         const ok = await subscribeToPush();
         if (ok) {
           setNotificationsOn(true);
-          showToast('Notifications enabled!', 'success');
+          toast.success('Notifications enabled!');
         } else {
-          showToast('Could not enable notifications', 'error');
+          toast.error('Could not enable notifications');
         }
       }
     } finally {
@@ -84,7 +84,7 @@ export default function ProfilePage() {
 
   const handleCopy = () => {
     navigator.clipboard.writeText(hubCode);
-    showToast('Hub code copied!', 'success');
+    toast.success('Hub code copied!');
   };
 
   const handleDeleteAccount = async () => {
@@ -107,7 +107,7 @@ export default function ProfilePage() {
         if (isPartial) {
           // public.users deleted but auth.users persists — sign out anyway, warn user
           await signOutGlobal(navigate);
-          showToast('Account data deleted, but full removal needs admin action. Contact support.', 'error');
+          toast.error('Account data deleted, but full removal needs admin action. Contact support.');
           return;
         }
         throw new Error(detail);
@@ -115,10 +115,10 @@ export default function ProfilePage() {
       if (data && !data.success) throw new Error(data.error ?? 'Unknown error');
       // Clear all local state and Supabase session, then redirect
       await signOutGlobal(navigate);
-      showToast('Account deleted successfully', 'success');
+      toast.success('Account deleted successfully');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      showToast(`Delete failed: ${msg}`, 'error');
+      toast.error(`Delete failed: ${msg}`);
       console.error('[DeleteAccount]', err);
     } finally {
       setDeleting(false);
@@ -137,7 +137,7 @@ export default function ProfilePage() {
       navigate('/onboarding/choice');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      showToast(`Failed to leave hub: ${msg}`, 'error');
+      toast.error(`Failed to leave hub: ${msg}`);
       console.error('[LeaveHub]', err);
     } finally {
       setLeaving(false);
@@ -168,7 +168,7 @@ export default function ProfilePage() {
           user: s.user ? { ...s.user } : null
         };
       });
-      showToast(`Status updated to ${nextStatus ? 'Day Scholar' : 'Hosteler'}! [Demo]`, 'success');
+      toast.success(`Status updated to ${nextStatus ? 'Day Scholar' : 'Hosteler'}! [Demo]`);
       return;
     }
 
@@ -183,10 +183,10 @@ export default function ProfilePage() {
       }
 
       await useAppStore.getState().refreshProfile();
-      showToast(`Status updated to ${nextStatus ? 'Day Scholar' : 'Hosteler'}!`, 'success');
+      toast.success(`Status updated to ${nextStatus ? 'Day Scholar' : 'Hosteler'}!`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      showToast(`Failed to update status: ${msg}`, 'error');
+      toast.error(`Failed to update status: ${msg}`);
     }
   };
 
@@ -244,8 +244,8 @@ export default function ProfilePage() {
                     showExpiry
                     onRemove={() => {
                       deleteTag.mutate(tag.id, {
-                        onSuccess: () => showToast('Tag removed', 'info'),
-                        onError: (err) => showToast(`Failed: ${err.message}`, 'error'),
+                        onSuccess: () => toast.info('Tag removed'),
+                        onError: (err) => toast.error(`Failed: ${err.message}`),
                       });
                     }}
                   />

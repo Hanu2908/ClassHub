@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { supabase } from '../lib/supabase';
 import { BottomSheet } from './BottomSheet';
-import { showToast } from './Toast';
+import { toast } from 'sonner';
 import { CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 
 interface FeedbackSheetProps {
@@ -21,7 +21,7 @@ export function FeedbackSheet({ open, onClose }: FeedbackSheetProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) {
-      showToast('Title and description are required', 'error');
+      toast.error('Title and description are required');
       return;
     }
 
@@ -51,7 +51,7 @@ export function FeedbackSheet({ open, onClose }: FeedbackSheetProps) {
       if (error) throw error;
 
       setSuccess(true);
-      showToast('Transmission received! Thank you 🎉', 'success');
+      toast.success('Transmission received! Thank you 🎉');
       
       setTimeout(() => {
         setSuccess(false);
@@ -61,7 +61,7 @@ export function FeedbackSheet({ open, onClose }: FeedbackSheetProps) {
       }, 1800);
     } catch (err: any) {
       console.error('Submission failure:', err);
-      showToast(err.message || 'Transmission failed. Please check network.', 'error');
+      toast.error(err.message || 'Transmission failed. Please check network.');
     } finally {
       setSubmitting(false);
     }

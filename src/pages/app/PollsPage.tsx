@@ -5,14 +5,38 @@ import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { usePolls, useActionablePollVotes, usePollsRealtime, useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/usePolls';
 import { useSchedule } from '../../hooks/useSchedule';
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { BottomSheet } from '../../components/BottomSheet';
-import { PollsSkeleton } from '../../components/LoadingSkeletons';
 import { haptics } from '../../lib/haptics';
+import Skeleton from 'react-loading-skeleton';
 
+function PollsSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {[1, 2].map((i) => (
+        <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Skeleton width={80} height={16} borderRadius="var(--radius-pill)" />
+              <Skeleton width={60} height={16} borderRadius="var(--radius-pill)" />
+            </div>
+            <Skeleton width={70} height={12} />
+          </div>
+          <Skeleton width="85%" height={18} style={{ margin: '4px 0 8px' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Skeleton width="100%" height={40} borderRadius="var(--radius-md)" />
+            <Skeleton width="100%" height={40} borderRadius="var(--radius-md)" />
+            <Skeleton width="100%" height={40} borderRadius="var(--radius-md)" />
+          </div>
+          <Skeleton width={50} height={12} style={{ marginTop: 4 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type PollTab = 'active' | 'closed';
 
@@ -59,9 +83,9 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
         allowMultiple: poll.allowMultiple,
         isSelected
       });
-      showToast(isSelected ? 'Vote removed' : 'Vote submitted!', 'success');
+      toast.success(isSelected ? 'Vote removed' : 'Vote submitted!');
     } catch {
-      showToast('Failed to vote', 'error');
+      toast.error('Failed to vote');
     }
   };
 
@@ -369,7 +393,7 @@ export function CreatePollSheet({ open, onClose }: { open: boolean; onClose: () 
 
   const handleAddOption = () => {
     if (options.length >= 6) {
-      showToast('Maximum 6 options allowed', 'warning');
+      toast.warning('Maximum 6 options allowed');
       return;
     }
     setOptions([...options, '']);
@@ -377,7 +401,7 @@ export function CreatePollSheet({ open, onClose }: { open: boolean; onClose: () 
 
   const handleRemoveOption = (index: number) => {
     if (options.length <= 2) {
-      showToast('Minimum 2 options required', 'warning');
+      toast.warning('Minimum 2 options required');
       return;
     }
     setOptions(options.filter((_, i) => i !== index));
@@ -392,12 +416,12 @@ export function CreatePollSheet({ open, onClose }: { open: boolean; onClose: () 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim()) {
-      showToast('Question is required', 'error');
+      toast.error('Question is required');
       return;
     }
     const filteredOptions = options.map(o => o.trim()).filter(Boolean);
     if (filteredOptions.length < 2) {
-      showToast('At least 2 valid options are required', 'error');
+      toast.error('At least 2 valid options are required');
       return;
     }
 
@@ -415,10 +439,10 @@ export function CreatePollSheet({ open, onClose }: { open: boolean; onClose: () 
         allowMultiple,
       });
 
-      showToast('Poll created successfully!', 'success');
+      toast.success('Poll created successfully!');
       onClose();
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to create poll', 'error');
+      toast.error(err instanceof Error ? err.message : 'Failed to create poll');
     } finally {
       setLoading(false);
     }
@@ -774,9 +798,9 @@ export default function PollsPage() {
         allowMultiple: false,
       });
 
-      showToast(`🚨 Bunk poll launched for ${className}!`, 'success');
+      toast.success(`🚨 Bunk poll launched for ${className}!`);
     } catch (err: any) {
-      showToast(err instanceof Error ? err.message : 'Failed to launch bunk poll', 'error');
+      toast.error(err instanceof Error ? err.message : 'Failed to launch bunk poll');
     }
   };
   
@@ -817,8 +841,8 @@ export default function PollsPage() {
   const handleDelete = async (id: string) => {
     try {
       await deletePollMutation.mutateAsync(id);
-      showToast('Poll deleted', 'info');
-    } catch { showToast('Failed to delete poll', 'error'); }
+      toast.info('Poll deleted');
+    } catch { toast.error('Failed to delete poll'); }
   };
 
   return (

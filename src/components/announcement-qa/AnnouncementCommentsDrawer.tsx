@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, BellOff, Check, Trash2, CornerDownRight, Pencil } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
-import { showToast } from '../Toast';
+import { toast } from 'sonner';
 import { BottomSheet } from '../BottomSheet';
 import { timeAgo } from '../Shared';
 import {
@@ -172,7 +172,7 @@ export function AnnouncementCommentsDrawer({
     // Rate-limiting: Max 1 comment per 3 seconds
     const now = Date.now();
     if (now - lastSubmitTime < 3000) {
-      showToast('Please wait a moment before posting again.', 'warning');
+      toast.warning('Please wait a moment before posting again.');
       return;
     }
 
@@ -181,7 +181,7 @@ export function AnnouncementCommentsDrawer({
       await addComment.mutateAsync(inputVal);
       setInputVal('');
       setLastSubmitTime(now);
-      showToast('Comment posted ✓', 'success');
+      toast.success('Comment posted ✓');
       setTimeout(() => {
         if (listRef.current) {
           listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -197,7 +197,7 @@ export function AnnouncementCommentsDrawer({
   const handleToggleMute = async () => {
     try {
       await toggleMute.mutateAsync();
-      showToast(isMuted ? 'Thread unmuted.' : 'Thread muted.', 'info');
+      toast.info(isMuted ? 'Thread unmuted.' : 'Thread muted.');
     } catch {
       // Error handled in hook
     }

@@ -6,7 +6,7 @@ import { CROnly, EmptyState } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
 import type { AssignmentSet, Assignment } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { useAssignments, useCreateAssignment, useDeleteAssignment, useUpdateAssignment, useSubmitAssignment, useUnsubmitAssignment } from '../../hooks/useAssignments';
 import { haptics } from '../../lib/haptics';
 import { useSubjects, useEnsureSubjects } from '../../hooks/useSubjects';
@@ -14,7 +14,7 @@ import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
-import { AssignmentsSkeleton } from '../../components/LoadingSkeletons';
+import Skeleton from 'react-loading-skeleton';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
@@ -106,36 +106,59 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
       if (!entry) return;
       setFiles(entry.files);
       setDescription(entry.caption);
-    }).catch(() => showToast('Failed to restore shared files', 'error'));
+    }).catch(() => toast.error('Failed to restore shared files'));
   }, [open, shareInboxId]);
+
+  const draftLoadedRef = useRef(false);
 
   // Load draft from localStorage on mount (when sheet opens)
   useEffect(() => {
     if (open) {
+      if (draftLoadedRef.current) return;
+      draftLoadedRef.current = true;
       const saved = localStorage.getItem('classhub-draft-assignment');
       if (saved) {
         try {
           const draft = JSON.parse(saved);
+          const hasDraftContent = !!(
+            draft.title?.trim() ||
+            draft.subjectId ||
+            draft.customSubjectName?.trim() ||
+            draft.dueDate ||
+            draft.description?.trim() ||
+            draft.hasSets
+          );
+
+          const isStateEmpty = !title && !subjectId && !customSubjectName && !dueDate && !description && !hasSets;
+
           if (draft.title) setTitle(draft.title);
           if (draft.subjectId) setSubjectId(draft.subjectId);
           if (draft.customSubjectName) setCustomSubjectName(draft.customSubjectName);
           if (draft.dueDate) setDueDate(draft.dueDate);
           if (draft.description) setDescription(draft.description);
           if (draft.hasSets !== undefined) setHasSets(draft.hasSets);
-          showToast('Draft recovered! ✓', 'success');
+
+          if (hasDraftContent && isStateEmpty) {
+            toast.success('Draft recovered! ✓');
+          }
         } catch (e) {
           console.error('Failed to parse draft', e);
         }
       }
+    } else {
+      draftLoadedRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Save draft to localStorage on fields change
   useEffect(() => {
     if (open) {
       const draft = { title, subjectId, customSubjectName, dueDate, description, hasSets };
-      if (title || subjectId || customSubjectName || dueDate || description || hasSets) {
+      if (title.trim() || subjectId || customSubjectName.trim() || dueDate || description.trim() || hasSets) {
         localStorage.setItem('classhub-draft-assignment', JSON.stringify(draft));
+      } else {
+        localStorage.removeItem('classhub-draft-assignment');
       }
     }
   }, [title, subjectId, customSubjectName, dueDate, description, hasSets, open]);
@@ -170,9 +193,9 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
 
   const handleGenerate = () => {
     const t = parseInt(totalStudents), s = parseInt(numSets);
-    if (!t || !s || t < 1 || s < 1) { showToast('Enter valid numbers', 'error'); return; }
+    if (!t || !s || t < 1 || s < 1) { toast.error('Enter valid numbers'); return; }
     setSets(autoGenerate(t, s, excludeFirstPage));
-    showToast(`Generated ${autoGenerate(t, s, excludeFirstPage).length} sets`, 'info');
+    toast.info(`Generated ${autoGenerate(t, s, excludeFirstPage).length} sets`);
   };
 
   const updateSet = (idx: number, field: keyof AssignmentSet, value: string) => {
@@ -205,13 +228,13 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
 
   const handlePublish = async () => {
     if (!title.trim() || !subjectId || !dueDate) {
-      showToast('Fill in all required fields', 'error'); return;
+      toast.error('Fill in all required fields'); return;
     }
     if (subjectId === 'other' && !customSubjectName.trim()) {
-      showToast('Enter a custom subject name', 'error'); return;
+      toast.error('Enter a custom subject name'); return;
     }
     if (hasSets && sets.length === 0) {
-      showToast('Generate or add at least one set', 'error'); return;
+      toast.error('Generate or add at least one set'); return;
     }
 
     setIsPublishing(true);
@@ -247,7 +270,7 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
         });
 
         if (uploadResult.failed.length > 0) {
-          showToast(`${uploadResult.failed.length} file(s) failed to upload`, 'warning');
+          toast.warning(`${uploadResult.failed.length} file(s) failed to upload`);
           if (shareInboxId) {
             const entry = await getShare(shareInboxId);
             if (entry) {
@@ -269,11 +292,11 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
         await deleteShare(shareInboxId);
       }
 
-      showToast('Assignment published! ✓', 'success');
+      toast.success('Assignment published! ✓');
       localStorage.removeItem('classhub-draft-assignment');
       handleClose();
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to publish', 'error');
+      toast.error(err instanceof Error ? err.message : 'Failed to publish');
     } finally {
       setIsPublishing(false);
       setUploadProgress(0);
@@ -346,7 +369,7 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn-secondary" style={{ flex: 1 }} onClick={handleClose}>Cancel</button>
             {hasSets
-              ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate || (subjectId === 'other' && !customSubjectName.trim())) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
+              ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate || (subjectId === 'other' && !customSubjectName.trim())) { toast.error('Fill required fields first'); return; } setStep(2); }}>Next →</button>
               : <button className="btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={handlePublish} disabled={pending}>
                   {pending && <Loader2 className="animate-spin" size={16} style={{ animation: 'spin 1s linear infinite' }} />}
                   {pending 
@@ -506,9 +529,9 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
 
   const handleGenerate = () => {
     const t = parseInt(totalStudents), s = parseInt(numSets);
-    if (!t || !s || t < 1 || s < 1) { showToast('Enter valid numbers', 'error'); return; }
+    if (!t || !s || t < 1 || s < 1) { toast.error('Enter valid numbers'); return; }
     setSets(autoGenerate(t, s, excludeFirstPage));
-    showToast(`Generated ${autoGenerate(t, s, excludeFirstPage).length} sets`, 'info');
+    toast.info(`Generated ${autoGenerate(t, s, excludeFirstPage).length} sets`);
   };
 
   const updateSet = (idx: number, field: keyof AssignmentSet, value: string) => {
@@ -541,13 +564,13 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
 
   const handleSave = async () => {
     if (!title.trim() || !subjectId || !dueDate) {
-      showToast('Fill in all required fields', 'error'); return;
+      toast.error('Fill in all required fields'); return;
     }
     if (subjectId === 'other' && !customSubjectName.trim()) {
-      showToast('Enter a custom subject name', 'error'); return;
+      toast.error('Enter a custom subject name'); return;
     }
     if (hasSets && sets.length === 0) {
-      showToast('Generate or add at least one set', 'error'); return;
+      toast.error('Generate or add at least one set'); return;
     }
 
     setIsPublishing(true);
@@ -574,10 +597,10 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
         notifyClass,
       });
 
-      showToast('Assignment updated successfully! ✓', 'success');
+      toast.success('Assignment updated successfully! ✓');
       onClose();
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to update assignment', 'error');
+      toast.error(err instanceof Error ? err.message : 'Failed to update assignment');
     } finally {
       setIsPublishing(false);
     }
@@ -660,7 +683,7 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
             {hasSets
-              ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate || (subjectId === 'other' && !customSubjectName.trim())) { showToast('Fill required fields first', 'error'); return; } setStep(2); }}>Next →</button>
+              ? <button className="btn-primary" style={{ flex: 1 }} onClick={() => { if (!title.trim() || !subjectId || !dueDate || (subjectId === 'other' && !customSubjectName.trim())) { toast.error('Fill required fields first'); return; } setStep(2); }}>Next →</button>
               : <button className="btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={pending}>{pending ? 'Saving…' : 'Save Changes'}</button>
             }
           </div>
@@ -768,6 +791,31 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
   );
 }
 
+function AssignmentsSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 0, padding: '16px' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <Skeleton width={44} height={44} borderRadius={12} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Skeleton width="60%" height={16} />
+              <Skeleton width="40%" height={12} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <Skeleton width={70} height={16} borderRadius="var(--radius-pill)" />
+                <Skeleton width={100} height={16} />
+              </div>
+            </div>
+          </div>
+          <Skeleton width="95%" height={13} style={{ marginTop: 6, marginBottom: 4 }} />
+          <Skeleton width="80%" height={13} style={{ marginTop: 6 }} />
+          <Skeleton width="100%" height={38} borderRadius="var(--radius-md)" style={{ marginTop: 8 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AssignmentsPage() {
   const navigate = useNavigate();
@@ -833,7 +881,7 @@ export default function AssignmentsPage() {
       }
     } catch (err) {
       console.error('[AssignmentsPage] Failed to open PDF:', err);
-      showToast('Failed to open PDF viewer', 'error');
+      toast.error('Failed to open PDF viewer');
     } finally {
       setOpeningSet(null);
     }
@@ -843,7 +891,7 @@ export default function AssignmentsPage() {
     try {
       haptics.doublePulse();
       await submitMutation.mutateAsync({ assignmentId: id, link: 'marked-submitted' });
-      showToast('Marked as submitted', 'success', {
+      toast.success('Marked as submitted', {
         duration: 4000,
         action: {
           label: 'Undo',
@@ -851,7 +899,7 @@ export default function AssignmentsPage() {
         },
       });
     } catch {
-      showToast('Failed to submit', 'error');
+      toast.error('Failed to submit');
     }
   };
 
@@ -859,9 +907,9 @@ export default function AssignmentsPage() {
     haptics.lightClick();
     try {
       await unsubmitMutation.mutateAsync({ assignmentId: id });
-      showToast('Submission undone', 'success');
+      toast.success('Submission undone');
     } catch {
-      showToast('Failed to undo submission', 'error');
+      toast.error('Failed to undo submission');
     }
   };
 
@@ -1183,7 +1231,7 @@ export default function AssignmentsPage() {
                             id={`del-assign-${a.id}`}
                             onClick={async () => {
                               if (confirm('Are you sure you want to delete this assignment?')) {
-                                try { await deleteAssignmentMutation.mutateAsync(a.id); showToast('Assignment deleted', 'info'); } catch { showToast('Failed to delete', 'error'); }
+                                try { await deleteAssignmentMutation.mutateAsync(a.id); toast.info('Assignment deleted'); } catch { toast.error('Failed to delete'); }
                               }
                             }}
                             style={{

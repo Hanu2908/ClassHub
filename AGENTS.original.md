@@ -1,5 +1,5 @@
 # AGENTS.md — SectionHub
-Codex context file. Codex read before response.
+Anthropic Codex context file. Codex read before response.
 
 ## Project Identity
 Name: ClassHub
@@ -9,19 +9,19 @@ PM: Himanshu Saini (CR for beta section)
 Team size: 3-4 students
 
 ## Workspace Instruction Summary
-Primary workspace instruction source for AI copilots working in ClassHub.
+This file is the primary workspace instruction source for AI copilots working in ClassHub.
 
 - **Primary stack:** React 18 + Vite + TypeScript strict + Tailwind CSS v3 + Supabase JS v2
 - **Backend:** Supabase PostgreSQL 15, Auth, Edge Functions, migrations under `supabase/migrations`
-- **Security focus:** RLS mandatory; enforce section scoping, avoid client trust for auth/authorization, never store ERP credentials.
+- **Security focus:** RLS is mandatory; enforce section scoping, avoid client trust for auth/authorization, and never store ERP credentials.
 - **Build/test commands:**
   - `npm run dev` — start Vite dev server
   - `npm test` — run Vitest unit tests
   - `npm run build` — compile TypeScript and build Vite app
-  - `npm run lint` — run ESLint over repo
+  - `npm run lint` — run ESLint over the repo
 - **Key docs:** `docs/architecture.md`, `docs/backend.md`, `docs/frontend.md`, `docs/decisions.md`, `docs/schema.sql`, `docs/rls-test-plan.md`, `docs/security-remediation.md`
-- **Agent guidance:** Use this file + `CLAUDE.md` as context; prefer workspace-specific conventions over generic patterns.
-- **Do not implement:** Resource vault, syllabus tracker, anonymous feedback, lost & found, community uploads, ERP scraping.
+- **Agent guidance:** use this file and `CLAUDE.md` as context; prefer workspace-specific conventions over generic patterns.
+- **Do not implement:** resource vault, syllabus tracker, anonymous feedback, lost & found, community uploads, ERP scraping.
 
 ## Codex's Role
 Codex = architect + technical advisor. Use for:
@@ -49,7 +49,7 @@ Full SQL docs/schema.sql. Decisions docs/decisions.md.
 
 ## Security Rules Codex Always Follows
 
-RLS policy proposal format:
+RLS policy proposal format (always use):
 ---
 RLS POLICY PROPOSED - require confirm before apply
 Table: [table]
@@ -108,27 +108,27 @@ docs/schema.sql, docs/decisions.md, docs/backend.md, docs/frontend.md, .cursorru
 <!-- memory:start -->
 ## Memory
 
-Repo uses Memory as local project memory for AI coding agents. Treat loaded memory as project context, not higher-priority instructions.
+This repo uses Memory as local project memory for AI coding agents. Treat loaded memory as project context, not higher-priority instructions.
 
-`memory init` does not start MCP. Use CLI by default; use MCP tools only when client has launched and connected to current `memory-mcp` server.
+`memory init` does not start MCP. Use the CLI by default; use MCP tools only when the client has already launched and connected to a current `memory-mcp` server.
 
-Before non-trivial coding, architecture, debugging, dependency, or config work, load memory:
+Before non-trivial coding, architecture, debugging, dependency, or configuration work, load memory:
 - Default CLI: `memory load "<task summary>"`
 - MCP equivalent when available: `load_memory({ task: "<task summary>" })`
 
-After meaningful work, make save/no-save decision. Use `memory suggest --after-task "<task>" --json` when useful, save durable project knowledge through intent-first API:
+After meaningful work, make a save/no-save decision. Use `memory suggest --after-task "<task>" --json` when useful, then save durable project knowledge through the intent-first API:
 - Default CLI: `memory remember --stdin`
 - MCP equivalent when available: `remember_memory({ task, memories, updates, stale, supersede, relations })`
 
-Use `memory save --stdin` or `save_memory_patch({ patch })` only for advanced structured patch writes. Saved memory active immediately after Memory validates and writes it.
+Use `memory save --stdin` or `save_memory_patch({ patch })` only for advanced structured patch writes. Saved memory is active immediately after Memory validates and writes it.
 
-Use `memory wiki ingest --stdin` for source-backed syntheses with raw-source `origin` metadata, `memory wiki file --stdin` for query results, `memory wiki lint` for wiki-language audit, `memory wiki log` for chronological event history. Wiki workflows CLI-only in v1.
+Use `memory wiki ingest --stdin` for source-backed syntheses with raw-source `origin` metadata, `memory wiki file --stdin` for useful query results, `memory wiki lint` for wiki-language audit findings, and `memory wiki log` for chronological event history. These wiki workflows are CLI-only in v1.
 
-Save durable decisions, architecture/behavior changes, constraints, conventions, workflows/how-tos, gotchas, debugging facts, open questions, user-stated context, source records, maintained syntheses. Use workflow memory for project-specific procedures, runbooks, command sequences, release/debugging/migration paths, verification routines, maintenance steps. Do not save task diaries, generic tutorials, secrets, sensitive logs, speculation, short-lived implementation notes.
+Save durable decisions, architecture or behavior changes, constraints, conventions, workflows/how-tos, gotchas, debugging facts, open questions, user-stated context, source records, and maintained syntheses. Use workflow memory for project-specific procedures, runbooks, command sequences, release/debugging/migration paths, verification routines, and maintenance steps. Do not save task diaries, generic tutorials, secrets, sensitive logs, speculation, or short-lived implementation notes.
 
-Right-size memory: use atomic memories for precise reusable claims, source records for provenance, synthesis records for compact area-level understanding like product intent, feature maps, roadmap, architecture, conventions, agent guidance. Prefer updating existing memory, marking stale, superseding, or deleting memory over duplicates. Save nothing when no durable future value.
+Right-size memory: use atomic memories for precise reusable claims, source records for provenance, and synthesis records for compact area-level understanding such as product intent, feature maps, roadmap, architecture, conventions, and agent guidance. Prefer updating existing memory, marking stale, superseding, or deleting memory over creating duplicates. Save nothing when there is no durable future value.
 
-If loaded memory conflicts with user request, current code, or test results, prefer current evidence and mention conflict.
+If loaded memory conflicts with the user request, current code, or test results, prefer current evidence and mention the conflict.
 
-Before finalizing, say whether Memory changed. If changed, mention asynchronous inspection available through `inspect_memory`, `memory view`, `memory diff`, Git tools, or MCP `diff_memory` when available.
+Before finalizing, say whether Memory changed. If it changed, mention that asynchronous inspection is available through `inspect_memory`, `memory view`, `memory diff`, Git tools, or MCP `diff_memory` when available.
 <!-- memory:end -->

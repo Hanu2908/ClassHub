@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Skeleton from 'react-loading-skeleton';
 
 // Regular Expression to match standard and short YouTube URLs
 const YOUTUBE_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
@@ -179,8 +180,8 @@ export function YouTubePlayer({ videoId }: YouTubePlayerProps) {
       >
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div className="skeleton" style={{ width: '80%', height: 16, borderRadius: 4, background: 'rgba(255, 255, 255, 0.1)' }} />
-            <div className="skeleton" style={{ width: '40%', height: 12, borderRadius: 4, background: 'rgba(255, 255, 255, 0.06)' }} />
+            <Skeleton width="80%" height={16} borderRadius={4} />
+            <Skeleton width="40%" height={12} borderRadius={4} />
           </div>
         ) : (
           <>

@@ -10,7 +10,7 @@ import { useAssignments } from '../../hooks/useAssignments';
 import { usePolls } from '../../hooks/usePolls';
 import { useAttendance } from '../../hooks/useAttendance';
 import { useExams, useStudentExamPrep } from '../../hooks/useExams';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { isPushSupported, getPushPermission } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
 
@@ -163,12 +163,12 @@ export default function DashboardPage() {
   const handleAcknowledgeAnnouncement = async (id: string) => {
     try {
       await acknowledgeMutation.mutateAsync(id);
-      showToast('Urgent post acknowledged ✓', 'success');
+      toast.success('Urgent post acknowledged ✓');
       const updated = [...dismissedAnnouncements, id];
       setDismissedAnnouncements(updated);
       sessionStorage.setItem('dismissed_critical_announcements', JSON.stringify(updated));
     } catch {
-      showToast('Failed to acknowledge', 'error');
+      toast.error('Failed to acknowledge');
     }
   };
 

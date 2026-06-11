@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, ClipboardList, Loader2, Megaphone, Trash2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileUploader } from '../../components/FileUploader';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { useAppStore } from '../../store/appStore';
 import { deleteShare, getShare, updateShare, type ShareInboxEntry } from '../../lib/shareInbox';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
@@ -29,7 +29,7 @@ export default function ShareIntakePage() {
     if (!id) return;
     getShare(id)
       .then(setEntry)
-      .catch(() => showToast('Failed to load shared files', 'error'))
+      .catch(() => toast.error('Failed to load shared files'))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -62,12 +62,12 @@ export default function ShareIntakePage() {
     });
     if (result.failed.length === 0) {
       await deleteShare(entry.id);
-      showToast('Missing attachments uploaded', 'success');
+      toast.success('Missing attachments uploaded');
       navigate(`/app/${entry.destination === 'announcement' ? 'announcements' : 'assignments'}`, { replace: true });
     } else {
       const failedNames = new Set(result.failed.map((item) => item.filename));
       await persist({ ...entry, files: entry.files.filter((file) => failedNames.has(file.name)) });
-      showToast(`${result.failed.length} attachment(s) still need retry`, 'warning');
+      toast.warning(`${result.failed.length} attachment(s) still need retry`);
     }
     setRetrying(false);
   };

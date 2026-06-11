@@ -1,14 +1,47 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, X, Users } from 'lucide-react';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
+import Skeleton from 'react-loading-skeleton';
 import { NavBar } from '../../components/NavBar';
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { useUserTagsBatch, useDeleteTag } from '../../hooks/useUserTags';
 import { useAppStore } from '../../store/appStore';
 import { TagPill, TagOverflow } from '../../components/TagPill';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 
 const MAX_VISIBLE_TAGS = 3;
+
+function DirectorySkeleton() {
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '14px 16px',
+            borderBottom: i < 5 ? '1px solid var(--border-default)' : 'none',
+          }}
+        >
+          <Skeleton circle width={36} height={36} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Skeleton width={120} height={16} />
+              <Skeleton width={40} height={14} />
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <Skeleton width={60} height={20} borderRadius="var(--radius-pill)" />
+              <Skeleton width={50} height={20} borderRadius="var(--radius-pill)" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function SectionDirectoryPage() {
   const navigate = useNavigate();
@@ -40,11 +73,27 @@ export default function SectionDirectoryPage() {
     setSearchParams({ tag: tagText });
   };
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setScrollMargin(containerRef.current.offsetTop);
+    }
+  }, [filteredMembers.length, tagFilter]);
+
+  const virtualizer = useWindowVirtualizer({
+    count: filteredMembers.length,
+    estimateSize: () => 72,
+    overscan: 10,
+    scrollMargin,
+  });
+
   const handleTagRemove = (tagId: string) => {
     if (window.confirm('Remove this tag from this student?')) {
       deleteTag.mutate(tagId, {
-        onSuccess: () => showToast('Tag removed', 'info'),
-        onError: (err) => showToast(`Failed: ${err.message}`, 'error'),
+        onSuccess: () => toast.info('Tag removed'),
+        onError: (err) => toast.error(`Failed: ${err.message}`),
       });
     }
   };
@@ -132,10 +181,7 @@ export default function SectionDirectoryPage() {
 
         {/* Loading state */}
         {isLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--text-muted)' }}>
-            <span className="spin" style={{ display: 'inline-block', width: 20, height: 20, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', marginRight: 8 }} />
-            <span className="t-mono-sm">Loading members...</span>
-          </div>
+          <DirectorySkeleton />
         ) : filteredMembers.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
             <p className="t-body-medium">No members found{tagFilter ? ` with tag "${tagFilter}"` : ''}.</p>
@@ -159,8 +205,19 @@ export default function SectionDirectoryPage() {
             )}
           </div>
         ) : (
-          <div className="card" style={{ padding: 0 }}>
-            {filteredMembers.map((member, i) => {
+          <div
+            ref={containerRef}
+            className="card"
+            style={{
+              padding: 0,
+              height: `${virtualizer.getTotalSize()}px`,
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const member = filteredMembers[virtualItem.index];
+              if (!member) return null;
+
               const tags = tagsByUser[member.id] ?? [];
               const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS);
               const overflowCount = tags.length - MAX_VISIBLE_TAGS;
@@ -168,12 +225,19 @@ export default function SectionDirectoryPage() {
               return (
                 <div
                   key={member.id}
+                  ref={virtualizer.measureElement}
+                  data-index={virtualItem.index}
                   style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualItem.start}px)`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
                     padding: '14px 16px',
-                    borderBottom: i < filteredMembers.length - 1 ? '1px solid var(--border-default)' : 'none',
+                    borderBottom: virtualItem.index < filteredMembers.length - 1 ? '1px solid var(--border-default)' : 'none',
                   }}
                 >
                   {/* Avatar */}

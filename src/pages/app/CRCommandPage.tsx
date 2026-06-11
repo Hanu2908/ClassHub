@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
@@ -9,14 +9,15 @@ import {
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppStore, isExpired } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { useAssignments, useAssignmentSubmissions, useCRToggleSubmission } from '../../hooks/useAssignments';
 import { useSectionMembers, useSection, useSectionAttendance, useSectionCRs, usePromoteToCoCR, useDemoteCoCR, useTransferPrimaryCR, useResignAsCR } from '../../hooks/useSectionMembers';
 import { useCreateAnnouncement } from '../../hooks/useAnnouncements';
 import type { SectionInfo } from '../../store/appStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
-import { SubmissionsSkeleton } from '../../components/LoadingSkeletons';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import Skeleton from 'react-loading-skeleton';
 import { haptics } from '../../lib/haptics';
 
 // ── Section header ────────────────────────────────────────────────────────────
@@ -44,7 +45,22 @@ function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: str
   );
 }
 
-// ── 1. Submission Tracker ─────────────────────────────────────────────────────
+function LocalSubmissionsSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: '1px solid var(--border-default)', borderRadius: 8, background: 'rgba(255, 255, 255, 0.02)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+            <Skeleton width="40%" height={13} />
+            <Skeleton width="25%" height={10} />
+          </div>
+          <Skeleton width={70} height={22} borderRadius={10} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type SubFilter = 'submitted' | 'not_submitted';
 
 function SubmissionTracker() {
@@ -74,13 +90,21 @@ function SubmissionTracker() {
   const submittedCount = submittedMembers.length;
   const filtered = subFilter === 'submitted' ? submittedMembers : pendingMembers;
 
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 50,
+    overscan: 5,
+  });
+
   const handleBulkNotify = async () => {
     if (pendingMembers.length === 0) {
-      showToast('All students have submitted!', 'info');
+      toast.info('All students have submitted!');
       return;
     }
     if (!selected) return;
-    showToast('Sending reminders...', 'info');
+    toast.info('Sending reminders...');
     try {
       const { data, error } = await supabase.functions.invoke('send-assignment-reminders', {
         body: { assignmentId: selected.id },
@@ -88,17 +112,17 @@ function SubmissionTracker() {
       if (error) throw error;
       const { sent, failed } = data;
       if (sent === 0 && failed > 0) {
-        showToast('Push delivery failed for all students', 'error');
+        toast.error('Push delivery failed for all students');
       } else if (sent > 0 && failed > 0) {
-        showToast(`Reminders sent to ${sent} students (${failed} failed)`, 'warning');
+        toast.warning(`Reminders sent to ${sent} students (${failed} failed)`);
       } else if (sent > 0) {
-        showToast(`Reminders sent to ${sent} students!`, 'success');
+        toast.success(`Reminders sent to ${sent} students!`);
       } else {
-        showToast('No pending students found', 'info');
+        toast.info('No pending students found');
       }
     } catch (err) {
       console.error('[Notify] Bulk remind failed:', err);
-      showToast('Failed to send reminders', 'error');
+      toast.error('Failed to send reminders');
     }
   };
 
@@ -233,143 +257,179 @@ function SubmissionTracker() {
               ) : null}
 
               {/* Student list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
-                {isLoading ? (
-                  <SubmissionsSkeleton />
-                ) : filtered.length === 0 ? (
-                  <p className="t-body" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
-                    No students in this list
-                  </p>
-                ) : filtered.map(st => {
-                  const subRecord = submissions.find(s => s.studentId === st.id);
-                  return (
-                    <div key={st.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '9px 12px', borderRadius: 8,
-                      background: subFilter === 'submitted' ? 'rgba(52,201,123,0.04)' : 'rgba(255,68,68,0.04)',
-                      border: subFilter === 'submitted' ? '1px solid rgba(52,201,123,0.12)' : '1px solid rgba(255,68,68,0.12)',
-                    }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: '50%',
-                        background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                      }}>
-                        <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{st.name}</p>
-                        <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>{st.universityRoll ?? ''}</p>
-                      </div>
-                      
-                      {subFilter === 'submitted' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {subRecord?.submissionLink && (
-                            <a
-                              href={subRecord.submissionLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
-                              title="View Submission Link"
-                            >
-                              <ExternalLink size={14} color="var(--accent-primary)" />
-                            </a>
-                          )}
-                          <button
-                            onClick={async () => {
-                              if (!selected) return;
-                              haptics.lightClick();
-                              try {
-                                await crToggle.mutateAsync({
-                                  assignmentId: selected.id,
-                                  studentId: st.id,
-                                  crVerified: false,
-                                });
-                                showToast(`Unmarked ${st.name}`, 'info');
-                              } catch {
-                                showToast('Failed to update', 'error');
-                              }
-                            }}
-                            disabled={crToggle.isPending && crToggle.variables?.studentId === st.id}
-                            style={{
-                              background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
-                              borderRadius: 6, padding: '3px 8px', cursor: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 'not-allowed' : 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: '#f59e0b', fontSize: 11, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
-                            }}
-                            title={`Unmark ${st.name} as submitted`}
-                          >
-                            {crToggle.isPending && crToggle.variables?.studentId === st.id ? (
-                              <Loader2 className="animate-spin" size={11} style={{ animation: 'spin 1s linear infinite' }} />
+              {isLoading ? (
+                <LocalSubmissionsSkeleton />
+              ) : filtered.length === 0 ? (
+                <p className="t-body" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
+                  No students in this list
+                </p>
+              ) : (
+                <div
+                  ref={parentRef}
+                  style={{
+                    maxHeight: 280,
+                    overflowY: 'auto',
+                    position: 'relative',
+                    width: '100%',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: `${virtualizer.getTotalSize()}px`,
+                      width: '100%',
+                      position: 'relative',
+                    }}
+                  >
+                    {virtualizer.getVirtualItems().map((virtualItem) => {
+                      const st = filtered[virtualItem.index];
+                      if (!st) return null;
+                      const subRecord = submissions.find(s => s.studentId === st.id);
+
+                      return (
+                        <div
+                          key={st.id}
+                          ref={virtualizer.measureElement}
+                          data-index={virtualItem.index}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            transform: `translateY(${virtualItem.start}px)`,
+                            paddingBottom: '6px',
+                          }}
+                        >
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '9px 12px', borderRadius: 8,
+                            background: subFilter === 'submitted' ? 'rgba(52,201,123,0.04)' : 'rgba(255,68,68,0.04)',
+                            border: subFilter === 'submitted' ? '1px solid rgba(52,201,123,0.12)' : '1px solid rgba(255,68,68,0.12)',
+                            width: '100%',
+                          }}>
+                            <div style={{
+                              width: 28, height: 28, borderRadius: '50%',
+                              background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                            }}>
+                              <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{st.name}</p>
+                              <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>{st.universityRoll ?? ''}</p>
+                            </div>
+                            
+                            {subFilter === 'submitted' ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {subRecord?.submissionLink && (
+                                  <a
+                                    href={subRecord.submissionLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
+                                    title="View Submission Link"
+                                  >
+                                    <ExternalLink size={14} color="var(--accent-primary)" />
+                                  </a>
+                                )}
+                                <button
+                                  onClick={async () => {
+                                    if (!selected) return;
+                                    haptics.lightClick();
+                                    try {
+                                      await crToggle.mutateAsync({
+                                        assignmentId: selected.id,
+                                        studentId: st.id,
+                                        crVerified: false,
+                                      });
+                                      toast.info(`Unmarked ${st.name}`);
+                                    } catch {
+                                      toast.error('Failed to update');
+                                    }
+                                  }}
+                                  disabled={crToggle.isPending && crToggle.variables?.studentId === st.id}
+                                  style={{
+                                    background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
+                                    borderRadius: 6, padding: '3px 8px', cursor: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 'not-allowed' : 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: '#f59e0b', fontSize: 11, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
+                                  }}
+                                  title={`Unmark ${st.name} as submitted`}
+                                >
+                                  {crToggle.isPending && crToggle.variables?.studentId === st.id ? (
+                                    <Loader2 className="animate-spin" size={11} style={{ animation: 'spin 1s linear infinite' }} />
+                                  ) : (
+                                    <XCircle size={12} />
+                                  )}
+                                  {crToggle.isPending && crToggle.variables?.studentId === st.id ? 'Saving…' : 'Unmark'}
+                                </button>
+                              </div>
                             ) : (
-                              <XCircle size={12} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                  onClick={async () => {
+                                    toast.info(`Nudging ${st.name}...`);
+                                    try {
+                                      const { error } = await supabase.functions.invoke('send-assignment-reminders', {
+                                        body: { assignmentId: selected?.id, studentId: st.id },
+                                        headers: {
+                                          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                                        }
+                                      });
+                                      if (error) throw error;
+                                      toast.success(`Nudged ${st.name}!`);
+                                    } catch (err) {
+                                      console.error('[Notify] Nudge failed:', err);
+                                      toast.error('Failed to nudge');
+                                    }
+                                  }}
+                                  style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}
+                                  title={`Nudge ${st.name}`}
+                                >
+                                  <Bell size={14} color="var(--accent-primary)" />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!selected) return;
+                                    haptics.doublePulse();
+                                    try {
+                                      await crToggle.mutateAsync({
+                                        assignmentId: selected.id,
+                                        studentId: st.id,
+                                        crVerified: true,
+                                      });
+                                      toast.success(`Marked ${st.name} as submitted ✓`);
+                                    } catch {
+                                      toast.error('Failed to update');
+                                    }
+                                  }}
+                                  disabled={crToggle.isPending && crToggle.variables?.studentId === st.id}
+                                  style={{
+                                    background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.25)',
+                                    borderRadius: 6, padding: '3px 8px', cursor: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 'not-allowed' : 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
+                                  }}
+                                  title={`Mark ${st.name} as submitted`}
+                                >
+                                  {crToggle.isPending && crToggle.variables?.studentId === st.id ? (
+                                    <Loader2 className="animate-spin" size={11} style={{ animation: 'spin 1s linear infinite' }} />
+                                  ) : (
+                                    <CheckCircle2 size={12} />
+                                  )}
+                                  {crToggle.isPending && crToggle.variables?.studentId === st.id ? 'Saving…' : 'Verify'}
+                                </button>
+                              </div>
                             )}
-                            {crToggle.isPending && crToggle.variables?.studentId === st.id ? 'Saving…' : 'Unmark'}
-                          </button>
+                          </div>
                         </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <button
-                            onClick={async () => {
-                              showToast(`Nudging ${st.name}...`, 'info');
-                              try {
-                                const { error } = await supabase.functions.invoke('send-assignment-reminders', {
-                                  body: { assignmentId: selected?.id, studentId: st.id },
-                                  headers: {
-                                    Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-                                  }
-                                });
-                                if (error) throw error;
-                                showToast(`Nudged ${st.name}!`, 'success');
-                              } catch (err) {
-                                console.error('[Notify] Nudge failed:', err);
-                                showToast('Failed to nudge', 'error');
-                              }
-                            }}
-                            style={{
-                              background: 'none', border: 'none', cursor: 'pointer',
-                              padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}
-                            title={`Nudge ${st.name}`}
-                          >
-                            <Bell size={14} color="var(--accent-primary)" />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!selected) return;
-                              haptics.doublePulse();
-                              try {
-                                await crToggle.mutateAsync({
-                                  assignmentId: selected.id,
-                                  studentId: st.id,
-                                  crVerified: true,
-                                });
-                                showToast(`Marked ${st.name} as submitted ✓`, 'success');
-                              } catch {
-                                showToast('Failed to update', 'error');
-                              }
-                            }}
-                            disabled={crToggle.isPending && crToggle.variables?.studentId === st.id}
-                            style={{
-                              background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.25)',
-                              borderRadius: 6, padding: '3px 8px', cursor: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 'not-allowed' : 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
-                            }}
-                            title={`Mark ${st.name} as submitted`}
-                          >
-                            {crToggle.isPending && crToggle.variables?.studentId === st.id ? (
-                              <Loader2 className="animate-spin" size={11} style={{ animation: 'spin 1s linear infinite' }} />
-                            ) : (
-                              <CheckCircle2 size={12} />
-                            )}
-                            {crToggle.isPending && crToggle.variables?.studentId === st.id ? 'Saving…' : 'Verify'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <p className="t-body" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
@@ -378,6 +438,23 @@ function SubmissionTracker() {
           )}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function LocalAttendanceSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+          <Skeleton circle width={32} height={32} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <Skeleton width="50%" height={14} style={{ marginBottom: 4 }} />
+            <Skeleton width="30%" height={10} />
+          </div>
+          <Skeleton width={50} height={24} borderRadius={12} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -464,6 +541,14 @@ function ClassAttendance() {
     const rollA = getRollNumber(a.classRoll);
     const rollB = getRollNumber(b.classRoll);
     return rollA - rollB;
+  });
+
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: sortedMembers.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 54,
+    overscan: 5,
   });
 
   return (
@@ -668,119 +753,145 @@ function ClassAttendance() {
           </div>
 
           {/* Members List Container */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            maxHeight: 280,
-            overflowY: 'auto'
-          }}>
-            {isAttendanceLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '30px', gap: 10 }}>
-                <Loader2 size={16} className="animate-spin" color="var(--accent-primary)" />
-                <p className="t-body" style={{ color: 'var(--text-muted)' }}>Loading attendance details...</p>
-              </div>
-            ) : sortedMembers.length === 0 ? (
-              <p className="t-body" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                {filter === 'below_75' ? 'No students below 75% attendance!' : 'No members found'}
-              </p>
-            ) : sortedMembers.map(st => {
-              const pct = st.overallPercentage;
-              return (
-                <div
-                  key={st.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 12px',
-                    borderRadius: 10,
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border-default)',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <div style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: '50%',
-                    background: 'var(--bg-base)',
-                    border: '1px solid var(--border-default)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{st.name}</p>
-                      <span style={{
-                        fontSize: '9px',
-                        fontWeight: 600,
-                        padding: '1.5px 5px',
-                        borderRadius: 4,
-                        letterSpacing: '0.02em',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        background: st.dayScholar ? 'rgba(96, 165, 250, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                        color: st.dayScholar ? '#60A5FA' : '#a78bfa',
-                        border: st.dayScholar ? '1px solid rgba(96, 165, 250, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)',
-                        userSelect: 'none',
-                      }}>
-                        {st.dayScholar ? 'DS 🚌' : 'Hostel 🏠'}
-                      </span>
-                    </div>
-                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>{st.universityRoll ?? st.email}</p>
-                  </div>
+          {isAttendanceLoading ? (
+            <LocalAttendanceSkeleton />
+          ) : sortedMembers.length === 0 ? (
+            <p className="t-body" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+              {filter === 'below_75' ? 'No students below 75% attendance!' : 'No members found'}
+            </p>
+          ) : (
+            <div
+              ref={parentRef}
+              style={{
+                maxHeight: 280,
+                overflowY: 'auto',
+                position: 'relative',
+                width: '100%',
+              }}
+            >
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualItem) => {
+                  const st = sortedMembers[virtualItem.index];
+                  if (!st) return null;
+                  const pct = st.overallPercentage;
 
-                  {pct === null ? (
-                    <span style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: '4px 8px',
-                      borderRadius: 'var(--radius-pill)',
-                      color: 'var(--text-secondary)',
-                      background: 'var(--border-default)',
-                      border: '1px solid var(--border-default)',
-                      userSelect: 'none',
-                    }}>
-                      N/A
-                    </span>
-                  ) : pct < 75 ? (
-                    <span style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: '4px 8px',
-                      borderRadius: 'var(--radius-pill)',
-                      color: 'var(--status-critical)',
-                      background: 'var(--status-critical-bg)',
-                      border: '1px solid rgba(248, 113, 113, 0.15)',
-                      boxShadow: 'var(--shadow-glow-red)',
-                      userSelect: 'none',
-                    }}>
-                      {pct.toFixed(1)}%
-                    </span>
-                  ) : (
-                    <span style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: '4px 8px',
-                      borderRadius: 'var(--radius-pill)',
-                      color: 'var(--status-safe)',
-                      background: 'var(--status-safe-bg)',
-                      border: '1px solid rgba(52, 211, 153, 0.15)',
-                      userSelect: 'none',
-                    }}>
-                      {pct.toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  return (
+                    <div
+                      key={st.id}
+                      ref={virtualizer.measureElement}
+                      data-index={virtualItem.index}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualItem.start}px)`,
+                        paddingBottom: '8px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '10px 12px',
+                          borderRadius: 10,
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-default)',
+                          transition: 'all 0.2s',
+                          width: '100%',
+                        }}
+                      >
+                        <div style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          background: 'var(--bg-base)',
+                          border: '1px solid var(--border-default)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{st.name}</p>
+                            <span style={{
+                              fontSize: '9px',
+                              fontWeight: 600,
+                              padding: '1.5px 5px',
+                              borderRadius: 4,
+                              letterSpacing: '0.02em',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              background: st.dayScholar ? 'rgba(96, 165, 250, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                              color: st.dayScholar ? '#60A5FA' : '#a78bfa',
+                              border: st.dayScholar ? '1px solid rgba(96, 165, 250, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)',
+                              userSelect: 'none',
+                            }}>
+                              {st.dayScholar ? 'DS 🚌' : 'Hostel 🏠'}
+                            </span>
+                          </div>
+                          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>{st.universityRoll ?? st.email}</p>
+                        </div>
+
+                        {pct === null ? (
+                          <span style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            padding: '4px 8px',
+                            borderRadius: 'var(--radius-pill)',
+                            color: 'var(--text-secondary)',
+                            background: 'var(--border-default)',
+                            border: '1px solid var(--border-default)',
+                            userSelect: 'none',
+                          }}>
+                            N/A
+                          </span>
+                        ) : pct < 75 ? (
+                          <span style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            padding: '4px 8px',
+                            borderRadius: 'var(--radius-pill)',
+                            color: 'var(--status-critical)',
+                            background: 'var(--status-critical-bg)',
+                            border: '1px solid rgba(248, 113, 113, 0.15)',
+                            boxShadow: 'var(--shadow-glow-red)',
+                            userSelect: 'none',
+                          }}>
+                            {pct.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            padding: '4px 8px',
+                            borderRadius: 'var(--radius-pill)',
+                            color: 'var(--status-safe)',
+                            background: 'var(--status-safe-bg)',
+                            border: '1px solid rgba(52, 211, 153, 0.15)',
+                            userSelect: 'none',
+                          }}>
+                            {pct.toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
     </div>
@@ -793,28 +904,47 @@ function SendNotificationSheet({ open, onClose }: { open: boolean; onClose: () =
   const [sending, setSending] = useState(false);
   const { data: section } = useSection();
 
-  // Load draft from localStorage on mount
+  const draftLoadedRef = useRef(false);
+
+  // Load draft from localStorage on mount (when sheet opens)
   useEffect(() => {
-    const saved = localStorage.getItem('classhub-draft-announcement');
-    if (saved) {
-      try {
-        const draft = JSON.parse(saved);
-        if (draft.title) setTitle(draft.title);
-        if (draft.body) setBody(draft.body);
-        showToast('Draft recovered! ✓', 'success');
-      } catch (e) {
-        console.error('Failed to parse draft', e);
+    if (open) {
+      if (draftLoadedRef.current) return;
+      draftLoadedRef.current = true;
+      const saved = localStorage.getItem('classhub-draft-announcement');
+      if (saved) {
+        try {
+          const draft = JSON.parse(saved);
+          const hasDraftContent = !!(draft.title?.trim() || draft.body?.trim());
+          const isStateEmpty = !title && !body;
+
+          if (draft.title) setTitle(draft.title);
+          if (draft.body) setBody(draft.body);
+
+          if (hasDraftContent && isStateEmpty) {
+            toast.success('Draft recovered! ✓');
+          }
+        } catch (e) {
+          console.error('Failed to parse draft', e);
+        }
       }
+    } else {
+      draftLoadedRef.current = false;
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Save draft to localStorage on fields change
   useEffect(() => {
-    const draft = { title, body };
-    if (title || body) {
-      localStorage.setItem('classhub-draft-announcement', JSON.stringify(draft));
+    if (open) {
+      const draft = { title, body };
+      if (title.trim() || body.trim()) {
+        localStorage.setItem('classhub-draft-announcement', JSON.stringify(draft));
+      } else {
+        localStorage.removeItem('classhub-draft-announcement');
+      }
     }
-  }, [title, body]);
+  }, [title, body, open]);
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -824,8 +954,8 @@ function SendNotificationSheet({ open, onClose }: { open: boolean; onClose: () =
   };
 
   const handleSend = async () => {
-    if (!title.trim()) { showToast('Title is required', 'error'); return; }
-    if (!body.trim())  { showToast('Message body is required', 'error'); return; }
+    if (!title.trim()) { toast.error('Title is required'); return; }
+    if (!body.trim())  { toast.error('Message body is required'); return; }
     if (!section?.id) return;
     setSending(true);
     try {
@@ -838,29 +968,31 @@ function SendNotificationSheet({ open, onClose }: { open: boolean; onClose: () =
 
       if (pushErr) {
         console.error('[Notify] Push failed:', pushErr);
-        showToast('Notification sent to bell icon! Push delivery failed.', 'warning');
+        toast.warning('Notification sent to bell icon! Push delivery failed.');
       } else if (pushData && !pushData.error) {
         const { sent, failed } = pushData;
         if (sent === 0 && failed > 0) {
-          showToast('Notification sent to bell icon! Push delivery failed for all.', 'warning');
+          toast.warning('Notification sent to bell icon! Push delivery failed for all.');
         } else if (sent > 0 && failed > 0) {
-          showToast(`Notification sent! Push delivered to ${sent} (${failed} failed).`, 'success');
+          toast.success(`Notification sent! Push delivered to ${sent} (${failed} failed).`);
         } else if (sent > 0) {
-          showToast(`Notification sent! Push delivered to ${sent} students.`, 'success');
+          toast.success(`Notification sent! Push delivered to ${sent} students.`);
         } else {
-          showToast('Notification sent! (No active subscriptions found)', 'success');
+          toast.success('Notification sent! (No active subscriptions found)');
         }
       } else if (pushData?.error) {
         console.error('[Notify] Edge function error:', pushData.error);
-        showToast(`Failed: ${pushData.error}`, 'error');
+        toast.error(`Failed: ${pushData.error}`);
       } else {
-        showToast('Notification sent!', 'success');
+        toast.success('Notification sent!');
       }
       localStorage.removeItem('classhub-draft-announcement');
+      setTitle('');
+      setBody('');
       onClose();
     } catch (err) {
       console.error('[Notify] Send failed:', err);
-      showToast('Failed to send notification', 'error');
+      toast.error('Failed to send notification');
     } finally {
       setSending(false);
     }
@@ -914,8 +1046,8 @@ function FlashPostSheet({ open, onClose }: { open: boolean; onClose: () => void 
   };
 
   const handleSend = async () => {
-    if (!title.trim()) { showToast('Title is required', 'error'); return; }
-    if (!body.trim())  { showToast('Message body is required', 'error'); return; }
+    if (!title.trim()) { toast.error('Title is required'); return; }
+    if (!body.trim())  { toast.error('Message body is required'); return; }
     
     let hoursToAdd = 0.5;
     if (timer === '30m') hoursToAdd = 0.5;
@@ -924,7 +1056,7 @@ function FlashPostSheet({ open, onClose }: { open: boolean; onClose: () => void 
     else if (timer === '6h') hoursToAdd = 6;
     else if (timer === 'custom') {
       const parsed = parseFloat(customHours);
-      if (isNaN(parsed) || parsed <= 0) { showToast('Invalid custom hours', 'error'); return; }
+      if (isNaN(parsed) || parsed <= 0) { toast.error('Invalid custom hours'); return; }
       hoursToAdd = parsed;
     }
 
@@ -937,11 +1069,11 @@ function FlashPostSheet({ open, onClose }: { open: boolean; onClose: () => void 
         priority: 'critical', // We'll map 'critical' with 'expires_at' as Flash Post
         expiresAt: expiresAt,
       });
-      showToast('Flash Post published!', 'success');
+      toast.success('Flash Post published!');
       onClose();
     } catch (err) {
       console.error('[FlashPost] Send failed:', err);
-      showToast('Failed to publish Flash Post', 'error');
+      toast.error('Failed to publish Flash Post');
     }
   };
 
@@ -1022,7 +1154,7 @@ function InviteCodeCard() {
 
   const copyCode = () => {
     navigator.clipboard.writeText(inviteCode);
-    showToast('Invite code copied to clipboard!', 'success');
+    toast.success('Invite code copied to clipboard!');
   };
 
   const shareCode = async () => {
@@ -1049,7 +1181,7 @@ function InviteCodeCard() {
       const newCode = prefix + randomAlpha(4);
 
       if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
-        showToast(`[Demo] Invite code rotated to ${newCode}!`, 'success');
+        toast.success(`[Demo] Invite code rotated to ${newCode}!`);
         queryClient.setQueryData(['section', section.id], (prev: SectionInfo | null | undefined) => prev ? { ...prev, inviteCode: newCode } : prev);
         setConfirmOpen(false);
         return;
@@ -1062,12 +1194,12 @@ function InviteCodeCard() {
 
       if (error) throw error;
 
-      showToast(`Invite code rotated to ${newCode}!`, 'success');
+      toast.success(`Invite code rotated to ${newCode}!`);
       queryClient.invalidateQueries({ queryKey: ['section', section.id] });
       setConfirmOpen(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to rotate invite code';
-      showToast(message, 'error');
+      toast.error(message);
     } finally {
       setRotating(false);
     }
@@ -1236,21 +1368,21 @@ function ManageCRs() {
   const handlePromote = async (userId: string) => {
     try {
       await promoteCo.mutateAsync(userId);
-      showToast('Co-CR added successfully!', 'success');
+      toast.success('Co-CR added successfully!');
       setShowAddCR(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to promote';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
   };
 
   const handleDemote = async (userId: string, name: string) => {
     try {
       await demoteCo.mutateAsync(userId);
-      showToast(`${name} removed from CR role`, 'info');
+      toast.info(`${name} removed from CR role`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to demote';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
   };
 
@@ -1261,22 +1393,22 @@ function ManageCRs() {
         newPrimaryId: transferTarget,
         oldCrAction: transferAction,
       });
-      showToast('Primary role transferred!', 'success');
+      toast.success('Primary role transferred!');
       setShowTransfer(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Transfer failed';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
   };
 
   const handleResign = async () => {
     try {
       await resignCR.mutateAsync();
-      showToast('You have resigned as CR', 'info');
+      toast.info('You have resigned as CR');
       setShowResign(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Resign failed';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
   };
 
@@ -1643,7 +1775,7 @@ export default function CRCommandPage() {
     setDeletingHub(true);
     try {
       if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
-        showToast('[Demo] Section Hub deleted successfully!', 'success');
+        toast.success('[Demo] Section Hub deleted successfully!');
         useAppStore.getState().signOut();
         navigate('/onboarding/choice', { replace: true });
         return;
@@ -1652,14 +1784,14 @@ export default function CRCommandPage() {
       const { error } = await supabase.rpc('delete_section_hub', { target_section_id: section.id });
       if (error) throw error;
 
-      showToast('Section Hub deleted successfully!', 'success');
+      toast.success('Section Hub deleted successfully!');
       // Purge all stale cached section data from Zustand (does NOT call supabase.auth.signOut)
       useAppStore.getState().signOut();
       navigate('/onboarding/choice', { replace: true });
     } catch (err: unknown) {
       console.error('[Delete] Hub deletion failed:', err);
       const errMsg = err instanceof Error ? err.message : 'Failed to delete Section Hub';
-      showToast(errMsg, 'error');
+      toast.error(errMsg);
     } finally {
       setDeletingHub(false);
       setShowDeleteSheet(false);

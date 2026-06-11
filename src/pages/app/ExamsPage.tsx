@@ -8,10 +8,11 @@ import {
 import { useExams, useStudentExamPrep, useUpsertExam, useDeleteExam, useUpsertExamOverride, useUpsertStudentExamPrep } from '../../hooks/useExams';
 import { useSubjects } from '../../hooks/useSubjects';
 import { useAppStore } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { BottomSheet } from '../../components/BottomSheet';
 import { NavBar } from '../../components/NavBar';
 import { supabase } from '../../lib/supabase';
+import { DatePicker } from '../../components/ui/DatePicker';
 
 // Harmonious subject gradient generator
 function generateGradient(str: string) {
@@ -145,10 +146,10 @@ function SyllabusChecklist({ examId, syllabusUnits }: { examId: string; syllabus
       });
       if (nextStatus) {
         triggerConfetti();
-        showToast(`Unit ${unitIndex + 1} prepared! Keep it up! 🎯`, 'success');
+        toast.success(`Unit ${unitIndex + 1} prepared! Keep it up! 🎯`);
       }
     } catch (err: any) {
-      showToast(err.message || 'Failed to update preparation status', 'error');
+      toast.error(err.message || 'Failed to update preparation status');
     }
   };
 
@@ -292,9 +293,9 @@ export default function ExamsPage() {
           const parsed = parseSyllabusText(text);
           setSyllabusUnitsText(parsed);
           triggerConfetti();
-          showToast('✨ Text syllabus topics auto-extracted!', 'success');
+          toast.success('✨ Text syllabus topics auto-extracted!');
         } catch {
-          showToast('Failed to parse text file.', 'warning');
+          toast.warning('Failed to parse text file.');
         } finally {
           setIsExtracting(false);
         }
@@ -322,16 +323,16 @@ export default function ExamsPage() {
           const parsed = parseSyllabusText(fullText);
           setSyllabusUnitsText(parsed);
           triggerConfetti();
-          showToast('✨ PDF syllabus topics auto-extracted successfully!', 'success');
+          toast.success('✨ PDF syllabus topics auto-extracted successfully!');
         } catch (err: any) {
-          showToast(err.message || 'Failed to parse PDF syllabus. Please enter manually.', 'warning');
+          toast.warning(err.message || 'Failed to parse PDF syllabus. Please enter manually.');
         } finally {
           setIsExtracting(false);
         }
       };
       reader.readAsArrayBuffer(file);
     } else {
-      showToast('Please upload a valid PDF or TXT file.', 'error');
+      toast.error('Please upload a valid PDF or TXT file.');
       setIsExtracting(false);
     }
   };
@@ -340,11 +341,11 @@ export default function ExamsPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        showToast('File is too large. Max size is 10MB.', 'error');
+        toast.error('File is too large. Max size is 10MB.');
         return;
       }
       setSeatingFile(file);
-      showToast(`Selected seating plan: ${file.name}`, 'info');
+      toast.info(`Selected seating plan: ${file.name}`);
     }
   };
 
@@ -352,7 +353,7 @@ export default function ExamsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjCodeVal || !subjNameVal || !dateVal || !startTimeVal || !endTimeVal) {
-      showToast('Please fill all mandatory fields', 'error');
+      toast.error('Please fill all mandatory fields');
       return;
     }
 
@@ -406,7 +407,7 @@ export default function ExamsPage() {
           room: overrideRoomVal || null,
           seatingPlanPath: seatingPath
         });
-        showToast('Section room & seating override published!', 'success');
+        toast.success('Section room & seating override published!');
       } else {
         // Save Base Exam
         await upsertExam.mutateAsync({
@@ -425,14 +426,14 @@ export default function ExamsPage() {
           syllabusPdfPath: syllabusPath,
           seatingPlanPath: seatingPath
         });
-        showToast(editingExam ? 'Exam details updated successfully!' : 'Central base exam published!', 'success');
+        toast.success(editingExam ? 'Exam details updated successfully!' : 'Central base exam published!');
       }
 
       setFormOpen(false);
       setEditingExam(null);
       resetForm();
     } catch (err: any) {
-      showToast(err.message || 'Operation failed', 'error');
+      toast.error(err.message || 'Operation failed');
     }
   };
 
@@ -479,10 +480,10 @@ export default function ExamsPage() {
     if (!window.confirm('Are you absolutely sure you want to delete this college base exam? It will remove it for all sections taking this subject.')) return;
     try {
       await deleteExam.mutateAsync(examId);
-      showToast('Exam deleted successfully', 'success');
+      toast.success('Exam deleted successfully');
       if (expandedExamId === examId) setExpandedExamId(null);
     } catch (err: any) {
-      showToast(err.message || 'Failed to delete exam', 'error');
+      toast.error(err.message || 'Failed to delete exam');
     }
   };
 
@@ -502,7 +503,7 @@ export default function ExamsPage() {
       
       navigate(`/app/pdf-viewer?url=${encodeURIComponent(data.signedUrl)}&title=${encodeURIComponent(titleStr)}`);
     } catch (err: any) {
-      showToast(err.message || 'Failed to open PDF', 'error');
+      toast.error(err.message || 'Failed to open PDF');
     }
   };
 
@@ -1074,13 +1075,10 @@ export default function ExamsPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Exam Date *:</label>
-                <input
-                  type="date"
-                  className="input"
+                <DatePicker
                   value={dateVal}
-                  onChange={e => setDateVal(e.target.value)}
-                  style={{ fontSize: 13 }}
-                  required
+                  onChange={setDateVal}
+                  placeholder="Select exam date..."
                 />
               </div>
 

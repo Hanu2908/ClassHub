@@ -5,11 +5,11 @@ import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { useSchedule, useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSchedule';
 import { useSubjects } from '../../hooks/useSubjects';
 import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS, formatTime, formatTimeRange } from '../../lib/scheduleUtils';
-import { ScheduleSkeleton } from '../../components/LoadingSkeletons';
+import Skeleton from 'react-loading-skeleton';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 type ScheduleDay = typeof DAYS[number];
@@ -103,7 +103,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
 
   const handleSave = async () => {
     if (!subjectId || !startTime || !endTime) {
-      showToast('Select a subject and set times', 'error');
+      toast.error('Select a subject and set times');
       return;
     }
     try {
@@ -117,7 +117,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
         teacher: teacher.trim() || undefined,
       });
       setAddedCount(c => c + 1);
-      showToast(`Slot added (${addedCount + 1})`, 'success');
+      toast.success(`Slot added (${addedCount + 1})`);
 
       // Auto-advance: start time = this slot's end time
       const nextStart = endTime;
@@ -125,7 +125,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       setEndTime(calculateEndTime(nextStart, type));
       // Room & teacher remembered, subject cleared for next pick
       setSubjectId('');
-    } catch (err: any) { showToast(`Failed to add slot: ${err.message || 'Unknown'}`, 'error'); }
+    } catch (err: any) { toast.error(`Failed to add slot: ${err.message || 'Unknown'}`); }
   };
 
   return (
@@ -276,9 +276,9 @@ function CopyDaySheet({ open, targetDay, schedule, onClose }: {
     if (!sourceDay) return;
     try {
       await copyMutation.mutateAsync({ fromDay: DAY_MAP[sourceDay], toDay: DAY_MAP[targetDay] });
-      showToast(`Copied ${sourceCount} slots from ${DAY_FULL[sourceDay]} → ${DAY_FULL[targetDay]}`, 'success');
+      toast.success(`Copied ${sourceCount} slots from ${DAY_FULL[sourceDay]} → ${DAY_FULL[targetDay]}`);
       onClose();
-    } catch { showToast('Failed to copy', 'error'); }
+    } catch { toast.error('Failed to copy'); }
   };
 
   return (
@@ -453,6 +453,35 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
             {formatTimeRange(cls.startTime, cls.endTime)} · {cls.code}{cls.room ? ` · ${cls.room}` : ''}{cls.teacher ? ` · ${cls.teacher}` : ''}
           </div>
           <div className="schedule-type">{CATEGORY_LABELS[cat] || cls.type}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScheduleSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="schedule-timeline" style={{ position: 'relative', height: 350, marginTop: 8 }}>
+        {[8, 9, 10, 11, 12, 13].map((h, i) => (
+          <div key={h} className="schedule-hour-mark" style={{ top: i * 70, position: 'absolute', left: 0, right: 0 }}>
+            <span className="schedule-hour-label" style={{ color: 'var(--text-muted)' }}>
+              {h % 12 || 12}{h < 12 ? 'am' : 'pm'}
+            </span>
+            <div className="schedule-hour-line" />
+          </div>
+        ))}
+        <div style={{ position: 'absolute', top: 15, left: 52, right: 8, height: 90, borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', padding: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', boxSizing: 'border-box', gap: 8 }}>
+          <Skeleton width="40%" height={14} />
+          <Skeleton width="65%" height={11} />
+        </div>
+        <div style={{ position: 'absolute', top: 135, left: 52, right: 8, height: 60, borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', padding: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', boxSizing: 'border-box', gap: 6 }}>
+          <Skeleton width="30%" height={14} />
+          <Skeleton width="50%" height={11} />
+        </div>
+        <div style={{ position: 'absolute', top: 215, left: 52, right: 8, height: 110, borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', padding: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', boxSizing: 'border-box', gap: 8 }}>
+          <Skeleton width="50%" height={14} />
+          <Skeleton width="70%" height={11} />
         </div>
       </div>
     </div>
@@ -698,9 +727,9 @@ export default function SchedulePage() {
   const handleClearDay = async () => {
     try {
       await clearDayMutation.mutateAsync(DAY_MAP[selectedDay]);
-      showToast(`Cleared all slots for ${DAY_FULL[selectedDay]}`, 'info');
+      toast.info(`Cleared all slots for ${DAY_FULL[selectedDay]}`);
       setConfirmClearDay(false);
-    } catch { showToast('Failed to clear day', 'error'); }
+    } catch { toast.error('Failed to clear day'); }
   };
 
   // Date subheading
@@ -1003,9 +1032,9 @@ export default function SchedulePage() {
                   if (prevSlotToDelete) {
                     try {
                       await deleteSlotMutation.mutateAsync(prevSlotToDelete.id);
-                      showToast('Class successfully removed', 'info');
+                      toast.info('Class successfully removed');
                     } catch (err: any) {
-                      showToast(`Failed to remove class: ${err.message || 'Unknown'}`, 'error');
+                      toast.error(`Failed to remove class: ${err.message || 'Unknown'}`);
                     }
                     setSlotToDelete(null);
                   }

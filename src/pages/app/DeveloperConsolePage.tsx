@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { supabase } from '../../lib/supabase';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { 
   ArrowLeft, 
   Users, 
@@ -135,7 +135,7 @@ export default function DeveloperConsolePage() {
     } catch (err) {
       console.error('[Ping Error]', err);
       setDbLatency('—');
-      showToast('Database latency check failed', 'error');
+      toast.error('Database latency check failed');
     } finally {
       setPinging(false);
     }
@@ -171,16 +171,16 @@ export default function DeveloperConsolePage() {
   const handleTestSubscribe = async () => {
     const success = await subscribeToPush();
     if (success) {
-      showToast('Successfully subscribed to Web Push!', 'success');
+      toast.success('Successfully subscribed to Web Push!');
     } else {
-      showToast('Subscription failed. Verify notification permissions.', 'error');
+      toast.error('Subscription failed. Verify notification permissions.');
     }
     refreshPushDiagnostics();
   };
 
   const handleTestUnsubscribe = async () => {
     await unsubscribeFromPush();
-    showToast('Successfully unsubscribed from Web Push.', 'info');
+    toast.info('Successfully unsubscribed from Web Push.');
     refreshPushDiagnostics();
   };
 
@@ -197,11 +197,11 @@ export default function DeveloperConsolePage() {
       });
 
       if (error) throw error;
-      showToast('Broadcast test push triggered successfully!', 'success');
+      toast.success('Broadcast test push triggered successfully!');
     } catch (err: unknown) {
       const error = err as Error;
       console.error('[Test Push Error]', error);
-      showToast(error.message || 'Failed to trigger test push broadcast', 'error');
+      toast.error(error.message || 'Failed to trigger test push broadcast');
     } finally {
       setSendingTestPush(false);
     }
@@ -250,7 +250,7 @@ export default function DeveloperConsolePage() {
       setReports(data as any as FeedbackReport[]);
     } catch (err: any) {
       console.error('[FetchReports Error]', err);
-      showToast(err.message || 'Failed to load feedback reports', 'error');
+      toast.error(err.message || 'Failed to load feedback reports');
     } finally {
       setLoading(false);
     }
@@ -273,9 +273,9 @@ export default function DeveloperConsolePage() {
       setReports(prev =>
         prev.map(r => r.id === id ? { ...r, status: nextStatus, updated_at: new Date().toISOString() } : r)
       );
-      showToast(`Status updated to ${nextStatus}`, 'success');
+      toast.success(`Status updated to ${nextStatus}`);
     } catch (err: any) {
-      showToast(err.message || 'Failed to update report status', 'error');
+      toast.error(err.message || 'Failed to update report status');
     }
   };
 
@@ -294,9 +294,9 @@ export default function DeveloperConsolePage() {
         prev.map(r => r.id === id ? { ...r, developer_notes: tempNotes.trim() || null, updated_at: new Date().toISOString() } : r)
       );
       setEditingNotesId(null);
-      showToast('Developer notes updated successfully', 'success');
+      toast.success('Developer notes updated successfully');
     } catch (err: any) {
-      showToast(err.message || 'Failed to save notes', 'error');
+      toast.error(err.message || 'Failed to save notes');
     } finally {
       setUpdatingNotesId(null);
     }
@@ -314,9 +314,9 @@ export default function DeveloperConsolePage() {
       if (error) throw error;
 
       setReports(prev => prev.filter(r => r.id !== id));
-      showToast('Report purged successfully', 'info');
+      toast.info('Report purged successfully');
     } catch (err: any) {
-      showToast(err.message || 'Failed to delete report', 'error');
+      toast.error(err.message || 'Failed to delete report');
     }
   };
 

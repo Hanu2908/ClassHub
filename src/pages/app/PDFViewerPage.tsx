@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ZoomIn, ZoomOut, Download, Share2, Loader2, AlertCircle } from 'lucide-react';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 
 declare global {
   interface Window {
@@ -533,9 +533,9 @@ export default function PDFViewerPage() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      showToast('Download started', 'success');
+      toast.success('Download started');
     } catch {
-      showToast('Failed to download PDF', 'error');
+      toast.error('Failed to download PDF');
     }
   };
 
@@ -552,12 +552,12 @@ export default function PDFViewerPage() {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(url);
-        showToast('Temporary view link copied to clipboard!', 'success');
+        toast.success('Temporary view link copied to clipboard!');
       }
     } catch (err: any) {
       if (err?.name !== 'AbortError') {
         console.error('[PDFViewer] Share error:', err);
-        showToast('Could not share link', 'error');
+        toast.error('Could not share link');
       }
     }
   };

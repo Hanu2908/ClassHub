@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { BottomSheet } from './BottomSheet';
-import { showToast } from './Toast';
+import { toast } from 'sonner';
 import {
   useSectionTagPool,
   useAddTag,
@@ -41,18 +41,18 @@ export function AddTagSheet({ open, onClose }: AddTagSheetProps) {
         tagText: trimmed,
         expiresAt: computeExpiresAt(selectedDuration),
       });
-      showToast('Tag added ✓', 'success');
+      toast.success('Tag added ✓');
       setInputVal('');
       setSelectedDuration(null);
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('Maximum 5')) {
-        showToast('You already have 5 active tags. Remove one first.', 'error');
+        toast.error('You already have 5 active tags. Remove one first.');
       } else if (msg.includes('idx_user_tags_no_duplicates') || msg.includes('duplicate')) {
-        showToast('You already have this tag!', 'error');
+        toast.error('You already have this tag!');
       } else {
-        showToast(`Failed to add tag: ${msg}`, 'error');
+        toast.error(`Failed to add tag: ${msg}`);
       }
     }
   };

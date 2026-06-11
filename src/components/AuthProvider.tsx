@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppStore, type AuthUser } from '../store/appStore';
 import { queryClient } from '../lib/queryClient';
-import { showToast } from '../components/Toast';
+import { toast } from 'sonner';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { ensurePushSubscription } from '../lib/pushNotifications';
 import { saveSession, clearSession, playbackOfflineActionsClient } from '../lib/offlineSync';
@@ -125,7 +125,7 @@ async function handleSession(
     } else {
       // Surface a lightweight diagnostic to the user so mobile issues are visible
       try {
-        showToast('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.', 'warning');
+        toast.warning('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.');
       } catch {
         // ignore if toast system is not yet mounted
       }
@@ -340,7 +340,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       playbackOfflineActionsClient()
         .then(() => {
           store.setSyncStatus('synced');
-          showToast('Offline actions synchronized successfully.', 'success');
+          toast.success('Offline actions synchronized successfully.');
           // Smoothly reset back to online state after showing success confirmation
           setTimeout(() => {
             if (useAppStore.getState().syncStatus === 'synced') {
@@ -355,7 +355,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const handleOnline = () => {
-      showToast('Connection restored. Syncing offline changes...', 'info');
+      toast.info('Connection restored. Syncing offline changes...');
       triggerClientPlayback();
 
       // Notify Service Worker to run sync if supported
@@ -366,7 +366,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const handleOffline = () => {
       store.setSyncStatus('offline');
-      showToast('Offline Mode. Timetable and attendance loaded from cache.', 'warning');
+      toast.warning('Offline Mode. Timetable and attendance loaded from cache.');
     };
 
     const handleSWMessage = (event: MessageEvent) => {

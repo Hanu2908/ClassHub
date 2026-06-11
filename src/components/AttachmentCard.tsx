@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, FileText, FileImage, FileCode, File, Loader2, ImageOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { AnimatePresence } from 'motion/react';
 import type { Attachment } from '../store/appStore';
 import { isPreviewableImage } from '../lib/utils/attachments';
 import { getThumbPath, decodeAtReducedResolution } from '../lib/utils/imageResize';
@@ -403,19 +404,21 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
         )}
       </div>
 
-      {showZoomModal && previewState.thumbUrl && (
-        <React.Suspense fallback={
-          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)' }}>
-            <Loader2 className="animate-spin" color="#fff" size={32} />
-          </div>
-        }>
-          <ImageZoomModal
-            thumbUrl={previewState.thumbUrl}
-            fullUrl={previewState.fullUrl || previewState.thumbUrl}
-            onClose={() => setShowZoomModal(false)}
-          />
-        </React.Suspense>
-      )}
+      <AnimatePresence>
+        {showZoomModal && previewState.thumbUrl && (
+          <React.Suspense fallback={
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)' }}>
+              <Loader2 className="animate-spin" color="#fff" size={32} />
+            </div>
+          }>
+            <ImageZoomModal
+              thumbUrl={previewState.thumbUrl}
+              fullUrl={previewState.fullUrl || previewState.thumbUrl}
+              onClose={() => setShowZoomModal(false)}
+            />
+          </React.Suspense>
+        )}
+      </AnimatePresence>
     </>
   );
 });

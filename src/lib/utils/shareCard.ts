@@ -1,4 +1,4 @@
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 
 export async function shareAnnouncementCard(
   announcement: { title: string },
@@ -7,7 +7,7 @@ export async function shareAnnouncementCard(
   onEndCapture: () => void
 ) {
   if (!portalRef.current) {
-    showToast('Failed to prepare sharing portal', 'error');
+    toast.error('Failed to prepare sharing portal');
     return;
   }
 
@@ -28,7 +28,7 @@ export async function shareAnnouncementCard(
     // 3. Convert canvas to PNG Blob
     canvas.toBlob(async (blob) => {
       if (!blob) {
-        showToast('Failed to generate image', 'error');
+        toast.error('Failed to generate image');
         onEndCapture();
         return;
       }
@@ -59,7 +59,7 @@ export async function shareAnnouncementCard(
 
   } catch (error) {
     console.error('[ShareCard] Capture error:', error);
-    showToast('Failed to share notice', 'error');
+    toast.error('Failed to share notice');
     onEndCapture();
   }
 }
@@ -71,5 +71,5 @@ function triggerDownload(blob: Blob, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('Notice downloaded as image ✓', 'success');
+  toast.success('Notice downloaded as image ✓');
 }

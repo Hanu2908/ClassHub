@@ -7,7 +7,9 @@ import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
+import Skeleton from 'react-loading-skeleton';
 import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useAnnouncements';
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { AnnouncementQAFooter, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
@@ -15,7 +17,6 @@ import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
 import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
-import { AnnouncementsSkeleton } from '../../components/LoadingSkeletons';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
 import RichTextBody from '../../components/RichTextBody';
 import { OffscreenSharePortal } from '../../components/announcement-qa/OffscreenSharePortal';
@@ -51,7 +52,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
       if (!entry) return;
       setFiles(entry.files);
       setBody(entry.caption);
-    }).catch(() => showToast('Failed to restore shared files', 'error'));
+    }).catch(() => toast.error('Failed to restore shared files'));
   }, [shareInboxId]);
 
   const inputStyle: React.CSSProperties = {
@@ -62,7 +63,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
   };
 
   const handlePost = async () => {
-    if (!title.trim() || !body.trim()) { showToast('Title and body required', 'error'); return; }
+    if (!title.trim() || !body.trim()) { toast.error('Title and body required'); return; }
     
     setIsPosting(true);
     try {
@@ -85,7 +86,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
         });
 
         if (uploadResult.failed.length > 0) {
-          showToast(`${uploadResult.failed.length} file(s) failed to upload`, 'warning');
+          toast.warning(`${uploadResult.failed.length} file(s) failed to upload`);
           if (shareInboxId) {
             const entry = await getShare(shareInboxId);
             if (entry) {
@@ -107,10 +108,10 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
         await deleteShare(shareInboxId);
       }
 
-      showToast('Announcement posted', 'success');
+      toast.success('Announcement posted');
       onClose();
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Failed to post', 'error');
+      toast.error(err instanceof Error ? err.message : 'Failed to post');
     } finally {
       setIsPosting(false);
       setUploadProgress(0);
@@ -719,6 +720,24 @@ export function AnnouncementCardComponent({
   );
 }
 
+function AnnouncementsSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '18px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Skeleton width={90} height={16} borderRadius="var(--radius-pill)" />
+            <Skeleton width={60} height={12} />
+          </div>
+          <Skeleton width="75%" height={18} style={{ margin: '4px 0 6px' }} />
+          <Skeleton width="95%" height={13} style={{ marginBottom: 4 }} />
+          <Skeleton width="80%" height={13} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -879,7 +898,7 @@ export default function AnnouncementsPage() {
       }, 100);
     } catch (err) {
       console.error('[Share] Failed to share announcement:', err);
-      showToast('Failed to share announcement notice', 'error');
+      toast.error('Failed to share announcement notice');
     }
   };
 
@@ -1061,23 +1080,74 @@ export default function AnnouncementsPage() {
     return groupByTimeline(filtered, now);
   }, [filtered, now]);
 
+  // Virtualization setup
+  const flatItems = useMemo(() => {
+    if (layoutMode === 'feed') {
+      return filtered.map(ann => ({ type: 'card' as const, key: ann.id, data: ann }));
+    }
+
+    const { thisWeek, lastWeek, older } = groupedAnnouncements;
+    const items: Array<
+      | { type: 'header'; key: string; title: string; count: number }
+      | { type: 'card'; key: string; data: AnnouncementWithAck }
+    > = [];
+
+    if (thisWeek.length > 0) {
+      items.push({ type: 'header', key: 'header-thisWeek', title: 'This Week', count: thisWeek.length });
+      thisWeek.forEach(ann => {
+        items.push({ type: 'card', key: ann.id, data: ann });
+      });
+    }
+    if (lastWeek.length > 0) {
+      items.push({ type: 'header', key: 'header-lastWeek', title: 'Last Week', count: lastWeek.length });
+      lastWeek.forEach(ann => {
+        items.push({ type: 'card', key: ann.id, data: ann });
+      });
+    }
+    if (older.length > 0) {
+      items.push({ type: 'header', key: 'header-older', title: 'Older', count: older.length });
+      older.forEach(ann => {
+        items.push({ type: 'card', key: ann.id, data: ann });
+      });
+    }
+    return items;
+  }, [layoutMode, filtered, groupedAnnouncements]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setScrollMargin(containerRef.current.offsetTop);
+    }
+  }, [showSearch, searchQuery, activeTab, filter, activeFlashPosts.length]);
+
+  const virtualizer = useWindowVirtualizer({
+    count: flatItems.length,
+    estimateSize: () => 200,
+    getItemKey: (index) => flatItems[index]?.key || index,
+    overscan: 5,
+    scrollMargin,
+  });
+
+
   const handleDelete = async (id: string) => {
     try {
       await deleteAnn.mutateAsync(id);
-      showToast('Announcement deleted', 'info');
-    } catch { showToast('Failed to delete', 'error'); }
+      toast.info('Announcement deleted');
+    } catch { toast.error('Failed to delete'); }
   };
 
   const handleAcknowledge = async (id: string) => {
     try {
       await ackMutation.mutateAsync(id);
-      showToast('Acknowledged ✓', 'success');
+      toast.success('Acknowledged ✓');
       setJustAckedIds(prev => {
         const next = new Set(prev);
         next.add(id);
         return next;
       });
-    } catch { showToast('Failed to acknowledge', 'error'); }
+    } catch { toast.error('Failed to acknowledge'); }
   };
 
   return (
@@ -1397,54 +1467,55 @@ export default function AnnouncementsPage() {
             return <EmptyState icon={<Inbox size={36} color="var(--text-muted)" />} title="Nothing here" subtitle="No announcements found" />;
           }
 
-          const renderCard = (ann: Announcement & { isAcknowledged: boolean }) => {
-            const isHighlighted = highlightId === ann.id;
-            return (
-              <AnnouncementCardComponent
-                key={ann.id}
-                ann={ann}
-                isHighlighted={isHighlighted}
-                highlightRef={highlightRef}
-                role={role}
-                totalStudentsCount={totalStudentsCount}
-                ackCountsMap={ackCountsMap}
-                handleAcknowledge={handleAcknowledge}
-                setPendingDeleteId={setPendingDeleteId}
-                setTrackingAnnouncement={setTrackingAnnouncement}
-                setOpenCommentsAnnId={setOpenCommentsAnnId}
-                onShare={handleShareAnnouncement}
-              />
-            );
-          };
+          return (
+            <div
+              ref={containerRef}
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem: any) => {
+                const item = flatItems[virtualItem.index];
+                if (!item) return null;
 
-          if (layoutMode === 'timeline') {
-            const { thisWeek, lastWeek, older } = groupedAnnouncements;
-            return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {thisWeek.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <TimelineSection title="This Week" count={thisWeek.length} />
-                    {thisWeek.map(renderCard)}
+                return (
+                  <div
+                    key={item.key}
+                    ref={virtualizer.measureElement}
+                    data-index={virtualItem.index}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                      paddingBottom: '16px',
+                    }}
+                  >
+                    {item.type === 'header' ? (
+                      <TimelineSection title={item.title} count={item.count} />
+                    ) : (
+                      <AnnouncementCardComponent
+                        ann={item.data}
+                        isHighlighted={highlightId === item.data.id}
+                        highlightRef={highlightRef}
+                        role={role}
+                        totalStudentsCount={totalStudentsCount}
+                        ackCountsMap={ackCountsMap}
+                        handleAcknowledge={handleAcknowledge}
+                        setPendingDeleteId={setPendingDeleteId}
+                        setTrackingAnnouncement={setTrackingAnnouncement}
+                        setOpenCommentsAnnId={setOpenCommentsAnnId}
+                        onShare={handleShareAnnouncement}
+                      />
+                    )}
                   </div>
-                )}
-                {lastWeek.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <TimelineSection title="Last Week" count={lastWeek.length} />
-                    {lastWeek.map(renderCard)}
-                  </div>
-                )}
-                {older.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <TimelineSection title="Older" count={older.length} />
-                    {older.map(renderCard)}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // Feed Mode
-          return filtered.map(renderCard);
+                );
+              })}
+            </div>
+          );
         })()}
       </main>
 

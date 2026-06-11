@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ZoomIn, ZoomOut } from 'lucide-react';
+import { motion } from 'motion/react';
 
 interface ImageZoomModalProps {
   thumbUrl: string;    // Shown immediately (already cached by card)
@@ -207,11 +208,15 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
   };
 
   return createPortal(
-    <div
+    <motion.div
       ref={containerRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="zoom-modal-title"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22 }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -257,7 +262,7 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
       </button>
 
       {/* Centered Image */}
-      <img
+      <motion.img
         ref={imgRef}
         src={displayUrl}
         alt="Expanded view with zoom support"
@@ -275,6 +280,10 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
             reset();
           }
         }}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: currentScale, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 220 }}
         style={{
           maxWidth: '100vw',
           maxHeight: '100vh',
@@ -376,7 +385,7 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
           </span>
         )}
       </div>
-    </div>,
+    </motion.div>,
     document.body
   );
 }

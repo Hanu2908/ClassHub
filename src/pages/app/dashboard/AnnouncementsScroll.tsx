@@ -4,7 +4,7 @@ import { AlertTriangle, Megaphone, Award, Calendar, Coffee, Paperclip, ChevronLe
 import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../../store/appStore';
 import { useAnnouncements, useAcknowledge } from '../../../hooks/useAnnouncements';
-import { showToast } from '../../../components/Toast';
+import { toast } from 'sonner';
 import { AttachmentCard } from '../../../components/AttachmentCard';
 import { AnnouncementQAFooter } from '../../../components/AnnouncementQA';
 import { useQueryClient } from '@tanstack/react-query';
@@ -174,7 +174,7 @@ export default function AnnouncementsScroll() {
       }, 100);
     } catch (err) {
       console.error('[Share] Failed to share announcement:', err);
-      showToast('Failed to share announcement notice', 'error');
+      toast.error('Failed to share announcement notice');
     }
   };
 
@@ -374,9 +374,9 @@ export default function AnnouncementsScroll() {
                                   e.stopPropagation();
                                   try {
                                     await acknowledgeMutation.mutateAsync(ann.id);
-                                    showToast('Notice acknowledged successfully!', 'success');
+                                    toast.success('Notice acknowledged successfully!');
                                   } catch {
-                                    showToast('Failed to acknowledge notice', 'error');
+                                    toast.error('Failed to acknowledge notice');
                                   }
                                 }}
                                 style={{
@@ -600,9 +600,9 @@ export default function AnnouncementsScroll() {
                       await acknowledgeMutation.mutateAsync(prevSelectedAnn.id);
                       setSelectedAnn(prev => prev ? { ...prev, isAcknowledged: true } : null);
                       setPrevSelectedAnn(prev => prev ? { ...prev, isAcknowledged: true } : null);
-                      showToast('Notice acknowledged successfully!', 'success');
+                      toast.success('Notice acknowledged successfully!');
                     } catch {
-                      showToast('Failed to acknowledge notice', 'error');
+                      toast.error('Failed to acknowledge notice');
                     }
                   }}
                   disabled={acknowledgeMutation.isPending}

@@ -1,12 +1,17 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import viteCompression from 'vite-plugin-compression'
 import path from "path"
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+    }),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -46,6 +51,7 @@ export default defineConfig({
     }
   },
   test: {
+    environment: 'happy-dom',
     setupFiles: ['./tests/setup.ts'],
   },
 })

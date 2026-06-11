@@ -4,19 +4,19 @@ import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, Edit3,
   TrendingUp, TrendingDown, Target, Info, ChevronDown, ChevronUp,
   BarChart3, PieChart, Calendar, Plus, Minus, Calculator,
-  Crown, Trophy, Sparkles, BookOpen, Clock, UserCheck
+  Crown, Trophy, Sparkles, BookOpen, Clock, UserCheck, ExternalLink
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { DonutRing } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import type { AttendanceSubject } from '../../store/appStore';
 import { useAppStore } from '../../store/appStore';
 import { useAttendance, useBulkUpsertAttendance, useUpdateSubject } from '../../hooks/useAttendance';
 import { useSchedule } from '../../hooks/useSchedule';
 import { useEnsureSubjects } from '../../hooks/useSubjects';
-import { AttendanceSkeleton } from '../../components/LoadingSkeletons';
 import { haptics } from '../../lib/haptics';
+import Skeleton from 'react-loading-skeleton';
 
 
 import { parseERPAttendance } from '../../lib/utils/attendance';
@@ -116,6 +116,23 @@ function SubjectCard({ sub }: { sub: AttendanceSubject }) {
   );
 }
 
+function AttendanceSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, gap: 12, marginBottom: 0 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+            <Skeleton width="80%" height={16} />
+            <Skeleton width="45%" height={11} style={{ marginTop: 2 }} />
+            <Skeleton width="60%" height={12} style={{ marginTop: 4 }} />
+          </div>
+          <Skeleton circle width={56} height={56} style={{ flexShrink: 0 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AttendancePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -137,6 +154,39 @@ export default function AttendancePage() {
   const [erpText, setErpText] = useState('');
   const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
   const [selectedImportSemester, setSelectedImportSemester] = useState<number>(1);
+
+  useEffect(() => {
+    if (erpOpen && !erpText) {
+      navigator.clipboard.readText()
+        .then(text => {
+          if (text && text.trim()) {
+            const lower = text.toLowerCase();
+            const looksLikeErp = lower.includes('subject') || lower.includes('attendance') || lower.includes('\t') || lower.includes('%');
+            if (looksLikeErp) {
+              setErpText(text);
+              toast.success('Auto-filled from clipboard! ✓');
+            }
+          }
+        })
+        .catch(err => {
+          console.log('Clipboard access blocked or unsupported:', err);
+        });
+    }
+  }, [erpOpen, erpText]);
+
+  const handleClipboardPaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        setErpText(text);
+        toast.success('Pasted from clipboard! ✓');
+      } else {
+        toast.error('Clipboard is empty');
+      }
+    } catch (err) {
+      toast.error('Clipboard permission denied. Please paste manually.');
+    }
+  };
 
 
   // Playground / Sandbox States
@@ -426,7 +476,7 @@ export default function AttendancePage() {
   const handleParse = async () => {
     const result = parseERPAttendance(erpText);
     if (result.length === 0) {
-      showToast('Could not parse attendance. Check format.', 'error');
+      toast.error('Could not parse attendance. Check format.');
       return;
     }
 
@@ -444,10 +494,10 @@ export default function AttendancePage() {
       );
       const enriched = result.map(r => ({ ...r, subjectId: mapping[r.code] ?? null }));
       setParsed(enriched);
-      showToast(`Parsed ${result.length} subjects. Review and confirm.`, 'info');
+      toast.info(`Parsed ${result.length} subjects. Review and confirm.`);
     } catch (err: unknown) {
       console.error('Error ensuring subjects', err);
-      showToast(err instanceof Error ? err.message : 'Failed to prepare subjects', 'error');
+      toast.error(err instanceof Error ? err.message : 'Failed to prepare subjects');
       setParsed(result.map(r => ({ ...r, subjectId: null })));
     }
   };
@@ -470,11 +520,11 @@ export default function AttendancePage() {
 
     bulkUpsert.mutate(importItems, {
       onSuccess: () => {
-        showToast('ERP attendance imported successfully', 'success');
+        toast.success('ERP attendance imported successfully');
       },
       onError: (err: Error) => {
         console.error('ERP import error', err);
-        showToast(err.message ?? 'Failed to import attendance', 'error');
+        toast.error(err.message ?? 'Failed to import attendance');
       }
     });
   };
@@ -509,7 +559,7 @@ export default function AttendancePage() {
   if (isAuthLoading && !authUser) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
-        <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+        <Skeleton circle width={32} height={32} />
       </div>
     );
   }
@@ -1152,38 +1202,102 @@ export default function AttendancePage() {
         open={erpOpen}
         onClose={() => { setErpOpen(false); setParsed(null); }}
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <span className="t-card-title" style={{ color: 'var(--text-primary)' }}>Update from ERP</span>
-            <a
-              href="https://erp.skit.ac.in/reports/student_aggregate"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '4px 10px',
-                minHeight: 'unset',
-                height: '24px',
-                fontSize: '11px',
-                fontFamily: 'var(--font-body)',
-                color: 'var(--accent-primary)',
-                borderColor: 'var(--accent-primary-glow)',
-                textDecoration: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Go to ERP
-            </a>
           </div>
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!parsed ? (
             <>
-              <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
-                Paste your ERP Attendance table below.
-              </p>
+              {/* Glassmorphic step guide card */}
+              <div className="erp-guide-card" style={{
+                padding: '16px',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-lg)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
+                marginBottom: 4
+              }}>
+                <span className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  Quick Import Guide
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {/* Step 1 */}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                    }}>1</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                      <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Open Student Portal</span>
+                      <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11.5px', lineHeight: '1.4' }}>
+                        Navigate to Student Info → Attendance Report.
+                      </span>
+                      <a
+                        href="https://erp.skit.ac.in/reports/student_aggregate"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          alignSelf: 'flex-start',
+                          marginTop: 4,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '4px 10px',
+                          background: 'rgba(99, 102, 241, 0.08)',
+                          border: '1px solid rgba(99, 102, 241, 0.2)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--accent-primary)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        Go to ERP <ExternalLink size={11} />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                    }}>2</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Copy Attendance Table</span>
+                      <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11.5px', lineHeight: '1.4' }}>
+                        Click the <strong style={{ color: 'var(--text-primary)' }}>Copy</strong> button at the top-left of the ERP attendance table to copy it to clipboard.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                    }}>3</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Paste & Preview</span>
+                      <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11.5px', lineHeight: '1.4' }}>
+                        Paste the table data below. The app will auto-detect and parse the attendance details.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {subjects.length === 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '4px 0 8px 0' }}>
                   <label htmlFor="import-semester-select" className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
@@ -1212,16 +1326,52 @@ export default function AttendancePage() {
                   </select>
                 </div>
               )}
-              <div style={{ padding: '10px 12px', background: 'var(--bg-base)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                <p className="t-mono-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>
-                  How to copy:<br />
-                  ERP → Student Info → Attendance Report<br />
-                  → Select All → Copy → Paste here
-                </p>
+
+              {/* Paste Textarea Header & Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                <label htmlFor="erp-textarea" className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  ERP Attendance Table
+                </label>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    type="button"
+                    onClick={handleClipboardPaste}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--accent-primary)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    Paste from Clipboard
+                  </button>
+                  {erpText && (
+                    <button
+                      type="button"
+                      onClick={() => setErpText('')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--status-critical)',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
+
               <textarea
                 id="erp-textarea"
-                className="input t-mono" style={{ minHeight: 160, resize: 'vertical' }}
+                className="input t-mono" style={{ minHeight: 80, resize: 'vertical' }}
                 placeholder="Paste ERP attendance data here..."
                 value={erpText}
                 onChange={e => setErpText(e.target.value)}
@@ -1252,10 +1402,10 @@ export default function AttendancePage() {
                               itemIdx === idx ? { ...item, name: newName } : item
                             );
                             setParsed(copy);
-                            showToast('Subject name updated', 'success');
+                            toast.success('Subject name updated');
                           } catch (err: unknown) {
                             console.error('Failed to update subject', err);
-                            showToast(err instanceof Error ? err.message : 'Failed to update subject', 'error');
+                            toast.error(err instanceof Error ? err.message : 'Failed to update subject');
                           }
                         }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} aria-label="Edit subject name">
                           <Edit3 size={14} />

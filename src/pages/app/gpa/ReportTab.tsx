@@ -3,7 +3,7 @@ import { Download, Share2, X } from 'lucide-react';
 import { useGPAStore } from '../../../store/gpaStore';
 import { marksToColor, marksToGrade, GRADE_SCALE, computeCGPA, computePercentage } from '../../../lib/gpaData';
 import { exportGPAReport, generateShareURL } from '../../../lib/pdfExport';
-import { showToast } from '../../../components/Toast';
+import { toast } from 'sonner';
 
 const T = {
   card:      'rgba(18,20,32,0.7)',
@@ -107,14 +107,14 @@ export default function ReportTab() {
 
   const handleExport = async () => {
     setExporting(true);
-    try { await exportGPAReport('gpa-report-card'); showToast('Report downloaded!', 'success'); }
-    catch { showToast('Export failed', 'error'); }
+    try { await exportGPAReport('gpa-report-card'); toast.success('Report downloaded!'); }
+    catch { toast.error('Export failed'); }
     finally { setExporting(false); }
   };
 
   const handleShare = () => {
     generateShareURL({ activeBranch, semesters, manualHistory } as unknown as Record<string, unknown>);
-    showToast('Share link copied!', 'success');
+    toast.success('Share link copied!');
   };
 
   return (

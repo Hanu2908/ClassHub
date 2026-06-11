@@ -12,7 +12,7 @@ import {
   useDeleteGlobalPYQ
 } from '../../hooks/useGlobalResources';
 import { useAppStore } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import { BottomSheet } from '../../components/BottomSheet';
 import { NavBar } from '../../components/NavBar';
 
@@ -125,7 +125,7 @@ export default function ResourceHubPage() {
     if (!editingResource) return;
     
     if (!editCode.trim() || !editName.trim()) {
-      showToast('Subject Code and Name are required', 'error');
+      toast.error('Subject Code and Name are required');
       return;
     }
 
@@ -145,7 +145,7 @@ export default function ResourceHubPage() {
           practiceUrl: editPractice,
           labUrl: editLab,
         });
-        showToast('Subject created successfully', 'success');
+        toast.success('Subject created successfully');
       } else {
         // Update existing global subject
         await updateResourceMutation.mutateAsync({
@@ -161,11 +161,11 @@ export default function ResourceHubPage() {
           practiceUrl: editPractice,
           labUrl: editLab,
         });
-        showToast('Subject vault updated successfully', 'success');
+        toast.success('Subject vault updated successfully');
       }
       setEditingResource(null);
     } catch (err: any) {
-      showToast(`Action failed: ${err.message}`, 'error');
+      toast.error(`Action failed: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -178,10 +178,10 @@ export default function ResourceHubPage() {
     setIsSubmitting(true);
     try {
       await deleteResourceMutation.mutateAsync(editingResource.id);
-      showToast('Subject deleted successfully', 'success');
+      toast.success('Subject deleted successfully');
       setEditingResource(null);
     } catch (err: any) {
-      showToast(`Delete failed: ${err.message}`, 'error');
+      toast.error(`Delete failed: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -190,7 +190,7 @@ export default function ResourceHubPage() {
   const handleCreatePYQ = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pyqYear.trim() || !pyqUrl.trim()) {
-      showToast('Year and PDF Drive link are required', 'error');
+      toast.error('Year and PDF Drive link are required');
       return;
     }
 
@@ -202,13 +202,13 @@ export default function ResourceHubPage() {
         url: pyqUrl,
         isLatest: pyqLatest,
       });
-      showToast('PYQ exam paper added', 'success');
+      toast.success('PYQ exam paper added');
       setIsAddingPYQ(false);
       setPyqYear('');
       setPyqUrl('');
       setPyqLatest(false);
     } catch (err: any) {
-      showToast(`Failed to add PYQ: ${err.message}`, 'error');
+      toast.error(`Failed to add PYQ: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -218,9 +218,9 @@ export default function ResourceHubPage() {
     if (!confirm(`Are you sure you want to delete the ${year} paper?`)) return;
     try {
       await deletePYQMutation.mutateAsync(id);
-      showToast('PYQ paper deleted successfully', 'success');
+      toast.success('PYQ paper deleted successfully');
     } catch (err: any) {
-      showToast(`Failed to delete PYQ: ${err.message}`, 'error');
+      toast.error(`Failed to delete PYQ: ${err.message}`);
     }
   };
 

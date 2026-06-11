@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore, mapDbNotification } from '../store/appStore';
-import { showToast } from '../components/Toast';
+import { toast } from 'sonner';
 import type { AppNotification, DbNotification } from '../store/appStore';
 
 export function useNotifications() {
@@ -68,7 +68,7 @@ export function useNotifications() {
 
           if (payload.eventType === 'INSERT') {
             const newNotif = mapDbNotification(payload.new as DbNotification);
-            showToast(newNotif.title, 'info');
+            toast.info(newNotif.title);
           }
         }
       )

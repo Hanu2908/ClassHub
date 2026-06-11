@@ -5,8 +5,8 @@ import {
 } from 'lucide-react';
 import { useSubjects, useMutateSubjects } from '../../hooks/useSubjects';
 import { BottomSheet } from '../../components/BottomSheet';
-import { showToast } from '../../components/Toast';
-import { ManageSubjectsSkeleton } from '../../components/LoadingSkeletons';
+import Skeleton from 'react-loading-skeleton';
+import { toast } from 'sonner';
 
 function generateGradient(str: string) {
   let hash = 0;
@@ -35,6 +35,31 @@ function getSubjectAcronym(name: string) {
 type SubjectFormState = { id?: string; code: string; name: string; semester: string };
 
 // ── Page Component ────────────────────────────────────────────────────────────
+function ManageSubjectsSkeleton() {
+  return (
+    <div className="card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Header */}
+      <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 40px 80px 24px', gap: 10, paddingBottom: 8, borderBottom: '1px solid var(--border-default)' }}>
+        <Skeleton width={30} height={10} />
+        <Skeleton width={120} height={10} />
+        <Skeleton width={20} height={10} />
+        <Skeleton width={50} height={10} />
+        <div />
+      </div>
+      {/* Table grid rows */}
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 40px 80px 24px', gap: 10, alignItems: 'center', padding: '8px 0' }}>
+          <Skeleton width={50} height={32} borderRadius={6} />
+          <Skeleton width="90%" height={32} borderRadius={6} />
+          <Skeleton width={30} height={32} borderRadius={6} />
+          <Skeleton width={70} height={32} borderRadius={6} />
+          <Skeleton circle width={18} height={18} style={{ justifySelf: 'center' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ManageSubjectsPage() {
   const navigate = useNavigate();
   const { data: subjects = [], isLoading } = useSubjects();
@@ -71,12 +96,12 @@ export default function ManageSubjectsPage() {
 
   const handleSave = () => {
     if (!formData.code.trim() || !formData.name.trim() || !formData.semester.trim()) {
-      showToast('Please fill all fields', 'error');
+      toast.error('Please fill all fields');
       return;
     }
     const sem = parseInt(formData.semester, 10);
     if (isNaN(sem) || sem < 1) {
-      showToast('Semester must be a valid number', 'error');
+      toast.error('Semester must be a valid number');
       return;
     }
 
@@ -89,23 +114,23 @@ export default function ManageSubjectsPage() {
     if (editingId) {
       mutateSubjects.mutate({ action: 'update', subject: { ...payload, id: editingId } }, {
         onSuccess: () => {
-          showToast('Subject updated', 'success');
+          toast.success('Subject updated');
           setFormOpen(false);
         },
         onError: (error: Error) => {
           console.error("Update subject error:", error);
-          showToast(error.message || 'Failed to update subject', 'error');
+          toast.error(error.message || 'Failed to update subject');
         }
       });
     } else {
       mutateSubjects.mutate({ action: 'create', subject: payload }, {
         onSuccess: () => {
-          showToast('Subject created', 'success');
+          toast.success('Subject created');
           setFormOpen(false);
         },
         onError: (error: Error) => {
           console.error("Create subject error:", error);
-          showToast(error.message || 'Failed to create subject', 'error');
+          toast.error(error.message || 'Failed to create subject');
         }
       });
     }
@@ -115,7 +140,7 @@ export default function ManageSubjectsPage() {
     if (!deleteConfirmId) return;
     mutateSubjects.mutate({ action: 'delete', subject: { id: deleteConfirmId } }, {
       onSuccess: () => {
-        showToast('Subject deleted', 'success');
+        toast.success('Subject deleted');
         setDeleteConfirmId(null);
       }
     });

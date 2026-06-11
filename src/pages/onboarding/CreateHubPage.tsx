@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Share2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
-import { showToast } from '../../components/Toast';
+import { toast } from 'sonner';
 import OnboardingLoader from '../../components/OnboardingLoader';
 
 const classRollRegex = /^\d{2}$/;
@@ -113,14 +113,14 @@ export default function CreateHubPage() {
     } catch (err: unknown) {
       setLoading(false);
       const message = err instanceof Error ? err.message : 'Failed to create hub';
-      showToast(message, 'error');
+      toast.error(message);
     }
   };
 
   const copyCode = () => {
     if (!generatedCode) return;
     navigator.clipboard.writeText(generatedCode);
-    showToast('Hub code copied!', 'success');
+    toast.success('Hub code copied!');
   };
 
   const shareCode = async () => {

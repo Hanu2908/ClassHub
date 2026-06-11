@@ -9,7 +9,7 @@ import {
   marksToPoint,
   computeSGPA,
 } from '../../../lib/gpaData';
-import { showToast } from '../../../components/Toast';
+import { toast } from 'sonner';
 
 const T = {
   card:      'rgba(18,20,32,0.7)',
@@ -406,7 +406,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
       return worker;
     } catch (err) {
       console.error('Failed to load Tesseract worker:', err);
-      showToast('Could not load OCR engine', 'error');
+      toast.error('Could not load OCR engine');
       return null;
     }
   };
@@ -843,15 +843,14 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         setShowReviewModal(true);
       } else {
         console.log('[OCR] All matching passes failed. Raw text:', text);
-        showToast(
-          `OCR extracted ${lines.filter(l => l.trim()).length} text lines but could not match any subjects. Check console for raw OCR output.`,
-          'warning'
+        toast.warning(
+          `OCR extracted ${lines.filter((l: string) => l.trim()).length} text lines but could not match any subjects. Check console for raw OCR output.`
         );
       }
 
     } catch (err) {
       console.error('OCR error:', err);
-      showToast('Scanning failed. Enter grades manually.', 'error');
+      toast.error('Scanning failed. Enter grades manually.');
       setIsScanning(false);
     }
   };
@@ -862,7 +861,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
     });
     setShowReviewModal(false);
     setExtractedMatches([]);
-    showToast(`Successfully applied ${extractedMatches.length} subject grades!`, 'success');
+    toast.success(`Successfully applied ${extractedMatches.length} subject grades!`);
   };
 
   return (
