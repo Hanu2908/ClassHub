@@ -1064,23 +1064,24 @@ export default function PDFViewerPage() {
             <DropdownMenu.Portal>
               <DropdownMenu.Content
                 align="end"
-                sideOffset={6}
+                alignOffset={12}
+                sideOffset={8}
                 className="dropdown-content animate-slide-up"
                 style={{ zIndex: 10000, minWidth: '180px' }}
               >
-                <div className="px-2.5 py-1.5 text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Display Mode</div>
-                
                 <DropdownMenu.Item
                   onClick={() => setDisplayMode('original')}
                   className="dropdown-item"
                   style={{
                     color: displayMode === 'original' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                     background: displayMode === 'original' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                    borderLeft: displayMode === 'original' ? '3px solid var(--accent-primary)' : '3px solid transparent',
                     fontWeight: displayMode === 'original' ? 600 : 400,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: 8,
+                    paddingLeft: '9px'
                   }}
                 >
                   <span className="flex items-center gap-2">
@@ -1096,11 +1097,13 @@ export default function PDFViewerPage() {
                   style={{
                     color: displayMode === 'dark' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                     background: displayMode === 'dark' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                    borderLeft: displayMode === 'dark' ? '3px solid var(--accent-primary)' : '3px solid transparent',
                     fontWeight: displayMode === 'dark' ? 600 : 400,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: 8,
+                    paddingLeft: '9px'
                   }}
                 >
                   <span className="flex items-center gap-2">
@@ -1116,11 +1119,13 @@ export default function PDFViewerPage() {
                   style={{
                     color: displayMode === 'sepia' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                     background: displayMode === 'sepia' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                    borderLeft: displayMode === 'sepia' ? '3px solid var(--accent-primary)' : '3px solid transparent',
                     fontWeight: displayMode === 'sepia' ? 600 : 400,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: 8,
+                    paddingLeft: '9px'
                   }}
                 >
                   <span className="flex items-center gap-2">
@@ -1130,7 +1135,7 @@ export default function PDFViewerPage() {
                   {displayMode === 'sepia' && <Check size={14} />}
                 </DropdownMenu.Item>
 
-                <div className="h-px bg-[var(--border-default)] my-1" />
+                <div style={{ height: '1px', backgroundColor: 'var(--border-default)', margin: '6px 0' }} />
 
                 <DropdownMenu.Item
                   onClick={() => setRotation(prev => (prev + 90) % 360)}
@@ -1140,11 +1145,15 @@ export default function PDFViewerPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
+                    borderLeft: '3px solid transparent',
+                    paddingLeft: '9px'
                   }}
                 >
                   <RotateCw size={14} />
                   <span>Rotate Clockwise</span>
                 </DropdownMenu.Item>
+
+                <div style={{ height: '1px', backgroundColor: 'var(--border-default)', margin: '6px 0' }} />
 
                 <DropdownMenu.Item
                   onClick={handleResetZoom}
@@ -1154,6 +1163,8 @@ export default function PDFViewerPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
+                    borderLeft: '3px solid transparent',
+                    paddingLeft: '9px'
                   }}
                 >
                   <ZoomOut size={14} />
