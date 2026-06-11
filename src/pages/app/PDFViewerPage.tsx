@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, ZoomIn, ZoomOut, Download, Share2, Loader2, AlertCircle,
@@ -125,8 +125,7 @@ const applyHighlighting = (container: HTMLDivElement, query: string) => {
   });
 };
 
-// Dedicated virtualized wrapper for high-performance canvas page rendering
-function PDFPageContainer({
+const PDFPageContainer = memo(function PDFPageContainer({
   pageLayout,
   pdf,
   scale,
@@ -144,6 +143,17 @@ function PDFPageContainer({
   const textLayerRef = useRef<HTMLDivElement>(null);
   const [isRendered, setIsRendered] = useState(false);
   const [renderError, setRenderError] = useState(false);
+
+  const isFastScrollingRef = useRef(isFastScrolling);
+  const isInCacheBufferRef = useRef(isInCacheBuffer);
+
+  useEffect(() => {
+    isFastScrollingRef.current = isFastScrolling;
+  }, [isFastScrolling]);
+
+  useEffect(() => {
+    isInCacheBufferRef.current = isInCacheBuffer;
+  }, [isInCacheBuffer]);
 
   // Swap width and height if rotated by 90 or 270 degrees
   const isRotated90 = rotation === 90 || rotation === 270;
@@ -171,7 +181,7 @@ function PDFPageContainer({
   const drawingRef = useRef(false);
 
   const drawPage = useCallback(async () => {
-    if (!isInCacheBuffer || isFastScrolling || !pdf || !canvasRef.current || drawingRef.current) return;
+    if (!isInCacheBufferRef.current || isFastScrollingRef.current || !pdf || !canvasRef.current || drawingRef.current) return;
 
     try {
       drawingRef.current = true;
@@ -235,7 +245,7 @@ function PDFPageContainer({
     } finally {
       drawingRef.current = false;
     }
-  }, [pdf, isInCacheBuffer, isFastScrolling, renderPageScale, pageLayout, rotation, layoutWidth]);
+  }, [pdf, renderPageScale, pageLayout, rotation, layoutWidth]);
 
   const drawTextLayer = useCallback(async () => {
     if (!pdf || !textLayerRef.current || !isRendered) return;
@@ -406,7 +416,7 @@ function PDFPageContainer({
       )}
     </div>
   );
-}
+});
 
 export default function PDFViewerPage() {
   const navigate = useNavigate();
