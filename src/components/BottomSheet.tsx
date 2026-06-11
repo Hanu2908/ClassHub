@@ -17,11 +17,14 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   
   const offsetY = useMotionValue(0);
 
-  // Synchronize document scroll locking
+  // Synchronize document scroll locking and animate entry
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
-      offsetY.set(0); // Reset drag offset on open
+      // Set the initial position of offsetY to the screen height to start from the bottom,
+      // then animate it back to 0 for a smooth slide-up effect.
+      offsetY.set(window.innerHeight);
+      animate(offsetY, 0, { type: 'spring', stiffness: 220, damping: 25 });
     } else {
       document.body.style.overflow = '';
     }
@@ -109,57 +112,55 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   return (
     <AnimatePresence>
       {open && (
-        <>
-          <motion.div 
-            className="sheet-backdrop" 
-            style={{ transition: 'none' }} // Prevents CSS transitions from interfering
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose} 
-          />
-          <motion.div
-            ref={panelRef}
-            className="sheet-panel"
-            initial={{ y: '100%', x: '-50%' }}
-            animate={{ y: 0, x: '-50%' }}
-            exit={{ y: '100%', x: '-50%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+        <motion.div 
+          key="sheet-backdrop"
+          className="sheet-backdrop" 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose} 
+        />
+      )}
+      {open && (
+        <motion.div
+          key="sheet-panel"
+          ref={panelRef}
+          className="sheet-panel"
+          exit={{ y: '100%', x: '-50%' }}
+          transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+          style={{
+            y: offsetY,
+            x: '-50%'
+          }}
+        >
+          <div
+            className="sheet-drag-zone"
             style={{
-              transition: 'none', // Prevents CSS transitions from interfering
-              y: offsetY,
-              x: '-50%'
+              cursor: 'grab',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
             }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
           >
-            <div
-              className="sheet-drag-zone"
-              style={{
-                cursor: 'grab',
-                touchAction: 'none',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-              }}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
-            >
-              <div className="sheet-handle" />
-              {title && (
-                <div style={{ padding: '0 20px 16px', borderBottom: '1px solid var(--border-default)' }}>
-                  {typeof title === 'string' ? (
-                    <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
-                  ) : (
-                    title
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div style={{ padding: '20px' }}>{children}</div>
-          </motion.div>
-        </>
+            <div className="sheet-handle" />
+            {title && (
+              <div style={{ padding: '0 20px 16px', borderBottom: '1px solid var(--border-default)' }}>
+                {typeof title === 'string' ? (
+                  <p style={{ font: '600 17px var(--font-display)', color: 'var(--text-primary)' }}>{title}</p>
+                ) : (
+                  title
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div style={{ padding: '20px' }}>{children}</div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

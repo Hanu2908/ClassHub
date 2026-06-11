@@ -601,11 +601,6 @@ body {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   opacity: 0;
-  transition: opacity 0.24s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.sheet-backdrop.active {
-  opacity: 1;
 }
 
 /* ── Bottom Sheet Panel ── */
@@ -624,11 +619,6 @@ body {
   overflow-y: auto;
   z-index: 201;
   padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.sheet-panel.active {
-  transform: translate3d(-50%, 0, 0);
 }
 
 .sheet-handle {
