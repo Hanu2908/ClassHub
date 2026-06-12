@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import { SkeletonTheme, default as Skeleton } from 'react-loading-skeleton';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Skeleton Theme Integration', () => {
   it('renders SkeletonTheme and injects correct custom colors as CSS variables', () => {
@@ -93,6 +93,15 @@ describe('Virtualizer Integration', () => {
 import { timeAgo, timeUntil, deadlineBadgeClass, deadlineLabel } from '../../src/components/Shared';
 
 describe('Date Helper Utilities', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-12T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('timeAgo formats dates correctly', () => {
     const today = new Date().toISOString();
     expect(timeAgo(today)).toContain('Today');

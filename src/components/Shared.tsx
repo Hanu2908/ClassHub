@@ -150,7 +150,7 @@ export function timeUntil(iso: string): string {
     return remainingMins > 0 ? `in ${diffHrs}h ${remainingMins}m` : `in ${diffHrs}h`;
   }
   
-  const diffDays = differenceInCalendarDays(targetDate, now);
+  const diffDays = Math.floor(diffHrs / 24);
   const remainingHrs = diffHrs % 24;
   return remainingHrs > 0 ? `in ${diffDays}d ${remainingHrs}h` : `in ${diffDays}d`;
 }

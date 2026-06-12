@@ -129,6 +129,26 @@ export function usePolls() {
   });
 
   const optimisticVotes = useAppStore(s => s.optimisticVotes);
+
+  useEffect(() => {
+    if (!queryResult.data) return;
+
+    // Clean up optimistic votes once they match database values
+    Object.entries(optimisticVotes).forEach(([pollId, localVotes]) => {
+      const poll = queryResult.data.find(p => p.id === pollId);
+      if (poll) {
+        const localVoteSet = new Set(localVotes);
+        const dbVoteSet = new Set(poll.userVotes);
+
+        const match = localVoteSet.size === dbVoteSet.size &&
+                      [...localVoteSet].every(v => dbVoteSet.has(v));
+
+        if (match) {
+          useAppStore.getState().clearOptimisticVote(pollId);
+        }
+      }
+    });
+  }, [queryResult.data, optimisticVotes]);
   const data = useMemo(() => {
     if (!queryResult.data) return queryResult.data;
     return queryResult.data.map(poll => {
@@ -479,15 +499,34 @@ export function useVotePoll() {
         throw err;
       }
     },
-    onSuccess: () => {
-      return qc.invalidateQueries({ queryKey: ['polls'] });
-    },
-    onSettled: (_data, _error, input) => {
-      if (input?.pollId) {
-        // Cooldown delay to prevent race conditions with Realtime WebSocket sync invalidations
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['polls'] });
+
+      // Fallback cleanup in case the query never updates/matches (e.g. connection lost)
+      if (variables?.pollId) {
         setTimeout(() => {
-          clearOptimisticVote(input.pollId);
-        }, 800);
+          const currentOptimistic = useAppStore.getState().optimisticVotes[variables.pollId];
+          if (currentOptimistic) {
+            const polls = qc.getQueryData<Poll[]>(['polls', sectionId, userId]);
+            const poll = polls?.find(p => p.id === variables.pollId);
+            if (poll) {
+              const localVoteSet = new Set(currentOptimistic);
+              const dbVoteSet = new Set(poll.userVotes);
+              const match = localVoteSet.size === dbVoteSet.size &&
+                            [...localVoteSet].every(v => dbVoteSet.has(v));
+              if (!match) {
+                clearOptimisticVote(variables.pollId);
+              }
+            } else {
+              clearOptimisticVote(variables.pollId);
+            }
+          }
+        }, 10000); // 10s fallback
+      }
+    },
+    onError: (_error, variables) => {
+      if (variables?.pollId) {
+        clearOptimisticVote(variables.pollId);
       }
     },
   });
