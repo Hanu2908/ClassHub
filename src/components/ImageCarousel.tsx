@@ -181,9 +181,9 @@ export const ImageCarousel = React.memo(function ImageCarousel({ images, onImage
       style={{
         position: 'relative',
         width: '100%',
-        maxHeight: '380px',
+        maxHeight: '400px',
         minHeight: '200px',
-        aspectRatio: '16 / 9',
+        aspectRatio: '4 / 5',
         borderRadius: 'var(--radius-md)',
         overflow: 'hidden',
         background: 'rgba(10, 12, 20, 0.55)',
