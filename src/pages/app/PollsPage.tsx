@@ -68,8 +68,10 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
   const ditchVotes = ditchOpt ? ditchOpt.votes : 0;
   const ditchPct = isMassBunkPoll ? Math.min(100, Math.round((ditchVotes / totalStudents) * 100)) : 0;
 
+  const isPending = voteMutation.isPending && voteMutation.variables?.pollId === poll.id;
+
   const handleVote = async (optId: string, isSelected: boolean) => {
-    if (isClosed) return;
+    if (isClosed || isPending) return;
     if (isSelected) {
       haptics.heavyClick();
     } else {
@@ -198,68 +200,94 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
 
             const optVoters = voterVotes.filter(v => v.optionId === opt.id);
 
-            const hue = 35 + Math.min(1, pct / 60) * 85;
-            const progressColor = `hsl(${hue}, 85%, 50%)`;
+            let fillBackground = '';
+            let optionBorder = '1.5px solid var(--border-default)';
+            let textSecondaryColor = showResults ? 'var(--text-secondary)' : 'var(--text-primary)';
+            let percentColor = 'var(--accent-primary)';
+
+            if (showResults) {
+              if (isMassBunkPoll && opt.text === 'Ditch & Chill') {
+                const isCritical = pct >= 60;
+                fillBackground = isCritical ? 'rgba(248, 113, 113, 0.15)' : 'rgba(251, 191, 36, 0.12)';
+                percentColor = isCritical ? 'var(--status-critical)' : 'var(--status-warning)';
+                textSecondaryColor = percentColor;
+                if (isSelected) {
+                  optionBorder = isCritical ? '1.5px solid var(--status-critical)' : '1.5px solid var(--status-warning)';
+                } else {
+                  optionBorder = isCritical ? '1.5px solid rgba(248, 113, 113, 0.3)' : '1.5px solid rgba(251, 191, 36, 0.25)';
+                }
+              } else {
+                fillBackground = isSelected ? 'var(--accent-primary-glow)' : 'rgba(255, 255, 255, 0.04)';
+                percentColor = 'var(--accent-primary)';
+                textSecondaryColor = isSelected ? 'var(--text-accent)' : 'var(--text-secondary)';
+                if (isSelected) {
+                  optionBorder = '1.5px solid var(--accent-primary)';
+                }
+              }
+            } else {
+              if (isSelected) {
+                optionBorder = '1.5px solid var(--accent-primary)';
+              }
+            }
 
             return (
               <div key={opt.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <button
                   id={`vote-opt-${opt.id}`}
                   className={`vote-option${isSelected ? ' selected' : ''}${showResults ? ' voted' : ''}`}
-                  style={{ width: '100%', cursor: isClosed ? 'default' : 'pointer' }}
+                  style={{ 
+                    width: '100%', 
+                    cursor: isClosed ? 'default' : (isPending ? 'not-allowed' : 'pointer'),
+                    border: showResults ? optionBorder : undefined,
+                    opacity: isPending ? 0.85 : 1
+                  }}
                   onClick={() => handleVote(opt.id, isSelected)}
-                  disabled={isClosed}
+                  disabled={isClosed || isPending}
                 >
-                  <div style={{ flex: 1, textAlign: 'left' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showResults ? 6 : 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {showResults && (
+                    <div 
+                      className="vote-option-fill"
+                      style={{
+                        width: `${pct}%`,
+                        background: fillBackground,
+                        transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                    />
+                  )}
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {!showResults && (
                         <span style={{ color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)', display: 'flex', flexShrink: 0 }}>
                           <Icon size={15} />
                         </span>
-                        <span className="t-body" style={{ color: 'var(--text-primary)' }}>{opt.text}</span>
-                      </div>
-                      {showResults && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span className="t-mono" style={{ color: isMassBunkPoll && opt.text === 'Ditch & Chill' && pct >= 60 ? 'var(--status-critical)' : 'var(--accent-primary)' }}>{pct}%</span>
-                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>({opt.votes})</span>
-                        </div>
                       )}
+                      <span className="t-body" style={{ color: textSecondaryColor, fontWeight: showResults && isSelected ? 600 : 400 }}>
+                        {opt.text}
+                        {showResults && isSelected && ' ✓'}
+                      </span>
                     </div>
                     {showResults && (
-                      <div style={{ 
-                        height: isMassBunkPoll && opt.text === 'Ditch & Chill' ? 6 : 4, 
-                        background: 'var(--bg-base)', 
-                        borderRadius: 3, 
-                        overflow: 'hidden', 
-                        marginLeft: 23,
-                        marginTop: isMassBunkPoll && opt.text === 'Ditch & Chill' ? 4 : 0
-                      }}>
-                        <div 
-                          className="vote-bar-fill" 
-                          style={{ 
-                            width: `${pct}%`,
-                            background: isMassBunkPoll && opt.text === 'Ditch & Chill' 
-                              ? `linear-gradient(90deg, hsl(35, 85%, 50%), ${progressColor})`
-                              : undefined,
-                            transition: 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.8s ease'
-                          }} 
-                        />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="t-mono" style={{ color: percentColor, fontWeight: 600 }}>{pct}%</span>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>({opt.votes})</span>
                       </div>
-                    )}
-                    {showResults && isMassBunkPoll && opt.text === 'Ditch & Chill' && (
-                       <p className="t-mono-sm" style={{ 
-                         marginLeft: 23, marginTop: 8, 
-                         color: pct >= 60 ? 'var(--status-critical)' : 'var(--status-warning)',
-                         fontWeight: pct >= 60 ? 600 : 400
-                       }}>
-                         {pct < 21 ? "Low energy... are we really going to sit through this?" :
-                          pct < 41 ? "Building momentum. Grab your friends." :
-                          pct < 60 ? "Right on the edge! Need a few more rebels." :
-                          "BUNK IS ON! Cancel the alarms, we are staying in."}
-                       </p>
                     )}
                   </div>
                 </button>
+
+                {showResults && isMassBunkPoll && opt.text === 'Ditch & Chill' && (
+                  <p className="t-mono-sm" style={{ 
+                    marginLeft: 12, marginTop: 4, marginBottom: 8,
+                    color: pct >= 60 ? 'var(--status-critical)' : 'var(--status-warning)',
+                    fontWeight: pct >= 60 ? 600 : 400
+                  }}>
+                    {pct < 21 ? "Low energy... are we really going to sit through this?" :
+                     pct < 41 ? "Building momentum. Grab your friends." :
+                     pct < 60 ? "Right on the edge! Need a few more rebels." :
+                     "BUNK IS ON! Cancel the alarms, we are staying in."}
+                  </p>
+                )}
 
                 {role === 'cr' && poll.type === 'actionable' && (
                   <div style={{ marginTop: 2, marginBottom: 6, marginLeft: 24 }}>

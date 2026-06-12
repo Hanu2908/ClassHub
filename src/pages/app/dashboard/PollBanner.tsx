@@ -27,13 +27,30 @@ export default function PollBanner() {
         {poll.options.slice(0, 2).map(opt => {
           const pct = poll.voterCount && poll.voterCount > 0 ? Math.min(100, Math.round((opt.votes / poll.voterCount) * 100)) : 0;
           return (
-            <div key={opt.id} style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>{opt.text}</span>
-                <span className="t-mono" style={{ color: 'var(--accent-primary)' }}>{pct}%</span>
-              </div>
-              <div style={{ height: 4, background: 'var(--bg-elevated)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent-primary)', borderRadius: 2, animation: 'barFill 0.8s ease both' }} />
+            <div 
+              key={opt.id} 
+              className="vote-option voted"
+              style={{ 
+                width: '100%', 
+                marginBottom: 8, 
+                padding: '8px 12px',
+                border: '1.5px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <div 
+                className="vote-option-fill"
+                style={{
+                  width: `${pct}%`,
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', position: 'relative', zIndex: 1 }}>
+                <span className="t-body" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{opt.text}</span>
+                <span className="t-mono" style={{ color: 'var(--accent-primary)', fontWeight: 600, fontSize: '13px' }}>{pct}%</span>
               </div>
             </div>
           );

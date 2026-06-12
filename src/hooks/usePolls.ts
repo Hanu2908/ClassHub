@@ -479,10 +479,15 @@ export function useVotePoll() {
         throw err;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['polls'] }),
+    onSuccess: () => {
+      return qc.invalidateQueries({ queryKey: ['polls'] });
+    },
     onSettled: (_data, _error, input) => {
       if (input?.pollId) {
-        clearOptimisticVote(input.pollId);
+        // Cooldown delay to prevent race conditions with Realtime WebSocket sync invalidations
+        setTimeout(() => {
+          clearOptimisticVote(input.pollId);
+        }, 800);
       }
     },
   });
