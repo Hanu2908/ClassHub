@@ -5,7 +5,10 @@ import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../../components/
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../../store/appStore';
 import { useAnnouncements, useAcknowledge } from '../../../hooks/useAnnouncements';
 import { toast } from 'sonner';
-import { AttachmentCard } from '../../../components/AttachmentCard';
+import { AttachmentCard, signedUrlCache } from '../../../components/AttachmentCard';
+import { ImageCarousel } from '../../../components/ImageCarousel';
+import { AnimatePresence } from 'motion/react';
+const ImageZoomModal = React.lazy(() => import('../../../components/ImageZoomModal'));
 import { AnnouncementQAFooter } from '../../../components/AnnouncementQA';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchAnnouncementsData } from './prefetchHelper';
@@ -105,6 +108,25 @@ export default function AnnouncementsScroll() {
   // Announcement sharing states
   const sharePortalRef = useRef<HTMLDivElement>(null);
   const [activeShareAnn, setActiveShareAnn] = useState<Announcement | null>(null);
+
+  const [zoomModalData, setZoomModalData] = useState<{
+    images: Array<{ thumbUrl: string; fullUrl: string }>;
+    initialIndex: number;
+  } | null>(null);
+
+  const handleImageClick = (imagesList: Attachment[], index: number) => {
+    const modalImages = imagesList.map(img => {
+      const cached = signedUrlCache.get(img.storagePath);
+      return {
+        thumbUrl: cached?.thumbUrl || '',
+        fullUrl: cached?.fullUrl || ''
+      };
+    });
+    setZoomModalData({
+      images: modalImages,
+      initialIndex: index
+    });
+  };
 
   const handleShareAnnouncement = async (announcement: Announcement) => {
     try {
@@ -552,16 +574,30 @@ export default function AnnouncementsScroll() {
             )}
 
             {/* Attachments Section */}
-            {prevSelectedAnn.attachments && prevSelectedAnn.attachments.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
-                <span className="t-caption" style={{ color: 'var(--text-muted)' }}>Attachments ({prevSelectedAnn.attachments.length})</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {prevSelectedAnn.attachments.map((att: Attachment) => (
-                    <AttachmentCard key={att.id} attachment={att} />
-                  ))}
+            {(() => {
+              const images = prevSelectedAnn.attachments?.filter(att => isPreviewableImage(att.fileType, att.filename)) || [];
+              const otherFiles = prevSelectedAnn.attachments?.filter(att => !isPreviewableImage(att.fileType, att.filename)) || [];
+
+              if (!prevSelectedAnn.attachments || prevSelectedAnn.attachments.length === 0) return null;
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
+                  <span className="t-caption" style={{ color: 'var(--text-muted)' }}>Attachments ({prevSelectedAnn.attachments.length})</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {images.length > 0 && (
+                      <ImageCarousel images={images} onImageClick={(index) => handleImageClick(images, index)} />
+                    )}
+                    {otherFiles.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {otherFiles.map((att: Attachment) => (
+                          <AttachmentCard key={att.id} attachment={att} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Q&A & Emoji Reactions Footer */}
             <div style={{
@@ -631,6 +667,22 @@ export default function AnnouncementsScroll() {
         )}
         <OffscreenSharePortal announcement={activeShareAnn} domRef={sharePortalRef} />
       </BottomSheet>
+
+      <AnimatePresence>
+        {zoomModalData && (
+          <React.Suspense fallback={
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)' }}>
+              <div style={{ color: '#fff', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>Loading Viewer…</div>
+            </div>
+          }>
+            <ImageZoomModal
+              images={zoomModalData.images}
+              initialIndex={zoomModalData.initialIndex}
+              onClose={() => setZoomModalData(null)}
+            />
+          </React.Suspense>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

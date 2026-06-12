@@ -4,19 +4,8 @@ import { Download, FileText, FileImage, FileCode, File, Loader2, ImageOff } from
 import { supabase } from '../lib/supabase';
 import { AnimatePresence } from 'motion/react';
 import type { Attachment } from '../store/appStore';
-import { isPreviewableImage } from '../lib/utils/attachments';
+import { isPreviewableImage, signedUrlCache } from '../lib/utils/attachments';
 import { getThumbPath, decodeAtReducedResolution } from '../lib/utils/imageResize';
-
-// ── Module-level cache ─────────────────────────────────────────────────────────
-// Deduplicates signed URL requests across AttachmentCard instances.
-
-interface CachedUrls {
-  thumbUrl: string;    // Thumbnail URL (or original URL if no thumbnail exists)
-  fullUrl: string;     // Original full-resolution URL
-  hasThumb: boolean;   // True when a real thumbnail was found
-  expiresAt: number;
-}
-const signedUrlCache = new Map<string, CachedUrls>();
 
 interface AttachmentCardProps {
   attachment: Attachment;
@@ -412,8 +401,11 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
             </div>
           }>
             <ImageZoomModal
-              thumbUrl={previewState.thumbUrl}
-              fullUrl={previewState.fullUrl || previewState.thumbUrl}
+              images={[{
+                thumbUrl: previewState.thumbUrl,
+                fullUrl: previewState.fullUrl || previewState.thumbUrl
+              }]}
+              initialIndex={0}
               onClose={() => setShowZoomModal(false)}
             />
           </React.Suspense>

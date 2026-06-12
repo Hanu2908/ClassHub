@@ -111,3 +111,11 @@ export function validateSharedFiles(
 
   return { ok: true, files };
 }
+
+export interface CachedUrls {
+  thumbUrl: string;    // Thumbnail URL (or original URL if no thumbnail exists)
+  fullUrl: string;     // Original full-resolution URL
+  hasThumb: boolean;   // True when a real thumbnail was found
+  expiresAt: number;
+}
+export const signedUrlCache = new Map<string, CachedUrls>();

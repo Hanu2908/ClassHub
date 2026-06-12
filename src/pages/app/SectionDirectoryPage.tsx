@@ -77,10 +77,19 @@ export default function SectionDirectoryPage() {
   const [scrollMargin, setScrollMargin] = useState(0);
 
   useEffect(() => {
-    if (containerRef.current) {
-      setScrollMargin(containerRef.current.offsetTop);
-    }
-  }, [filteredMembers.length, tagFilter]);
+    if (!containerRef.current) return;
+
+    setScrollMargin(containerRef.current.offsetTop);
+
+    const observer = new ResizeObserver(() => {
+      if (containerRef.current) {
+        setScrollMargin(containerRef.current.offsetTop);
+      }
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [filteredMembers.length, tagFilter, isLoading]);
 
   const virtualizer = useWindowVirtualizer({
     count: filteredMembers.length,

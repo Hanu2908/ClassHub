@@ -15,7 +15,10 @@ import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useAckn
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { AnnouncementQAFooter, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
 import { FileUploader } from '../../components/FileUploader';
-import { AttachmentCard } from '../../components/AttachmentCard';
+import { AttachmentCard, signedUrlCache } from '../../components/AttachmentCard';
+import { ImageCarousel } from '../../components/ImageCarousel';
+import { AnimatePresence } from 'motion/react';
+const ImageZoomModal = lazy(() => import('../../components/ImageZoomModal'));
 import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
@@ -418,8 +421,29 @@ export function AnnouncementCardComponent({
   setOpenCommentsAnnId,
   onShare
 }: AnnouncementCardComponentProps) {
-  const [hovered, setHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [zoomModalData, setZoomModalData] = useState<{
+    images: Array<{ thumbUrl: string; fullUrl: string }>;
+    initialIndex: number;
+  } | null>(null);
+
+  const images = ann.attachments?.filter(att => isPreviewableImage(att.fileType, att.filename)) || [];
+  const otherFiles = ann.attachments?.filter(att => !isPreviewableImage(att.fileType, att.filename)) || [];
+
+  const handleImageClick = (index: number) => {
+    const modalImages = images.map(img => {
+      const cached = signedUrlCache.get(img.storagePath);
+      return {
+        thumbUrl: cached?.thumbUrl || '',
+        fullUrl: cached?.fullUrl || ''
+      };
+    });
+    setZoomModalData({
+      images: modalImages,
+      initialIndex: index
+    });
+  };
 
   const isCritical = ann.priority === 'critical';
   const isAcked = ann.isAcknowledged;
@@ -624,9 +648,16 @@ export function AnnouncementCardComponent({
       {/* 4. Attachments Block */}
       {ann.attachments && ann.attachments.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-          {ann.attachments.map((att: Attachment) => (
-            <AttachmentCard key={att.id} attachment={att} />
-          ))}
+          {images.length > 0 && (
+            <ImageCarousel images={images} onImageClick={handleImageClick} />
+          )}
+          {otherFiles.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {otherFiles.map((att: Attachment) => (
+                <AttachmentCard key={att.id} attachment={att} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -723,6 +754,21 @@ export function AnnouncementCardComponent({
           )}
         </div>
       </div>
+      <AnimatePresence>
+        {zoomModalData && (
+          <Suspense fallback={
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.85)' }}>
+              <Loader className="animate-spin" color="#fff" size={32} />
+            </div>
+          }>
+            <ImageZoomModal
+              images={zoomModalData.images}
+              initialIndex={zoomModalData.initialIndex}
+              onClose={() => setZoomModalData(null)}
+            />
+          </Suspense>
+        )}
+      </AnimatePresence>
     </article>
   );
 }
@@ -1100,10 +1146,19 @@ export default function AnnouncementsPage() {
   const [scrollMargin, setScrollMargin] = useState(0);
 
   useEffect(() => {
-    if (containerRef.current) {
-      setScrollMargin(containerRef.current.offsetTop);
-    }
-  }, [showSearch, searchQuery, activeTab, filter, activeFlashPosts.length, layoutMode]);
+    if (!containerRef.current) return;
+
+    setScrollMargin(containerRef.current.offsetTop);
+
+    const observer = new ResizeObserver(() => {
+      if (containerRef.current) {
+        setScrollMargin(containerRef.current.offsetTop);
+      }
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [showSearch, searchQuery, activeTab, filter, activeFlashPosts.length, layoutMode, isLoading, flatItems.length]);
 
   const virtualizer = useWindowVirtualizer({
     count: flatItems.length,

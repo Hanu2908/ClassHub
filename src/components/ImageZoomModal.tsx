@@ -1,18 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ImageZoomModalProps {
-  thumbUrl: string;    // Shown immediately (already cached by card)
-  fullUrl: string;     // Loaded in background, swapped when ready
+  images: Array<{ thumbUrl: string; fullUrl: string }>;
+  initialIndex: number;
   onClose: () => void;
 }
 
-export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoomModalProps) {
+export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZoomModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const currentImage = images[currentIndex] || { thumbUrl: '', fullUrl: '' };
 
   // Refs for tracking transform state without causing React re-renders
   const scaleRef = useRef(1);
@@ -25,30 +28,53 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
   const [currentScale, setCurrentScale] = useState(1);
 
   // Progressive loading: start with thumb, swap to full when ready
-  const [displayUrl, setDisplayUrl] = useState(thumbUrl);
-  const [isFullLoaded, setIsFullLoaded] = useState(thumbUrl === fullUrl);
+  const [displayUrl, setDisplayUrl] = useState(currentImage.thumbUrl);
+  const [isFullLoaded, setIsFullLoaded] = useState(currentImage.thumbUrl === currentImage.fullUrl);
 
-  // Preload full-resolution image in the background
+  // Swipe gesture refs
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  // When active slide changes, reset zoom state and start preloading the HD image
   useEffect(() => {
-    if (thumbUrl === fullUrl) {
+    // Reset transforms
+    scaleRef.current = 1;
+    setCurrentScale(1);
+    posRef.current = { x: 0, y: 0 };
+    if (imgRef.current) {
+      imgRef.current.style.transition = 'none';
+      imgRef.current.style.transform = 'translate3d(0, 0, 0) scale(1)';
+      // Trigger reflow to apply 'none' transition immediately
+      void imgRef.current.offsetHeight;
+      imgRef.current.style.transition = 'transform 0.16s cubic-bezier(0.25, 1, 0.5, 1)';
+    }
+
+    const activeImage = images[currentIndex];
+    if (!activeImage) return;
+
+    if (activeImage.thumbUrl === activeImage.fullUrl) {
+      setDisplayUrl(activeImage.fullUrl);
+      setIsFullLoaded(true);
       return;
     }
 
+    setDisplayUrl(activeImage.thumbUrl);
+    setIsFullLoaded(false);
+
     const img = new Image();
     img.onload = () => {
-      setDisplayUrl(fullUrl);
-      setIsFullLoaded(true);
+      // Only swap if this request is still relevant for the active index
+      if (images[currentIndex] === activeImage) {
+        setDisplayUrl(activeImage.fullUrl);
+        setIsFullLoaded(true);
+      }
     };
-    img.onerror = () => {
-      // Keep showing thumbnail — no error state needed
-    };
-    img.src = fullUrl;
+    img.src = activeImage.fullUrl;
 
     return () => {
       img.onload = null;
-      img.onerror = null;
     };
-  }, [thumbUrl, fullUrl]);
+  }, [currentIndex, images]);
 
   // Lock scrolling on document.body
   useEffect(() => {
@@ -65,11 +91,15 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
     };
   }, []);
 
-  // Set up Escape key handler and focus trap
+  // Set up Keyboard handlers (Left/Right arrows for sliding)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+      } else if (e.key === 'ArrowLeft' && scaleRef.current === 1 && images.length > 1) {
+        setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+      } else if (e.key === 'ArrowRight' && scaleRef.current === 1 && images.length > 1) {
+        setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
       } else if (e.key === 'Tab' && containerRef.current) {
         // Simple focus trap: lock focus within modal interactive elements
         const focusableElements = containerRef.current.querySelectorAll(
@@ -96,7 +126,7 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose]);
+  }, [onClose, images.length]);
 
   // Direct DOM mutation for transform inside requestAnimationFrame to prevent re-renders
   const scheduleUpdate = () => {
@@ -176,6 +206,37 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
     scheduleUpdate();
   };
 
+  // Touch Swipe Handlers for changing images when scale is 1
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (scaleRef.current > 1) return;
+    touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (scaleRef.current > 1) return;
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (scaleRef.current > 1) return;
+    if (touchStartX.current === null || touchEndX.current === null) return;
+
+    const diff = touchStartX.current - touchEndX.current;
+    const threshold = 50;
+
+    if (diff > threshold && images.length > 1) {
+      // Swipe Left -> Next Image
+      setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    } else if (diff < -threshold && images.length > 1) {
+      // Swipe Right -> Prev Image
+      setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   // Button actions
   const zoomIn = () => {
     const nextScale = Math.min(5, scaleRef.current + 0.5);
@@ -217,6 +278,9 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.22 }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       style={{
         position: 'fixed',
         inset: 0,
@@ -261,6 +325,36 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
         <X size={22} />
       </button>
 
+      {/* Left Navigation Chevron (Visible only when scale === 1) */}
+      {images.length > 1 && currentScale === 1 && (
+        <button
+          onClick={() => setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
+          aria-label="Previous image"
+          style={{
+            position: 'absolute',
+            left: 20,
+            zIndex: 10,
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: 'none',
+            borderRadius: '50%',
+            width: 44,
+            height: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            cursor: 'pointer',
+            transition: 'background var(--transition-fast)'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+        >
+          <ChevronLeft size={20} />
+        </button>
+      )}
+
       {/* Centered Image */}
       <motion.img
         ref={imgRef}
@@ -298,6 +392,63 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
         }}
       />
 
+      {/* Right Navigation Chevron (Visible only when scale === 1) */}
+      {images.length > 1 && currentScale === 1 && (
+        <button
+          onClick={() => setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
+          aria-label="Next image"
+          style={{
+            position: 'absolute',
+            right: 20,
+            zIndex: 10,
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: 'none',
+            borderRadius: '50%',
+            width: 44,
+            height: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            cursor: 'pointer',
+            transition: 'background var(--transition-fast)'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+        >
+          <ChevronRight size={20} />
+        </button>
+      )}
+
+      {/* Slide Indicators (Dots) */}
+      {images.length > 1 && currentScale === 1 && (
+        <div style={{
+          position: 'absolute',
+          bottom: 90,
+          display: 'flex',
+          gap: 6,
+          alignItems: 'center',
+          zIndex: 10,
+          pointerEvents: 'none'
+        }}>
+          {images.map((_, idx) => (
+            <span
+              key={idx}
+              style={{
+                width: idx === currentIndex ? 14 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: idx === currentIndex ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.35)',
+                boxShadow: idx === currentIndex ? '0 0 6px var(--accent-primary-glow)' : 'none',
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Zoom Control Panel */}
       <div
         style={{
@@ -311,7 +462,10 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
           padding: '8px 20px',
           borderRadius: 24,
           zIndex: 10,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          opacity: currentScale === 1 ? 1 : 0,
+          pointerEvents: currentScale === 1 ? 'auto' : 'none',
+          transition: 'opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
         <button
@@ -372,7 +526,7 @@ export default function ImageZoomModal({ thumbUrl, fullUrl, onClose }: ImageZoom
         </button>
 
         {/* HD loading indicator */}
-        {!isFullLoaded && thumbUrl !== fullUrl && (
+        {!isFullLoaded && currentImage.thumbUrl !== currentImage.fullUrl && (
           <span style={{
             fontSize: 9,
             fontWeight: 600,
