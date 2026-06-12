@@ -69,10 +69,18 @@ export const ImageCarousel = React.memo(function ImageCarousel({ images, onImage
           try {
             const thumbPath = getThumbPath(path);
             
-            // Step 1: Create signed URL for thumbnail
-            const { data: thumbData, error: thumbError } = await supabase.storage
-              .from('attachments')
-              .createSignedUrl(thumbPath, 3600);
+            // Step 1: Try to create signed URL for thumbnail (may not exist)
+            let thumbUrl: string | null = null;
+            try {
+              const { data: thumbData, error: thumbError } = await supabase.storage
+                .from('attachments')
+                .createSignedUrl(thumbPath, 3600);
+              if (!thumbError && thumbData?.signedUrl) {
+                thumbUrl = thumbData.signedUrl;
+              }
+            } catch {
+              // Thumbnail doesn't exist — this is expected, fall through
+            }
 
             if (cancelled) return;
 
@@ -89,18 +97,18 @@ export const ImageCarousel = React.memo(function ImageCarousel({ images, onImage
             }
 
             const fullUrl = fullData.signedUrl;
-            const hasThumb = !thumbError && !!thumbData?.signedUrl;
-            const thumbUrl = hasThumb ? thumbData!.signedUrl : fullUrl;
+            const hasThumb = !!thumbUrl;
+            const resolvedThumbUrl = hasThumb ? thumbUrl! : fullUrl;
 
             // Save to Cache
             signedUrlCache.set(path, {
-              thumbUrl,
+              thumbUrl: resolvedThumbUrl,
               fullUrl,
               hasThumb,
               expiresAt: Date.now() + 3500 * 1000,
             });
 
-            pendingUrls[path] = { thumbUrl, fullUrl };
+            pendingUrls[path] = { thumbUrl: resolvedThumbUrl, fullUrl };
           } catch {
             newErrors[path] = true;
           } finally {

@@ -30,6 +30,7 @@ export default function AcksTrackingSheet({ open, announcement, onClose, section
   // Fetch notification events telemetry for Priority 2 CR Delivery Analytics
   const { data: pushEvents = [] } = useQuery({
     queryKey: ['announcement-push-events', announcement.id],
+    enabled: Boolean(announcement?.id),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('notification_events')

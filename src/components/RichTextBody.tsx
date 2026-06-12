@@ -210,11 +210,14 @@ export function YouTubePlayer({ videoId }: YouTubePlayerProps) {
   );
 }
 
+import { HighlightText } from './HighlightText';
+
 interface RichTextBodyProps {
   text: string;
+  search?: string;
 }
 
-export default function RichTextBody({ text }: RichTextBodyProps) {
+export default function RichTextBody({ text, search }: RichTextBodyProps) {
   if (!text) return null;
 
   // Extract all unique YouTube Video IDs
@@ -247,11 +250,11 @@ export default function RichTextBody({ text }: RichTextBodyProps) {
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {part}
+                {search ? <HighlightText text={part} search={search} /> : part}
               </a>
             );
           }
-          return part;
+          return search ? <HighlightText key={index} text={part} search={search} /> : part;
         })}
       </span>
 

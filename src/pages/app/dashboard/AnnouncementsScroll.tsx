@@ -4,6 +4,8 @@ import { AlertTriangle, Megaphone, Award, Calendar, Coffee, Paperclip, ChevronLe
 import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../../store/appStore';
 import { useAnnouncements, useAcknowledge } from '../../../hooks/useAnnouncements';
+import { useSubjects, type SubjectInfo } from '../../../hooks/useSubjects';
+import { matchSubject } from '../../../lib/utils/announcements';
 import { toast } from 'sonner';
 import { AttachmentCard } from '../../../components/AttachmentCard';
 import { ImageCarousel } from '../../../components/ImageCarousel';
@@ -96,8 +98,8 @@ export default function AnnouncementsScroll() {
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
-  const [selectedAnn, setSelectedAnn] = useState<(Announcement & { isAcknowledged: boolean }) | null>(null);
-  const [prevSelectedAnn, setPrevSelectedAnn] = useState<(Announcement & { isAcknowledged: boolean }) | null>(null);
+  const [selectedAnn, setSelectedAnn] = useState<(Announcement & { isAcknowledged: boolean; matchedSubject?: SubjectInfo | null }) | null>(null);
+  const [prevSelectedAnn, setPrevSelectedAnn] = useState<(Announcement & { isAcknowledged: boolean; matchedSubject?: SubjectInfo | null }) | null>(null);
 
   useEffect(() => {
     if (selectedAnn) {
@@ -200,12 +202,17 @@ export default function AnnouncementsScroll() {
     }
   };
 
+  const { data: subjects = [] } = useSubjects();
   const { data: announcements = [], isLoading } = useAnnouncements({ limit: 12 });
   const visible = useMemo(() => {
     return announcements
       .filter(a => !isExpired(a.deadline))
+      .map(a => ({
+        ...a,
+        matchedSubject: matchSubject(a.title, a.body, subjects)
+      }))
       .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
-  }, [announcements]);
+  }, [announcements, subjects]);
 
   if (isLoading) return <WidgetSkeleton />;
 
@@ -251,7 +258,7 @@ export default function AnnouncementsScroll() {
     }
   };
 
-  const cardsToRender: { item: Announcement & { isAcknowledged: boolean }; relativeIndex: number }[] = [];
+  const cardsToRender: { item: Announcement & { isAcknowledged: boolean; matchedSubject?: SubjectInfo | null }; relativeIndex: number }[] = [];
   if (visible.length > 0) {
     for (let i = 0; i < Math.min(visible.length, 3); i++) {
       const idx = (safeActiveIndex + i) % visible.length;
@@ -428,10 +435,46 @@ export default function AnnouncementsScroll() {
                               </button>
                             )}
                           </div>
-                          <p className="t-button" style={{ fontSize: '14px', color: 'var(--text-primary)', marginBottom: 2, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontWeight: 600, lineHeight: 1.3 }}>
-                            {ann.title}
+                          <p className="t-button" style={{ 
+                            fontSize: '14px', 
+                            color: 'var(--text-primary)', 
+                            marginBottom: 2, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '4px',
+                            fontWeight: 600, 
+                            lineHeight: 1.3,
+                            width: '100%',
+                            overflow: 'hidden',
+                          }}>
+                            {ann.matchedSubject && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontSize: '9px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                backgroundColor: `${ann.matchedSubject.accent}15`,
+                                color: ann.matchedSubject.accent,
+                                border: `1px solid ${ann.matchedSubject.accent}30`,
+                                lineHeight: 1,
+                                flexShrink: 0,
+                              }}>
+                                {ann.matchedSubject.code}
+                              </span>
+                            )}
+                            <span style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flex: 1,
+                            }}>
+                              {ann.title}
+                            </span>
                           </p>
-                          {ann.body && (
+                          {ann.body && ann.body.trim() && (
                             <p className="t-body" style={{
                               fontSize: '12px',
                               color: 'var(--text-secondary)',
@@ -553,15 +596,43 @@ export default function AnnouncementsScroll() {
                   );
                 })()}
               </div>
-              <h2 className="t-card-title" style={{ fontSize: 20, color: 'var(--text-primary)', lineHeight: 1.3, textAlign: 'left' }}>
-                {prevSelectedAnn.title}
+              <h2 className="t-card-title" style={{ 
+                fontSize: 20, 
+                color: 'var(--text-primary)', 
+                lineHeight: 1.3, 
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexWrap: 'wrap',
+              }}>
+                {(prevSelectedAnn as any).matchedSubject && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    backgroundColor: `${(prevSelectedAnn as any).matchedSubject.accent}15`,
+                    color: (prevSelectedAnn as any).matchedSubject.accent,
+                    border: `1px solid ${(prevSelectedAnn as any).matchedSubject.accent}30`,
+                    lineHeight: 1,
+                  }}>
+                    {(prevSelectedAnn as any).matchedSubject.code}
+                  </span>
+                )}
+                <span>{prevSelectedAnn.title}</span>
               </h2>
             </div>
 
             {/* Rich Body Content */}
-            <div className="t-body" style={{ color: 'var(--text-primary)', lineHeight: 1.6, maxHeight: '30vh', overflowY: 'auto', paddingRight: 4, textAlign: 'left' }}>
-              <RichTextBody text={prevSelectedAnn.body} />
-            </div>
+            {prevSelectedAnn.body && prevSelectedAnn.body.trim() && (
+              <div className="t-body" style={{ color: 'var(--text-primary)', lineHeight: 1.6, maxHeight: '30vh', overflowY: 'auto', paddingRight: 4, textAlign: 'left' }}>
+                <RichTextBody text={prevSelectedAnn.body} />
+              </div>
+            )}
 
             {/* Deadline Badge */}
             {prevSelectedAnn.deadline && (

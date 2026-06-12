@@ -9,9 +9,10 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../store/appStore';
 import { toast } from 'sonner';
-import { useWindowVirtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import Skeleton from 'react-loading-skeleton';
 import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useAnnouncements';
+import { useSubjects, type SubjectInfo } from '../../hooks/useSubjects';
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { AnnouncementQAFooter, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
 import { FileUploader } from '../../components/FileUploader';
@@ -23,6 +24,9 @@ import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
 import RichTextBody from '../../components/RichTextBody';
+import { matchSubject } from '../../lib/utils/announcements';
+import { HighlightText } from '../../components/HighlightText';
+
 import { OffscreenSharePortal } from '../../components/announcement-qa/OffscreenSharePortal';
 import { shareAnnouncementCard } from '../../lib/utils/shareCard';
 import { isPreviewableImage, signedUrlCache } from '../../lib/utils/attachments';
@@ -40,6 +44,9 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
   const authUser = useAppStore(s => s.authUser);
   const sectionId = authUser?.sectionId;
   const userId = authUser?.id;
+
+  const { data: subjects = [] } = useSubjects();
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -67,13 +74,17 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
   };
 
   const handlePost = async () => {
-    if (!title.trim() || !body.trim()) { toast.error('Title and body required'); return; }
+    if (!title.trim()) { toast.error('Title is required'); return; }
     
     setIsPosting(true);
     try {
+      const finalBody = selectedSubjectId
+        ? `${body.trim()}\n<!-- subject_id:${selectedSubjectId} -->`
+        : body.trim();
+
       const parentId = await createAnn.mutateAsync({
         title: title.trim(),
-        message: body.trim(),
+        message: finalBody,
         priority,
         deadline: hasDeadline && deadlineDate ? new Date(deadlineDate).toISOString() : null,
       });
@@ -113,6 +124,12 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
       }
 
       toast.success('Announcement posted');
+      setTitle('');
+      setBody('');
+      setSelectedSubjectId('');
+      setHasDeadline(false);
+      setDeadlineDate('');
+      setFiles([]);
       onClose();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to post');
@@ -139,7 +156,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
           />
         </div>
         <div>
-          <label htmlFor="composer-body" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message *</label>
+          <label htmlFor="composer-body" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message (Optional)</label>
           <textarea 
             id="composer-body"
             style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} 
@@ -164,11 +181,27 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
               <option value="critical">Immediate</option>
             </select>
           </div>
+
+          <div style={{ flex: 1 }}>
+            <label htmlFor="composer-subject" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Link Subject</label>
+            <select 
+              id="composer-subject"
+              style={inputStyle} 
+              className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
+              value={selectedSubjectId} 
+              onChange={e => setSelectedSubjectId(e.target.value)}
+            >
+              <option value="">None / General</option>
+              {subjects.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: hasDeadline ? 8 : 0 }}>
-            <input type="checkbox" checked={hasDeadline} onChange={e => setHasDeadline(e.target.checked)} />
+            <input type="checkbox" id="composer-has-deadline" checked={hasDeadline} onChange={e => setHasDeadline(e.target.checked)} />
             <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Set a deadline</span>
           </label>
           {hasDeadline && (
@@ -395,7 +428,7 @@ function CountdownTimer({ expiresAt, onExpire }: { expiresAt: string; onExpire: 
 }
 
 interface AnnouncementCardComponentProps {
-  ann: Announcement & { isAcknowledged: boolean };
+  ann: Announcement & { isAcknowledged: boolean; matchedSubject?: SubjectInfo | null };
   isHighlighted: boolean;
   highlightRef: React.RefObject<HTMLDivElement | null> | null;
   role: string;
@@ -406,6 +439,7 @@ interface AnnouncementCardComponentProps {
   setTrackingAnnouncement: (ann: Announcement | null) => void;
   setOpenCommentsAnnId: (id: string | null) => void;
   onShare: (ann: Announcement) => void;
+  searchQuery: string;
 }
 
 export function AnnouncementCardComponent({
@@ -419,7 +453,8 @@ export function AnnouncementCardComponent({
   setPendingDeleteId,
   setTrackingAnnouncement,
   setOpenCommentsAnnId,
-  onShare
+  onShare,
+  searchQuery
 }: AnnouncementCardComponentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -452,7 +487,7 @@ export function AnnouncementCardComponent({
   const lbl = deadlineLabel(ann.deadline);
   const category = getAnnouncementCategory(ann.title, ann.priority);
 
-  const isLongText = ann.body.length > 200 || ann.body.split('\n').length > 3;
+  const isLongText = ann.body ? (ann.body.length > 200 || ann.body.split('\n').length > 3) : false;
 
   const glowingOutlineStyle: React.CSSProperties = {
     position: 'relative',
@@ -575,37 +610,63 @@ export function AnnouncementCardComponent({
         fontSize: '16px',
         fontWeight: 700,
         margin: 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        flexWrap: 'wrap',
       }}>
-        {ann.title}
+        {ann.matchedSubject && (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            backgroundColor: `${ann.matchedSubject.accent}15`,
+            color: ann.matchedSubject.accent,
+            border: `1px solid ${ann.matchedSubject.accent}30`,
+            lineHeight: 1,
+            pointerEvents: 'none',
+          }}>
+            {ann.matchedSubject.code}
+          </span>
+        )}
+        <span>
+          <HighlightText text={ann.title} search={searchQuery} />
+        </span>
       </h2>
 
       {/* 3. In-Place Option A Expand with Soft Glass Fade */}
-      <div style={{ position: 'relative', width: '100%' }}>
-        <div className="t-body" style={{ 
-          color: 'var(--text-primary)', 
-          lineHeight: 1.625, 
-          fontSize: '14.5px',
-          margin: 0,
-          display: isExpanded ? 'block' : '-webkit-box',
-          WebkitLineClamp: isExpanded ? undefined : 3,
-          WebkitBoxOrient: isExpanded ? undefined : 'vertical',
-          overflow: isExpanded ? 'visible' : 'hidden',
-          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}>
-          <RichTextBody text={ann.body} />
+      {ann.body && ann.body.trim() && (
+        <div style={{ position: 'relative', width: '100%' }}>
+          <div className="t-body" style={{ 
+            color: 'var(--text-primary)', 
+            lineHeight: 1.625, 
+            fontSize: '14.5px',
+            margin: 0,
+            display: isExpanded ? 'block' : '-webkit-box',
+            WebkitLineClamp: isExpanded ? undefined : 3,
+            WebkitBoxOrient: isExpanded ? undefined : 'vertical',
+            overflow: isExpanded ? 'visible' : 'hidden',
+            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}>
+            <RichTextBody text={ann.body} search={searchQuery} />
+          </div>
+          {!isExpanded && isLongText && (
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '24px',
+              background: 'linear-gradient(to bottom, transparent, var(--bg-elevated, #0a0b12))',
+              pointerEvents: 'none',
+            }} />
+          )}
         </div>
-        {!isExpanded && isLongText && (
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '24px',
-            background: 'linear-gradient(to bottom, transparent, var(--bg-elevated, #0a0b12))',
-            pointerEvents: 'none',
-          }} />
-        )}
-      </div>
+      )}
 
       {/* Caret Toggle Button */}
       {isLongText && (
@@ -824,6 +885,28 @@ export default function AnnouncementsPage() {
   const [showCreate, setShowCreate] = useState(location.state?.openCreate || false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { data: subjects = [] } = useSubjects();
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('all');
+  const [filterHasAttachment, setFilterHasAttachment] = useState(false);
+  const [filterUnacknowledgedOnly, setFilterUnacknowledgedOnly] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('classhub_announcements_recent_searches') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const saveSearchQuery = (query: string) => {
+    const q = query.trim();
+    if (!q) return;
+    setRecentSearches(prev => {
+      const next = [q, ...prev.filter(x => x !== q)].slice(0, 5);
+      localStorage.setItem('classhub_announcements_recent_searches', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const [sortBy, setSortBy] = useState<'newest' | 'priority' | 'deadline'>('newest');
   const [trackingAnnouncement, setTrackingAnnouncement] = useState<Announcement | null>(null);
   const [prevTrackingAnnouncement, setPrevTrackingAnnouncement] = useState<Announcement | null>(null);
@@ -994,12 +1077,14 @@ export default function AnnouncementsPage() {
   }, {} as Record<string, number>);
 
   // Auto-expiry: hide items past deadline + 2 days and include Flash Posts (which always stay in timeline history)
-  const visible = announcements.filter(a => {
-    if (!a.expiresAt) {
-      return !isExpired(a.deadline);
-    }
-    return true; // Expired or active Flash Posts always stay in history
-  });
+  const visible = useMemo(() => {
+    return announcements.filter(a => {
+      if (!a.expiresAt) {
+        return !isExpired(a.deadline);
+      }
+      return true; // Expired or active Flash Posts always stay in history
+    });
+  }, [announcements]);
 
   const activeFlashPosts = useMemo(() => {
     return announcements.filter(
@@ -1047,8 +1132,15 @@ export default function AnnouncementsPage() {
   // Pure rendering date timestamp initialized once on mount to keep rendering pure
   const [now] = useState(() => Date.now());
 
+  const visibleWithSubjects = useMemo(() => {
+    return visible.map(a => ({
+      ...a,
+      matchedSubject: matchSubject(a.title, a.body, subjects)
+    }));
+  }, [visible, subjects]);
+
   const filtered = useMemo(() => {
-    return visible.filter(a => {
+    return visibleWithSubjects.filter(a => {
       // 1. Tab-based channel filter:
       const categoryInfo = getAnnouncementCategory(a.title, a.priority);
       const categoryName = categoryInfo.name;
@@ -1079,7 +1171,19 @@ export default function AnnouncementsPage() {
         a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
         a.body.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchesTab && matchesFilter && matchesSearch;
+      // 4. Subject filter:
+      const matchesSubject = selectedSubjectFilter === 'all' || 
+        (a.matchedSubject && a.matchedSubject.id === selectedSubjectFilter);
+
+      // 5. Has Attachment filter:
+      const matchesAttachment = !filterHasAttachment || 
+        (a.attachments && a.attachments.length > 0);
+
+      // 6. Unacknowledged filter:
+      const matchesUnacknowledged = !filterUnacknowledgedOnly || 
+        (!a.isAcknowledged);
+
+      return matchesTab && matchesFilter && matchesSearch && matchesSubject && matchesAttachment && matchesUnacknowledged;
     }).sort((a, b) => {
       if (sortBy === 'priority') {
         if (a.priority === 'critical' && b.priority !== 'critical') return -1;
@@ -1103,7 +1207,7 @@ export default function AnnouncementsPage() {
         return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
       }
     });
-  }, [visible, activeTab, filter, searchQuery, sortBy, now, justAckedIds]);
+  }, [visibleWithSubjects, activeTab, filter, searchQuery, selectedSubjectFilter, filterHasAttachment, filterUnacknowledgedOnly, sortBy, now, justAckedIds]);
 
   const groupedAnnouncements = useMemo(() => {
     return groupByTimeline(filtered, now);
@@ -1142,31 +1246,20 @@ export default function AnnouncementsPage() {
     return items;
   }, [layoutMode, filtered, groupedAnnouncements]);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollMargin, setScrollMargin] = useState(0);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    setScrollMargin(containerRef.current.offsetTop);
-
-    const observer = new ResizeObserver(() => {
-      if (containerRef.current) {
-        setScrollMargin(containerRef.current.offsetTop);
-      }
-    });
-
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, [showSearch, searchQuery, activeTab, filter, activeFlashPosts.length, layoutMode, isLoading, flatItems.length]);
-
-  const virtualizer = useWindowVirtualizer({
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
     count: flatItems.length,
-    estimateSize: () => 200,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 350,
     getItemKey: (index) => flatItems[index]?.key || index,
     overscan: 5,
-    scrollMargin,
   });
+
+  // Force re-measure when layout mode changes or announcements load to avoid stale height cache
+  useEffect(() => {
+    virtualizer.measure();
+  }, [layoutMode, announcements.length]);
+
 
 
   const handleDelete = async (id: string) => {
@@ -1189,7 +1282,7 @@ export default function AnnouncementsPage() {
   };
 
   return (
-    <div className="page-shell">
+    <div className="page-shell" style={{ height: '100dvh', overflow: 'hidden' }}>
       <header style={{
         position: 'sticky', top: 0, zIndex: 50,
         background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(16px)',
@@ -1325,7 +1418,12 @@ export default function AnnouncementsPage() {
             <button
               onClick={() => {
                 setShowSearch(!showSearch);
-                if (showSearch) setSearchQuery(''); // Clear search on collapse
+                if (showSearch) {
+                  setSearchQuery('');
+                  setSelectedSubjectFilter('all');
+                  setFilterHasAttachment(false);
+                  setFilterUnacknowledgedOnly(false);
+                }
               }}
               className={`header-action-btn${(showSearch || searchQuery) ? ' active' : ''}`}
               style={{
@@ -1487,16 +1585,29 @@ export default function AnnouncementsPage() {
           <div className="search-input-wrapper">
             <Search size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
             <input
+              id="announcements-search"
+              name="announcements-search"
               type="text"
               className="search-input-field"
               placeholder="Search announcements..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  saveSearchQuery(searchQuery);
+                }
+              }}
+              onBlur={() => {
+                saveSearchQuery(searchQuery);
+              }}
               aria-label="Search announcements"
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedSubjectFilter('all');
+                }}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--text-muted)', display: 'flex', padding: 4,
@@ -1508,10 +1619,174 @@ export default function AnnouncementsPage() {
               </button>
             )}
           </div>
+
+          {/* Expanded Search Filters Sub-panel */}
+          {(showSearch || searchQuery) && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              padding: '12px 4px 4px',
+              borderTop: '1px solid var(--border-default)',
+              marginTop: 10,
+            }}>
+              {/* 1. Recent Searches Row */}
+              {recentSearches.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Recent:
+                  </span>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {recentSearches.map((term, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setSearchQuery(term)}
+                        style={{
+                          background: 'rgba(255,255,255,0.02)',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '3px 8px',
+                          fontSize: '11px',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          transition: 'all var(--transition-fast)',
+                        }}
+                      >
+                        {term}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecentSearches([]);
+                        localStorage.removeItem('classhub_announcements_recent_searches');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--status-critical)',
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        padding: '2px 4px',
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Filter by Subject Row */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Filter by Subject:</span>
+                <div className="no-scrollbar" style={{
+                  display: 'flex',
+                  gap: 8,
+                  overflowX: 'auto',
+                  paddingBottom: 4,
+                  WebkitOverflowScrolling: 'touch',
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubjectFilter('all')}
+                    style={{
+                      background: selectedSubjectFilter === 'all' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.03)',
+                      border: selectedSubjectFilter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '4px 12px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: selectedSubjectFilter === 'all' ? '#fff' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                  >
+                    All Subjects
+                  </button>
+                  {subjects.map(s => {
+                    const isSelected = selectedSubjectFilter === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setSelectedSubjectFilter(isSelected ? 'all' : s.id)}
+                        style={{
+                          background: isSelected ? `${s.accent}20` : 'rgba(255,255,255,0.03)',
+                          border: isSelected ? `1px solid ${s.accent}` : '1px solid var(--border-default)',
+                          borderRadius: 'var(--radius-pill)',
+                          padding: '4px 12px',
+                          fontSize: '11px',
+                          fontWeight: isSelected ? 700 : 500,
+                          color: isSelected ? s.accent : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'all var(--transition-fast)',
+                        }}
+                      >
+                        <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: s.accent, marginRight: 6 }} />
+                        {s.code}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. Quick Filter Toggles */}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                <button
+                  type="button"
+                  onClick={() => setFilterHasAttachment(!filterHasAttachment)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: filterHasAttachment ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255,255,255,0.02)',
+                    border: filterHasAttachment ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '5px 12px',
+                    fontSize: '11px',
+                    color: filterHasAttachment ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    fontWeight: filterHasAttachment ? 600 : 400,
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <span>📎 Has Attachment</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFilterUnacknowledgedOnly(!filterUnacknowledgedOnly)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: filterUnacknowledgedOnly ? 'rgba(251, 191, 36, 0.12)' : 'rgba(255,255,255,0.02)',
+                    border: filterUnacknowledgedOnly ? '1px solid rgba(251, 191, 36, 0.4)' : '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '5px 12px',
+                    fontSize: '11px',
+                    color: filterUnacknowledgedOnly ? '#fbbf24' : 'var(--text-secondary)',
+                    fontWeight: filterUnacknowledgedOnly ? 600 : 400,
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <span>⚡ Unacknowledged</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="page-content">
+      <main ref={parentRef} className="page-content" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
         {activeFlashPosts.length > 0 && (
           <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p className="t-mono" style={{ color: 'var(--status-critical)', margin: '0 0 4px', letterSpacing: '0.04em', fontSize: '11px', fontWeight: 700 }}>
@@ -1629,9 +1904,8 @@ export default function AnnouncementsPage() {
 
           return (
             <div
-              ref={containerRef}
               style={{
-                height: `${virtualizer.getTotalSize() - scrollMargin}px`,
+                height: `${virtualizer.getTotalSize()}px`,
                 width: '100%',
                 position: 'relative',
               }}
@@ -1650,7 +1924,7 @@ export default function AnnouncementsPage() {
                       top: 0,
                       left: 0,
                       width: '100%',
-                      transform: `translateY(${virtualItem.start - scrollMargin}px)`,
+                      transform: `translateY(${virtualItem.start}px)`,
                       paddingBottom: '16px',
                     }}
                   >
@@ -1669,6 +1943,7 @@ export default function AnnouncementsPage() {
                         setTrackingAnnouncement={setTrackingAnnouncement}
                         setOpenCommentsAnnId={setOpenCommentsAnnId}
                         onShare={handleShareAnnouncement}
+                        searchQuery={searchQuery}
                       />
                     )}
                   </div>
@@ -1677,6 +1952,8 @@ export default function AnnouncementsPage() {
             </div>
           );
         })()}
+        {/* Bottom spacer — small extra clearance for FAB button overlap */}
+        <div style={{ height: '80px', flexShrink: 0 }} aria-hidden="true" />
       </main>
 
       <CROnly>
