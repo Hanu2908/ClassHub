@@ -5,7 +5,7 @@ import { deadlineBadgeClass, deadlineLabel, timeAgo } from '../../../components/
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../../store/appStore';
 import { useAnnouncements, useAcknowledge } from '../../../hooks/useAnnouncements';
 import { toast } from 'sonner';
-import { AttachmentCard, signedUrlCache } from '../../../components/AttachmentCard';
+import { AttachmentCard } from '../../../components/AttachmentCard';
 import { ImageCarousel } from '../../../components/ImageCarousel';
 import { AnimatePresence } from 'motion/react';
 const ImageZoomModal = React.lazy(() => import('../../../components/ImageZoomModal'));
@@ -16,7 +16,7 @@ import { WidgetSkeleton } from './dashboardUtils';
 import RichTextBody from '../../../components/RichTextBody';
 import { OffscreenSharePortal } from '../../../components/announcement-qa/OffscreenSharePortal';
 import { shareAnnouncementCard } from '../../../lib/utils/shareCard';
-import { isPreviewableImage } from '../../../lib/utils/attachments';
+import { isPreviewableImage, signedUrlCache } from '../../../lib/utils/attachments';
 import { getThumbPath } from '../../../lib/utils/imageResize';
 import { supabase } from '../../../lib/supabase';
 import { BottomSheet } from '../../../components/BottomSheet';

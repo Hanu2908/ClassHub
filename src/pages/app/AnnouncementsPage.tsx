@@ -15,7 +15,7 @@ import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useAckn
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { AnnouncementQAFooter, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
 import { FileUploader } from '../../components/FileUploader';
-import { AttachmentCard, signedUrlCache } from '../../components/AttachmentCard';
+import { AttachmentCard } from '../../components/AttachmentCard';
 import { ImageCarousel } from '../../components/ImageCarousel';
 import { AnimatePresence } from 'motion/react';
 const ImageZoomModal = lazy(() => import('../../components/ImageZoomModal'));
@@ -25,7 +25,7 @@ import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../.
 import RichTextBody from '../../components/RichTextBody';
 import { OffscreenSharePortal } from '../../components/announcement-qa/OffscreenSharePortal';
 import { shareAnnouncementCard } from '../../lib/utils/shareCard';
-import { isPreviewableImage } from '../../lib/utils/attachments';
+import { isPreviewableImage, signedUrlCache } from '../../lib/utils/attachments';
 import { getThumbPath } from '../../lib/utils/imageResize';
 
 const DeleteConfirmationModal = lazy(() => import('../../components/DeleteConfirmationModal'));
