@@ -1681,104 +1681,141 @@ export default function AnnouncementsPage() {
                 </div>
               )}
 
-              {/* 2. Filter by Subject Row */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Filter by Subject:</span>
-                <div className="no-scrollbar" style={{
-                  display: 'flex',
-                  gap: 8,
-                  overflowX: 'auto',
-                  paddingBottom: 4,
-                  WebkitOverflowScrolling: 'touch',
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSubjectFilter('all')}
-                    style={{
-                      background: selectedSubjectFilter === 'all' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.03)',
-                      border: selectedSubjectFilter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-pill)',
-                      padding: '4px 12px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: selectedSubjectFilter === 'all' ? '#fff' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'all var(--transition-fast)',
-                    }}
-                  >
-                    All Subjects
-                  </button>
-                  {subjects.map(s => {
-                    const isSelected = selectedSubjectFilter === s.id;
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => setSelectedSubjectFilter(isSelected ? 'all' : s.id)}
+              {/* 2. Filters Row — Subject dropdown + toggle chips in one line */}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Subject Filter Dropdown */}
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button
+                      type="button"
+                      id="subject-filter-trigger"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: selectedSubjectFilter === 'all' ? 'rgba(255, 255, 255, 0.03)' : `${subjects.find(s => s.id === selectedSubjectFilter)?.accent ?? 'var(--accent-primary)'}15`,
+                        border: selectedSubjectFilter === 'all' ? '1px solid var(--border-default)' : `1px solid ${subjects.find(s => s.id === selectedSubjectFilter)?.accent ?? 'var(--accent-primary)'}50`,
+                        borderRadius: 'var(--radius-pill)',
+                        padding: '0 12px',
+                        color: selectedSubjectFilter === 'all' ? 'var(--text-secondary)' : subjects.find(s => s.id === selectedSubjectFilter)?.accent ?? 'var(--text-primary)',
+                        fontSize: '11px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        height: '30px',
+                        maxWidth: '180px',
+                        transition: 'all var(--transition-fast)',
+                      }}
+                    >
+                      {selectedSubjectFilter !== 'all' && (() => {
+                        const sel = subjects.find(s => s.id === selectedSubjectFilter);
+                        return sel ? <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: sel.accent, flexShrink: 0 }} /> : null;
+                      })()}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {selectedSubjectFilter === 'all'
+                          ? 'All Subjects'
+                          : subjects.find(s => s.id === selectedSubjectFilter)?.name ?? 'All Subjects'}
+                      </span>
+                      <ChevronDown size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                    </button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content
+                      align="start"
+                      sideOffset={6}
+                      className="dropdown-content animate-slide-up"
+                      style={{ zIndex: 10000, minWidth: '200px', maxHeight: '240px', overflowY: 'auto' }}
+                    >
+                      <DropdownMenu.Item
+                        onClick={() => setSelectedSubjectFilter('all')}
+                        className="dropdown-item"
                         style={{
-                          background: isSelected ? `${s.accent}20` : 'rgba(255,255,255,0.03)',
-                          border: isSelected ? `1px solid ${s.accent}` : '1px solid var(--border-default)',
-                          borderRadius: 'var(--radius-pill)',
-                          padding: '4px 12px',
-                          fontSize: '11px',
-                          fontWeight: isSelected ? 700 : 500,
-                          color: isSelected ? s.accent : 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          transition: 'all var(--transition-fast)',
+                          color: selectedSubjectFilter === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          background: selectedSubjectFilter === 'all' ? 'rgba(99, 102, 241, 0.08)' : undefined,
+                          fontWeight: selectedSubjectFilter === 'all' ? 600 : 400,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
                         }}
                       >
-                        <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: s.accent, marginRight: 6 }} />
-                        {s.code}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                        <span>All Subjects</span>
+                        {selectedSubjectFilter === 'all' && <Check size={14} />}
+                      </DropdownMenu.Item>
+                      {subjects.map(s => {
+                        const isSelected = selectedSubjectFilter === s.id;
+                        return (
+                          <DropdownMenu.Item
+                            key={s.id}
+                            onClick={() => setSelectedSubjectFilter(isSelected ? 'all' : s.id)}
+                            className="dropdown-item"
+                            style={{
+                              color: isSelected ? s.accent : 'var(--text-secondary)',
+                              background: isSelected ? `${s.accent}12` : undefined,
+                              fontWeight: isSelected ? 600 : 400,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 8,
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: s.accent, flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                            </div>
+                            {isSelected && <Check size={14} />}
+                          </DropdownMenu.Item>
+                        );
+                      })}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
 
-              {/* 3. Quick Filter Toggles */}
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                {/* Has Attachment toggle */}
                 <button
                   type="button"
                   onClick={() => setFilterHasAttachment(!filterHasAttachment)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 5,
                     background: filterHasAttachment ? 'rgba(99, 102, 241, 0.12)' : 'rgba(255,255,255,0.02)',
                     border: filterHasAttachment ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-pill)',
-                    padding: '5px 12px',
+                    padding: '0 12px',
+                    height: '30px',
                     fontSize: '11px',
                     color: filterHasAttachment ? 'var(--accent-primary)' : 'var(--text-secondary)',
                     fontWeight: filterHasAttachment ? 600 : 400,
                     cursor: 'pointer',
+                    whiteSpace: 'nowrap',
                     transition: 'all var(--transition-fast)',
                   }}
                 >
-                  <span>📎 Has Attachment</span>
+                  📎 Attachment
                 </button>
 
+                {/* Unacknowledged toggle */}
                 <button
                   type="button"
                   onClick={() => setFilterUnacknowledgedOnly(!filterUnacknowledgedOnly)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 5,
                     background: filterUnacknowledgedOnly ? 'rgba(251, 191, 36, 0.12)' : 'rgba(255,255,255,0.02)',
                     border: filterUnacknowledgedOnly ? '1px solid rgba(251, 191, 36, 0.4)' : '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-pill)',
-                    padding: '5px 12px',
+                    padding: '0 12px',
+                    height: '30px',
                     fontSize: '11px',
                     color: filterUnacknowledgedOnly ? '#fbbf24' : 'var(--text-secondary)',
                     fontWeight: filterUnacknowledgedOnly ? 600 : 400,
                     cursor: 'pointer',
+                    whiteSpace: 'nowrap',
                     transition: 'all var(--transition-fast)',
                   }}
                 >
-                  <span>⚡ Unacknowledged</span>
+                  ⚡ Unacknowledged
                 </button>
               </div>
             </div>
