@@ -163,7 +163,7 @@ export default function App() {
       <AuthProvider>
         <LazyMotion features={domAnimation}>
           <Toaster
-            position="bottom-center"
+            position="top-center"
             theme="dark"
             richColors
             closeButton
@@ -179,7 +179,7 @@ export default function App() {
                 margin: '0 auto',
               },
             }}
-            offset={72}
+            offset={80}
           />
           <SkeletonTheme baseColor="#121520" highlightColor="rgba(255, 255, 255, 0.05)">
             <Suspense fallback={<PageSkeleton />}>

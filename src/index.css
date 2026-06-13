@@ -3132,4 +3132,26 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
+/* ── Sonner Custom Type Borders ── */
+[data-sonner-toast] {
+  border: 1px solid var(--border-default) !important;
+  color: #ffffff !important; /* Force clean white text */
+}
+
+[data-sonner-toast][data-type="success"] {
+  border-color: rgba(52, 211, 153, 0.4) !important; /* emerald-400 */
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-color: rgba(248, 113, 113, 0.4) !important; /* red-400 */
+}
+
+[data-sonner-toast][data-type="info"] {
+  border-color: rgba(96, 165, 250, 0.4) !important; /* blue-400 */
+}
+
+[data-sonner-toast][data-type="warning"] {
+  border-color: rgba(251, 191, 36, 0.4) !important; /* amber-400 */
+}
+
 
