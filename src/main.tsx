@@ -128,26 +128,14 @@ const PAGE_LOAD_TIME = Date.now();
 
 // Register the PWA service worker automatically in production
 if (import.meta.env.PROD) {
-  registerSW({
-    immediate: true,
-    onRegisteredSW(swUrl, r) {
-      console.log('[PWA] Registered Service Worker:', swUrl);
-      if (r) {
-        // Active check when window is focused (e.g. app opened/switched back)
-        const checkUpdate = () => {
-          r.update().catch((err) => console.warn('[PWA] Active update check failed:', err));
-        };
-        window.addEventListener('focus', checkUpdate);
-        // Run once on load
-        checkUpdate();
-      }
-    }
-  });
+  registerSW({ immediate: true });
 
   if ('serviceWorker' in navigator) {
+    // Only reload if the page was already controlled by a service worker on load
+    const isControlled = !!navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
+      if (isControlled && !refreshing) {
         refreshing = true;
         const timeSinceLoad = Date.now() - PAGE_LOAD_TIME;
 
