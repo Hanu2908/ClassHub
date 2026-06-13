@@ -3,9 +3,15 @@ import { registerRoute } from 'workbox-routing';
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { pruneExpiredShares, stageShare } from './lib/shareInbox';
+import { clientsClaim } from 'workbox-core';
 
 // Clean up old outdated caches from previous builds
 cleanupOutdatedCaches();
+
+// Force the waiting service worker to become the active service worker
+self.skipWaiting();
+// Force the active service worker to take control of all open clients/tabs
+clientsClaim();
 
 // Precaches all build assets compiled by Vite
 precacheAndRoute(self.__WB_MANIFEST || []);

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './components/AuthProvider';
 import { useAppStore, type BeforeInstallPromptEvent } from './store/appStore';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import ErrorBoundary from './components/ErrorBoundary';
 import PageSkeleton from './components/PageSkeleton';
 import { LazyMotion, domAnimation } from 'motion/react';
@@ -118,6 +118,44 @@ export default function App() {
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    // 1. Handle post-update success feedback
+    if (sessionStorage.getItem('classhub_just_updated') === 'true') {
+      sessionStorage.removeItem('classhub_just_updated');
+      const timer = setTimeout(() => {
+        toast.success('ClassHub updated successfully! ✓', {
+          description: 'You are running the latest version with new features.'
+        });
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  useEffect(() => {
+    // 2. Handle mid-session update prompt
+    const handleUpdateAvailable = () => {
+      toast.info('New features are ready!', {
+        description: 'Tap update to apply the latest changes.',
+        action: {
+          label: 'Update',
+          onClick: () => {
+            if (typeof (window as any).triggerPwaUpdateReload === 'function') {
+              (window as any).triggerPwaUpdateReload();
+            } else {
+              window.location.reload();
+            }
+          }
+        },
+        duration: Infinity, // Keep open until user interacts
+      });
+    };
+
+    window.addEventListener('classhub-pwa-update-available', handleUpdateAvailable);
+    return () => {
+      window.removeEventListener('classhub-pwa-update-available', handleUpdateAvailable);
+    };
   }, []);
 
   return (
