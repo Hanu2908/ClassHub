@@ -363,7 +363,7 @@ export default function ProfilePage() {
             </button>
             <button
               id="skit-exam-portal-btn"
-              onClick={() => navigate('/app/skitexam')}
+              onClick={() => window.open('https://skitexam.com/', '_blank', 'noopener,noreferrer')}
               className="list-row"
               style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }}
             >
