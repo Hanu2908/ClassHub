@@ -198,7 +198,7 @@ export default function ProfilePage() {
         borderBottom: '1px solid var(--border-default)', padding: '16px 20px',
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
-        <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Profile</h1>
+        <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>My Profile</h1>
       </header>
 
       <main className="page-content">
@@ -232,7 +232,7 @@ export default function ProfilePage() {
           <div className="card" style={{ padding: '16px' }}>
             {myTags.length === 0 ? (
               <p className="t-caption" style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '8px 0' }}>
-                No tags yet — add to let your section know.
+                No tags yet — add tags to let your section know.
               </p>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
