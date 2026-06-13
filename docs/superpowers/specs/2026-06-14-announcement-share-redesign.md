@@ -3,12 +3,20 @@
 ## Goal
 1. Improve the visual quality, customization, and functionality of the announcement sharing feature in ClassHub when sharing to WhatsApp.
 2. Upgrade the file upload system to support dynamic dual-limits (5 documents/PDFs and up to 20 images) for a much richer classroom experience.
+3. Streamline file selection on mobile devices by introducing a WhatsApp-style upload source selection bottom sheet.
 
 ---
 
 ## Proposed Changes
 
 ### 1. [FileUploader.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/FileUploader.tsx)
+* **Upload Source Selection Bottom Sheet:**
+  * Import the reusable `<BottomSheet>` component.
+  * When the upload zone is tapped on a mobile device (`window.innerWidth < 768`), slide up a bottom sheet with three options:
+    1. **📷 Take Photo / Video** (Triggers hidden input: `capture="environment" accept="image/*"`)
+    2. **🖼️ Choose from Gallery** (Triggers hidden input: `accept="image/*"`)
+    3. **📄 Choose Documents / PDFs** (Triggers hidden input: `accept="application/pdf,text/*,.csv,application/vnd.openxmlformats-officedocument.*,application/vnd.ms-excel,application/msword,application/vnd.ms-powerpoint"`)
+  * For desktop clicks, bypass the sheet and directly open the document/all-media file input as it currently does.
 * **Dynamic Dual Limits Configuration:**
   * Update `FileUploaderProps` to include:
     * `maxDocs?: number` (default: `5`)
@@ -61,6 +69,7 @@
 * Run `npm run build` and `npm run lint` to ensure no TypeScript or compilation errors are introduced.
 
 ### Manual Verification
+* **Upload Source Selector:** Tap the upload area on a mobile device (or responsive developer mode) and verify the blurred, native-looking bottom sheet slides up with options for Camera, Gallery, and Document finder. Ensure clicking them triggers the correct native input.
 * **Upload Limits:**
   * Try uploading 6 PDF files and verify that the 6th is rejected with `"Maximum of 5 documents allowed."`
   * Try uploading 21 image files and verify that the 21st is rejected with `"Maximum of 20 images allowed."`
