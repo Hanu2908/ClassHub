@@ -362,6 +362,16 @@ export default function ProfilePage() {
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
             <button
+              id="skit-exam-portal-btn"
+              onClick={() => navigate('/app/skitexam')}
+              className="list-row"
+              style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }}
+            >
+              <ExternalLink size={18} color="var(--accent-primary)" />
+              <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>SKIT Exam Portal</span>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
+            <button
               id="resource-hub-btn"
               onClick={() => navigate('/app/resource-hub')}
               className="list-row"

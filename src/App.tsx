@@ -28,6 +28,7 @@ const GPACalculatorPage = lazy(() => import('./pages/app/GPACalculatorPage'));
 const ResourceHubPage = lazy(() => import('./pages/app/ResourceHubPage'));
 const DeveloperConsolePage = lazy(() => import('./pages/app/DeveloperConsolePage'));
 const ExamsPage = lazy(() => import('./pages/app/ExamsPage'));
+const SkitExamPage = lazy(() => import('./pages/app/SkitExamPage'));
 const ShareIntakePage = lazy(() => import('./pages/app/ShareIntakePage'));
 const SectionDirectoryPage = lazy(() => import('./pages/app/SectionDirectoryPage'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
@@ -166,6 +167,7 @@ export default function App() {
                 <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><ManageSubjectsPage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
                 <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PDFViewerPage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/exams" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/skitexam" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SkitExamPage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/gpa" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><DeveloperConsolePage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
                 <Route path="/app/members" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SectionDirectoryPage /></ErrorBoundary></RequireHub></RequireAuth>} />
