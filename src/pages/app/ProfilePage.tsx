@@ -217,7 +217,7 @@ export default function ProfilePage() {
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
             <span className={`badge ${displayRole === 'cr' ? 'badge-warning' : 'badge-info'}`}>
-              {displayRole === 'cr' ? '⭐ Class Rep' : 'Student'}
+              {displayRole === 'cr' ? '⭐ CR' : 'Student'}
             </span>
             <span className="badge badge-info">{sectionName}</span>
             <span className="t-mono" style={{ color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
