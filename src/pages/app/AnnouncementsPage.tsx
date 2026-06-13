@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2, Filter as FilterIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Check, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2, Filter as FilterIcon, Image } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -13,7 +13,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import Skeleton from 'react-loading-skeleton';
 import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useAnnouncements';
 import { useSubjects, type SubjectInfo } from '../../hooks/useSubjects';
-import { useSectionMembers } from '../../hooks/useSectionMembers';
+import { useSectionMembers, useSection } from '../../hooks/useSectionMembers';
 import { AnnouncementQAFooter, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
@@ -852,6 +852,172 @@ function AnnouncementsSkeleton() {
   );
 }
 
+interface ShareOptionsContentProps {
+  ann: Announcement;
+  onShareNotice: () => void;
+  onSharePhotos: () => void;
+  isSharingPhotos: boolean;
+  selectedPhotos: string[];
+  setSelectedPhotos: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+function ShareOptionsContent({
+  ann,
+  onShareNotice,
+  onSharePhotos,
+  isSharingPhotos,
+  selectedPhotos,
+  setSelectedPhotos,
+}: ShareOptionsContentProps) {
+  const shareImages = ann.attachments?.filter(att => isPreviewableImage(att.fileType, att.filename)) || [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <button 
+        onClick={onShareNotice}
+        style={{
+          width: '100%',
+          padding: '16px',
+          borderRadius: '12px',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid var(--border-default)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: 'all 0.2s',
+          color: '#fff',
+          outline: 'none'
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-default)'}
+      >
+        <div style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: 'rgba(99, 102, 241, 0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--accent-primary)',
+          flexShrink: 0
+        }}>
+          <Image size={20} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ font: '600 14px var(--font-display)', margin: '0 0 2px', color: 'var(--text-primary)' }}>Share Notice Card</p>
+          <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-secondary)', margin: 0 }}>Generates a premium image combining notice text and images.</p>
+        </div>
+      </button>
+
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        borderTop: '1px solid var(--border-default)',
+        paddingTop: '20px',
+        textAlign: 'left'
+      }}>
+        <p style={{ font: '600 14px var(--font-display)', margin: 0, color: 'var(--text-primary)' }}>Share Photos Directly</p>
+        <p style={{ font: '400 11px var(--font-body)', color: 'var(--text-secondary)', margin: '0 0 8px' }}>Select which attachment photos to share directly to WhatsApp.</p>
+        
+        {/* Grid of thumbnails */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '10px',
+          marginBottom: '8px'
+        }}>
+          {shareImages.map(img => {
+            const isSelected = selectedPhotos.includes(img.id);
+            const cached = signedUrlCache.get(img.storagePath);
+            const url = cached?.thumbUrl || cached?.fullUrl || '';
+            
+            return (
+              <div 
+                key={img.id}
+                onClick={() => {
+                  setSelectedPhotos(prev => 
+                    prev.includes(img.id) 
+                      ? prev.filter(id => id !== img.id) 
+                      : [...prev, img.id]
+                  );
+                }}
+                style={{
+                  position: 'relative',
+                  aspectRatio: '1',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  border: isSelected ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                  background: 'rgba(255,255,255,0.03)',
+                  boxSizing: 'border-box'
+                }}
+              >
+                {url ? (
+                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#222' }}>
+                    <Image size={16} color="var(--text-muted)" />
+                  </div>
+                )}
+                
+                {/* Checkbox overlay */}
+                <div style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '4px',
+                  border: '1.5px solid #fff',
+                  background: isSelected ? 'var(--accent-primary)' : 'rgba(0,0,0,0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  color: '#fff',
+                  fontSize: '10px',
+                  fontWeight: 'bold'
+                }}>
+                  {isSelected && '✓'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={onSharePhotos}
+          disabled={isSharingPhotos || selectedPhotos.length === 0}
+          style={{
+            width: '100%',
+            padding: '14px',
+            borderRadius: '12px',
+            background: selectedPhotos.length === 0 ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+            border: 'none',
+            color: selectedPhotos.length === 0 ? 'var(--text-muted)' : '#fff',
+            cursor: selectedPhotos.length === 0 ? 'default' : 'pointer',
+            fontWeight: 600,
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            boxShadow: selectedPhotos.length === 0 ? 'none' : '0 4px 14px rgba(74, 158, 255, 0.3)',
+            transition: 'all 0.2s',
+            outline: 'none'
+          }}
+        >
+          {isSharingPhotos ? 'Preparing Photos...' : `Share Selected Photos (${selectedPhotos.length})`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -935,6 +1101,113 @@ export default function AnnouncementsPage() {
   // Announcement Card Share states
   const sharePortalRef = useRef<HTMLDivElement>(null);
   const [activeShareAnn, setActiveShareAnn] = useState<Announcement | null>(null);
+
+  useSection();
+  const [shareOptionsAnn, setShareOptionsAnn] = useState<Announcement | null>(null);
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+  const [isSharingPhotos, setIsSharingPhotos] = useState(false);
+
+  useEffect(() => {
+    if (shareOptionsAnn) {
+      const imgs = shareOptionsAnn.attachments?.filter(att => isPreviewableImage(att.fileType, att.filename)) || [];
+      setSelectedPhotos(imgs.map(img => img.id));
+    } else {
+      setSelectedPhotos([]);
+    }
+  }, [shareOptionsAnn]);
+
+  const handleShareClick = (announcement: Announcement) => {
+    const imgs = announcement.attachments?.filter(att => isPreviewableImage(att.fileType, att.filename)) || [];
+    if (imgs.length === 0) {
+      handleShareAnnouncement(announcement);
+    } else {
+      setShareOptionsAnn(announcement);
+    }
+  };
+
+  const handleSharePhotos = async () => {
+    if (!shareOptionsAnn) return;
+    setIsSharingPhotos(true);
+    try {
+      const selectedAtts = (shareOptionsAnn.attachments || []).filter(att => 
+        selectedPhotos.includes(att.id)
+      );
+      
+      const enrichedAtts = await Promise.all(
+        selectedAtts.map(async (att) => {
+          try {
+            const { data } = await supabase.storage
+              .from('attachments')
+              .createSignedUrl(att.storagePath, 60);
+            return { ...att, signedUrl: data?.signedUrl || null };
+          } catch (e) {
+            console.error('[Share] Failed to get signed URL for original:', att.filename, e);
+            return att;
+          }
+        })
+      );
+
+      const validUrls = enrichedAtts.filter(att => att.signedUrl);
+      if (validUrls.length === 0) {
+        toast.error('Failed to retrieve photo URLs');
+        setIsSharingPhotos(false);
+        return;
+      }
+
+      const files: File[] = [];
+      await Promise.all(
+        validUrls.map(async (att) => {
+          try {
+            const response = await fetch(att.signedUrl!);
+            const blob = await response.blob();
+            const file = new File([blob], att.filename, { type: blob.type || 'image/png' });
+            files.push(file);
+          } catch (e) {
+            console.error('[Share] Blob fetch failed:', att.filename, e);
+          }
+        })
+      );
+
+      if (files.length === 0) {
+        toast.error('Failed to prepare photo files');
+        setIsSharingPhotos(false);
+        return;
+      }
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+        try {
+          await navigator.share({
+            files,
+            title: shareOptionsAnn.title,
+          });
+        } catch (err) {
+          if (err instanceof Error && err.name !== 'AbortError') {
+            triggerBatchDownload(files);
+          }
+        }
+      } else {
+        triggerBatchDownload(files);
+      }
+      setShareOptionsAnn(null);
+    } catch (err) {
+      console.error('[Share] Failed to share photos:', err);
+      toast.error('Failed to share photos');
+    } finally {
+      setIsSharingPhotos(false);
+    }
+  };
+
+  const triggerBatchDownload = (files: File[]) => {
+    files.forEach(file => {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+    toast.success('Photos downloaded successfully ✓');
+  };
 
   // Parse deep-linking Q&A parameters on mount/location change
   useEffect(() => {
@@ -1979,7 +2252,7 @@ export default function AnnouncementsPage() {
                         setPendingDeleteId={setPendingDeleteId}
                         setTrackingAnnouncement={setTrackingAnnouncement}
                         setOpenCommentsAnnId={setOpenCommentsAnnId}
-                        onShare={handleShareAnnouncement}
+                        onShare={handleShareClick}
                         searchQuery={searchQuery}
                       />
                     )}
@@ -2049,6 +2322,27 @@ export default function AnnouncementsPage() {
       />
 
       <OffscreenSharePortal announcement={activeShareAnn} domRef={sharePortalRef} />
+
+      {/* Share Options Sheet */}
+      <BottomSheet 
+        open={Boolean(shareOptionsAnn)} 
+        onClose={() => setShareOptionsAnn(null)} 
+        title="Share Notice"
+      >
+        {shareOptionsAnn && (
+          <ShareOptionsContent
+            ann={shareOptionsAnn}
+            onShareNotice={() => {
+              handleShareAnnouncement(shareOptionsAnn);
+              setShareOptionsAnn(null);
+            }}
+            onSharePhotos={handleSharePhotos}
+            isSharingPhotos={isSharingPhotos}
+            selectedPhotos={selectedPhotos}
+            setSelectedPhotos={setSelectedPhotos}
+          />
+        )}
+      </BottomSheet>
 
       <NavBar />
     </div>

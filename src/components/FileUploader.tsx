@@ -1,21 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Upload, X, Paperclip } from 'lucide-react';
+import { Upload, X, Paperclip, Camera, Image, FileText } from 'lucide-react';
 import { isPreviewableImage } from '../lib/utils/attachments';
+import { BottomSheet } from './BottomSheet';
 
 interface FileUploaderProps {
   files: File[];
   onChange: (files: File[]) => void;
   maxFiles?: number;
+  maxDocs?: number;
+  maxImages?: number;
   maxSizeMB?: number;
 }
 
 export function FileUploader({ 
   files, 
   onChange, 
-  maxFiles = 5, 
+  maxFiles = 20, 
+  maxDocs = 5,
+  maxImages = 20,
   maxSizeMB = 10 
 }: FileUploaderProps) {
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isSourceSheetOpen, setIsSourceSheetOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = (newFiles: FileList | null) => {
@@ -32,16 +38,34 @@ export function FileUploader({
         continue;
       }
 
-      if (acceptedFiles.length >= maxFiles) {
-        alert(`Maximum of ${maxFiles} attachments allowed.`);
-        break;
-      }
+      const isImg = isPreviewableImage(file.type, file.name);
 
       const exists = acceptedFiles.some(
         f => f.name === file.name && f.size === file.size
       );
       
       if (!exists) {
+        // Calculate current tallies in state
+        const currentImagesCount = acceptedFiles.filter(f => isPreviewableImage(f.type, f.name)).length;
+        const currentDocsCount = acceptedFiles.length - currentImagesCount;
+
+        if (isImg) {
+          if (currentImagesCount >= maxImages) {
+            alert(`Maximum of ${maxImages} images allowed.`);
+            continue;
+          }
+        } else {
+          if (currentDocsCount >= maxDocs) {
+            alert(`Maximum of ${maxDocs} documents allowed.`);
+            continue;
+          }
+        }
+
+        if (acceptedFiles.length >= maxFiles) {
+          alert(`Maximum of ${maxFiles} total attachments allowed.`);
+          break;
+        }
+
         acceptedFiles.push(file);
       }
     }
@@ -80,8 +104,31 @@ export function FileUploader({
     onChange(updated);
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
+  const triggerFileInput = (type: 'camera' | 'gallery' | 'document' | 'all') => {
+    const input = fileInputRef.current;
+    if (!input) return;
+    if (type === 'camera') {
+      input.setAttribute('accept', 'image/*');
+      input.setAttribute('capture', 'environment');
+    } else if (type === 'gallery') {
+      input.setAttribute('accept', 'image/*');
+      input.removeAttribute('capture');
+    } else if (type === 'document') {
+      input.setAttribute('accept', 'application/pdf,text/*,.csv,application/vnd.openxmlformats-officedocument.*,application/vnd.ms-excel,application/msword,application/vnd.ms-powerpoint');
+      input.removeAttribute('capture');
+    } else {
+      input.setAttribute('accept', 'image/*,application/pdf,text/*,.csv,application/vnd.openxmlformats-officedocument.*,application/vnd.ms-excel,application/msword,application/vnd.ms-powerpoint');
+      input.removeAttribute('capture');
+    }
+    input.click();
+  };
+
+  const handleUploadZoneClick = () => {
+    if (window.innerWidth < 768) {
+      setIsSourceSheetOpen(true);
+    } else {
+      triggerFileInput('all');
+    }
   };
 
   const formatSize = (bytes: number) => {
@@ -95,7 +142,7 @@ export function FileUploader({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
       <label className="t-subtitle" style={{ color: 'var(--text-secondary)' }}>
-        Attachments (Max {maxFiles} files, {maxSizeMB}MB each)
+        Attachments (Max {maxImages} images, {maxDocs} documents, {maxSizeMB}MB each)
       </label>
       
       <div
@@ -103,7 +150,7 @@ export function FileUploader({
         onDragOver={handleDrag}
         onDragLeave={handleDrag}
         onDrop={handleDrop}
-        onClick={triggerFileInput}
+        onClick={handleUploadZoneClick}
         style={{
           border: isDragActive 
             ? '1.5px dashed var(--accent-primary)' 
@@ -246,6 +293,117 @@ export function FileUploader({
           ))}
         </div>
       )}
+
+      {/* Upload Source Selection Bottom Sheet */}
+      <BottomSheet 
+        open={isSourceSheetOpen} 
+        onClose={() => setIsSourceSheetOpen(false)} 
+        title="Select Attachment Source"
+      >
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '16px',
+          padding: '12px 0 24px',
+          textAlign: 'center'
+        }}>
+          {/* Camera */}
+          <div 
+            onClick={() => {
+              setIsSourceSheetOpen(false);
+              triggerFileInput('camera');
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+              color: '#ffffff'
+            }}>
+              <Camera size={24} />
+            </div>
+            <span className="t-label" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Camera
+            </span>
+          </div>
+
+          {/* Gallery */}
+          <div 
+            onClick={() => {
+              setIsSourceSheetOpen(false);
+              triggerFileInput('gallery');
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#10b981',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              color: '#ffffff'
+            }}>
+              <Image size={24} />
+            </div>
+            <span className="t-label" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Gallery
+            </span>
+          </div>
+
+          {/* Document */}
+          <div 
+            onClick={() => {
+              setIsSourceSheetOpen(false);
+              triggerFileInput('document');
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#3b82f6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+              color: '#ffffff'
+            }}>
+              <FileText size={24} />
+            </div>
+            <span className="t-label" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Document
+            </span>
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 }
