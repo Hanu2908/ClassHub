@@ -1,13 +1,28 @@
-# Announcement Share Feature Redesign Spec
+# Announcement Share & File Upload Limits Redesign Spec
 
 ## Goal
-Improve the visual quality, customization, and functionality of the announcement sharing feature in ClassHub when sharing to WhatsApp. 
+1. Improve the visual quality, customization, and functionality of the announcement sharing feature in ClassHub when sharing to WhatsApp.
+2. Upgrade the file upload system to support dynamic dual-limits (5 documents/PDFs and up to 20 images) for a much richer classroom experience.
 
 ---
 
 ## Proposed Changes
 
-### 1. [OffscreenSharePortal.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/announcement-qa/OffscreenSharePortal.tsx)
+### 1. [FileUploader.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/FileUploader.tsx)
+* **Dynamic Dual Limits Configuration:**
+  * Update `FileUploaderProps` to include:
+    * `maxDocs?: number` (default: `5`)
+    * `maxImages?: number` (default: `20`)
+    * `maxFiles?: number` (default: `20` — global ceiling limit)
+  * Update `processFiles` to dynamically categorize files during drag/drop or input selection:
+    * Categorize added files into **Images** (using `isPreviewableImage`) and **Documents** (PDF, sheets, csv, text, doc, etc.).
+    * Maintain separate running tallies of already-uploaded + new files.
+    * If adding a document and count exceeds `maxDocs` (5), reject with: `"Maximum of 5 documents allowed."`
+    * If adding an image and count exceeds `maxImages` (20), reject with: `"Maximum of 20 images allowed."`
+    * If total count exceeds `maxFiles` (20), reject with: `"Maximum of 20 total attachments allowed."`
+  * Update the title label on the UI from `Attachments (Max {maxFiles} files...)` to `Attachments (Max {maxImages} images, {maxDocs} documents...)` to clearly communicate these rules to users.
+
+### 2. [OffscreenSharePortal.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/announcement-qa/OffscreenSharePortal.tsx)
 * **Dynamic Section Metadata:**
   * Call `useSection()` to retrieve the database-level section and college names.
   * In the top-right watermark, display `SECTION <NAME> | <COLLEGE>` (e.g. `SECTION P-2 | SKIT`), completely removing the hardcoded `"BETA"` prefix.
@@ -25,7 +40,7 @@ Improve the visual quality, customization, and functionality of the announcement
     * **4 Images:** Clean 2x2 grid.
     * **5+ Images:** 2x2 grid where the 4th cell contains a dark overlay with `+X more` text.
 
-### 2. [AnnouncementsPage.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/pages/app/AnnouncementsPage.tsx) and [AnnouncementsScroll.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/pages/app/dashboard/AnnouncementsScroll.tsx)
+### 3. [AnnouncementsPage.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/pages/app/AnnouncementsPage.tsx) and [AnnouncementsScroll.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/pages/app/dashboard/AnnouncementsScroll.tsx)
 * **Share Options Sheet UI:**
   * When a user taps **Share** on an announcement that has images, slide up a bottom sheet with two options:
     1. **Share as ClassHub Notice Card**
@@ -46,5 +61,9 @@ Improve the visual quality, customization, and functionality of the announcement
 * Run `npm run build` and `npm run lint` to ensure no TypeScript or compilation errors are introduced.
 
 ### Manual Verification
+* **Upload Limits:**
+  * Try uploading 6 PDF files and verify that the 6th is rejected with `"Maximum of 5 documents allowed."`
+  * Try uploading 21 image files and verify that the 21st is rejected with `"Maximum of 20 images allowed."`
+  * Verify the UI label correctly states `Max 20 images, 5 documents`.
 * **Notice Card Capture:** Click "Share as ClassHub Notice Card" and verify the generated card image contains the circular `/app_icon.svg` without a box frame, dynamic section details, absolute timestamp, and the dynamic bento grid collage.
 * **Direct Image Sharing:** Verify that clicking "Share Original Photos Directly" fetches the selected images and launches the native share sheet on mobile devices. Verify fallback sequential download triggers on desktop.
