@@ -232,7 +232,7 @@ export default function ProfilePage() {
           <div className="card" style={{ padding: '16px' }}>
             {myTags.length === 0 ? (
               <p className="t-caption" style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '8px 0' }}>
-                No tags yet — add one to let your section know what you're into
+                No tags yet — add to let your section know.
               </p>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
