@@ -10,12 +10,23 @@
 ## Proposed Changes
 
 ### 1. [FileUploader.tsx](file:///e:/HIMANSHU/1ST_YEAR_Project/ClassHub-1/src/components/FileUploader.tsx)
-* **Upload Source Selection Bottom Sheet:**
+* **Upload Source Selection Bottom Sheet (Option A.1):**
   * Import the reusable `<BottomSheet>` component.
-  * When the upload zone is tapped on a mobile device (`window.innerWidth < 768`), slide up a bottom sheet with three options:
-    1. **📷 Take Photo / Video** (Triggers hidden input: `capture="environment" accept="image/*"`)
-    2. **🖼️ Choose from Gallery** (Triggers hidden input: `accept="image/*"`)
-    3. **📄 Choose Documents / PDFs** (Triggers hidden input: `accept="application/pdf,text/*,.csv,application/vnd.openxmlformats-officedocument.*,application/vnd.ms-excel,application/msword,application/vnd.ms-powerpoint"`)
+  * When the upload zone is tapped on a mobile device (`window.innerWidth < 768`), slide up a bottom sheet titled `"Select Attachment Source"`.
+  * The bottom sheet displays a horizontal row of 3 large circular buttons (`56px x 56px`) with matching labels:
+    1. **📷 Camera (Take Photo)**
+       * Background: Solid coral-red (`#ef4444`)
+       * Icon: White `Camera` outline icon
+       * Action: Triggers hidden input: `capture="environment" accept="image/*"`
+    2. **🖼️ Gallery (Photos)**
+       * Background: Solid emerald-green (`#10b981`)
+       * Icon: White `Image` outline icon
+       * Action: Triggers hidden input: `accept="image/*"`
+    3. **📄 Document (PDF/Files)**
+       * Background: Solid accent-blue (`#3b82f6`)
+       * Icon: White `FileText` outline icon
+       * Action: Triggers hidden input: `accept="application/pdf,text/*,.csv,application/vnd.openxmlformats-officedocument.*,application/vnd.ms-excel,application/msword,application/vnd.ms-powerpoint"`
+  * Provide smooth touch interaction animations using Framer Motion (`whileTap={{ scale: 0.92 }}`).
   * For desktop clicks, bypass the sheet and directly open the document/all-media file input as it currently does.
 * **Dynamic Dual Limits Configuration:**
   * Update `FileUploaderProps` to include:
@@ -69,7 +80,7 @@
 * Run `npm run build` and `npm run lint` to ensure no TypeScript or compilation errors are introduced.
 
 ### Manual Verification
-* **Upload Source Selector:** Tap the upload area on a mobile device (or responsive developer mode) and verify the blurred, native-looking bottom sheet slides up with options for Camera, Gallery, and Document finder. Ensure clicking them triggers the correct native input.
+* **Upload Source Selector:** Tap the upload area on a mobile device (or responsive developer mode) and verify the blurred, native-looking bottom sheet slides up with options for Camera (coral-red), Gallery (emerald-green), and Document (accent-blue). Ensure clicking them triggers the correct native input.
 * **Upload Limits:**
   * Try uploading 6 PDF files and verify that the 6th is rejected with `"Maximum of 5 documents allowed."`
   * Try uploading 21 image files and verify that the 21st is rejected with `"Maximum of 20 images allowed."`
