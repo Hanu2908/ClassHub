@@ -1614,7 +1614,7 @@ export type Database = {
       }
       join_section_as_teacher: {
         Args: {
-          invite_code: string
+          invite: string
           subject_id?: string | null
         }
         Returns: {

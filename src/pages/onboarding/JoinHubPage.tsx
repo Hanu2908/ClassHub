@@ -144,7 +144,7 @@ export default function JoinHubPage() {
     try {
       if (isTeacherFlow) {
         const { error } = await supabase.rpc('join_section_as_teacher', {
-          invite_code: hubCode.toUpperCase(),
+          invite: hubCode.toUpperCase(),
         });
         if (error) throw error;
       } else {

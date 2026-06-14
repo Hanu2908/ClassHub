@@ -1,7 +1,9 @@
 -- Migration: Teacher Join RPC and Notification Insert Policy
 -- Date: 2026-06-14
 
-CREATE OR REPLACE FUNCTION public.join_section_as_teacher(invite_code text, subject_id uuid DEFAULT NULL)
+DROP FUNCTION IF EXISTS public.join_section_as_teacher(text, uuid);
+
+CREATE OR REPLACE FUNCTION public.join_section_as_teacher(invite text, subject_id uuid DEFAULT NULL)
 RETURNS public.users
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -16,7 +18,7 @@ BEGIN
   -- 1. Find section by teacher_invite_code
   SELECT id INTO target_section
   FROM public.sections
-  WHERE teacher_invite_code = invite_code;
+  WHERE teacher_invite_code = invite;
 
   IF target_section IS NULL THEN
     RAISE EXCEPTION 'Invalid teacher invite code';
