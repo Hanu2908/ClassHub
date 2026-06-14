@@ -35,6 +35,8 @@ interface SectionTeacherRow {
   } | null;
 }
 
+const EMPTY_ARRAY: never[] = [];
+
 export default function TeacherDashboardPage() {
   const authUser = useAppStore(s => s.authUser);
 
@@ -42,7 +44,7 @@ export default function TeacherDashboardPage() {
   const [activeTab, setActiveTab] = useState<'mark' | 'logs'>('mark');
 
   // 1. Fetch sections and subjects taught by this teacher
-  const { data: mappings = [], isLoading: isMappingsLoading } = useQuery<SectionTeacherRow[]>({
+  const { data: mappings = EMPTY_ARRAY, isLoading: isMappingsLoading } = useQuery<SectionTeacherRow[]>({
     queryKey: ['teacher-mappings', authUser?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -87,7 +89,7 @@ export default function TeacherDashboardPage() {
   }, [sections, selectedSectionId]);
 
   const subjectsForSelectedSection = useMemo(() => {
-    if (!selectedSectionId) return [];
+    if (!selectedSectionId) return EMPTY_ARRAY;
     const subjs: Array<{ id: string; name: string; code: string }> = [];
     mappings.forEach(m => {
       if (m.section_id === selectedSectionId && m.subjects) {
@@ -139,7 +141,7 @@ export default function TeacherDashboardPage() {
   }, [schedule, selectedSubjectId]);
 
   // 2. Fetch students in the selected section
-  const { data: students = [], isLoading: isStudentsLoading } = useQuery({
+  const { data: students = EMPTY_ARRAY, isLoading: isStudentsLoading } = useQuery({
     queryKey: ['section-students', selectedSectionId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -168,7 +170,7 @@ export default function TeacherDashboardPage() {
   });
 
   // 4. Fetch assignments created by this teacher
-  const { data: assignments = [], isLoading: isAssignmentsLoading } = useQuery({
+  const { data: assignments = EMPTY_ARRAY, isLoading: isAssignmentsLoading } = useQuery({
     queryKey: ['teacher-assignments', authUser?.id, selectedSectionId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -187,7 +189,7 @@ export default function TeacherDashboardPage() {
   });
 
   // 5. Fetch logged sessions history
-  const { data: sessions = [], isLoading: isSessionsLoading } = useTeacherSessions(selectedSectionId, selectedSubjectId);
+  const { data: sessions = EMPTY_ARRAY, isLoading: isSessionsLoading } = useTeacherSessions(selectedSectionId, selectedSubjectId);
 
   // --- Attendance Marking Form States ---
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -199,18 +201,20 @@ export default function TeacherDashboardPage() {
 
   // Filter students based on active batch
   const visibleStudents = useMemo(() => {
+    if (students.length === 0) return EMPTY_ARRAY;
     if (targetBatch === 'All') return students;
     return students.filter(s => s.sub_batch === targetBatch);
   }, [students, targetBatch]);
 
   // Reset markings to present when students list or targetBatch changes
   useEffect(() => {
+    if (isStudentsLoading || students.length === 0) return;
     const markings: Record<string, 'present' | 'absent' | 'od' | 'makeup'> = {};
     visibleStudents.forEach(s => {
       markings[s.id] = 'present';
     });
     setLocalMarkings(markings);
-  }, [visibleStudents]);
+  }, [visibleStudents, isStudentsLoading, students.length]);
 
   const updateMarking = (studentId: string, status: 'present' | 'absent' | 'od' | 'makeup') => {
     setLocalMarkings(prev => ({
@@ -243,19 +247,18 @@ export default function TeacherDashboardPage() {
   // --- Edit Past Session States ---
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const { data: editSessionMarkings = [], isLoading: isEditSessionLoading } = useSessionDetails(editingSessionId || '', selectedSectionId);
+  const { data: editSessionMarkings = EMPTY_ARRAY, isLoading: isEditSessionLoading } = useSessionDetails(editingSessionId || '', selectedSectionId);
   const [localEditMarkings, setLocalEditMarkings] = useState<Record<string, 'present' | 'absent' | 'od' | 'makeup'>>({});
 
   // Populate local edit markings when fetched
   useEffect(() => {
-    if (editSessionMarkings.length > 0) {
-      const markings: Record<string, 'present' | 'absent' | 'od' | 'makeup'> = {};
-      editSessionMarkings.forEach(m => {
-        markings[m.student_id] = m.status;
-      });
-      setLocalEditMarkings(markings);
-    }
-  }, [editSessionMarkings]);
+    if (isEditSessionLoading || editSessionMarkings.length === 0) return;
+    const markings: Record<string, 'present' | 'absent' | 'od' | 'makeup'> = {};
+    editSessionMarkings.forEach(m => {
+      markings[m.student_id] = m.status;
+    });
+    setLocalEditMarkings(markings);
+  }, [editSessionMarkings, isEditSessionLoading]);
 
   // --- Mutations ---
   const logAttendanceMut = useLogAttendanceMutation();
@@ -415,49 +418,74 @@ export default function TeacherDashboardPage() {
   return (
     <div className="page-shell">
       {/* Header */}
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 p-4 backdrop-blur-md">
+      <header style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        background: 'rgba(13, 15, 20, 0.95)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: '1px solid var(--border-default)',
+        padding: '16px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
         <div>
-          <p className="font-mono text-xs font-bold tracking-wider text-blue-500 uppercase">
+          <p className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Teacher Console
           </p>
-          <h1 className="font-display text-xl font-bold text-white mt-1">
+          <h1 className="t-page-title" style={{ color: 'var(--text-primary)', marginTop: 2 }}>
             Welcome, {authUser?.name ? authUser.name.split(' ')[0] : 'Professor'} 🎓
           </h1>
         </div>
         <button 
           onClick={() => setAlertOpen(true)}
-          className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-950/40 px-3.5 py-1.5 text-xs font-semibold text-red-400 cursor-pointer hover:bg-red-950/60"
+          className="btn-secondary"
+          style={{
+            padding: '6px 12px',
+            minHeight: 'fit-content',
+            borderRadius: 'var(--radius-pill)',
+            borderColor: 'rgba(248, 113, 113, 0.25)',
+            background: 'rgba(248, 113, 113, 0.05)',
+            color: 'var(--status-critical)',
+            fontSize: '12px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
         >
           <Bell size={13} /> Cancel Lecture
         </button>
       </header>
 
-      <main className="page-content p-4 pb-24 flex flex-col gap-5">
+      <main className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {isMappingsLoading ? (
-          <div className="text-center py-12 text-slate-500 font-mono">
+          <div className="t-mono" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
             Loading teacher configurations...
           </div>
         ) : sections.length === 0 ? (
-          <div className="card text-center p-8 border border-slate-800 rounded-2xl bg-slate-900/30">
-            <AlertCircle size={36} className="mx-auto mb-3 text-slate-600" />
-            <h3 className="font-display text-base font-bold text-white mb-2">No Joined Sections</h3>
-            <p className="text-sm text-slate-400 max-w-xs mx-auto mb-4">
+          <div className="card" style={{ textAlign: 'center', padding: '32px 20px', background: 'rgba(20,24,38,0.2)' }}>
+            <AlertCircle size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
+            <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 8 }}>No Joined Sections</h3>
+            <p className="t-body" style={{ color: 'var(--text-secondary)', maxWidth: 280, margin: '0 auto 16px' }}>
               You haven't joined any section hubs. Get a Teacher Invite Code from a CR to register.
             </p>
           </div>
         ) : (
           <>
             {/* Mappings selector card */}
-            <div className="card p-4 flex flex-col gap-4 border border-slate-800 rounded-2xl bg-slate-900/20">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+            <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(20,24,38,0.2)' }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
                     Active Section
                   </label>
                   <select
                     value={selectedSectionId}
                     onChange={e => { setSelectedSectionId(e.target.value); }}
-                    className="w-full rounded-lg border border-slate-850 bg-slate-900 p-2 text-sm text-white focus:outline-none"
+                    className="input"
+                    style={{ padding: '8px 12px', minHeight: '40px', fontSize: '13px' }}
                   >
                     {sections.map(sec => (
                       <option key={sec.id} value={sec.id}>{sec.name}</option>
@@ -465,14 +493,15 @@ export default function TeacherDashboardPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+                <div style={{ flex: 1 }}>
+                  <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
                     Course Subject
                   </label>
                   <select
                     value={selectedSubjectId}
                     onChange={e => setSelectedSubjectId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-850 bg-slate-900 p-2 text-sm text-white focus:outline-none"
+                    className="input"
+                    style={{ padding: '8px 12px', minHeight: '40px', fontSize: '13px' }}
                     disabled={subjectsForSelectedSection.length === 0}
                   >
                     {subjectsForSelectedSection.map(subj => (
@@ -484,16 +513,40 @@ export default function TeacherDashboardPage() {
             </div>
 
             {/* Dashboard Tabs switcher */}
-            <div className="flex border-b border-slate-800">
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-default)' }}>
               <button 
                 onClick={() => setActiveTab('mark')}
-                className={`flex-1 py-3 text-center text-sm font-semibold border-b-2 cursor-pointer transition-colors ${activeTab === 'mark' ? 'border-blue-500 text-white' : 'border-transparent text-slate-500'}`}
+                style={{
+                  flex: 1,
+                  padding: '12px 6px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  borderBottom: activeTab === 'mark' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                  background: 'none',
+                  color: activeTab === 'mark' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
+                }}
               >
                 Mark Attendance
               </button>
               <button 
                 onClick={() => setActiveTab('logs')}
-                className={`flex-1 py-3 text-center text-sm font-semibold border-b-2 cursor-pointer transition-colors ${activeTab === 'logs' ? 'border-blue-500 text-white' : 'border-transparent text-slate-500'}`}
+                style={{
+                  flex: 1,
+                  padding: '12px 6px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  borderBottom: activeTab === 'logs' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                  background: 'none',
+                  color: activeTab === 'logs' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)'
+                }}
               >
                 Attendance Log ({sessions.length})
               </button>
@@ -501,30 +554,32 @@ export default function TeacherDashboardPage() {
 
             {/* Content Tabs */}
             {activeTab === 'mark' ? (
-              <div className="flex flex-col gap-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Session Configurations Card */}
-                <div className="card p-4 flex flex-col gap-4 border border-slate-800 rounded-2xl bg-slate-900/10">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+                <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(20,24,38,0.1)' }}>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
                         Session Date
                       </label>
                       <input 
                         type="date"
                         value={date}
                         onChange={e => setDate(e.target.value)}
-                        className="w-full rounded-lg border border-slate-850 bg-slate-900 p-2 text-sm text-white focus:outline-none"
+                        className="input"
+                        style={{ padding: '8px 12px', minHeight: '40px', fontSize: '13px' }}
                       />
                     </div>
 
-                    <div>
-                      <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+                    <div style={{ flex: 1 }}>
+                      <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
                         Timetable Period
                       </label>
                       <select
                         value={timetableSlotId}
                         onChange={e => setTimetableSlotId(e.target.value)}
-                        className="w-full rounded-lg border border-slate-850 bg-slate-900 p-2 text-sm text-white focus:outline-none"
+                        className="input"
+                        style={{ padding: '8px 12px', minHeight: '40px', fontSize: '13px' }}
                       >
                         {subjectSlots.map(s => (
                           <option key={s.id} value={s.id}>{s.label}</option>
@@ -536,7 +591,7 @@ export default function TeacherDashboardPage() {
 
                   {timetableSlotId === 'extra' && (
                     <div>
-                      <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+                      <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
                         Unscheduled Label
                       </label>
                       <input
@@ -544,39 +599,76 @@ export default function TeacherDashboardPage() {
                         placeholder="e.g. Extra Lab Session, Zero Period"
                         value={extraLabel}
                         onChange={e => setExtraLabel(e.target.value)}
-                        className="w-full rounded-lg border border-slate-850 bg-slate-900 p-2 text-sm text-white focus:outline-none"
+                        className="input"
+                        style={{ padding: '8px 12px', minHeight: '40px', fontSize: '13px' }}
                       />
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4 border-t border-slate-900 pt-3">
-                    <div>
-                      <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+                  <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid var(--border-default)', paddingTop: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
                         Target Batch
                       </label>
-                      <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-850">
+                      <div style={{
+                        display: 'flex',
+                        background: 'var(--bg-base)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 2,
+                        gap: 2
+                      }}>
                         {(['All', '1', '2'] as const).map(b => (
                           <button
                             key={b}
                             onClick={() => setTargetBatch(b)}
-                            className={`flex-1 py-1 rounded text-xs font-semibold cursor-pointer ${targetBatch === b ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500'}`}
+                            style={{
+                              flex: 1,
+                              padding: '6px 8px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              background: targetBatch === b ? 'var(--bg-elevated)' : 'transparent',
+                              color: targetBatch === b ? 'var(--text-primary)' : 'var(--text-muted)',
+                              border: 'none',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer',
+                              transition: 'all var(--transition-fast)'
+                            }}
                           >
-                            {b === 'All' ? 'All Section' : `Batch ${b}`}
+                            {b === 'All' ? 'All' : `Batch ${b}`}
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+                    <div style={{ flex: 1 }}>
+                      <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
                         Session Weight
                       </label>
-                      <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-850">
+                      <div style={{
+                        display: 'flex',
+                        background: 'var(--bg-base)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 2,
+                        gap: 2
+                      }}>
                         {([1, 2] as const).map(w => (
                           <button
                             key={w}
                             onClick={() => setLectureCount(w)}
-                            className={`flex-1 py-1 rounded text-xs font-semibold cursor-pointer ${lectureCount === w ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500'}`}
+                            style={{
+                              flex: 1,
+                              padding: '6px 8px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              background: lectureCount === w ? 'var(--bg-elevated)' : 'transparent',
+                              color: lectureCount === w ? 'var(--text-primary)' : 'var(--text-muted)',
+                              border: 'none',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer',
+                              transition: 'all var(--transition-fast)'
+                            }}
                           >
                             {w} Period{w > 1 ? 's' : ''}
                           </button>
@@ -587,28 +679,30 @@ export default function TeacherDashboardPage() {
                 </div>
 
                 {/* Visual Attendance Marking Grid */}
-                <div className="card p-4 border border-slate-800 rounded-2xl bg-slate-900/20">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="card" style={{ padding: '16px', background: 'rgba(20,24,38,0.2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <div>
-                      <h3 className="font-display text-sm font-bold text-white flex items-center gap-1.5">
-                        <Users size={16} className="text-blue-500" />
+                      <h3 className="t-card-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+                        <Users size={16} style={{ color: 'var(--accent-primary)' }} />
                         Visual Register Grid
                       </h3>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
+                      <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: '2px' }}>
                         Choose P/A/OD/M statuses for students.
                       </p>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       <button 
                         onClick={() => setAllMarkings('present')}
-                        className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-400 hover:text-white"
+                        className="btn-secondary"
+                        style={{ padding: '4px 8px', minHeight: 'fit-content', fontSize: '10px', borderRadius: 'var(--radius-sm)' }}
                       >
                         All Present
                       </button>
                       <button 
                         onClick={() => setAllMarkings('absent')}
-                        className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-400 hover:text-white"
+                        className="btn-secondary"
+                        style={{ padding: '4px 8px', minHeight: 'fit-content', fontSize: '10px', borderRadius: 'var(--radius-sm)' }}
                       >
                         All Absent
                       </button>
@@ -616,68 +710,124 @@ export default function TeacherDashboardPage() {
                   </div>
 
                   {isStudentsLoading || isAttendanceLoading ? (
-                    <div className="text-center py-12 text-slate-500 font-mono">
+                    <div className="t-mono" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
                       Loading student roster...
                     </div>
                   ) : visibleStudents.length === 0 ? (
-                    <div className="text-center py-8 text-slate-500 font-mono text-sm">
+                    <div className="t-mono" style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: '13px' }}>
                       No students found in this batch.
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 max-h-[380px] overflow-y-auto p-1 border border-slate-900/50 rounded-xl bg-slate-950/20">
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                        gap: '12px',
+                        maxHeight: '380px',
+                        overflowY: 'auto',
+                        padding: '4px',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'rgba(10, 12, 20, 0.25)',
+                        border: '1px solid var(--border-default)'
+                      }}>
                         {visibleStudents.map(student => {
                           const status = localMarkings[student.id] || 'present';
                           const avatar = student.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${student.name}`;
                           
-                          let cardBorder = 'border-slate-800';
-                          let avatarBorder = 'border-slate-800';
+                          let cardBorder = 'var(--border-default)';
+                          let cardBg = 'rgba(20, 24, 38, 0.15)';
+                          let avatarBorder = 'rgba(255, 255, 255, 0.1)';
                           if (status === 'present') {
-                            cardBorder = 'border-emerald-500/20 bg-emerald-950/5';
-                            avatarBorder = 'border-emerald-500';
+                            cardBorder = 'rgba(52, 211, 153, 0.25)';
+                            cardBg = 'rgba(52, 211, 153, 0.04)';
+                            avatarBorder = 'var(--status-safe)';
                           } else if (status === 'absent') {
-                            cardBorder = 'border-red-500/25 bg-red-950/5';
-                            avatarBorder = 'border-red-500';
+                            cardBorder = 'rgba(248, 113, 113, 0.25)';
+                            cardBg = 'rgba(248, 113, 113, 0.04)';
+                            avatarBorder = 'var(--status-critical)';
                           } else if (status === 'od') {
-                            cardBorder = 'border-amber-500/20 bg-amber-950/5';
-                            avatarBorder = 'border-amber-500';
+                            cardBorder = 'rgba(251, 191, 36, 0.25)';
+                            cardBg = 'rgba(251, 191, 36, 0.04)';
+                            avatarBorder = 'var(--status-warning)';
                           } else if (status === 'makeup') {
-                            cardBorder = 'border-purple-500/20 bg-purple-950/5';
-                            avatarBorder = 'border-purple-500';
+                            cardBorder = 'rgba(167, 139, 250, 0.25)';
+                            cardBg = 'rgba(167, 139, 250, 0.04)';
+                            avatarBorder = 'var(--status-announcement)';
                           }
 
                           return (
                             <div 
                               key={student.id} 
-                              className={`flex flex-col items-center p-3 border rounded-xl relative transition-all ${cardBorder}`}
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                padding: '12px',
+                                border: `1px solid ${cardBorder}`,
+                                backgroundColor: cardBg,
+                                borderRadius: 'var(--radius-md)',
+                                position: 'relative',
+                                transition: 'all var(--transition-fast)'
+                              }}
                             >
                               <img 
                                 src={avatar} 
                                 alt={student.name}
-                                className={`w-11 h-11 rounded-full border-2 object-cover mb-2 ${avatarBorder}`}
+                                style={{
+                                  width: '44px',
+                                  height: '44px',
+                                  borderRadius: '50%',
+                                  border: `2px solid ${avatarBorder}`,
+                                  objectFit: 'cover',
+                                  marginBottom: '8px'
+                                }}
                               />
-                              <p className="font-mono text-xs font-bold text-white text-center line-clamp-1 w-full px-1">
+                              <p className="t-mono-sm" style={{ fontWeight: 'bold', color: 'var(--text-primary)', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0 4px' }}>
                                 {student.name.split(' ')[0]}
                               </p>
-                              <p className="font-mono text-[9px] text-slate-500 mt-0.5">
+                              <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '9px', marginTop: '2px' }}>
                                 Roll: {student.section_roll || '—'}
                               </p>
 
                               {/* Direct Select Badges */}
-                              <div className="flex gap-1.5 mt-2.5">
+                              <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
                                 {(['present', 'absent', 'od', 'makeup'] as const).map(st => {
                                   const isActive = status === st;
-                                  let colorClasses = '';
-                                  if (st === 'present') colorClasses = isActive ? 'bg-emerald-500 text-white font-bold' : 'text-emerald-500 bg-emerald-950/20 hover:bg-emerald-900/20';
-                                  else if (st === 'absent') colorClasses = isActive ? 'bg-red-500 text-white font-bold' : 'text-red-500 bg-red-950/20 hover:bg-red-900/20';
-                                  else if (st === 'od') colorClasses = isActive ? 'bg-amber-500 text-white font-bold' : 'text-amber-500 bg-amber-950/20 hover:bg-amber-900/20';
-                                  else if (st === 'makeup') colorClasses = isActive ? 'bg-purple-500 text-white font-bold' : 'text-purple-500 bg-purple-950/20 hover:bg-purple-900/20';
+                                  let color = '';
+                                  let bg = '';
+                                  if (st === 'present') {
+                                    color = isActive ? '#ffffff' : 'var(--status-safe)';
+                                    bg = isActive ? 'var(--status-safe)' : 'rgba(52, 211, 153, 0.1)';
+                                  } else if (st === 'absent') {
+                                    color = isActive ? '#ffffff' : 'var(--status-critical)';
+                                    bg = isActive ? 'var(--status-critical)' : 'rgba(248, 113, 113, 0.1)';
+                                  } else if (st === 'od') {
+                                    color = isActive ? '#ffffff' : 'var(--status-warning)';
+                                    bg = isActive ? 'var(--status-warning)' : 'rgba(251, 191, 36, 0.1)';
+                                  } else if (st === 'makeup') {
+                                    color = isActive ? '#ffffff' : 'var(--status-announcement)';
+                                    bg = isActive ? 'var(--status-announcement)' : 'rgba(167, 139, 250, 0.1)';
+                                  }
 
                                   return (
                                     <button
                                       key={st}
                                       onClick={() => updateMarking(student.id, st)}
-                                      className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] cursor-pointer transition-all ${colorClasses}`}
+                                      style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '10px',
+                                        fontWeight: 'bold',
+                                        color,
+                                        backgroundColor: bg,
+                                        cursor: 'pointer',
+                                        transition: 'all var(--transition-fast)'
+                                      }}
                                       title={st.toUpperCase()}
                                     >
                                       {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'od' ? 'O' : 'M'}
@@ -691,18 +841,27 @@ export default function TeacherDashboardPage() {
                       </div>
 
                       {/* Summary & Submit Action */}
-                      <div className="flex items-center justify-between border-t border-slate-900 pt-4 mt-4">
-                        <div className="flex gap-3 text-xs font-mono">
-                          <span className="text-emerald-500 font-bold">{presentCount} P</span>
-                          <span className="text-red-500 font-bold">{absentCount} A</span>
-                          <span className="text-amber-500 font-bold">{odCount} O</span>
-                          <span className="text-purple-500 font-bold">{makeupCount} M</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-default)', paddingTop: '16px', marginTop: '16px' }}>
+                        <div style={{ display: 'flex', gap: '12px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+                          <span style={{ color: 'var(--status-safe)', fontWeight: 'bold' }}>{presentCount} P</span>
+                          <span style={{ color: 'var(--status-critical)', fontWeight: 'bold' }}>{absentCount} A</span>
+                          <span style={{ color: 'var(--status-warning)', fontWeight: 'bold' }}>{odCount} O</span>
+                          <span style={{ color: 'var(--status-announcement)', fontWeight: 'bold' }}>{makeupCount} M</span>
                         </div>
 
                         <button
                           onClick={handleMarkSubmit}
                           disabled={logAttendanceMut.isPending || visibleStudents.length === 0}
-                          className="flex items-center gap-1.5 rounded-lg bg-blue-500 px-5 py-2.5 text-xs font-semibold text-white cursor-pointer hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="btn-primary"
+                          style={{
+                            width: 'auto',
+                            padding: '10px 20px',
+                            minHeight: '40px',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
                         >
                           {logAttendanceMut.isPending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Log Session
                         </button>
@@ -713,17 +872,17 @@ export default function TeacherDashboardPage() {
               </div>
             ) : (
               // Attendance Log Tab
-              <div className="flex flex-col gap-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {isSessionsLoading ? (
-                  <div className="text-center py-12 text-slate-500 font-mono">
+                  <div className="t-mono" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
                     Loading session history...
                   </div>
                 ) : sessions.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500 font-mono text-sm">
+                  <div className="t-mono" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)', fontSize: '13px' }}>
                     No sessions logged yet for this subject.
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
                     {sessions.map(session => {
                       const formattedDate = new Date(session.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
                       const slotLabel = session.timetable_slot_id 
@@ -731,44 +890,57 @@ export default function TeacherDashboardPage() {
                         : 'Unscheduled Session';
 
                       return (
-                        <div key={session.id} className="card p-3 border border-slate-800 rounded-xl bg-slate-900/10 flex items-center justify-between gap-4">
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <h4 className="font-mono text-xs font-bold text-white flex items-center gap-2">
+                        <div 
+                          key={session.id} 
+                          className="card"
+                          style={{
+                            padding: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '16px',
+                            background: 'rgba(20, 24, 38, 0.15)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: 1 }}>
+                            <h4 className="t-mono" style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               {formattedDate} 
-                              <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-400">
+                              <span style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', color: 'var(--text-muted)', fontWeight: 'normal' }}>
                                 {session.lecture_count}x weight
                               </span>
                               {session.target_batch && (
-                                <span className="rounded bg-blue-950/50 text-blue-400 px-1.5 py-0.5 text-[9px] font-bold">
+                                <span style={{ background: 'rgba(96, 165, 250, 0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(96, 165, 250, 0.2)', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 'bold' }}>
                                   Batch {session.target_batch}
                                 </span>
                               )}
                             </h4>
-                            <p className="text-[10px] text-slate-500 font-mono truncate">
+                            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               Slot: {slotLabel}
                             </p>
-                            <div className="flex gap-2 text-[9px] font-mono text-slate-400 mt-1">
-                              <span className="text-emerald-500">{session.present_count} P</span>
+                            <div style={{ display: 'flex', gap: '8px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '4px' }}>
+                              <span style={{ color: 'var(--status-safe)', fontWeight: 'bold' }}>{session.present_count} P</span>
                               <span>•</span>
-                              <span className="text-red-500">{session.absent_count} A</span>
+                              <span style={{ color: 'var(--status-critical)', fontWeight: 'bold' }}>{session.absent_count} A</span>
                               <span>•</span>
-                              <span className="text-amber-500">{session.od_count} O</span>
+                              <span style={{ color: 'var(--status-warning)', fontWeight: 'bold' }}>{session.od_count} O</span>
                               <span>•</span>
-                              <span className="text-purple-500">{session.makeup_count} M</span>
+                              <span style={{ color: 'var(--status-announcement)', fontWeight: 'bold' }}>{session.makeup_count} M</span>
                             </div>
                           </div>
 
-                          <div className="flex gap-1.5 flex-shrink-0">
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                             <button
                               onClick={() => { setEditingSessionId(session.id); setEditOpen(true); }}
-                              className="p-2 border border-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer hover:bg-slate-900"
+                              className="btn-secondary"
+                              style={{ padding: '8px', minWidth: '34px', minHeight: '34px', borderRadius: 'var(--radius-sm)' }}
                               title="Edit Register"
                             >
                               <Edit3 size={13} />
                             </button>
                             <button
                               onClick={() => handleDeleteSession(session.id)}
-                              className="p-2 border border-slate-800 rounded-lg text-red-500/80 hover:text-red-400 cursor-pointer hover:bg-slate-900"
+                              className="btn-secondary"
+                              style={{ padding: '8px', minWidth: '34px', minHeight: '34px', borderRadius: 'var(--radius-sm)', color: 'var(--status-critical)', borderColor: 'rgba(248, 113, 113, 0.2)' }}
                               title="Delete Session"
                             >
                               <Trash2 size={13} />
@@ -783,22 +955,22 @@ export default function TeacherDashboardPage() {
             )}
 
             {/* Course Submission Tracking (Always visible at bottom) */}
-            <div className="card p-4 border border-slate-800 rounded-2xl bg-slate-900/10 mt-2">
-              <h3 className="font-display text-sm font-bold text-white flex items-center gap-1.5 mb-4">
-                <BookOpen size={16} className="text-blue-500" />
+            <div className="card" style={{ padding: '16px', background: 'rgba(20,24,38,0.2)', marginTop: '8px' }}>
+              <h3 className="t-card-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', marginBottom: '16px' }}>
+                <BookOpen size={16} style={{ color: 'var(--accent-primary)' }} />
                 Assignment Submissions Tracker
               </h3>
 
               {isAssignmentsLoading ? (
-                <div className="text-center py-6 text-slate-500 font-mono">
+                <div className="t-mono" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
                   Loading assignments...
                 </div>
               ) : assignments.length === 0 ? (
-                <div className="text-center py-6 text-slate-500 font-mono text-xs">
+                <div className="t-mono" style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: '12px' }}>
                   No assignments created by you in this section.
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {assignments.map(ass => {
                     const submissionsCount = ass.submissions?.length || 0;
                     const totalStudents = students.length;
@@ -808,27 +980,36 @@ export default function TeacherDashboardPage() {
                       <button
                         key={ass.id}
                         onClick={() => { setActiveAssignmentId(ass.id); setSubmissionsOpen(true); }}
-                        className="w-full text-left card border border-slate-850 p-3.5 rounded-xl bg-slate-900/5 hover:border-slate-800 transition-all cursor-pointer flex flex-col gap-2.5"
+                        className="card"
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '14px',
+                          background: 'rgba(20,24,38,0.1)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                          cursor: 'pointer'
+                        }}
                       >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-mono text-xs font-bold text-white leading-tight">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <h4 className="t-subtitle" style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {ass.title}
                             </h4>
-                            <p className="font-mono text-[9px] text-slate-500 mt-1 flex items-center gap-1">
+                            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Clock size={10} /> Due: {new Date(ass.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                          <span className="font-mono text-xs font-bold text-blue-500 flex-shrink-0">
+                          <span className="t-mono" style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--accent-primary)', flexShrink: 0 }}>
                             {submissionsCount}/{totalStudents} ({percent}%)
                           </span>
                         </div>
 
                         {/* Progress Bar */}
-                        <div className="h-1 w-full bg-slate-900 rounded-full overflow-hidden">
+                        <div style={{ height: '4px', width: '100%', background: 'var(--bg-base)', borderRadius: '100px', overflow: 'hidden' }}>
                           <div 
-                            className="h-full bg-blue-500 rounded-full" 
-                            style={{ width: `${percent}%` }}
+                            style={{ height: '100%', background: 'var(--accent-primary)', borderRadius: '100px', width: `${percent}%` }}
                           />
                         </div>
                       </button>
@@ -846,75 +1027,131 @@ export default function TeacherDashboardPage() {
         open={editOpen}
         onClose={() => { setEditOpen(false); setEditingSessionId(null); }}
         title={
-          <div className="flex items-center gap-2">
-            <Edit3 size={15} className="text-blue-500" />
-            <span className="font-display text-sm font-bold text-white">Edit Historical Register</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Edit3 size={15} style={{ color: 'var(--accent-primary)' }} />
+            <span className="t-subtitle" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>Edit Historical Register</span>
           </div>
         }
       >
         {isEditSessionLoading ? (
-          <div className="text-center py-12 text-slate-500 font-mono">
+          <div className="t-mono" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
             Loading registers...
           </div>
         ) : editSessionMarkings.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 font-mono text-sm">
-            No students records to load.
+          <div className="t-mono" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)', fontSize: '13px' }}>
+            No student records to load.
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(135px,1fr))] gap-3 max-h-[300px] overflow-y-auto p-1 border border-slate-900/50 rounded-xl bg-slate-950/20">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+              gap: '12px',
+              maxHeight: '300px',
+              overflowY: 'auto',
+              padding: '4px',
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(10, 12, 20, 0.25)',
+              border: '1px solid var(--border-default)'
+            }}>
               {editSessionMarkings.map(student => {
                 const status = localEditMarkings[student.student_id] || 'present';
                 const avatar = student.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${student.name}`;
                 
-                let cardBorder = 'border-slate-800';
-                let avatarBorder = 'border-slate-800';
+                let cardBorder = 'var(--border-default)';
+                let cardBg = 'rgba(20, 24, 38, 0.15)';
+                let avatarBorder = 'rgba(255, 255, 255, 0.1)';
                 if (status === 'present') {
-                  cardBorder = 'border-emerald-500/20 bg-emerald-950/5';
-                  avatarBorder = 'border-emerald-500';
+                  cardBorder = 'rgba(52, 211, 153, 0.25)';
+                  cardBg = 'rgba(52, 211, 153, 0.04)';
+                  avatarBorder = 'var(--status-safe)';
                 } else if (status === 'absent') {
-                  cardBorder = 'border-red-500/25 bg-red-950/5';
-                  avatarBorder = 'border-red-500';
+                  cardBorder = 'rgba(248, 113, 113, 0.25)';
+                  cardBg = 'rgba(248, 113, 113, 0.04)';
+                  avatarBorder = 'var(--status-critical)';
                 } else if (status === 'od') {
-                  cardBorder = 'border-amber-500/20 bg-amber-950/5';
-                  avatarBorder = 'border-amber-500';
+                  cardBorder = 'rgba(251, 191, 36, 0.25)';
+                  cardBg = 'rgba(251, 191, 36, 0.04)';
+                  avatarBorder = 'var(--status-warning)';
                 } else if (status === 'makeup') {
-                  cardBorder = 'border-purple-500/20 bg-purple-950/5';
-                  avatarBorder = 'border-purple-500';
+                  cardBorder = 'rgba(167, 139, 250, 0.25)';
+                  cardBg = 'rgba(167, 139, 250, 0.04)';
+                  avatarBorder = 'var(--status-announcement)';
                 }
 
                 return (
                   <div 
                     key={student.student_id} 
-                    className={`flex flex-col items-center p-3 border rounded-xl relative transition-all ${cardBorder}`}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      padding: '12px',
+                      border: `1px solid ${cardBorder}`,
+                      backgroundColor: cardBg,
+                      borderRadius: 'var(--radius-md)',
+                      position: 'relative',
+                      transition: 'all var(--transition-fast)'
+                    }}
                   >
                     <img 
                       src={avatar} 
                       alt={student.name}
-                      className={`w-10 h-10 rounded-full border-2 object-cover mb-2 ${avatarBorder}`}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        border: `2px solid ${avatarBorder}`,
+                        objectFit: 'cover',
+                        marginBottom: '8px'
+                      }}
                     />
-                    <p className="font-mono text-xs font-bold text-white text-center line-clamp-1 w-full px-1">
+                    <p className="t-mono-sm" style={{ fontWeight: 'bold', color: 'var(--text-primary)', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0 4px' }}>
                       {student.name.split(' ')[0]}
                     </p>
-                    <p className="font-mono text-[9px] text-slate-500 mt-0.5">
+                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '9px', marginTop: '2px' }}>
                       Roll: {student.section_roll || '—'}
                     </p>
 
                     {/* Direct Select Badges */}
-                    <div className="flex gap-1.5 mt-2">
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
                       {(['present', 'absent', 'od', 'makeup'] as const).map(st => {
                         const isActive = status === st;
-                        let colorClasses = '';
-                        if (st === 'present') colorClasses = isActive ? 'bg-emerald-500 text-white font-bold' : 'text-emerald-500 bg-emerald-950/20 hover:bg-emerald-900/20';
-                        else if (st === 'absent') colorClasses = isActive ? 'bg-red-500 text-white font-bold' : 'text-red-500 bg-red-950/20 hover:bg-red-900/20';
-                        else if (st === 'od') colorClasses = isActive ? 'bg-amber-500 text-white font-bold' : 'text-amber-500 bg-amber-950/20 hover:bg-amber-900/20';
-                        else if (st === 'makeup') colorClasses = isActive ? 'bg-purple-500 text-white font-bold' : 'text-purple-500 bg-purple-950/20 hover:bg-purple-900/20';
+                        let color = '';
+                        let bg = '';
+                        if (st === 'present') {
+                          color = isActive ? '#ffffff' : 'var(--status-safe)';
+                          bg = isActive ? 'var(--status-safe)' : 'rgba(52, 211, 153, 0.1)';
+                        } else if (st === 'absent') {
+                          color = isActive ? '#ffffff' : 'var(--status-critical)';
+                          bg = isActive ? 'var(--status-critical)' : 'rgba(248, 113, 113, 0.1)';
+                        } else if (st === 'od') {
+                          color = isActive ? '#ffffff' : 'var(--status-warning)';
+                          bg = isActive ? 'var(--status-warning)' : 'rgba(251, 191, 36, 0.1)';
+                        } else if (st === 'makeup') {
+                          color = isActive ? '#ffffff' : 'var(--status-announcement)';
+                          bg = isActive ? 'var(--status-announcement)' : 'rgba(167, 139, 250, 0.1)';
+                        }
 
                         return (
                           <button
                             key={st}
                             onClick={() => setLocalEditMarkings(prev => ({ ...prev, [student.student_id]: st }))}
-                            className={`w-5.5 h-5.5 rounded-md flex items-center justify-center text-[9px] cursor-pointer transition-all ${colorClasses}`}
+                            style={{
+                              width: '22px',
+                              height: '22px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '9px',
+                              fontWeight: 'bold',
+                              color,
+                              backgroundColor: bg,
+                              cursor: 'pointer',
+                              transition: 'all var(--transition-fast)'
+                            }}
                           >
                             {st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'od' ? 'O' : 'M'}
                           </button>
@@ -929,7 +1166,8 @@ export default function TeacherDashboardPage() {
             <button
               onClick={handleEditSubmit}
               disabled={updateSessionMut.isPending}
-              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-blue-500 py-3 text-xs font-semibold text-white cursor-pointer hover:bg-blue-600 disabled:opacity-50"
+              className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               {updateSessionMut.isPending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save Changes
             </button>
@@ -942,16 +1180,30 @@ export default function TeacherDashboardPage() {
         open={submissionsOpen}
         onClose={() => { setSubmissionsOpen(false); setActiveAssignmentId(null); }}
         title={
-          <div className="flex items-center justify-between w-full pr-8">
-            <div className="flex items-center gap-2">
-              <BookOpen size={15} className="text-blue-500" />
-              <span className="font-display text-sm font-bold text-white truncate max-w-[180px]">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingRight: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+              <BookOpen size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+              <span className="t-subtitle" style={{ color: 'var(--text-primary)', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {selectedAssignment?.title}
               </span>
             </div>
             <button
               onClick={handleNudgeAllPending}
-              className="flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/25 px-2 py-1 text-[10px] font-bold text-amber-500 cursor-pointer hover:bg-amber-500/20"
+              className="btn-secondary"
+              style={{
+                padding: '4px 8px',
+                minHeight: 'fit-content',
+                borderRadius: 'var(--radius-sm)',
+                borderColor: 'rgba(251, 191, 36, 0.25)',
+                background: 'rgba(251, 191, 36, 0.05)',
+                color: 'var(--status-warning)',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0
+              }}
             >
               <Bell size={10} /> Nudge Pending
             </button>
@@ -959,19 +1211,30 @@ export default function TeacherDashboardPage() {
         }
       >
         {selectedAssignment ? (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2.5 max-h-[300px] overflow-y-auto pr-1">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
               {students.map(student => {
                 const sub = (selectedAssignment.submissions || []).find(s => s.student_id === student.id);
                 const hasSubmitted = sub && sub.status === 'submitted';
 
                 return (
-                  <div key={student.id} className="flex items-center justify-between border border-slate-900 p-2.5 rounded-lg bg-slate-900/5">
-                    <div className="min-w-0">
-                      <span className="font-mono text-xs font-bold text-white block truncate">
+                  <div 
+                    key={student.id} 
+                    className="card"
+                    style={{
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      background: 'rgba(20, 24, 38, 0.15)'
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <span className="t-mono" style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {student.name}
                       </span>
-                      <span className="font-mono text-[9px] text-slate-500">
+                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
                         Roll: {student.section_roll || '—'}
                       </span>
                     </div>
@@ -981,12 +1244,25 @@ export default function TeacherDashboardPage() {
                         href={sub.submission_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded bg-blue-500/10 border border-blue-500/25 px-3 py-1.5 text-[10px] font-bold text-blue-400 no-underline hover:bg-blue-500/20"
+                        className="btn-secondary"
+                        style={{
+                          padding: '6px 12px',
+                          minHeight: '28px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          color: 'var(--accent-primary)',
+                          background: 'rgba(96, 165, 250, 0.05)',
+                          borderColor: 'rgba(96, 165, 250, 0.25)',
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
                       >
                         Open Submission
                       </a>
                     ) : (
-                      <span className="rounded bg-slate-800/40 px-3 py-1.5 text-[10px] font-bold text-slate-500 font-mono">
+                      <span className="badge badge-critical" style={{ fontSize: '10px', padding: '4px 10px' }}>
                         Pending
                       </span>
                     )}
@@ -1003,25 +1279,26 @@ export default function TeacherDashboardPage() {
         open={alertOpen}
         onClose={() => setAlertOpen(false)}
         title={
-          <div className="flex items-center gap-2">
-            <MessageSquare size={15} className="text-red-500" />
-            <span className="font-display text-sm font-bold text-white">Broadcast Lecture Alert</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <MessageSquare size={15} style={{ color: 'var(--status-critical)' }} />
+            <span className="t-subtitle" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>Broadcast Lecture Alert</span>
           </div>
         }
       >
-        <div className="flex flex-col gap-4">
-          <p className="text-xs text-slate-400 leading-normal">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
             Broadcast a critical notice regarding cancellation or reschedule of today's slots. Students will be notified instantly via push notifications.
           </p>
 
           <div>
-            <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+            <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
               Slot to Cancel
             </label>
             <select
               value={alertSlotId}
               onChange={e => setAlertSlotId(e.target.value)}
-              className="w-full rounded-lg border border-slate-850 bg-slate-900 p-2 text-sm text-white focus:outline-none"
+              className="input"
+              style={{ padding: '8px 12px', minHeight: '40px', fontSize: '13px' }}
             >
               <option value="">Choose timetable slot...</option>
               {subjectSlots.map(s => (
@@ -1030,15 +1307,16 @@ export default function TeacherDashboardPage() {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="font-mono text-[10px] font-bold text-slate-500 block mb-1.5 uppercase">
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
                 Target Batch
               </label>
               <select
                 value={alertBatch}
                 onChange={e => setAlertBatch(e.target.value as any)}
-                className="w-full rounded-lg border border-slate-850 bg-slate-900 p-2 text-sm text-white focus:outline-none"
+                className="input"
+                style={{ padding: '8px 12px', minHeight: '40px', fontSize: '13px' }}
               >
                 <option value="All">All Section</option>
                 <option value="1">Batch 1</option>
@@ -1046,11 +1324,23 @@ export default function TeacherDashboardPage() {
               </select>
             </div>
 
-            <div className="flex items-end">
+            <div style={{ flex: 1 }}>
               <button
                 onClick={handleBroadcastCancellation}
                 disabled={cancelClassMut.isPending || !alertSlotId}
-                className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-red-500 py-2.5 text-xs font-semibold text-white cursor-pointer hover:bg-red-600 disabled:opacity-50"
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  minHeight: '40px',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  background: 'linear-gradient(180deg, #F87171 0%, #DC2626 100%)',
+                  boxShadow: '0 4px 16px rgba(248, 113, 113, 0.30)'
+                }}
               >
                 {cancelClassMut.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Send Alert
               </button>
