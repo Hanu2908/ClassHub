@@ -66,6 +66,24 @@ export function useSection() {
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
+      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+        const cached = useAppStore.getState().offlineCache?.section;
+        const fallback: SectionInfo = {
+          id: 'demo-section',
+          name: 'Demo Section',
+          college: 'SKIT',
+          inviteCode: 'G2RALT',
+          teacherInviteCode: 'T-DEMOCO',
+          createdBy: 'demo-creator-id',
+        };
+        if (!cached || !cached.teacherInviteCode) {
+          const updated = { ...fallback, ...cached, teacherInviteCode: cached?.teacherInviteCode || 'T-DEMOCO' };
+          useAppStore.getState().setOfflineCache('section', updated);
+          return updated;
+        }
+        return cached;
+      }
+
       try {
         const { data, error } = await supabase
           .from('sections')

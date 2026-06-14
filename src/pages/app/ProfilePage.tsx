@@ -212,6 +212,43 @@ export default function ProfilePage() {
     }
   };
 
+  const handleToggleBatch = async () => {
+    if (!authUser) return;
+    const isDemoMode = import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true';
+    const nextBatch = subBatch === '1' ? '2' : '1';
+
+    if (isDemoMode) {
+      // Offline/Demo bypass: write directly to local Zustand store
+      useAppStore.setState((s) => {
+        if (!s.authUser) return s;
+        const updatedAuth = { ...s.authUser, subBatch: nextBatch };
+        return {
+          authUser: updatedAuth,
+          user: s.user ? { ...s.user } : null
+        };
+      });
+      toast.success(`Batch updated to ${sectionName}${nextBatch}! [Demo]`);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ sub_batch: nextBatch })
+        .eq('id', authUser.id);
+
+      if (error) {
+        throw new Error(error.message || 'Database update failed');
+      }
+
+      await useAppStore.getState().refreshProfile();
+      toast.success(`Batch updated to ${sectionName}${nextBatch}!`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed to update batch: ${msg}`);
+    }
+  };
+
   return (
     <div className="page-shell">
       <header style={{
@@ -322,21 +359,37 @@ export default function ProfilePage() {
                 )
               },
               { label: 'Institution', value: institution },
-              { label: 'University Roll', value: universityRoll },
-              { 
-                label: 'Status', 
-                value: authUser?.dayScholar ? 'DS 🚌' : 'Hostel 🏠', 
-                action: (
-                  <button 
-                    id="toggle-commute-status" 
-                    onClick={handleToggleCommuterStatus} 
-                    className="t-label" 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    Change
-                  </button>
-                )
-              },
+              ...(role !== 'teacher' ? [
+                { label: 'University Roll', value: universityRoll },
+                { 
+                  label: 'Status', 
+                  value: authUser?.dayScholar ? 'DS 🚌' : 'Hostel 🏠', 
+                  action: (
+                    <button 
+                      id="toggle-commute-status" 
+                      onClick={handleToggleCommuterStatus} 
+                      className="t-label" 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      Change
+                    </button>
+                  )
+                },
+                { 
+                  label: 'Batch', 
+                  value: subBatch ? `${sectionName}${subBatch}` : 'Not Selected', 
+                  action: (
+                    <button 
+                      id="toggle-sub-batch" 
+                      onClick={handleToggleBatch} 
+                      className="t-label" 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      Change
+                    </button>
+                  )
+                }
+              ] : [])
             ].map((row, i, arr) => (
               <div key={row.label} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -359,7 +412,7 @@ export default function ProfilePage() {
             <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ minWidth: 0 }}>
                 <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{counsellor.name}</h3>
-                <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>Batch A{subBatch} Counsellor</p>
+                <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>Batch {sectionName || ''}{subBatch} Counsellor</p>
               </div>
               <a
                 href={`mailto:${counsellor.email}?subject=ClassHub - Inquiry from student (${authUser?.name}, Roll ${classRoll})&body=Respected Professor,%0D%0A%0D%0A`}

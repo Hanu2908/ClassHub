@@ -8,6 +8,9 @@ import { BottomSheet } from '../../components/BottomSheet';
 import Skeleton from 'react-loading-skeleton';
 import { toast } from 'sonner';
 import { generateGradient } from '../../lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
+import { useAppStore } from '../../store/appStore';
 
 
 function getSubjectAcronym(name: string) {
@@ -61,9 +64,54 @@ export default function ManageSubjectsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<SubjectFormState>({ code: '', name: '', semester: '' });
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
   
   // Deletion Modal
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+
+  // Fetch all teachers in the system
+  const { data: allTeachers = [] } = useQuery({
+    queryKey: ['all-teachers'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('role', 'teacher')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Fetch mappings of teachers assigned to subjects in this section
+  const { data: sectionTeachers = [] } = useQuery({
+    queryKey: ['section-teachers-list', sectionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('section_teachers')
+        .select('id, teacher_id, subject_id, users(name)')
+        .eq('section_id', sectionId || '');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!sectionId
+  });
+
+  const subjectTeacherMap = useMemo(() => {
+    const map: Record<string, { id: string; name: string }> = {};
+    sectionTeachers.forEach((st: any) => {
+      if (st.subject_id && st.users) {
+        map[st.subject_id] = {
+          id: st.teacher_id,
+          name: st.users.name || 'Unnamed Teacher'
+        };
+      }
+    });
+    return map;
+  }, [sectionTeachers]);
 
   // Auto-detect max semester
   const maxSemester = useMemo(() => {
@@ -79,9 +127,11 @@ export default function ManageSubjectsPage() {
         name: subject.name, 
         semester: subject.semester.toString() 
       });
+      setSelectedTeacherId(subjectTeacherMap[subject.id]?.id || '');
     } else {
       setEditingId(null);
       setFormData({ code: '', name: '', semester: maxSemester.toString() });
+      setSelectedTeacherId('');
     }
     setFormOpen(true);
   };
@@ -104,7 +154,7 @@ export default function ManageSubjectsPage() {
     };
 
     if (editingId) {
-      mutateSubjects.mutate({ action: 'update', subject: { ...payload, id: editingId } }, {
+      mutateSubjects.mutate({ action: 'update', subject: { ...payload, id: editingId }, teacherId: selectedTeacherId || null }, {
         onSuccess: () => {
           toast.success('Subject updated');
           setFormOpen(false);
@@ -115,7 +165,7 @@ export default function ManageSubjectsPage() {
         }
       });
     } else {
-      mutateSubjects.mutate({ action: 'create', subject: payload }, {
+      mutateSubjects.mutate({ action: 'create', subject: payload, teacherId: selectedTeacherId || null }, {
         onSuccess: () => {
           toast.success('Subject created');
           setFormOpen(false);
@@ -205,54 +255,63 @@ export default function ManageSubjectsPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {subjects.map(subject => (
-              <div key={subject.id} style={{
-                position: 'relative', overflow: 'hidden',
-                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
-                borderRadius: 20, padding: 16, display: 'flex', alignItems: 'center', gap: 16,
-                transition: 'transform 0.2s, background 0.2s'
-              }}>
-                {/* Visual Avatar */}
-                <div style={{
-                  width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-                  background: generateGradient(subject.code),
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)'
+            {subjects.map(subject => {
+              const assignedTeacher = subjectTeacherMap[subject.id];
+              return (
+                <div key={subject.id} style={{
+                  position: 'relative', overflow: 'hidden',
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+                  borderRadius: 20, padding: 16, display: 'flex', alignItems: 'center', gap: 16,
+                  transition: 'transform 0.2s, background 0.2s'
                 }}>
-                  <span className="t-card-title" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                    {getSubjectAcronym(subject.name)}
-                  </span>
-                </div>
+                  {/* Visual Avatar */}
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+                    background: generateGradient(subject.code),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)'
+                  }}>
+                    <span className="t-card-title" style={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                      {getSubjectAcronym(subject.name)}
+                    </span>
+                  </div>
 
-                {/* Details */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="t-card-title" style={{ color: '#fff', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {subject.name}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="t-mono" style={{ color: '#a1a1aa' }}>{subject.code}</span>
-                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#3f3f46' }} />
-                    <span className="t-mono" style={{ color: 'var(--accent-primary)' }}>Sem {subject.semester}</span>
+                  {/* Details */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p className="t-card-title" style={{ color: '#fff', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {subject.name}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span className="t-mono" style={{ color: '#a1a1aa' }}>{subject.code}</span>
+                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#3f3f46' }} />
+                      <span className="t-mono" style={{ color: 'var(--accent-primary)' }}>Sem {subject.semester}</span>
+                      {assignedTeacher && (
+                        <>
+                          <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#3f3f46' }} />
+                          <span className="t-mono" style={{ color: '#c084fc' }}>Teacher: {assignedTeacher.name}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => openForm(subject)} style={{
+                      background: 'rgba(255,255,255,0.05)', border: 'none', color: '#e4e4e7',
+                      width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                    }}>
+                      <Edit3 size={16} />
+                    </button>
+                    <button onClick={() => setDeleteConfirmId(subject.id)} style={{
+                      background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444',
+                      width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                    }}>
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => openForm(subject)} style={{
-                    background: 'rgba(255,255,255,0.05)', border: 'none', color: '#e4e4e7',
-                    width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                  }}>
-                    <Edit3 size={16} />
-                  </button>
-                  <button onClick={() => setDeleteConfirmId(subject.id)} style={{
-                    background: 'rgba(239,68,68,0.1)', border: 'none', color: '#ef4444',
-                    width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                  }}>
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
@@ -288,6 +347,26 @@ export default function ManageSubjectsPage() {
                 color: '#fff', outline: 'none'
               }}
             />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label className="t-mono" style={{ display: 'block', color: '#a1a1aa', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Assign Teacher
+            </label>
+            <select 
+              value={selectedTeacherId} 
+              onChange={e => setSelectedTeacherId(e.target.value)}
+              style={{
+                width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
+                color: '#fff', outline: 'none', fontSize: 14
+              }}
+            >
+              <option value="">No Teacher Assigned</option>
+              {allTeachers.map((t: any) => (
+                <option key={t.id} value={t.id}>{t.name} ({t.email})</option>
+              ))}
+            </select>
           </div>
 
           <div style={{ marginBottom: 24 }}>

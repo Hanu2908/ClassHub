@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import { useAssignments, useAssignmentSubmissions, useCRToggleSubmission } from '../../hooks/useAssignments';
 import { useSectionMembers, useSection, useSectionAttendance, useSectionCRs, usePromoteToCoCR, useDemoteCoCR, useTransferPrimaryCR, useResignAsCR } from '../../hooks/useSectionMembers';
 import { useCreateAnnouncement } from '../../hooks/useAnnouncements';
-import type { SectionInfo } from '../../store/appStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -1182,7 +1181,11 @@ function InviteCodeCard() {
 
       if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
         toast.success(`[Demo] Invite code rotated to ${newCode}!`);
-        queryClient.setQueryData(['section', section.id], (prev: SectionInfo | null | undefined) => prev ? { ...prev, inviteCode: newCode } : prev);
+        const updated = section ? { ...section, inviteCode: newCode } : null;
+        if (updated) {
+          useAppStore.getState().setOfflineCache('section', updated);
+        }
+        queryClient.setQueryData(['section', section.id], updated);
         setConfirmOpen(false);
         return;
       }
@@ -1355,6 +1358,22 @@ function TeacherInviteCodeCard() {
     toast.success('Teacher invite code copied to clipboard!');
   };
 
+  const shareCode = async () => {
+    try {
+      const inviteUrl = `${window.location.origin}/onboarding/join?role=teacher&invite=${teacherInviteCode}`;
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Join ClassHub as Faculty!',
+          text: `Join ${section?.name || ''} Hub on ClassHub as a Faculty member! Use this direct link: ${inviteUrl} (Invite Code: ${teacherInviteCode})`,
+        });
+      } else {
+        throw new Error('Not supported');
+      }
+    } catch {
+      copyCode();
+    }
+  };
+
   const rotateCode = async () => {
     if (!section?.id) return;
     setRotating(true);
@@ -1364,7 +1383,11 @@ function TeacherInviteCodeCard() {
 
       if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
         toast.success(`[Demo] Teacher invite code rotated to ${newCode}!`);
-        queryClient.setQueryData(['section', section.id], (prev: SectionInfo | null | undefined) => prev ? { ...prev, teacherInviteCode: newCode } : prev);
+        const updated = section ? { ...section, teacherInviteCode: newCode } : null;
+        if (updated) {
+          useAppStore.getState().setOfflineCache('section', updated);
+        }
+        queryClient.setQueryData(['section', section.id], updated);
         setConfirmOpen(false);
         return;
       }
@@ -1380,8 +1403,8 @@ function TeacherInviteCodeCard() {
       queryClient.invalidateQueries({ queryKey: ['section', section.id] });
       setConfirmOpen(false);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to rotate teacher invite code';
-      toast.error(message);
+      const msg = err instanceof Error ? err.message : 'Failed to rotate teacher invite code';
+      toast.error(msg);
     } finally {
       setRotating(false);
     }
@@ -1447,6 +1470,13 @@ function TeacherInviteCodeCard() {
             style={{ flex: 1, padding: '8px 12px', fontSize: 13, minHeight: 'fit-content' }}
           >
             <Copy size={14} /> Copy
+          </button>
+          <button 
+            className="btn-secondary" 
+            onClick={shareCode} 
+            style={{ flex: 1, padding: '8px 12px', fontSize: 13, minHeight: 'fit-content' }}
+          >
+            <Share2 size={14} /> Share
           </button>
           <button 
             className="btn-secondary" 
@@ -1925,9 +1955,11 @@ function ManageCRs() {
 // ── Manage Teachers component ──
 function ManageTeachers() {
   const { data: section } = useSection();
+  const sectionName = section?.name || '';
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [headerHovered, setHeaderHovered] = useState(false);
+  const [headerActive, setHeaderActive] = useState(false);
 
   // Fetch section teachers mapping
   const { data: sectionTeachers = [], isLoading } = useQuery({
@@ -1980,68 +2012,80 @@ function ManageTeachers() {
   if (!section?.id) return null;
 
   return (
-    <section>
+    <div className="card" style={{ padding: 0 }}>
       <div 
+        onClick={() => setExpanded(e => !e)}
+        onMouseEnter={() => setHeaderHovered(true)}
+        onMouseLeave={() => { setHeaderHovered(false); setHeaderActive(false); }}
+        onTouchStart={() => setHeaderActive(true)}
+        onTouchEnd={() => setHeaderActive(false)}
+        onMouseDown={() => setHeaderActive(true)}
+        onMouseUp={() => setHeaderActive(false)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 20px', border: '1px solid var(--border-default)',
-          borderBottom: expanded ? 'none' : '1px solid var(--border-default)',
-          borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)',
-          borderBottomLeftRadius: expanded ? 0 : 'var(--radius-lg)',
-          borderBottomRightRadius: expanded ? 0 : 'var(--radius-lg)',
-          background: 'rgba(255, 255, 255, 0.01)', cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          borderColor: headerHovered ? 'var(--border-active)' : 'var(--border-default)'
+          cursor: 'pointer', padding: '14px 16px', borderRadius: 'var(--radius-lg)',
+          transition: 'background var(--transition-fast)', userSelect: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          background: headerActive
+            ? 'rgba(255, 255, 255, 0.08)'
+            : (headerHovered ? 'rgba(255, 255, 255, 0.04)' : 'transparent')
         }}
-        onClick={() => setExpanded(!expanded)}
-        onMouseEnter={() => setHeaderHovered(true)}
-        onMouseLeave={() => setHeaderHovered(false)}
       >
-        <SectionHead icon={<Users size={16} color="var(--accent-primary)" />} title="Manage Section Teachers" count={sectionTeachers.length} />
-        <div>
-          {expanded ? <ChevronUp size={18} color="var(--text-secondary)" /> : <ChevronDown size={18} color="var(--text-secondary)" />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Users size={16} color="var(--accent-primary)" />
+          <span className="t-subtitle" style={{ color: 'var(--text-primary)' }}>Manage Section Teachers</span>
+          <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>({sectionTeachers.length})</span>
         </div>
+        {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
       </div>
 
-      {expanded && (
-        <div style={{
-          border: '1px solid var(--border-default)', borderTop: 'none',
-          borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)',
-          padding: 16, background: 'rgba(13, 15, 20, 0.3)',
-          display: 'flex', flexDirection: 'column', gap: 14,
-          animation: 'accordionDown 0.2s ease-out'
-        }}>
+      {expanded ? (
+        <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)' }}>
           {isLoading ? (
-            <p className="t-caption" style={{ color: 'var(--text-muted)', textAlign: 'center' }}>Loading teachers...</p>
+            <p className="t-caption" style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>Loading teachers...</p>
           ) : sectionTeachers.length === 0 ? (
-            <p className="t-caption" style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No teachers linked to this section.</p>
+            <p className="t-caption" style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>No teachers linked to this section.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {sectionTeachers.map((st: any) => (
                 <div key={st.id} style={{
-                  display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center',
-                  padding: 12, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
-                  background: 'rgba(255,255,255,0.01)', gap: 10
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', borderRadius: 10,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
                 }}>
-                  <div style={{ minWidth: 150 }}>
-                    <p className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
+                  {/* Avatar circle */}
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: 'var(--bg-base)',
+                    border: '1px solid var(--border-default)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <span className="t-badge" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+                      {st.users?.name ? st.users.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'T'}
+                    </span>
+                  </div>
+
+                  {/* Name + email + subject */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>
                       {st.users?.name || 'Unnamed Teacher'}
                     </p>
                     <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
                       {st.users?.email}
                     </p>
                     {st.subjects && (
-                      <p className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontSize: 10, marginTop: 4 }}>
+                      <p className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontSize: 10, marginTop: 2 }}>
                         Subject: {st.subjects.name} ({st.subjects.code})
                       </p>
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {/* Batch Counsellor Selector */}
-                    <div>
-                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 9, display: 'block', marginBottom: 4 }}>
-                        Counsellor Batch:
+                  {/* Controls */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
+                        Counsellor
                       </span>
                       <select
                         value={st.is_counsellor_for_batch || ''}
@@ -2050,25 +2094,29 @@ function ManageTeachers() {
                           assignCounsellorMutation.mutate({ mappingId: st.id, batch: val });
                         }}
                         className="input"
-                        style={{ fontSize: 11, padding: '4px 8px', height: 26, width: 110 }}
+                        style={{ fontSize: 11, padding: '2px 6px', height: 24, width: 90 }}
                       >
                         <option value="">None</option>
-                        <option value="1">Batch 1</option>
-                        <option value="2">Batch 2</option>
+                        <option value="1">{sectionName || 'B'}1</option>
+                        <option value="2">{sectionName || 'B'}2</option>
                       </select>
                     </div>
 
                     <button
                       onClick={() => {
-                        if (window.confirm(`Revoke teach access for ${st.users?.name}?`)) {
+                        if (window.confirm(`Revoke teacher access for ${st.users?.name || 'this teacher'}?`)) {
                           deleteTeacherMutation.mutate(st.id);
                         }
                       }}
-                      className="btn-secondary"
-                      style={{ padding: '6px 10px', height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      title="Revoke access"
+                      style={{
+                        background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
+                        borderRadius: 6, padding: '4px 8px', cursor: 'pointer',
+                        color: 'var(--status-critical)', fontSize: 11, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', gap: 4, height: 24, marginTop: 12
+                      }}
+                      title={`Revoke ${st.users?.name || 'teacher'}'s access`}
                     >
-                      <Trash2 size={13} color="var(--status-critical)" />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
@@ -2076,8 +2124,8 @@ function ManageTeachers() {
             </div>
           )}
         </div>
-      )}
-    </section>
+      ) : null}
+    </div>
   );
 }
 

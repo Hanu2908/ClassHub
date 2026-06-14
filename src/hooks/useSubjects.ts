@@ -64,12 +64,12 @@ export function useMutateSubjects() {
   const { sectionId } = useAuthContext();
 
   return useMutation({
-    mutationFn: async (payload: { action: 'create' | 'update' | 'delete'; subject: Partial<SubjectInfo> }) => {
+    mutationFn: async (payload: { action: 'create' | 'update' | 'delete'; subject: Partial<SubjectInfo>; teacherId?: string | null }) => {
       if (!sectionId) throw new Error('No section ID');
-      const { action, subject } = payload;
+      const { action, subject, teacherId } = payload;
 
       if (action === 'create') {
-        const { error } = await supabase
+        const { data: newSubject, error } = await supabase
           .from('subjects')
           .insert({
             section_id: sectionId,
@@ -77,8 +77,22 @@ export function useMutateSubjects() {
             name: subject.name!,
             semester: subject.semester!,
             accent: subject.accent || '#4A9EFF',
-          });
+          })
+          .select('id')
+          .single();
+
         if (error) throw error;
+
+        if (teacherId && newSubject?.id) {
+          const { error: teacherError } = await supabase
+            .from('section_teachers')
+            .insert({
+              section_id: sectionId,
+              teacher_id: teacherId,
+              subject_id: newSubject.id,
+            });
+          if (teacherError) throw teacherError;
+        }
       } else if (action === 'update') {
         const { error } = await supabase
           .from('subjects')
@@ -91,7 +105,53 @@ export function useMutateSubjects() {
           .eq('id', subject.id!)
           .eq('section_id', sectionId);
         if (error) throw error;
+
+        // Fetch existing section_teachers mapping for this subject in this section
+        const { data: existingMapping, error: fetchErr } = await supabase
+          .from('section_teachers')
+          .select('id, teacher_id')
+          .eq('section_id', sectionId)
+          .eq('subject_id', subject.id!)
+          .maybeSingle();
+        if (fetchErr) throw fetchErr;
+
+        if (teacherId) {
+          if (existingMapping) {
+            // Update mapping
+            const { error: updateErr } = await supabase
+              .from('section_teachers')
+              .update({ teacher_id: teacherId })
+              .eq('id', existingMapping.id);
+            if (updateErr) throw updateErr;
+          } else {
+            // Insert mapping
+            const { error: insertErr } = await supabase
+              .from('section_teachers')
+              .insert({
+                section_id: sectionId,
+                teacher_id: teacherId,
+                subject_id: subject.id!,
+              });
+            if (insertErr) throw insertErr;
+          }
+        } else {
+          // Delete mapping if no teacher is assigned
+          if (existingMapping) {
+            const { error: deleteErr } = await supabase
+              .from('section_teachers')
+              .delete()
+              .eq('id', existingMapping.id);
+            if (deleteErr) throw deleteErr;
+          }
+        }
       } else if (action === 'delete') {
+        // Clean up section_teachers mapping first
+        await supabase
+          .from('section_teachers')
+          .delete()
+          .eq('section_id', sectionId)
+          .eq('subject_id', subject.id!);
+
         const { error } = await supabase
           .from('subjects')
           .delete()
@@ -103,6 +163,7 @@ export function useMutateSubjects() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subjects', sectionId] });
       queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] });
+      queryClient.invalidateQueries({ queryKey: ['section-teachers-list', sectionId] });
     },
   });
 }

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Share2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { toast } from 'sonner';
@@ -33,6 +33,7 @@ export default function CreateHubPage() {
   const [classRoll, setClassRoll] = useState('');
   const [universityRoll, setUniversityRoll] = useState('');
   const [dayScholar, setDayScholar] = useState(true);
+  const [batch, setBatch] = useState('1');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -41,10 +42,13 @@ export default function CreateHubPage() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!sectionCode.trim() || sectionCode.length < 1) {
-      e.sectionCode = 'Section code is required (e.g. P2)';
-    } else if (sectionCode.replace(/[^A-Z0-9]/gi, '').length < 1) {
+    const trimmedCode = sectionCode.trim();
+    if (!trimmedCode) {
+      e.sectionCode = 'Section code is required (e.g. P)';
+    } else if (trimmedCode.replace(/[^A-Z0-9]/gi, '').length < 1) {
       e.sectionCode = 'Must contain at least one letter or number';
+    } else if (/^[A-Z]+[12]$/i.test(trimmedCode)) {
+      e.sectionCode = `Enter the full section code (e.g. '${trimmedCode.slice(0, -1)}' instead of '${trimmedCode}'). Batches are split automatically.`;
     }
     if (!hubName.trim()) e.hubName = 'Hub name is required';
     if (!classRollRegex.test(classRoll)) e.classRoll = 'Class roll must be exactly 2 digits (01–99)';
@@ -59,17 +63,14 @@ export default function CreateHubPage() {
     setLoading(true);
     setIsComplete(false);
 
-    // Generate invite code matching DB regex: ^[A-Z0-9]{2}[A-Z]{4}$
-    // Remove any non-alphanumeric characters, pad with X if too short, take first 2 chars
     const prefix = sectionCode.toUpperCase().replace(/[^A-Z0-9]/g, '').padEnd(2, 'X').slice(0, 2);
     const inviteCode = prefix + randomAlpha(4);
 
     if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
-      // Creator = CR role
       setRole('cr');
       if (authUser) {
-        setAuthUser({ ...authUser, role: 'cr', sectionId: 'demo-section', dayScholar });
+        setAuthUser({ ...authUser, role: 'cr', sectionId: 'demo-section', dayScholar, subBatch: batch });
       }
       setHub({
         hubCode: inviteCode,
@@ -78,6 +79,14 @@ export default function CreateHubPage() {
         institution: 'SKIT',
         classRoll: classRoll,
         universityRoll: universityRoll.toUpperCase(),
+      });
+      useAppStore.getState().setOfflineCache('section', {
+        id: 'demo-section',
+        name: sectionCode.toUpperCase(),
+        college: 'SKIT',
+        inviteCode: inviteCode,
+        teacherInviteCode: 'T-DEMOCO',
+        createdBy: authUser?.id || 'demo-user-id',
       });
       pendingCodeRef.current = inviteCode;
       setIsComplete(true);
@@ -94,84 +103,92 @@ export default function CreateHubPage() {
 
       if (error) throw error;
 
-      // Use the invite_code from the returned section
       const returnedCode = data?.invite_code ?? inviteCode;
       pendingCodeRef.current = returnedCode;
 
-      // Update day_scholar status in profile
       const { data: { user: authUserObj } } = await supabase.auth.getUser();
       if (authUserObj) {
         await supabase
           .from('users')
-          .update({ day_scholar: dayScholar })
+          .update({ day_scholar: dayScholar, sub_batch: batch })
           .eq('id', authUserObj.id);
       }
 
-      // Refresh profile from backend so route guard sees new sectionId + CR role
       await refreshProfile();
       setIsComplete(true);
     } catch (err: unknown) {
       setLoading(false);
-      const message = err instanceof Error ? err.message : 'Failed to create hub';
-      toast.error(message);
-    }
-  };
-
-  const copyCode = () => {
-    if (!generatedCode) return;
-    navigator.clipboard.writeText(generatedCode);
-    toast.success('Hub code copied!');
-  };
-
-  const shareCode = async () => {
-    if (!generatedCode) return;
-    try {
-      await navigator.share({ title: 'Join my ClassHub!', text: `Join Section hub with code: ${generatedCode}` });
-    } catch {
-      copyCode();
+      const message = err instanceof Error ? err.message : 'Failed to create section hub';
+      if (message.includes('duplicate key value') || message.includes('already exists')) {
+        setErrors({ sectionCode: 'Section hub already exists. Ask other CR for invite code!' });
+      } else {
+        toast.error(message);
+      }
     }
   };
 
   if (generatedCode) {
+    const directLink = `${window.location.origin}/onboarding/join?invite=${generatedCode}`;
+
+    const handleShare = async () => {
+      try {
+        await navigator.share({ title: 'Join my ClassHub!', text: `Join Section hub with code: ${generatedCode}` });
+      } catch (err) {
+        try {
+          await navigator.clipboard.writeText(directLink);
+          toast.success('Direct link copied to clipboard!');
+        } catch {
+          toast.error('Could not share or copy link');
+        }
+      }
+    };
+
     return (
-      <div style={{ minHeight: '100dvh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div className="card" style={{ maxWidth: 360, width: '100%', textAlign: 'center', animation: 'popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
-          <h2 className="t-feature" style={{ color: 'var(--text-primary)', marginBottom: 8 }}>Hub Created!</h2>
-          <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-            Share this code with students to invite them.
-          </p>
+      <div className="card text-center animate-fade-in" style={{ padding: '32px 24px', maxWidth: 400, margin: '40px auto 20px' }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%', background: 'rgba(74,158,255,0.08)',
+          display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', marginBottom: 16
+        }}>
+          <CheckCircle2 size={28} color="var(--accent-primary)" />
+        </div>
+        <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 8 }}>Hub Created Successfully!</p>
+        <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
+          Your Section Hub invite code is active. Share it with your classmates.
+        </p>
 
-          {/* Generated code */}
-          <div style={{
-            background: 'var(--bg-elevated)', border: '1px solid var(--border-active)',
-            borderRadius: 'var(--radius-md)', padding: '20px 16px', marginBottom: 16,
-            boxShadow: 'var(--shadow-glow-blue)',
-          }}>
-            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>Your Hub Code</p>
-            <p className="t-hero" style={{ color: 'var(--accent-primary)',
-              letterSpacing: '0.18em' }}>{generatedCode}</p>
-          </div>
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)',
+          padding: '16px 20px', marginBottom: 24
+        }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+            Class Invite Code
+          </span>
+          <span className="t-page-title mono" style={{ letterSpacing: '0.08em', color: 'var(--text-primary)' }}>
+            {generatedCode}
+          </span>
+        </div>
 
-          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-            <button id="copy-code-btn" className="btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={copyCode}>
-              <Copy size={15} /> Copy Code
-            </button>
-            <button id="share-code-btn" className="btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={shareCode}>
-              <Share2 size={15} /> Share
-            </button>
-          </div>
-
-          <button id="goto-dashboard-btn" className="btn-primary" onClick={() => navigate('/app/home')}>
-            Go to Dashboard →
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button className="btn-secondary" onClick={() => {
+            navigator.clipboard.writeText(generatedCode);
+            toast.success('Code copied!');
+          }} style={{ flex: 1 }}>
+            Copy Code
+          </button>
+          <button className="btn-primary" onClick={handleShare} style={{ flex: 1 }}>
+            Share Link
           </button>
         </div>
+
+        <button className="btn-secondary" onClick={() => navigate('/app/home')} style={{ width: '100%', marginTop: 16 }}>
+          Go to Dashboard
+        </button>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg-base)', padding: '0 0 40px' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg-base)', padding: '0 0 32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 20px 0' }}>
         <button
           id="create-back-btn"
@@ -179,13 +196,17 @@ export default function CreateHubPage() {
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 8, marginLeft: -8, display: 'flex' }}
           aria-label="Go back"
         >
-          <ArrowLeft size={22} />
+          <ArrowLeft size={20} />
         </button>
-        <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Create a Hub</h1>
+        <BookOpen size={18} color="var(--accent-primary)" />
+        <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Create Section Hub</h1>
       </div>
 
-      <div style={{ textAlign: 'center', padding: '28px 24px 20px' }}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--status-safe-bg)', border: '1px solid rgba(52,201,123,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+      <div style={{ padding: '32px 24px 16px', textAlign: 'center' }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: '50%', background: 'rgba(46, 213, 115, 0.08)',
+          display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', marginBottom: 14
+        }}>
           <CheckCircle2 size={26} color="var(--status-safe)" />
         </div>
         <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>Set up your section</p>
@@ -197,17 +218,19 @@ export default function CreateHubPage() {
           <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Section Code <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
-          <input id="section-code-input" className={`input mono${errors.sectionCode ? ' input-error' : ''}`} placeholder="P2" maxLength={3}
+          <input id="section-code-input" className={`input mono${errors.sectionCode ? ' input-error' : ''}`} placeholder="P" maxLength={3}
             value={sectionCode} onChange={e => setSectionCode(e.target.value.toUpperCase())} />
           <FieldError msg={errors.sectionCode} />
-          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>e.g. P2, A3, CS1</p>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
+            e.g. P, S, A (Enter the full section code. Batches like P1, P2 are generated automatically)
+          </p>
         </div>
 
         <div>
           <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Hub Name <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
-          <input id="hub-name-input" className={`input${errors.hubName ? ' input-error' : ''}`} placeholder="Section P2 — SKIT"
+          <input id="hub-name-input" className={`input${errors.hubName ? ' input-error' : ''}`} placeholder="Section P — SKIT"
             value={hubName} onChange={e => setHubName(e.target.value)} />
           <FieldError msg={errors.hubName} />
         </div>
@@ -284,6 +307,64 @@ export default function CreateHubPage() {
               }}
             >
               <span>🏠</span> Hosteler
+            </button>
+          </div>
+        </div>
+
+        {/* Batch Selection (Batch 1 vs. Batch 2) */}
+        <div>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+            Batch <span style={{ color: 'var(--status-critical)' }}>*</span>
+          </label>
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            padding: 4,
+            gap: 4
+          }}>
+            <button
+              type="button"
+              onClick={() => setBatch('1')}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: batch === '1' ? 'var(--accent-primary)' : 'transparent',
+                color: batch === '1' ? '#fff' : 'var(--text-secondary)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Batch 1
+            </button>
+            <button
+              type="button"
+              onClick={() => setBatch('2')}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: batch === '2' ? 'var(--accent-primary)' : 'transparent',
+                color: batch === '2' ? '#fff' : 'var(--text-secondary)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Batch 2
             </button>
           </div>
         </div>

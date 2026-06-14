@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, X, Users, Mail, BookOpen } from 'lucide-react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
@@ -6,7 +6,7 @@ import Skeleton from 'react-loading-skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { NavBar } from '../../components/NavBar';
-import { useSectionMembers } from '../../hooks/useSectionMembers';
+import { useSectionMembers, useSection } from '../../hooks/useSectionMembers';
 import { useUserTagsBatch, useDeleteTag } from '../../hooks/useUserTags';
 import { useAppStore } from '../../store/appStore';
 import { TagPill, TagOverflow } from '../../components/TagPill';
@@ -55,6 +55,9 @@ export default function SectionDirectoryPage() {
 
   const authUser = useAppStore(s => s.authUser);
   const sectionId = authUser?.sectionId;
+
+  const { data: section } = useSection();
+  const sectionName = section?.name || '';
 
   const { data: teachers = [], isLoading: isTeachersLoading } = useQuery({
     queryKey: ['section-teachers', sectionId],
@@ -119,11 +122,12 @@ export default function SectionDirectoryPage() {
   const { data: tagsByUser = {} } = useUserTagsBatch(memberIds);
   const deleteTag = useDeleteTag();
 
-  // Filter members by tag if query param present
+  // Filter members by tag if query param present, and exclude teachers
   const filteredMembers = useMemo(() => {
-    if (!tagFilter) return members;
+    const nonTeachers = members.filter(m => (m.role as string) !== 'teacher');
+    if (!tagFilter) return nonTeachers;
     const lower = tagFilter.toLowerCase();
-    return members.filter(m => {
+    return nonTeachers.filter(m => {
       const tags = tagsByUser[m.id] ?? [];
       return tags.some(t => t.tagText.toLowerCase() === lower);
     });
@@ -138,28 +142,12 @@ export default function SectionDirectoryPage() {
   };
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollMargin, setScrollMargin] = useState(0);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    setScrollMargin(containerRef.current.offsetTop);
-
-    const observer = new ResizeObserver(() => {
-      if (containerRef.current) {
-        setScrollMargin(containerRef.current.offsetTop);
-      }
-    });
-
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, [filteredMembers.length, tagFilter, isLoading]);
 
   const virtualizer = useWindowVirtualizer({
     count: filteredMembers.length,
     estimateSize: () => 72,
     overscan: 10,
-    scrollMargin,
+    scrollMargin: 0,
   });
 
   const handleTagRemove = (tagId: string) => {
@@ -301,7 +289,7 @@ export default function SectionDirectoryPage() {
                             fontWeight: 700,
                             letterSpacing: '0.05em',
                           }}>
-                            Counsellor A{teacher.isCounsellorForBatch === '1' ? '1' : '2'}
+                            Counsellor {sectionName || 'B'}{teacher.isCounsellorForBatch === '1' ? '1' : '2'}
                           </span>
                         )}
                       </div>
@@ -427,8 +415,9 @@ export default function SectionDirectoryPage() {
             className="card"
             style={{
               padding: 0,
-              height: `${virtualizer.getTotalSize() - scrollMargin}px`,
+              height: `${virtualizer.getTotalSize()}px`,
               position: 'relative',
+              overflow: 'visible',
             }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
@@ -449,7 +438,7 @@ export default function SectionDirectoryPage() {
                     top: 0,
                     left: 0,
                     width: '100%',
-                    transform: `translateY(${virtualItem.start - scrollMargin}px)`,
+                    transform: `translateY(${virtualItem.start}px)`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,

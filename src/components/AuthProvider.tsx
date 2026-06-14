@@ -18,7 +18,7 @@ const SKIT_DOMAIN = '@skit.ac.in';
 async function fetchProfile(userId: string): Promise<AuthUser | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer')
+    .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer, sub_batch')
     .eq('id', userId)
     .single();
 
@@ -32,12 +32,27 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
     return null;
   }
 
+  let isCounsellorForBatch: '1' | '2' | null = null;
+  if (data.role === 'teacher' && data.section_id) {
+    const { data: stData } = await supabase
+      .from('section_teachers')
+      .select('is_counsellor_for_batch')
+      .eq('teacher_id', userId)
+      .eq('section_id', data.section_id)
+      .not('is_counsellor_for_batch', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    if (stData) {
+      isCounsellorForBatch = stData.is_counsellor_for_batch as '1' | '2';
+    }
+  }
+
   return {
     id: data.id,
     name: data.name,
     email: data.email,
     avatarUrl: data.avatar_url ?? null,
-    role: data.role as 'student' | 'cr',
+    role: data.role as 'student' | 'cr' | 'teacher',
     crRank: (data as Record<string, unknown>).cr_rank as 'primary' | 'co' | null ?? null,
     sectionId: data.section_id,
     sectionRoll: data.section_roll,
@@ -45,6 +60,8 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
     dayScholar: data.day_scholar,
     notificationsEnabled: data.notifications_enabled,
     isDeveloper: data.is_developer ?? false,
+    subBatch: (data as Record<string, unknown>).sub_batch as string | null ?? null,
+    isCounsellorForBatch,
   };
 }
 

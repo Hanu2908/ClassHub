@@ -380,8 +380,10 @@ export const useAppStore = create<AppState>()(
       setDeferredPrompt: (deferredPrompt) => set({ deferredPrompt }),
       setFirstTime: (isFirstTime) => set({ isFirstTime }),
 
-      // Refresh profile from Supabase
       refreshProfile: async () => {
+        if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+          return;
+        }
         // Use getUser() instead of getSession() to avoid reading potentially tampered localStorage
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;

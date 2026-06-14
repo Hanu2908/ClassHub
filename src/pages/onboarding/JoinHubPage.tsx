@@ -36,6 +36,7 @@ export default function JoinHubPage() {
   const [classRoll, setClassRoll] = useState('');
   const [universityRoll, setUniversityRoll] = useState('');
   const [dayScholar, setDayScholar] = useState(true);
+  const [batch, setBatch] = useState('1');
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -112,18 +113,30 @@ export default function JoinHubPage() {
         });
       } else {
         setRole('student');
+        const parsedSectionName = hubCode.length >= 2 ? hubCode.slice(0, 1).toUpperCase() : 'Demo Section';
         if (authUser) {
-          setAuthUser({ ...authUser, role: 'student', sectionId: 'demo-section', dayScholar });
+          setAuthUser({ ...authUser, role: 'student', sectionId: 'demo-section', dayScholar, subBatch: batch });
         }
         setHub({
           hubCode: hubCode,
-          section: 'Demo Section',
-          hubName: 'Demo Hub',
+          section: parsedSectionName,
+          hubName: `${parsedSectionName} Section Hub`,
           institution: 'SKIT',
           classRoll: classRoll,
           universityRoll: universityRoll.toUpperCase(),
         });
       }
+      const parsedSectionName = isTeacherFlow
+        ? 'Demo Section'
+        : (hubCode.length >= 2 ? hubCode.slice(0, 1).toUpperCase() : 'Demo Section');
+      useAppStore.getState().setOfflineCache('section', {
+        id: 'demo-section',
+        name: parsedSectionName,
+        college: 'SKIT',
+        inviteCode: hubCode,
+        teacherInviteCode: 'T-DEMOCO',
+        createdBy: 'demo-creator-id',
+      });
       setIsComplete(true);
       return;
     }
@@ -143,12 +156,12 @@ export default function JoinHubPage() {
 
         if (error) throw error;
 
-        // Update day_scholar status in profile
+        // Update day_scholar and sub_batch status in profile
         const { data: { user: authUserObj } } = await supabase.auth.getUser();
         if (authUserObj) {
           await supabase
             .from('users')
-            .update({ day_scholar: dayScholar })
+            .update({ day_scholar: dayScholar, sub_batch: batch })
             .eq('id', authUserObj.id);
         }
       }
@@ -337,6 +350,64 @@ export default function JoinHubPage() {
                   }}
                 >
                   <span>🏠</span> Hosteler
+                </button>
+              </div>
+            </div>
+
+            {/* Batch Selection (Batch 1 vs. Batch 2) */}
+            <div>
+              <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                Batch <span style={{ color: 'var(--status-critical)' }}>*</span>
+              </label>
+              <div style={{
+                display: 'flex',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                padding: 4,
+                gap: 4
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setBatch('1')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    background: batch === '1' ? 'var(--accent-primary)' : 'transparent',
+                    color: batch === '1' ? '#fff' : 'var(--text-secondary)',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Batch 1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBatch('2')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    background: batch === '2' ? 'var(--accent-primary)' : 'transparent',
+                    color: batch === '2' ? '#fff' : 'var(--text-secondary)',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Batch 2
                 </button>
               </div>
             </div>

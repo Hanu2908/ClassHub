@@ -8,6 +8,9 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { toast } from 'sonner';
 import { useSchedule, useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSchedule';
 import { useSubjects } from '../../hooks/useSubjects';
+import { useSection } from '../../hooks/useSectionMembers';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
 import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS, formatTime, formatTimeRange } from '../../lib/scheduleUtils';
 import Skeleton from 'react-loading-skeleton';
 
@@ -68,10 +71,39 @@ interface AddSlotSheetProps {
 function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) {
   const { data: subjects = [] } = useSubjects();
   const upsertSlot = useUpsertScheduleSlot();
+  const { data: section } = useSection();
+  const sectionName = section?.name || '';
   const [subjectId, setSubjectId] = useState('');
   const [room, setRoom] = useState('');
-  const [teacher, setTeacher] = useState('');
+  
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+
+  // Query section teachers
+  const { data: sectionTeachers = [] } = useQuery({
+    queryKey: ['section-teachers-list', sectionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('section_teachers')
+        .select('users(name)')
+        .eq('section_id', sectionId || '');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!sectionId
+  });
+
+  const teacherNames = useMemo(() => {
+    const names = sectionTeachers
+      .map((st: any) => st.users?.name)
+      .filter((name: string | null | undefined): name is string => typeof name === 'string' && name.trim().length > 0);
+    return Array.from(new Set(names)).sort();
+  }, [sectionTeachers]);
+
+  const [selectedTeacherOption, setSelectedTeacherOption] = useState('');
+  const [customTeacher, setCustomTeacher] = useState('');
   const [type, setType] = useState('Tech Lecture');
+  const [targetBatch, setTargetBatch] = useState<'all' | '1' | '2'>('all');
   const [addedCount, setAddedCount] = useState(0);
 
   // Smart defaults: start after last existing or added slot
@@ -94,6 +126,45 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
     setEndTime(calculateEndTime(newStart, type));
   };
 
+  const parseBatchFromText = (text: string): 'all' | '1' | '2' => {
+    const lower = text.toLowerCase();
+    const m1 = /\b(batch\s*1|group\s*1|[a-z]1)\b/i.test(lower);
+    const m2 = /\b(batch\s*2|group\s*2|[a-z]2)\b/i.test(lower);
+    if (m1 && !m2) return '1';
+    if (m2 && !m1) return '2';
+    return 'all';
+  };
+
+  const handleSubjectChange = (val: string) => {
+    setSubjectId(val);
+    const sub = subjects.find(s => s.id === val);
+    if (sub) {
+      const parsed = parseBatchFromText(sub.name + ' ' + sub.code);
+      if (parsed !== 'all') setTargetBatch(parsed);
+    }
+  };
+
+  const handleRoomChange = (val: string) => {
+    setRoom(val);
+    const parsed = parseBatchFromText(val);
+    if (parsed !== 'all') setTargetBatch(parsed);
+  };
+
+  const handleCustomTeacherChange = (val: string) => {
+    setCustomTeacher(val);
+    const parsed = parseBatchFromText(val);
+    if (parsed !== 'all') setTargetBatch(parsed);
+  };
+
+  const handleTeacherSelectChange = (val: string) => {
+    setSelectedTeacherOption(val);
+    if (val !== 'custom') {
+      setCustomTeacher('');
+      const parsed = parseBatchFromText(val);
+      if (parsed !== 'all') setTargetBatch(parsed);
+    }
+  };
+
   const startHour = useMemo(() => {
     if (!startTime) return 8;
     return Number(startTime.split(':')[0]);
@@ -106,6 +177,11 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       toast.error('Select a subject and set times');
       return;
     }
+
+    const finalTeacher = teacherNames.length > 0
+      ? (selectedTeacherOption === 'custom' ? customTeacher : selectedTeacherOption)
+      : customTeacher;
+
     try {
       await upsertSlot.mutateAsync({
         subjectId,
@@ -114,7 +190,8 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
         endTime,
         room: room.trim() || undefined,
         type: mapUiTypeToDb(type),
-        teacher: teacher.trim() || undefined,
+        teacher: finalTeacher.trim() || undefined,
+        targetBatch: targetBatch === 'all' ? null : targetBatch,
       });
       setAddedCount(c => c + 1);
       toast.success(`Slot added (${addedCount + 1})`);
@@ -123,8 +200,9 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       const nextStart = endTime;
       setStartTime(nextStart);
       setEndTime(calculateEndTime(nextStart, type));
-      // Room & teacher remembered, subject cleared for next pick
+      // Room & teacher remembered, subject cleared for next pick, reset batch scoping
       setSubjectId('');
+      setTargetBatch('all');
     } catch (err: any) { toast.error(`Failed to add slot: ${err.message || 'Unknown'}`); }
   };
 
@@ -152,7 +230,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
 
         <div>
           <label htmlFor="slot-subject-select" style={labelStyle}>Subject *</label>
-          <select id="slot-subject-select" style={inputStyle} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
+          <select id="slot-subject-select" style={inputStyle} value={subjectId} onChange={e => handleSubjectChange(e.target.value)}>
             <option value="">Select subject…</option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
           </select>
@@ -166,12 +244,53 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
           </div>
           <div>
             <label htmlFor="slot-room-input" style={labelStyle}>Room</label>
-            <input id="slot-room-input" style={inputStyle} placeholder="Block B-102" value={room} onChange={e => setRoom(e.target.value)} />
+            <input id="slot-room-input" style={inputStyle} placeholder="Block B-102" value={room} onChange={e => handleRoomChange(e.target.value)} />
           </div>
         </div>
         <div>
+          <label htmlFor="slot-batch-select" style={labelStyle}>Target Batch</label>
+          <select id="slot-batch-select" style={inputStyle} value={targetBatch} onChange={e => setTargetBatch(e.target.value as any)}>
+            <option value="all">Full Section (All)</option>
+            <option value="1">Batch {sectionName || 'B'}1</option>
+            <option value="2">Batch {sectionName || 'B'}2</option>
+          </select>
+        </div>
+        <div>
           <label htmlFor="slot-teacher-input" style={labelStyle}>Teacher (optional)</label>
-          <input id="slot-teacher-input" style={inputStyle} placeholder="Prof. Name" value={teacher} onChange={e => setTeacher(e.target.value)} />
+          {teacherNames.length === 0 ? (
+            <input
+              id="slot-teacher-input"
+              style={inputStyle}
+              placeholder="Prof. Name"
+              value={customTeacher}
+              onChange={e => handleCustomTeacherChange(e.target.value)}
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <select
+                id="slot-teacher-select"
+                style={inputStyle}
+                value={selectedTeacherOption}
+                onChange={e => handleTeacherSelectChange(e.target.value)}
+              >
+                <option value="">Select teacher…</option>
+                {teacherNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                <option value="custom">Other / Write custom name...</option>
+              </select>
+              {selectedTeacherOption === 'custom' && (
+                <input
+                  id="slot-teacher-custom-input"
+                  style={inputStyle}
+                  placeholder="Enter custom teacher name"
+                  value={customTeacher}
+                  onChange={e => handleCustomTeacherChange(e.target.value)}
+                  autoFocus
+                />
+              )}
+            </div>
+          )}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
@@ -518,6 +637,8 @@ export default function SchedulePage() {
   const role = useAppStore(s => s.role);
   const isCR = role === 'cr';
   const { data: schedule = {}, isLoading } = useSchedule();
+  const { data: section } = useSection();
+  const sectionName = section?.name || '';
   const deleteSlotMutation = useDeleteScheduleSlot();
   const clearDayMutation = useClearDaySlots();
 
@@ -878,7 +999,7 @@ export default function SchedulePage() {
                   fontFamily: 'var(--font-mono)'
                 }}
               >
-                My Batch ({subBatch === '1' ? 'A1' : 'A2'})
+                My Batch ({subBatch === '1' ? `${sectionName || 'B'}1` : `${sectionName || 'B'}2`})
               </button>
               <button
                 onClick={() => setViewMode('full')}
