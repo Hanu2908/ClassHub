@@ -182,6 +182,7 @@ export type Database = {
           priority: Database["public"]["Enums"]["announcement_priority"]
           section_id: string
           title: string
+          target_batch: string | null
         }
         Insert: {
           author_id?: string | null
@@ -197,6 +198,7 @@ export type Database = {
           priority?: Database["public"]["Enums"]["announcement_priority"]
           section_id: string
           title: string
+          target_batch?: string | null
         }
         Update: {
           author_id?: string | null
@@ -212,6 +214,7 @@ export type Database = {
           priority?: Database["public"]["Enums"]["announcement_priority"]
           section_id?: string
           title?: string
+          target_batch?: string | null
         }
         Relationships: [
           {
@@ -282,6 +285,7 @@ export type Database = {
           section_id: string
           subject_id: string
           title: string
+          target_batch: string | null
         }
         Insert: {
           created_at?: string
@@ -293,6 +297,7 @@ export type Database = {
           section_id: string
           subject_id: string
           title: string
+          target_batch?: string | null
         }
         Update: {
           created_at?: string
@@ -304,6 +309,7 @@ export type Database = {
           section_id?: string
           subject_id?: string
           title?: string
+          target_batch?: string | null
         }
         Relationships: [
           {
@@ -498,6 +504,45 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      counsellor_notes: {
+        Row: {
+          id: string
+          counsellor_id: string
+          student_id: string
+          note_text: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          counsellor_id: string
+          student_id: string
+          note_text: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          counsellor_id?: string
+          student_id?: string
+          note_text?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counsellor_notes_counsellor_id_fkey"
+            columns: ["counsellor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counsellor_notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
         ]
       }
       exam_overrides: {
@@ -817,6 +862,110 @@ export type Database = {
           },
         ]
       }
+      mass_bunks: {
+        Row: {
+          id: string
+          section_id: string
+          created_by: string
+          subject_id: string
+          date: string
+          timetable_slot_id: string | null
+          status: string
+          closes_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          section_id: string
+          created_by: string
+          subject_id: string
+          date: string
+          timetable_slot_id?: string | null
+          status?: string
+          closes_at: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          section_id?: string
+          created_by?: string
+          subject_id?: string
+          date?: string
+          timetable_slot_id?: string | null
+          status?: string
+          closes_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mass_bunks_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mass_bunks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mass_bunks_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mass_bunks_timetable_slot_id_fkey"
+            columns: ["timetable_slot_id"]
+            isOneToOne: false
+            referencedRelation: "timetable_slots"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      mass_bunk_votes: {
+        Row: {
+          id: string
+          mass_bunk_id: string
+          student_id: string
+          vote_choice: string
+          voted_at: string
+        }
+        Insert: {
+          id?: string
+          mass_bunk_id: string
+          student_id: string
+          vote_choice: string
+          voted_at?: string
+        }
+        Update: {
+          id?: string
+          mass_bunk_id?: string
+          student_id?: string
+          vote_choice?: string
+          voted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mass_bunk_votes_mass_bunk_id_fkey"
+            columns: ["mass_bunk_id"]
+            isOneToOne: false
+            referencedRelation: "mass_bunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mass_bunk_votes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       poll_options: {
         Row: {
           id: string
@@ -946,6 +1095,7 @@ export type Database = {
           id: string
           invite_code: string
           name: string
+          teacher_invite_code: string | null
         }
         Insert: {
           college?: string
@@ -954,6 +1104,7 @@ export type Database = {
           id?: string
           invite_code: string
           name: string
+          teacher_invite_code?: string | null
         }
         Update: {
           college?: string
@@ -962,6 +1113,7 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string
+          teacher_invite_code?: string | null
         }
         Relationships: [
           {
@@ -971,6 +1123,55 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      section_teachers: {
+        Row: {
+          id: string
+          section_id: string
+          teacher_id: string
+          subject_id: string | null
+          is_counsellor_for_batch: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          section_id: string
+          teacher_id: string
+          subject_id?: string | null
+          is_counsellor_for_batch?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          section_id?: string
+          teacher_id?: string
+          subject_id?: string | null
+          is_counsellor_for_batch?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_teachers_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_teachers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_teachers_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          }
         ]
       }
       student_exam_prep: {
@@ -1130,6 +1331,7 @@ export type Database = {
           teacher: string | null
           type: Database["public"]["Enums"]["slot_type"]
           updated_at: string
+          target_batch: string | null
         }
         Insert: {
           created_at?: string
@@ -1144,6 +1346,7 @@ export type Database = {
           teacher?: string | null
           type?: Database["public"]["Enums"]["slot_type"]
           updated_at?: string
+          target_batch?: string | null
         }
         Update: {
           created_at?: string
@@ -1158,6 +1361,7 @@ export type Database = {
           teacher?: string | null
           type?: Database["public"]["Enums"]["slot_type"]
           updated_at?: string
+          target_batch?: string | null
         }
         Relationships: [
           {
@@ -1225,6 +1429,7 @@ export type Database = {
           section_roll: string | null
           university_roll: string | null
           updated_at: string
+          sub_batch: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1241,6 +1446,7 @@ export type Database = {
           section_roll?: string | null
           university_roll?: string | null
           updated_at?: string
+          sub_batch?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1257,6 +1463,7 @@ export type Database = {
           section_roll?: string | null
           university_roll?: string | null
           updated_at?: string
+          sub_batch?: string | null
         }
         Relationships: [
           {
@@ -1405,6 +1612,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      join_section_as_teacher: {
+        Args: {
+          invite_code: string
+          subject_id?: string | null
+        }
+        Returns: {
+          avatar_url: string | null
+          cr_rank: string | null
+          created_at: string
+          day_scholar: boolean
+          email: string
+          id: string
+          is_developer: boolean
+          name: string
+          notifications_enabled: boolean
+          role: Database["public"]["Enums"]["user_role"]
+          section_id: string | null
+          section_roll: string | null
+          university_roll: string | null
+          updated_at: string
+          sub_batch: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "users"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       poll_results: {
         Args: { target_poll: string }
         Returns: {
@@ -1447,7 +1683,7 @@ export type Database = {
       poll_type: "general" | "actionable"
       slot_type: "lecture" | "lab" | "tutorial" | "other"
       submission_status: "pending" | "submitted"
-      user_role: "student" | "cr" | "developer"
+      user_role: "student" | "cr" | "developer" | "teacher"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1592,7 +1828,7 @@ export const Constants = {
       poll_type: ["general", "actionable"],
       slot_type: ["lecture", "lab", "tutorial", "other"],
       submission_status: ["pending", "submitted"],
-      user_role: ["student", "cr", "developer"],
+      user_role: ["student", "cr", "developer", "teacher"],
     },
   },
 } as const

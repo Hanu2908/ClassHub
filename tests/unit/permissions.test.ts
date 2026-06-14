@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { canManageSection, canSeeActionableVotes, isCR } from "../../src/lib/utils/permissions";
+import { describe, expect, it } from 'vitest';
+import { canManageSection, canSeeActionableVotes, isCR, isTeacher } from "../../src/lib/utils/permissions";
 
 describe("isCR", () => {
   it("returns true for lowercase 'cr'", () => {
@@ -28,6 +28,36 @@ describe("isCR", () => {
 
   it("returns false for empty string", () => {
     expect(isCR("")).toBe(false);
+  });
+});
+
+describe("isTeacher", () => {
+  it("returns true for lowercase 'teacher'", () => {
+    expect(isTeacher("teacher")).toBe(true);
+  });
+
+  it("returns true for uppercase 'TEACHER'", () => {
+    expect(isTeacher("TEACHER")).toBe(true);
+  });
+
+  it("returns true for mixed case 'Teacher'", () => {
+    expect(isTeacher("Teacher")).toBe(true);
+  });
+
+  it("returns false for 'student'", () => {
+    expect(isTeacher("student")).toBe(false);
+  });
+
+  it("returns false for null", () => {
+    expect(isTeacher(null)).toBe(false);
+  });
+
+  it("returns false for undefined", () => {
+    expect(isTeacher(undefined)).toBe(false);
+  });
+
+  it("returns false for empty string", () => {
+    expect(isTeacher("")).toBe(false);
   });
 });
 

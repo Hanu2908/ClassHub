@@ -57,7 +57,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
         const assignmentsQuery = supabase
           .from('assignments')
           .select(`
-            id, title, subject_id, due_date, description, created_at,
+            id, title, subject_id, due_date, description, created_at, target_batch,
             subjects:subject_id (code, name),
             assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers),
             attachments (id, filename, file_size, file_type, storage_path)
@@ -114,6 +114,7 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
             submittedLink: sub?.link ?? null,
             crVerified: sub?.crVerified ?? false,
             createdAt: a.created_at,
+            targetBatch: (a as any).target_batch ?? null,
             attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
               id: att.id,
               filename: att.filename,
@@ -192,6 +193,7 @@ export function useCreateAssignment() {
       subjectId: string;
       dueDate: string;
       sets?: { label: string; description: string; rollStart: number; rollEnd: number; pdfUrl?: string | null; pageNumbers?: string | null }[];
+      targetBatch?: '1' | '2' | null;
     }) => {
       if (isCreatingAssignment) {
         console.warn('Assignment creation already in flight. Ignoring duplicate request.');
@@ -199,9 +201,9 @@ export function useCreateAssignment() {
       }
       isCreatingAssignment = true;
       try {
-        // 1. Enforce strict CR authorization check
-        if (role !== 'cr') {
-          throw new Error('Unauthorized: Only Class Representatives can create assignments');
+        // 1. Enforce strict CR or Teacher authorization check
+        if (role !== 'cr' && role !== 'teacher') {
+          throw new Error('Unauthorized: Only Class Representatives and Teachers can create assignments');
         }
 
         // 2. Enforce strict Zod schema validation
@@ -227,6 +229,7 @@ export function useCreateAssignment() {
             description: input.description?.trim() ?? null,
             subject_id: validated.subjectId,
             due_date: new Date(validated.dueDate).toISOString(),
+            target_batch: input.targetBatch ?? null,
           })
           .select('id')
           .single();
@@ -287,10 +290,11 @@ export function useUpdateAssignment() {
       dueDate: string;
       sets?: { id?: string; label: string; description: string; rollStart: number; rollEnd: number; pdfUrl?: string | null; pageNumbers?: string | null }[];
       notifyClass?: boolean;
+      targetBatch?: '1' | '2' | null;
     }) => {
-      // 1. Enforce strict CR authorization check
-      if (role !== 'cr') {
-        throw new Error('Unauthorized: Only Class Representatives can update assignments');
+      // 1. Enforce strict CR or Teacher authorization check
+      if (role !== 'cr' && role !== 'teacher') {
+        throw new Error('Unauthorized: Only Class Representatives and Teachers can update assignments');
       }
 
       // 2. Enforce strict Zod schema validation
@@ -315,6 +319,7 @@ export function useUpdateAssignment() {
           description: input.description?.trim() ?? null,
           subject_id: validated.subjectId,
           due_date: new Date(validated.dueDate).toISOString(),
+          target_batch: input.targetBatch ?? null,
         })
         .eq('id', input.id);
       if (assignmentErr) throw assignmentErr;

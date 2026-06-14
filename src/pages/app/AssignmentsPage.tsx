@@ -87,6 +87,26 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
   const [hasSets, setHasSets] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [targetBatch, setTargetBatch] = useState<'all' | '1' | '2'>('all');
+
+  const detectBatch = (text: string): 'all' | '1' | '2' => {
+    const lower = text.toLowerCase();
+    if (lower.includes('batch 1') || lower.includes('b1') || lower.includes('batch-1')) return '1';
+    if (lower.includes('batch 2') || lower.includes('b2') || lower.includes('batch-2')) return '2';
+    return 'all';
+  };
+
+  const handleTitleChange = (val: string) => {
+    setTitle(val);
+    const parsed = detectBatch(val + ' ' + description);
+    if (parsed !== 'all') setTargetBatch(parsed);
+  };
+
+  const handleDescChange = (val: string) => {
+    setDescription(val);
+    const parsed = detectBatch(title + ' ' + val);
+    if (parsed !== 'all') setTargetBatch(parsed);
+  };
 
   // Step 2 fields
   const [totalStudents, setTotalStudents] = useState('60');
@@ -161,6 +181,7 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
     setStep(1); setTitle(''); setSubjectId(''); setCustomSubjectName('');
     setDueDate(''); setDescription(''); setFiles([]); setHasSets(false);
     setTotalStudents('60'); setNumSets(''); setExcludeFirstPage(false); setSets([]); setUploadProgress(0);
+    setTargetBatch('all');
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -250,6 +271,7 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
           pdfUrl: s.pdfUrl,
           pageNumbers: s.pageNumbers,
         })) : undefined,
+        targetBatch: targetBatch === 'all' ? null : targetBatch,
       });
 
       if (parentId && files.length > 0) {
@@ -316,7 +338,7 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={labelStyle}>Title <span style={{ color: 'var(--status-critical)' }}>*</span></label>
-            <input style={inputStyle} placeholder="e.g. DBMS Unit 3 Assignment" value={title} onChange={e => setTitle(e.target.value)} />
+            <input style={inputStyle} placeholder="e.g. DBMS Unit 3 Assignment" value={title} onChange={e => handleTitleChange(e.target.value)} />
           </div>
           <div>
             <label style={labelStyle}>Subject <span style={{ color: 'var(--status-critical)' }}>*</span></label>
@@ -335,12 +357,20 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
             )}
           </div>
           <div>
+            <label style={labelStyle}>Target Batch</label>
+            <select style={inputStyle} value={targetBatch} onChange={e => setTargetBatch(e.target.value as any)}>
+              <option value="all">Full Section (All)</option>
+              <option value="1">Batch 1 Only</option>
+              <option value="2">Batch 2 Only</option>
+            </select>
+          </div>
+          <div>
             <label style={labelStyle}>Due Date & Time <span style={{ color: 'var(--status-critical)' }}>*</span></label>
             <input style={inputStyle} type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} />
           </div>
           <div>
             <label style={labelStyle}>Description</label>
-            <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} placeholder="Instructions for students…" value={description} onChange={e => setDescription(e.target.value)} />
+            <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} placeholder="Instructions for students…" value={description} onChange={e => handleDescChange(e.target.value)} />
           </div>
           <div>
             <FileUploader files={files} onChange={setFiles} />

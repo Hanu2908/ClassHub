@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { DoorOpen, PlusCircle, ChevronRight } from 'lucide-react';
+import { DoorOpen, PlusCircle, ChevronRight, GraduationCap } from 'lucide-react';
 
 export default function ChoicePage() {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export default function ChoicePage() {
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 380 }}>
         {/* Logo + title */}
-        <div style={{ textAlign: 'center', marginBottom: 48 }} className="stagger-1">
+        <div style={{ textAlign: 'center', marginBottom: 40 }} className="stagger-1">
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div className="logo-wrap">
               <img src="/app_icon.svg" alt="ClassHub" width="88" height="88" fetchPriority="high" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -62,8 +62,32 @@ export default function ChoicePage() {
           </button>
 
           <button
-            id="create-hub-card"
+            id="join-teacher-card"
             className="onboarding-card stagger-3"
+            onClick={() => navigate('/onboarding/join?role=teacher')}
+            style={{ textAlign: 'left', width: '100%', background: 'none' }}
+          >
+            <div style={{
+              width: 52, height: 52, borderRadius: 'var(--radius-md)',
+              background: 'rgba(99, 102, 241, 0.1)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <GraduationCap size={24} color="rgb(99, 102, 241)" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
+                Join as Teacher
+              </p>
+              <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
+                Enter teacher code from the Class Rep
+              </p>
+            </div>
+            <ChevronRight size={18} color="var(--text-muted)" className="chevron-icon" style={{ transition: 'transform var(--transition-fast), color var(--transition-fast)' }} />
+          </button>
+
+          <button
+            id="create-hub-card"
+            className="onboarding-card stagger-4"
             onClick={() => navigate('/onboarding/create')}
             style={{ textAlign: 'left', width: '100%', background: 'none' }}
           >
@@ -86,7 +110,7 @@ export default function ChoicePage() {
           </button>
         </div>
 
-        <p className="stagger-4 t-mono-sm" style={{ textAlign: 'center', marginTop: 40, color: 'var(--text-muted)' }}>
+        <p className="stagger-5 t-mono-sm" style={{ textAlign: 'center', marginTop: 40, color: 'var(--text-muted)' }}>
           Section P2 · SKIT Jaipur
         </p>
       </div>

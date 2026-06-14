@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, X, Users } from 'lucide-react';
+import { ArrowLeft, X, Users, Mail, BookOpen } from 'lucide-react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import Skeleton from 'react-loading-skeleton';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
 import { NavBar } from '../../components/NavBar';
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { useUserTagsBatch, useDeleteTag } from '../../hooks/useUserTags';
@@ -49,6 +51,68 @@ export default function SectionDirectoryPage() {
   const tagFilter = searchParams.get('tag');
   const role = useAppStore(s => s.authUser?.role ?? 'student');
   const isCR = role === 'cr';
+  const [activeTab, setActiveTab] = useState<'students' | 'teachers'>('students');
+
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = authUser?.sectionId;
+
+  const { data: teachers = [], isLoading: isTeachersLoading } = useQuery({
+    queryKey: ['section-teachers', sectionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('section_teachers')
+        .select(`
+          id,
+          is_counsellor_for_batch,
+          teacher:teacher_id (id, name, email, avatar_url),
+          subjects:subject_id (name, code)
+        `)
+        .eq('section_id', sectionId || '');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!sectionId,
+  });
+
+  const groupedTeachers = useMemo(() => {
+    const map: Record<string, {
+      id: string;
+      name: string;
+      email: string;
+      avatarUrl: string | null;
+      isCounsellorForBatch: '1' | '2' | null;
+      subjects: { name: string; code: string }[];
+    }> = {};
+
+    teachers.forEach((row: any) => {
+      if (!row.teacher) return;
+      const tId = row.teacher.id;
+      if (!map[tId]) {
+        map[tId] = {
+          id: tId,
+          name: row.teacher.name,
+          email: row.teacher.email,
+          avatarUrl: row.teacher.avatar_url,
+          isCounsellorForBatch: row.is_counsellor_for_batch,
+          subjects: [],
+        };
+      }
+      if (row.subjects) {
+        const code = row.subjects.code;
+        if (!map[tId].subjects.some(s => s.code === code)) {
+          map[tId].subjects.push({
+            name: row.subjects.name,
+            code,
+          });
+        }
+      }
+      if (row.is_counsellor_for_batch) {
+        map[tId].isCounsellorForBatch = row.is_counsellor_for_batch;
+      }
+    });
+
+    return Object.values(map);
+  }, [teachers]);
 
   const { data: members = [], isLoading } = useSectionMembers();
   const memberIds = useMemo(() => members.map(m => m.id), [members]);
@@ -135,9 +199,153 @@ export default function SectionDirectoryPage() {
         </span>
       </header>
 
+      {/* Directory Tabs */}
+      <div style={{
+        display: 'flex',
+        padding: '0 16px',
+        borderBottom: '1px solid var(--border-default)',
+        background: 'var(--bg-base)',
+        gap: 12
+      }}>
+        <button
+          onClick={() => setActiveTab('students')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: '12px 16px 10px',
+            borderBottom: activeTab === 'students' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+            color: activeTab === 'students' ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'students' ? 700 : 500, fontSize: 13,
+          }}
+        >
+          Students
+        </button>
+        <button
+          onClick={() => setActiveTab('teachers')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: '12px 16px 10px',
+            borderBottom: activeTab === 'teachers' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+            color: activeTab === 'teachers' ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'teachers' ? 700 : 500, fontSize: 13,
+          }}
+        >
+          Teachers
+        </button>
+      </div>
+
       <main className="page-content">
-        {/* Active tag filter chip */}
-        {tagFilter && (
+        {activeTab === 'teachers' ? (
+          isTeachersLoading ? (
+            <DirectorySkeleton />
+          ) : groupedTeachers.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
+              <p className="t-body-medium">No teachers linked to this section yet.</p>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: 0 }}>
+              {groupedTeachers.map((teacher, index) => (
+                <div
+                  key={teacher.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    padding: '16px',
+                    borderBottom: index < groupedTeachers.length - 1 ? '1px solid var(--border-default)' : 'none',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {/* Avatar */}
+                    {teacher.avatarUrl ? (
+                      <img
+                        src={teacher.avatarUrl}
+                        alt={teacher.name}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          flexShrink: 0,
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'var(--text-secondary)',
+                        flexShrink: 0,
+                      }}>
+                        {teacher.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span className="t-body-medium" style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
+                          {teacher.name}
+                        </span>
+                        {teacher.isCounsellorForBatch && (
+                          <span className="t-mono-sm" style={{
+                            background: 'rgba(99, 102, 241, 0.1)',
+                            color: 'rgb(99, 102, 241)',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            letterSpacing: '0.05em',
+                          }}>
+                            Counsellor A{teacher.isCounsellorForBatch === '1' ? '1' : '2'}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Mail size={12} color="var(--text-muted)" />
+                        <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                          {teacher.email}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Subjects Taught */}
+                  {teacher.subjects.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingLeft: 48, marginTop: 4 }}>
+                      {teacher.subjects.map((sub, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '2px 8px',
+                            background: 'rgba(74, 158, 255, 0.06)',
+                            border: '1px solid rgba(74, 158, 255, 0.15)',
+                            borderRadius: 'var(--radius-sm)',
+                          }}
+                        >
+                          <BookOpen size={10} color="var(--accent-primary)" />
+                          <span className="t-mono-sm" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                            {sub.name} ({sub.code})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <>
+            {/* Active tag filter chip */}
+            {tagFilter && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -334,6 +542,8 @@ export default function SectionDirectoryPage() {
               );
             })}
           </div>
+        )}
+          </>
         )}
       </main>
 

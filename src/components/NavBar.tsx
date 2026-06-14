@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
-import { Home, Calendar, Megaphone, User, ShieldCheck, ClipboardCheck } from 'lucide-react';
+import { Home, Calendar, Megaphone, User, ShieldCheck, ClipboardCheck, Users } from 'lucide-react';
 
 // When role=cr: replace Announcements tab with CR Command tab
 const STUDENT_TABS = [
@@ -19,15 +19,16 @@ const CR_TABS = [
   { id: 'profile',    label: 'Profile',    icon: User,           path: '/app/profile' },
 ] as const;
 
-type TabId = typeof STUDENT_TABS[number]['id'] | typeof CR_TABS[number]['id'];
-
 const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
-  '/app/home':          () => import('../pages/app/DashboardPage'),
-  '/app/schedule':      () => import('../pages/app/SchedulePage'),
-  '/app/announcements': () => import('../pages/app/AnnouncementsPage'),
-  '/app/cr-command':    () => import('../pages/app/CRCommandPage'),
-  '/app/attendance':    () => import('../pages/app/AttendancePage'),
-  '/app/profile':       () => import('../pages/app/ProfilePage'),
+  '/app/home':              () => import('../pages/app/DashboardPage'),
+  '/app/schedule':          () => import('../pages/app/SchedulePage'),
+  '/app/announcements':     () => import('../pages/app/AnnouncementsPage'),
+  '/app/cr-command':        () => import('../pages/app/CRCommandPage'),
+  '/app/attendance':        () => import('../pages/app/AttendancePage'),
+  '/app/profile':           () => import('../pages/app/ProfilePage'),
+  '/app/teacher-dashboard': () => import('../pages/app/TeacherDashboardPage'),
+  '/app/counsellor':        () => import('../pages/app/CounsellorConsolePage'),
+  '/app/teacher-command':   () => import('../pages/app/TeacherCommandPage'),
 };
 
 function prefetchRoute(path: string) {
@@ -37,11 +38,28 @@ function prefetchRoute(path: string) {
 export function NavBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setActiveTab, role } = useAppStore();
+  const { setActiveTab, role, authUser } = useAppStore();
 
-  const TABS = role === 'cr' ? CR_TABS : STUDENT_TABS;
+  let TABS: ReadonlyArray<{ id: string; label: string; icon: typeof Home; path: string }>;
+  if (role === 'teacher') {
+    const tabs = [
+      { id: 'teacher-dashboard', label: 'Dashboard', icon: Home, path: '/app/teacher-dashboard' },
+    ];
+    if (authUser?.isCounsellorForBatch) {
+      tabs.push({ id: 'counsellor', label: 'Counsellor', icon: Users, path: '/app/counsellor' });
+    }
+    tabs.push(
+      { id: 'teacher-command', label: 'Command', icon: ShieldCheck, path: '/app/teacher-command' },
+      { id: 'profile', label: 'Profile', icon: User, path: '/app/profile' }
+    );
+    TABS = tabs;
+  } else if (role === 'cr') {
+    TABS = CR_TABS;
+  } else {
+    TABS = STUDENT_TABS;
+  }
 
-  const active: TabId = (TABS.find(t => location.pathname.startsWith(t.path))?.id ?? 'home') as TabId;
+  const active = TABS.find(t => location.pathname.startsWith(t.path))?.id ?? 'home';
 
   return (
     <nav className="navbar" role="navigation" aria-label="Main navigation">
@@ -53,7 +71,7 @@ export function NavBar() {
             key={tab.id}
             id={`nav-${tab.id}`}
             className={`navbar-tab${isActive ? ' active' : ''}`}
-            onClick={() => { setActiveTab(tab.id); navigate(tab.path); }}
+            onClick={() => { setActiveTab(tab.id as any); navigate(tab.path); }}
             onMouseEnter={() => prefetchRoute(tab.path)}
             onTouchStart={() => prefetchRoute(tab.path)}
             aria-label={tab.label}

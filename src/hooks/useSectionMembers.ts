@@ -69,7 +69,7 @@ export function useSection() {
       try {
         const { data, error } = await supabase
           .from('sections')
-          .select('id, name, college, invite_code, created_by')
+          .select('id, name, college, invite_code, teacher_invite_code, created_by')
           .eq('id', sectionId!)
           .single();
         
@@ -81,6 +81,7 @@ export function useSection() {
           name: data.name,
           college: data.college,
           inviteCode: data.invite_code,
+          teacherInviteCode: data.teacher_invite_code,
           createdBy: data.created_by,
         };
         useAppStore.getState().setOfflineCache('section', sectionData);

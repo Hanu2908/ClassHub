@@ -32,6 +32,7 @@ export interface AuthUser {
   notificationsEnabled: boolean;
   isDeveloper: boolean;
   subBatch?: string | null;
+  isCounsellorForBatch?: '1' | '2' | null;
 }
 
 export interface HubInfo {
@@ -91,6 +92,7 @@ export interface Assignment {
   crVerified?: boolean;
   createdAt: string;
   attachments?: Attachment[];
+  targetBatch?: '1' | '2' | null;
 }
 
 export interface Announcement {
@@ -103,6 +105,7 @@ export interface Announcement {
   expiresAt?: string | null;
   attachmentUrl?: string | null;
   attachments?: Attachment[];
+  targetBatch?: '1' | '2' | null;
 }
 
 export interface PollOption {
@@ -260,6 +263,7 @@ export interface SectionInfo {
   name: string;
   college: string;
   inviteCode: string;
+  teacherInviteCode?: string | null;
   createdBy: string | null;
 }
 
@@ -387,6 +391,22 @@ export const useAppStore = create<AppState>()(
           .eq('id', user.id)
           .single();
         if (error || !data) return;
+
+        let isCounsellorForBatch: '1' | '2' | null = null;
+        if (data.role === 'teacher' && data.section_id) {
+          const { data: stData } = await supabase
+            .from('section_teachers')
+            .select('is_counsellor_for_batch')
+            .eq('teacher_id', user.id)
+            .eq('section_id', data.section_id)
+            .not('is_counsellor_for_batch', 'is', null)
+            .limit(1)
+            .maybeSingle();
+          if (stData) {
+            isCounsellorForBatch = stData.is_counsellor_for_batch as '1' | '2';
+          }
+        }
+
         const profile: AuthUser = {
           id: data.id,
           name: data.name,
@@ -401,6 +421,7 @@ export const useAppStore = create<AppState>()(
           notificationsEnabled: data.notifications_enabled,
           isDeveloper: data.is_developer ?? false,
           subBatch: (data as Record<string, unknown>).sub_batch as string | null ?? null,
+          isCounsellorForBatch,
         };
         set({
           authUser: profile,

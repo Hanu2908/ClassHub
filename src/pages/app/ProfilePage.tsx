@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { toast } from 'sonner';
@@ -17,6 +18,27 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { authUser, role, hub, signOut, deferredPrompt, setDeferredPrompt, refreshProfile } = useAppStore();
   const { data: section } = useSection();
+
+  const subBatch = authUser?.subBatch;
+  const sectionId = authUser?.sectionId;
+
+  const { data: counsellor = null } = useQuery({
+    queryKey: ['my-counsellor', sectionId, subBatch],
+    queryFn: async () => {
+      if (!sectionId || !subBatch) return null;
+      const { data, error } = await supabase
+        .from('section_teachers')
+        .select(`
+          teacher:teacher_id (name, email)
+        `)
+        .eq('section_id', sectionId)
+        .eq('is_counsellor_for_batch', subBatch)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.teacher as { name: string; email: string }) || null;
+    },
+    enabled: !!sectionId && !!subBatch,
+  });
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
@@ -329,6 +351,39 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+
+        {/* Counsellor Section */}
+        {counsellor && (
+          <div>
+            <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>BATCH COUNSELLOR</p>
+            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ minWidth: 0 }}>
+                <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{counsellor.name}</h3>
+                <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>Batch A{subBatch} Counsellor</p>
+              </div>
+              <a
+                href={`mailto:${counsellor.email}?subject=ClassHub - Inquiry from student (${authUser?.name}, Roll ${classRoll})&body=Respected Professor,%0D%0A%0D%0A`}
+                className="t-button"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: 'var(--accent-primary-glow)',
+                  border: '1px solid rgba(74, 158, 255, 0.25)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--accent-primary)',
+                  padding: '8px 14px',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  textDecoration: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <Mail size={14} /> Contact
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* TOOLS */}
         <div>

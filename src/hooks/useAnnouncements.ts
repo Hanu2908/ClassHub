@@ -47,7 +47,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
         const { data: anns, error: annErr } = await supabase
           .from('announcements')
           .select(`
-            id, title, message_content, priority, deadline_at, expires_at, created_at,
+            id, title, message_content, priority, deadline_at, expires_at, created_at, target_batch,
             attachments (id, filename, file_size, file_type, storage_path)
           `)
           .eq('section_id', sectionId!)
@@ -77,6 +77,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
           expiresAt: (a as any).expires_at ?? null,
           attachmentUrl: null,
           isAcknowledged: ackIds.includes(a.id),
+          targetBatch: (a as any).target_batch ?? null,
           attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
             id: att.id,
             filename: att.filename,
@@ -123,6 +124,7 @@ export function useCreateAnnouncement() {
       priority: 'general' | 'critical';
       deadline?: string | null;
       expiresAt?: string | null;
+      targetBatch?: '1' | '2' | null;
     }) => {
       if (isCreatingAnnouncement) {
         console.warn('Announcement creation already in flight. Ignoring duplicate request.');
@@ -140,6 +142,7 @@ export function useCreateAnnouncement() {
             priority: input.priority,
             deadline_at: input.deadline ?? null,
             expires_at: input.expiresAt ?? null,
+            target_batch: input.targetBatch ?? null,
           })
           .select('id')
           .single();

@@ -50,12 +50,33 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [targetBatch, setTargetBatch] = useState<'all' | '1' | '2'>('all');
   const [priority, setPriority] = useState<'general' | 'critical'>('general');
   const [hasDeadline, setHasDeadline] = useState(false);
   const [deadlineDate, setDeadlineDate] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Smart Parsing: regex check if title/body mentions a batch number
+  const detectBatch = (text: string): 'all' | '1' | '2' => {
+    const lower = text.toLowerCase();
+    if (lower.includes('batch 1') || lower.includes('b1') || lower.includes('batch-1')) return '1';
+    if (lower.includes('batch 2') || lower.includes('b2') || lower.includes('batch-2')) return '2';
+    return 'all';
+  };
+
+  const handleTitleChange = (val: string) => {
+    setTitle(val);
+    const parsed = detectBatch(val + ' ' + body);
+    if (parsed !== 'all') setTargetBatch(parsed);
+  };
+
+  const handleBodyChange = (val: string) => {
+    setBody(val);
+    const parsed = detectBatch(title + ' ' + val);
+    if (parsed !== 'all') setTargetBatch(parsed);
+  };
 
   useEffect(() => {
     if (!shareInboxId) return;
@@ -87,6 +108,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
         message: finalBody,
         priority,
         deadline: hasDeadline && deadlineDate ? new Date(deadlineDate).toISOString() : null,
+        targetBatch: targetBatch === 'all' ? null : targetBatch,
       });
 
       if (parentId && files.length > 0) {
@@ -126,6 +148,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
       toast.success('Announcement posted');
       setTitle('');
       setBody('');
+      setTargetBatch('all');
       setSelectedSubjectId('');
       setHasDeadline(false);
       setDeadlineDate('');
@@ -152,7 +175,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
             className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
             placeholder="e.g. End Semester Exam Schedule" 
             value={title} 
-            onChange={e => setTitle(e.target.value)} 
+            onChange={e => handleTitleChange(e.target.value)} 
           />
         </div>
         <div>
@@ -163,11 +186,25 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
             className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
             placeholder="Details of the announcement…" 
             value={body} 
-            onChange={e => setBody(e.target.value)} 
+            onChange={e => handleBodyChange(e.target.value)} 
           />
         </div>
         
         <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="composer-target-batch" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Target Batch</label>
+            <select
+              id="composer-target-batch"
+              style={inputStyle}
+              className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
+              value={targetBatch}
+              onChange={e => setTargetBatch(e.target.value as any)}
+            >
+              <option value="all">Full Section (All)</option>
+              <option value="1">Batch 1 Only</option>
+              <option value="2">Batch 2 Only</option>
+            </select>
+          </div>
           <div style={{ flex: 1 }}>
             <label htmlFor="composer-priority" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Priority</label>
             <select 

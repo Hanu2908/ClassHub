@@ -521,17 +521,30 @@ export default function SchedulePage() {
   const deleteSlotMutation = useDeleteScheduleSlot();
   const clearDayMutation = useClearDaySlots();
 
-  const classes = useMemo(() =>
-    (schedule[selectedDay] ?? []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime)),
-    [schedule, selectedDay]
-  );
+  const authUser = useAppStore(s => s.authUser);
+  const subBatch = authUser?.subBatch;
+  const [viewMode, setViewMode] = useState<'my-batch' | 'full'>('my-batch');
+
+  const classes = useMemo(() => {
+    const raw = (schedule[selectedDay] ?? []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+    if (viewMode === 'my-batch' && subBatch) {
+      return raw.filter(cls => !cls.targetBatch || cls.targetBatch === subBatch);
+    }
+    return raw;
+  }, [schedule, selectedDay, viewMode, subBatch]);
 
   // Calculate class counts per day for badges
   const dayCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    DAYS.forEach(d => { counts[d] = schedule[d]?.length ?? 0; });
+    DAYS.forEach(d => {
+      let list = schedule[d] ?? [];
+      if (viewMode === 'my-batch' && subBatch) {
+        list = list.filter(cls => !cls.targetBatch || cls.targetBatch === subBatch);
+      }
+      counts[d] = list.length;
+    });
     return counts;
-  }, [schedule]);
+  }, [schedule, viewMode, subBatch]);
 
   // Proportional timeline calculations
   const timeRange = useMemo(() => {
@@ -838,9 +851,55 @@ export default function SchedulePage() {
           touchAction: 'pan-y'
         }}
       >
-        <p className="t-caption" style={{ color: 'var(--text-secondary)', padding: '8px 0 4px' }}>
-          {dateSubheading}
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 12px' }}>
+          <p className="t-caption" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            {dateSubheading}
+          </p>
+          {subBatch && (
+            <div style={{
+              display: 'flex',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-pill)',
+              padding: 2,
+            }}>
+              <button
+                onClick={() => setViewMode('my-batch')}
+                style={{
+                  padding: '4px 12px',
+                  background: viewMode === 'my-batch' ? 'var(--accent-primary)' : 'transparent',
+                  color: viewMode === 'my-batch' ? '#fff' : 'var(--text-secondary)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-pill)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 11,
+                  transition: 'all 0.2s',
+                  fontFamily: 'var(--font-mono)'
+                }}
+              >
+                My Batch ({subBatch === '1' ? 'A1' : 'A2'})
+              </button>
+              <button
+                onClick={() => setViewMode('full')}
+                style={{
+                  padding: '4px 12px',
+                  background: viewMode === 'full' ? 'var(--accent-primary)' : 'transparent',
+                  color: viewMode === 'full' ? '#fff' : 'var(--text-secondary)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-pill)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 11,
+                  transition: 'all 0.2s',
+                  fontFamily: 'var(--font-mono)'
+                }}
+              >
+                Full Section
+              </button>
+            </div>
+          )}
+        </div>
 
         <div
           style={{
