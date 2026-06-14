@@ -1,7 +1,9 @@
--- Migration: Fix join_section_as_teacher parameter ambiguity
+-- Migration: Fix join_section_as_teacher parameter ambiguity by renaming parameter
 -- Date: 2026-06-14
 
-CREATE OR REPLACE FUNCTION public.join_section_as_teacher(invite text, subject_id uuid DEFAULT NULL)
+DROP FUNCTION IF EXISTS public.join_section_as_teacher(text, uuid);
+
+CREATE OR REPLACE FUNCTION public.join_section_as_teacher(invite text, p_subject_id uuid DEFAULT NULL)
 RETURNS public.users
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -41,7 +43,7 @@ BEGIN
 
   -- 4. Link in public.section_teachers (if not already linked for this subject/section)
   INSERT INTO public.section_teachers (section_id, teacher_id, subject_id)
-  VALUES (target_section, auth.uid(), join_section_as_teacher.subject_id)
+  VALUES (target_section, auth.uid(), p_subject_id)
   ON CONFLICT (section_id, teacher_id, subject_id) DO NOTHING;
 
   -- 5. Return updated user row
@@ -49,3 +51,6 @@ BEGIN
   RETURN updated_user;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.join_section_as_teacher(text, uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.join_section_as_teacher(text, uuid) FROM anon;
