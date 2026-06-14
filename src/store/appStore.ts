@@ -23,7 +23,7 @@ export interface AuthUser {
   name: string;
   email: string;
   avatarUrl: string | null;
-  role: 'student' | 'cr';
+  role: 'student' | 'cr' | 'teacher';
   crRank: 'primary' | 'co' | null;
   sectionId: string | null;
   sectionRoll: string | null;
@@ -31,6 +31,7 @@ export interface AuthUser {
   dayScholar: boolean;
   notificationsEnabled: boolean;
   isDeveloper: boolean;
+  subBatch?: string | null;
 }
 
 export interface HubInfo {
@@ -134,6 +135,8 @@ export interface ScheduleSlot {
   type: string;
   startTime: string;
   endTime: string;
+  subjectId?: string;
+  targetBatch?: string | null;
 }
 
 export type ScheduleMap = Record<string, ScheduleSlot[]>;
@@ -284,7 +287,7 @@ interface AppState {
   authUser: AuthUser | null;
   session: Session | null;
   isAuthLoading: boolean;
-  role: 'student' | 'cr';
+  role: 'student' | 'cr' | 'teacher';
   isFirstTime: boolean;
 
   // Legacy alias
@@ -303,7 +306,7 @@ interface AppState {
   setAuthUser: (authUser: AuthUser | null) => void;
   setSession: (session: Session | null) => void;
   setAuthLoading: (loading: boolean) => void;
-  setRole: (role: 'student' | 'cr') => void;
+  setRole: (role: 'student' | 'cr' | 'teacher') => void;
   setHub: (hub: HubInfo | null) => void;
   setActiveTab: (tab: AppState['activeTab']) => void;
   setDeferredPrompt: (prompt: BeforeInstallPromptEvent | null) => void;
@@ -380,7 +383,7 @@ export const useAppStore = create<AppState>()(
         if (!user) return;
         const { data, error } = await supabase
           .from('users')
-          .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer')
+          .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer, sub_batch')
           .eq('id', user.id)
           .single();
         if (error || !data) return;
@@ -389,7 +392,7 @@ export const useAppStore = create<AppState>()(
           name: data.name,
           email: data.email,
           avatarUrl: data.avatar_url ?? null,
-          role: data.role as 'student' | 'cr',
+          role: data.role as 'student' | 'cr' | 'teacher',
           crRank: (data as Record<string, unknown>).cr_rank as 'primary' | 'co' | null ?? null,
           sectionId: data.section_id,
           sectionRoll: data.section_roll,
@@ -397,6 +400,7 @@ export const useAppStore = create<AppState>()(
           dayScholar: data.day_scholar,
           notificationsEnabled: data.notifications_enabled,
           isDeveloper: data.is_developer ?? false,
+          subBatch: (data as Record<string, unknown>).sub_batch as string | null ?? null,
         };
         set({
           authUser: profile,
