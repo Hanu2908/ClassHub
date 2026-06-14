@@ -143,10 +143,11 @@ To ensure a teacher mapped to "Mathematics" is automatically connected to "Mathe
 
 ---
 
-### 4. Smart Parsing for Target Scoping
+### 4. Smart Parsing & Form Creation Sheets
 
-When a user creates an announcement, assignment, or timetable slot, the text of the body/title will be parsed in real-time to auto-select target scopes:
-*   **Target Batch Auto-Select:** If the composer text contains batch identifiers (e.g. `\b(A1|A2|Batch\s*1|Batch\s*2|Group\s*1|Group\s*2)\b`), the UI will automatically select `'1'` or `'2'` for the `target_batch` field.
+To support targeted scheduling and communication, we will update the creation sheets/composers:
+*   **Form Scoping Selectors:** The creation sheets for **Announcements**, **Assignments**, and **Timetable Slots** will be updated to include a dropdown/toggle selector for `Target Batch` (`All / Batch 1 / Batch 2`).
+*   **Target Batch Auto-Select:** If the composer text (title/body/description) contains batch identifiers (e.g. `\b(A1|A2|Batch\s*1|Batch\s*2|Group\s*1|Group\s*2)\b`), the form will automatically pre-select `'1'` or `'2'` for the `target_batch` field.
 *   **Subject Auto-Select:** Continue using the existing smart acronym/keyword parser (`matchSubject`) to link subject tags based on text hints.
 
 ---
@@ -182,8 +183,8 @@ We will add three distinct navigation items in the app's sidebar / `NavBar` for 
 *   **Teachers Directory Tab:** On the Section Members page (`/app/members`), students will see two tabs: `[ Students | Teachers ]`.
     *   The **Teachers** tab displays all teachers teaching the section, their subject, email address, and a shortened counsellor badge if applicable.
 *   **Shortened Badges:** The batch counsellor badge will be shortened for visual cleanliness:
-    *   **`[BC-A1]`** (Batch Counsellor for A1)
-    *   **`[BC-A2]`** (Batch Counsellor for A2)
+    *   **`[Batch Counsellor-A1]`** (Batch Counsellor for A1)
+    *   **`[Batch Counsellor-A2]`** (Batch Counsellor for A2)
 *   **Student-Counsellor Connection:** On the student profile page or sidebar, if a student has an assigned Batch Counsellor, their profile displays a **"Contact Counsellor"** button. Tapping this opens a quick contact request or direct email pre-filled with their current attendance and academic summary.
 
 #### **Student Timetable Toggle**
