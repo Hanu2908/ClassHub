@@ -1,12 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
-import type { Database } from '../types/database.types';
 
-type AttendanceSession = Database['public']['Tables']['attendance_sessions']['Row'];
-type StudentSessionAttendance = Database['public']['Tables']['student_session_attendance']['Row'];
+// Define interfaces manually because local generated database.types.ts
+// does not yet include these tables from the new migration.
+export interface AttendanceSession {
+  id: string;
+  section_id: string;
+  subject_id: string;
+  teacher_id: string | null;
+  date: string;
+  timetable_slot_id: string | null;
+  target_batch: string | null;
+  lecture_count: number;
+  created_at: string;
+}
 
-interface SessionWithDetails extends AttendanceSession {
+export interface StudentSessionAttendance {
+  id: string;
+  session_id: string;
+  student_id: string;
+  status: 'present' | 'absent' | 'od' | 'makeup';
+  created_at: string;
+}
+
+export interface SessionWithDetails extends AttendanceSession {
   present_count: number;
   absent_count: number;
   od_count: number;
@@ -19,9 +37,9 @@ export function useTeacherSessions(sectionId: string, subjectId: string) {
     queryKey: ['teacher-sessions', sectionId, subjectId],
     enabled: !!sectionId && !!subjectId,
     queryFn: async () => {
-      // 1. Fetch sessions
+      // 1. Fetch sessions (cast to any because tables are not in database.types.ts yet)
       const { data: sessions, error: sessionErr } = await supabase
-        .from('attendance_sessions')
+        .from('attendance_sessions' as any)
         .select('*')
         .eq('section_id', sectionId)
         .eq('subject_id', subjectId)
@@ -31,20 +49,20 @@ export function useTeacherSessions(sectionId: string, subjectId: string) {
       if (sessionErr) throw sessionErr;
       if (!sessions || sessions.length === 0) return [];
 
-      const sessionIds = sessions.map(s => s.id);
+      const sessionIds = (sessions as unknown as AttendanceSession[]).map(s => s.id);
 
       // 2. Fetch counts grouped by status
       const { data: counts, error: countErr } = await supabase
-        .from('student_session_attendance')
+        .from('student_session_attendance' as any)
         .select('session_id, status')
         .in('session_id', sessionIds);
 
       if (countErr) throw countErr;
 
       const countsMap = new Map<string, { present: number; absent: number; od: number; makeup: number }>();
-      sessions.forEach(s => countsMap.set(s.id, { present: 0, absent: 0, od: 0, makeup: 0 }));
+      (sessions as unknown as AttendanceSession[]).forEach(s => countsMap.set(s.id, { present: 0, absent: 0, od: 0, makeup: 0 }));
 
-      (counts || []).forEach(c => {
+      (counts as any[] || []).forEach(c => {
         const current = countsMap.get(c.session_id);
         if (current) {
           if (c.status === 'present') current.present++;
@@ -54,7 +72,7 @@ export function useTeacherSessions(sectionId: string, subjectId: string) {
         }
       });
 
-      return sessions.map(s => {
+      return (sessions as unknown as AttendanceSession[]).map(s => {
         const stats = countsMap.get(s.id) || { present: 0, absent: 0, od: 0, makeup: 0 };
         return {
           ...s,
@@ -93,14 +111,14 @@ export function useSessionDetails(sessionId: string, sectionId: string) {
 
       // 2. Fetch session attendance markings
       const { data: markings, error: markingErr } = await supabase
-        .from('student_session_attendance')
+        .from('student_session_attendance' as any)
         .select('student_id, status')
         .eq('session_id', sessionId);
 
       if (markingErr) throw markingErr;
 
       const markingMap = new Map<string, 'present' | 'absent' | 'od' | 'makeup'>();
-      (markings || []).forEach(m => {
+      (markings as any[] || []).forEach(m => {
         markingMap.set(m.student_id, m.status as any);
       });
 
@@ -135,7 +153,7 @@ export function useLogAttendanceMutation() {
     mutationFn: async (input: LogAttendanceInput) => {
       // 1. Create Session
       const { error: sessionErr } = await supabase
-        .from('attendance_sessions')
+        .from('attendance_sessions' as any)
         .insert({
           id: input.sessionId,
           section_id: input.sectionId,
@@ -157,19 +175,18 @@ export function useLogAttendanceMutation() {
       }));
 
       const { error: statusErr } = await supabase
-        .from('student_session_attendance')
+        .from('student_session_attendance' as any)
         .insert(statusRows);
 
       if (statusErr) {
         // Cleanup session row on status insert failure to prevent orphan sessions
-        await supabase.from('attendance_sessions').delete().eq('id', input.sessionId);
+        await supabase.from('attendance_sessions' as any).delete().eq('id', input.sessionId);
         throw statusErr;
       }
     },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['teacher-sessions', variables.sectionId, variables.subjectId] });
       qc.invalidateQueries({ queryKey: ['section-attendance', variables.sectionId, variables.subjectId] });
-      // Invalidate global aggregate queries
       qc.invalidateQueries({ queryKey: ['attendance'] });
       qc.invalidateQueries({ queryKey: ['counsellor-remarks'] });
       qc.invalidateQueries({ queryKey: ['counsellor-batch-students'] });
@@ -198,7 +215,7 @@ export function useUpdateSessionMutation() {
       }));
 
       const { error } = await supabase
-        .from('student_session_attendance')
+        .from('student_session_attendance' as any)
         .upsert(upsertRows, { onConflict: 'session_id,student_id' });
 
       if (error) throw error;
@@ -228,7 +245,7 @@ export function useDeleteSessionMutation() {
   return useMutation({
     mutationFn: async (input: DeleteAttendanceInput) => {
       const { error } = await supabase
-        .from('attendance_sessions')
+        .from('attendance_sessions' as any)
         .delete()
         .eq('id', input.sessionId);
 

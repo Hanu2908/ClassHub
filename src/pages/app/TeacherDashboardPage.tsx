@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { 
-  Users, Check, X, Copy, Bell, 
+  Users, Check, Bell, 
   BookOpen, Clock, AlertCircle, Loader2,
-  Calendar, Trash2, Edit3, MessageSquareAlert, Send
+  Trash2, Edit3, MessageSquare, Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -16,7 +16,7 @@ import {
   useLogAttendanceMutation, 
   useUpdateSessionMutation, 
   useDeleteSessionMutation, 
-  useCancelClassMutation 
+  useCancelClassMutation
 } from '../../hooks/useTeacherAttendance';
 import { useSchedule } from '../../hooks/useSchedule';
 
@@ -36,7 +36,6 @@ interface SectionTeacherRow {
 }
 
 export default function TeacherDashboardPage() {
-  const qc = useQueryClient();
   const authUser = useAppStore(s => s.authUser);
 
   // Active Tab: 'mark' or 'logs'
@@ -154,8 +153,8 @@ export default function TeacherDashboardPage() {
     enabled: !!selectedSectionId,
   });
 
-  // 3. Fetch cumulative attendance records for aggregate counts
-  const { data: attendanceRecords = [], isLoading: isAttendanceLoading } = useQuery({
+  // 3. Fetch cumulative attendance records to trigger loading states
+  const { isLoading: isAttendanceLoading } = useQuery({
     queryKey: ['section-attendance', selectedSectionId, selectedSubjectId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1005,7 +1004,7 @@ export default function TeacherDashboardPage() {
         onClose={() => setAlertOpen(false)}
         title={
           <div className="flex items-center gap-2">
-            <MessageSquareAlert size={15} className="text-red-500" />
+            <MessageSquare size={15} className="text-red-500" />
             <span className="font-display text-sm font-bold text-white">Broadcast Lecture Alert</span>
           </div>
         }

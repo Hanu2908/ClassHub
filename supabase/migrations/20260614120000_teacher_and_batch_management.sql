@@ -1,8 +1,6 @@
 -- Migration: Teacher and Batch Management System
 -- Date: 2026-06-14
-
--- 1. Alter public.user_role ENUM to add 'teacher'
-ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'teacher';
+-- 1. Alter public.user_role ENUM to add 'teacher' (Moved to 20260614110000_add_teacher_role.sql to avoid single-transaction reference limits)
 
 -- 2. Add sub_batch column to public.users
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS sub_batch text CHECK (sub_batch IN ('1', '2'));
