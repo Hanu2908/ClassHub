@@ -20,7 +20,7 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
     .from('users')
     .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer, sub_batch')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('[Auth] fetchProfile error:', error);
@@ -28,7 +28,9 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
   }
 
   if (!data) {
-    console.warn('[Auth] fetchProfile: no profile row returned for user:', userId);
+    if (import.meta.env.DEV) {
+      console.log('[Auth] fetchProfile: no profile row returned for user:', userId);
+    }
     return null;
   }
 
@@ -141,10 +143,13 @@ async function handleSession(
       store.setAuthUser(existing);
     } else {
       // Surface a lightweight diagnostic to the user so mobile issues are visible
-      try {
-        toast.warning('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.');
-      } catch {
-        // ignore if toast system is not yet mounted
+      const isAppRoute = window.location.pathname.startsWith('/app');
+      if (isAppRoute) {
+        try {
+          toast.warning('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.');
+        } catch {
+          // ignore if toast system is not yet mounted
+        }
       }
       store.setAuthUser(authUserToBasicProfile(user));
     }
