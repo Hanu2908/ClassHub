@@ -144,14 +144,14 @@ export default function JoinHubPage() {
     try {
       if (isTeacherFlow) {
         const { error } = await supabase.rpc('join_section_as_teacher', {
-          invite: hubCode.toUpperCase(),
+          invite: hubCode.trim().toUpperCase(),
         });
         if (error) throw error;
       } else {
         const { error } = await supabase.rpc('join_section', {
-          invite: hubCode.toUpperCase(),
-          class_roll: classRoll,
-          uni_roll: universityRoll.toUpperCase(),
+          invite: hubCode.trim().toUpperCase(),
+          class_roll: classRoll.trim(),
+          uni_roll: universityRoll.trim().toUpperCase(),
         });
 
         if (error) throw error;
@@ -171,7 +171,11 @@ export default function JoinHubPage() {
       setIsComplete(true);
     } catch (err: unknown) {
       setLoading(false);
-      const message = err instanceof Error ? err.message : 'Failed to join hub';
+      const message = err instanceof Error 
+        ? err.message 
+        : (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string'
+            ? (err as any).message
+            : 'Failed to join hub');
       if (message.includes('Invalid invite code') || message.includes('Invalid teacher invite code')) {
         setErrors({ hubCode: isTeacherFlow ? 'Invalid teacher code. Double-check with the CR.' : 'Invalid invite code. Double-check with your CR.' });
       } else {
