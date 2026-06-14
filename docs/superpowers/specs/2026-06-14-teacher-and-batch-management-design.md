@@ -76,6 +76,15 @@ CREATE TABLE IF NOT EXISTS public.mass_bunk_votes (
   voted_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (mass_bunk_id, student_id)
 );
+
+CREATE TABLE IF NOT EXISTS public.counsellor_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  counsellor_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  student_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  note_text text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (counsellor_id, student_id)
+);
 ```
 
 ---
@@ -110,6 +119,12 @@ CREATE POLICY mass_bunk_votes_student_only_select ON public.mass_bunk_votes
   USING (
     (SELECT public.current_user_role()) != 'teacher'::public.user_role
   );
+
+-- Restrict counsellor_notes to the assigned counsellor only
+ALTER TABLE public.counsellor_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY counsellor_notes_owner_access ON public.counsellor_notes
+  USING (counsellor_id = auth.uid())
+  WITH CHECK (counsellor_id = auth.uid());
 ```
 
 #### **Section Teacher Permissions**
@@ -138,12 +153,12 @@ When a user creates an announcement, assignment, or timetable slot, the text of 
 
 ### 5. Frontend Navigation & Pages
 
-#### **Dual Navigation for Teachers**
-We will add two distinct links in the app's `NavBar` for teachers:
+#### **Navigation Changes for Teachers**
+We will add three distinct navigation items in the app's sidebar / `NavBar` for teachers:
 1.  **Teacher Dashboard (`/app/teacher-dashboard`):**
     *   **Section Selector:** Drops down to switch sections.
     *   **Timetable Widget:** Shows today's classes for the teacher.
-    *   **Visual Attendance Grid:** Visual grid of students containing:
+    *   **Visual Student Grid:** A visual directory displaying **all students in the selected section** (to ensure teachers can verify students section-wide). Each card contains:
         *   Student profile picture/avatar (mandatory for proxy verification).
         *   Name and Roll number.
         *   Single-tap toggle (Present = Green, Absent = Red).
@@ -151,22 +166,25 @@ We will add two distinct links in the app's `NavBar` for teachers:
         *   "1-Click Nudge" to alert absent students.
         *   "Assignments Pending Alert" indicator icons.
     *   **Submission Tracker:** Monitor student assignment submissions for their subjects.
-    *   **Counsellor Console (Counsellor-Only Widget):**
-        *   Only renders if the teacher is mapped as `is_counsellor_for_batch` for the selected section.
-        *   **My Batch Directory:** Filters down to see only their specific ~30 students (A1 or A2).
-        *   **Low Attendance Tracker:** Displays students in their batch whose attendance falls below 75% in any subject.
-        *   **Batch Academic Overview:** View submission status of their batch students across all subjects (to check who is falling behind).
-        *   **1-Click Absentee Parent/Student Warning:** Allows counsellors to quickly nudge students with attendance warnings.
-2.  **Teacher Command Center (`/app/teacher-command`):**
+2.  **Counsellor Console Page (`/app/counsellor`):**
+    *   *Note: Only visible in the sidebar/nav for teachers who are designated as counsellors (`is_counsellor_for_batch IS NOT NULL`).*
+    *   **My Batch Directory:** Filters down to see only their specific ~30 students (Batch A1 or A2).
+    *   **Red-Alert Attendance Dashboard (Priority Sorted):**
+        *   **Priority 1 (Red Alert):** Students whose **overall aggregate attendance** across all subjects is below 75%.
+        *   **Priority 2 (Orange Alert):** Students whose aggregate is OK, but their **subject-specific attendance** falls below 75% in a particular subject.
+    *   **Private Counsellor Remarks:** A text box on each student card to save private remarks (e.g. "Spoke with father on 14th June. Health issues."). Saved in the secure `counsellor_notes` table.
+3.  **Teacher Command Center (`/app/teacher-command`):**
     *   CRUD Panel for creating assignments, announcements, and subjects.
     *   Teachers can edit/delete *only* the content they authored.
-    *   **Manage Teachers (CR Command Center):** CR Command Page gains a "Manage Teachers" tab to view teacher mappings, rotate the Teacher Invite Code, assign counsellor status to a teacher for batch 1 or 2, and demote/remove unauthorized teacher logins.
+    *   **Manage Teachers (CR Command Center):** CR Command Page gains a "Manage Teachers" tab to view teacher mappings, rotate the Teacher Invite Code, assign/modify counsellor status (`is_counsellor_for_batch`) to a teacher for batch 1 or 2, and demote/remove unauthorized teacher logins. (Permissions available to CRs and the Hub Creator).
 
-#### **CR Posted-By Metadata & Scoped Cards**
-*   Since A1 and A2 batches are combined inside a single section hub, there can be multiple CRs (e.g., A1 CR and A2 CR).
-*   To prevent confusion, the author's sub-batch will be rendered as a badge next to their name on announcements, assignments, and polls.
-*   **Format:** `Himanshu Saini (CR, Batch A1)` or `Priyanshu (CR, Batch A2)`.
-*   If a post is scoped to a specific batch (e.g. `target_batch = '1'`), the card will render with a badge: **`[A1 Only]`**, visible to all students but signaling target relevancy.
+#### **Student Directory & Connection**
+*   **Teachers Directory Tab:** On the Section Members page (`/app/members`), students will see two tabs: `[ Students | Teachers ]`.
+    *   The **Teachers** tab displays all teachers teaching the section, their subject, email address, and a shortened counsellor badge if applicable.
+*   **Shortened Badges:** The batch counsellor badge will be shortened for visual cleanliness:
+    *   **`[BC-A1]`** (Batch Counsellor for A1)
+    *   **`[BC-A2]`** (Batch Counsellor for A2)
+*   **Student-Counsellor Connection:** On the student profile page or sidebar, if a student has an assigned Batch Counsellor, their profile displays a **"Contact Counsellor"** button. Tapping this opens a quick contact request or direct email pre-filled with their current attendance and academic summary.
 
 #### **Student Timetable Toggle**
 On the Student Schedule page, replace the batch selectors with a simple 2-state toggle:
