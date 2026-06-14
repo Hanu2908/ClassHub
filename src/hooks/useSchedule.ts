@@ -41,7 +41,7 @@ export function useSchedule() {
         const { data, error } = await supabase
           .from('timetable_slots')
           .select(`
-            id, day_of_week, start_time, end_time, room, type, teacher, created_by,
+            id, day_of_week, start_time, end_time, room, type, teacher, created_by, subject_id, target_batch,
             subjects:subject_id (code, name)
           `)
           .eq('section_id', sectionId!)
@@ -63,6 +63,8 @@ export function useSchedule() {
             type: slot.type.charAt(0).toUpperCase() + slot.type.slice(1),
             startTime: slot.start_time.slice(0, 5), // HH:MM
             endTime: slot.end_time.slice(0, 5),
+            subjectId: slot.subject_id ?? undefined,
+            targetBatch: slot.target_batch ?? null,
           };
           if (!map[dayName]) map[dayName] = [];
           map[dayName].push(entry);
@@ -95,10 +97,11 @@ export function useUpsertScheduleSlot() {
       room?: string;
       type?: string;
       teacher?: string;
+      targetBatch?: string | null;
     }) => {
-      // 1. Enforce strict CR authorization check
-      if (role !== 'cr') {
-        throw new Error('Unauthorized: Only Class Representatives can manage timetable slots');
+      // 1. Enforce strict CR/Teacher authorization check
+      if (role !== 'cr' && role !== 'teacher') {
+        throw new Error('Unauthorized: Only Class Representatives and Teachers can manage timetable slots');
       }
 
       // 2. Enforce Zod schema validation
@@ -110,6 +113,7 @@ export function useUpsertScheduleSlot() {
         room: input.room ?? undefined,
         type: input.type?.toLowerCase() as 'lecture' | 'tutorial' | 'lab' | undefined,
         teacher: input.teacher ?? undefined,
+        targetBatch: input.targetBatch ?? undefined,
       });
 
       const row = {
@@ -122,6 +126,7 @@ export function useUpsertScheduleSlot() {
         room: validated.room ?? null,
         type: (validated.type ?? 'lecture') as SlotType,
         teacher: validated.teacher ?? null,
+        target_batch: validated.targetBatch ?? null,
         created_by: userId!,
       };
       const { error } = await supabase.from('timetable_slots').upsert(row);
@@ -155,9 +160,9 @@ export function useDeleteScheduleSlot() {
   const { role } = useAuthContext();
   return useMutation({
     mutationFn: async (id: string) => {
-      // Enforce strict CR authorization check
-      if (role !== 'cr') {
-        throw new Error('Unauthorized: Only Class Representatives can delete timetable slots');
+      // Enforce strict CR/Teacher authorization check
+      if (role !== 'cr' && role !== 'teacher') {
+        throw new Error('Unauthorized: Only Class Representatives and Teachers can delete timetable slots');
       }
 
       const { error } = await supabase.from('timetable_slots').delete().eq('id', id);
@@ -190,9 +195,9 @@ export function useClearDaySlots() {
   const { sectionId, role } = useAuthContext();
   return useMutation({
     mutationFn: async (dayOfWeek: number) => {
-      // Enforce strict CR authorization check
-      if (role !== 'cr') {
-        throw new Error('Unauthorized: Only Class Representatives can clear timetable slots');
+      // Enforce strict CR/Teacher authorization check
+      if (role !== 'cr' && role !== 'teacher') {
+        throw new Error('Unauthorized: Only Class Representatives and Teachers can clear timetable slots');
       }
 
       if (!sectionId) throw new Error('No section');
@@ -227,9 +232,9 @@ export function useCopyDaySlots() {
   const { sectionId, userId, role } = useAuthContext();
   return useMutation({
     mutationFn: async ({ fromDay, toDay }: { fromDay: number; toDay: number }) => {
-      // Enforce strict CR authorization check
-      if (role !== 'cr') {
-        throw new Error('Unauthorized: Only Class Representatives can copy timetable slots');
+      // Enforce strict CR/Teacher authorization check
+      if (role !== 'cr' && role !== 'teacher') {
+        throw new Error('Unauthorized: Only Class Representatives and Teachers can copy timetable slots');
       }
 
       if (!sectionId) throw new Error('No section');

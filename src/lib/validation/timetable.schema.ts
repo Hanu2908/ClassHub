@@ -8,6 +8,7 @@ export const timetableSlotSchema = z.object({
   room: z.string().nullable().optional(),
   type: z.enum(['lecture', 'tutorial', 'lab']).nullable().optional(),
   teacher: z.string().nullable().optional(),
+  targetBatch: z.enum(['1', '2']).nullable().optional(),
 });
 
 export type TimetableSlot = z.infer<typeof timetableSlotSchema>;

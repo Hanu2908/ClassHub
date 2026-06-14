@@ -7,6 +7,10 @@ export function canManageSection(role: string | null | undefined): boolean {
   return r === 'cr';
 }
 
+export function isTeacher(role: string | null | undefined): boolean {
+  return String(role ?? '').toLowerCase() === 'teacher';
+}
+
 export function canSeeActionableVotes(role: string | null | undefined): boolean {
   const r = String(role ?? '').toLowerCase();
   return isCR(r) || r === 'teacher' || r === 'admin';
