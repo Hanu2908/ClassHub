@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
@@ -176,13 +176,13 @@ export default function CounsellorConsolePage() {
   }, [processedStudents, selectedStudentId]);
 
   // Initialize selected note input on selection
-  useMemo(() => {
+  useEffect(() => {
     if (selectedStudent) {
       setNoteText(selectedStudent.noteText);
     } else {
       setNoteText('');
     }
-  }, [selectedStudentId, selectedStudent]);
+  }, [selectedStudent]);
 
   // Mutation to save notes
   const saveRemarks = useMutation({
