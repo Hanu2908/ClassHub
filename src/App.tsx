@@ -32,6 +32,10 @@ const ShareIntakePage = lazy(() => import('./pages/app/ShareIntakePage'));
 const SectionDirectoryPage = lazy(() => import('./pages/app/SectionDirectoryPage'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
 
+const TeacherDashboardPage = lazy(() => import('./pages/app/TeacherDashboardPage'));
+const CounsellorConsolePage = lazy(() => import('./pages/app/CounsellorConsolePage'));
+const TeacherCommandPage = lazy(() => import('./pages/app/TeacherCommandPage'));
+
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const session = useAppStore(s => s.session);
@@ -51,7 +55,25 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 // ── Hub guard — requires section to be set ──
 function RequireHub({ children }: { children: React.ReactNode }) {
   const authUser = useAppStore(s => s.authUser);
-  if (!authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
+  if (!authUser?.sectionId && authUser?.role !== 'teacher') return <Navigate to="/onboarding/choice" replace />;
+  return <>{children}</>;
+}
+
+// ── Teacher guard — requires teacher role ──
+function RequireTeacher({ children }: { children: React.ReactNode }) {
+  const authUser = useAppStore(s => s.authUser);
+  if (authUser?.role !== 'teacher') {
+    return <Navigate to="/app/home" replace />;
+  }
+  return <>{children}</>;
+}
+
+// ── Student / CR guard — blocks teachers ──
+function RequireStudentOrCR({ children }: { children: React.ReactNode }) {
+  const authUser = useAppStore(s => s.authUser);
+  if (authUser?.role === 'teacher') {
+    return <Navigate to="/app/teacher-dashboard" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -67,7 +89,9 @@ function RequireDeveloper({ children }: { children: React.ReactNode }) {
 // ── No Hub guard — blocks already-onboarded users from onboarding routes ──
 function RequireNoHub({ children }: { children: React.ReactNode }) {
   const authUser = useAppStore(s => s.authUser);
-  if (authUser?.sectionId) {
+  if (authUser?.role === 'teacher') {
+    if (authUser?.sectionId) return <Navigate to="/app/teacher-dashboard" replace />;
+  } else if (authUser?.sectionId) {
     return <Navigate to="/app/home" replace />;
   }
   return <>{children}</>;
@@ -86,8 +110,15 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const isDemo = authUser?.sectionId === 'demo-section';
   const isAuthenticated = !!session || isDemo;
 
-  if (isAuthenticated && authUser?.sectionId) return <Navigate to="/app/home" replace />;
-  if (isAuthenticated && !authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
+  if (isAuthenticated) {
+    if (authUser?.role === 'teacher') {
+      return <Navigate to={authUser?.sectionId ? "/app/teacher-dashboard" : "/onboarding/choice"} replace />;
+    }
+    if (authUser?.sectionId) {
+      return <Navigate to="/app/home" replace />;
+    }
+    return <Navigate to="/onboarding/choice" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -192,21 +223,27 @@ export default function App() {
                 <Route path="/onboarding/create" element={<RequireAuth><RequireNoHub><ErrorBoundary variant="page"><CreateHubPage /></ErrorBoundary></RequireNoHub></RequireAuth>} />
 
                 {/* App shell — needs auth + hub */}
-                <Route path="/app/home" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><DashboardPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/schedule" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SchedulePage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/polls" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PollsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/home" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><DashboardPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/schedule" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><SchedulePage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/polls" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><PollsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/profile" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ProfilePage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/resource-hub" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ResourceHubPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/announcements" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AnnouncementsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/assignments" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AssignmentsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/attendance" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AttendancePage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/cr-command" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><CRCommandPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><ManageSubjectsPage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
+                <Route path="/app/announcements" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><AnnouncementsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/assignments" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><AssignmentsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/attendance" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><AttendancePage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/cr-command" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><CRCommandPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireStudentOrCR><RequireDeveloper><ErrorBoundary variant="page"><ManageSubjectsPage /></ErrorBoundary></RequireDeveloper></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PDFViewerPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/exams" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/gpa" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                <Route path="/app/exams" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/gpa" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/dev-console" element={<RequireAuth><RequireHub><RequireDeveloper><ErrorBoundary variant="page"><DeveloperConsolePage /></ErrorBoundary></RequireDeveloper></RequireHub></RequireAuth>} />
                 <Route path="/app/members" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SectionDirectoryPage /></ErrorBoundary></RequireHub></RequireAuth>} />
+                 
+                {/* Teacher shell — needs auth + hub + teacher */}
+                <Route path="/app/teacher-dashboard" element={<RequireAuth><RequireHub><RequireTeacher><ErrorBoundary variant="page"><TeacherDashboardPage /></ErrorBoundary></RequireTeacher></RequireHub></RequireAuth>} />
+                <Route path="/app/counsellor" element={<RequireAuth><RequireHub><RequireTeacher><ErrorBoundary variant="page"><CounsellorConsolePage /></ErrorBoundary></RequireTeacher></RequireHub></RequireAuth>} />
+                <Route path="/app/teacher-command" element={<RequireAuth><RequireHub><RequireTeacher><ErrorBoundary variant="page"><TeacherCommandPage /></ErrorBoundary></RequireTeacher></RequireHub></RequireAuth>} />
+                 
                 <Route path="/share-intake" element={<ShareIntakeRoute />} />
                 <Route path="/legal" element={<LegalPage />} />
 
