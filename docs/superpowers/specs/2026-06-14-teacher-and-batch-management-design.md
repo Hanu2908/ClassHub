@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.section_teachers (
   section_id uuid NOT NULL REFERENCES public.sections(id) ON DELETE CASCADE,
   teacher_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   subject_id uuid REFERENCES public.subjects(id) ON DELETE SET NULL,
+  is_counsellor_for_batch text CHECK (is_counsellor_for_batch IN ('1', '2')),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (section_id, teacher_id, subject_id)
 );
@@ -150,10 +151,22 @@ We will add two distinct links in the app's `NavBar` for teachers:
         *   "1-Click Nudge" to alert absent students.
         *   "Assignments Pending Alert" indicator icons.
     *   **Submission Tracker:** Monitor student assignment submissions for their subjects.
+    *   **Counsellor Console (Counsellor-Only Widget):**
+        *   Only renders if the teacher is mapped as `is_counsellor_for_batch` for the selected section.
+        *   **My Batch Directory:** Filters down to see only their specific ~30 students (A1 or A2).
+        *   **Low Attendance Tracker:** Displays students in their batch whose attendance falls below 75% in any subject.
+        *   **Batch Academic Overview:** View submission status of their batch students across all subjects (to check who is falling behind).
+        *   **1-Click Absentee Parent/Student Warning:** Allows counsellors to quickly nudge students with attendance warnings.
 2.  **Teacher Command Center (`/app/teacher-command`):**
     *   CRUD Panel for creating assignments, announcements, and subjects.
     *   Teachers can edit/delete *only* the content they authored.
-    *   **Manage Teachers (CR Command Center):** CR Command Page gains a "Manage Teachers" tab to view teacher mappings, rotate the Teacher Invite Code, and demote/remove unauthorized teacher logins.
+    *   **Manage Teachers (CR Command Center):** CR Command Page gains a "Manage Teachers" tab to view teacher mappings, rotate the Teacher Invite Code, assign counsellor status to a teacher for batch 1 or 2, and demote/remove unauthorized teacher logins.
+
+#### **CR Posted-By Metadata & Scoped Cards**
+*   Since A1 and A2 batches are combined inside a single section hub, there can be multiple CRs (e.g., A1 CR and A2 CR).
+*   To prevent confusion, the author's sub-batch will be rendered as a badge next to their name on announcements, assignments, and polls.
+*   **Format:** `Himanshu Saini (CR, Batch A1)` or `Priyanshu (CR, Batch A2)`.
+*   If a post is scoped to a specific batch (e.g. `target_batch = '1'`), the card will render with a badge: **`[A1 Only]`**, visible to all students but signaling target relevancy.
 
 #### **Student Timetable Toggle**
 On the Student Schedule page, replace the batch selectors with a simple 2-state toggle:
