@@ -3094,6 +3094,11 @@ body {
   width: 100% !important;
   max-width: 100% !important;
   transform: none !important;
+  pointer-events: none !important; /* Let clicks pass through the container */
+}
+
+[data-sonner-toaster] * {
+  pointer-events: auto; /* Re-enable on toast children (buttons, close, text) */
 }
 
 [data-sonner-toaster] li {
