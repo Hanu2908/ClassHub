@@ -34,7 +34,6 @@ const LegalPage = lazy(() => import('./pages/LegalPage'));
 
 const TeacherDashboardPage = lazy(() => import('./pages/app/TeacherDashboardPage'));
 const CounsellorConsolePage = lazy(() => import('./pages/app/CounsellorConsolePage'));
-const TeacherCommandPage = lazy(() => import('./pages/app/TeacherCommandPage'));
 
 // ── Auth guard — requires authenticated user ──
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -228,7 +227,7 @@ export default function App() {
                 <Route path="/app/polls" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><PollsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/profile" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ProfilePage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/resource-hub" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ResourceHubPage /></ErrorBoundary></RequireHub></RequireAuth>} />
-                <Route path="/app/announcements" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><AnnouncementsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/announcements" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><AnnouncementsPage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/assignments" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><AssignmentsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/attendance" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><AttendancePage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/cr-command" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><CRCommandPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
@@ -242,7 +241,6 @@ export default function App() {
                 {/* Teacher shell — needs auth + hub + teacher */}
                 <Route path="/app/teacher-dashboard" element={<RequireAuth><RequireHub><RequireTeacher><ErrorBoundary variant="page"><TeacherDashboardPage /></ErrorBoundary></RequireTeacher></RequireHub></RequireAuth>} />
                 <Route path="/app/counsellor" element={<RequireAuth><RequireHub><RequireTeacher><ErrorBoundary variant="page"><CounsellorConsolePage /></ErrorBoundary></RequireTeacher></RequireHub></RequireAuth>} />
-                <Route path="/app/teacher-command" element={<RequireAuth><RequireHub><RequireTeacher><ErrorBoundary variant="page"><TeacherCommandPage /></ErrorBoundary></RequireTeacher></RequireHub></RequireAuth>} />
                  
                 <Route path="/share-intake" element={<ShareIntakeRoute />} />
                 <Route path="/legal" element={<LegalPage />} />

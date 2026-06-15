@@ -97,6 +97,7 @@ export interface Assignment {
 
 export interface Announcement {
   id: string;
+  authorId?: string | null;
   title: string;
   body: string;
   priority: 'critical' | 'general';
@@ -185,7 +186,9 @@ export type NotificationType =
   | 'assignment_reminder'
   | 'general_announcement'
   | 'new_assignment'
-  | 'new_poll';
+  | 'new_poll'
+  | 'counsellor_remark'
+  | 'counsellor_remark_reply';
 
 export interface AppNotification {
   id: string;
@@ -304,6 +307,12 @@ interface AppState {
   activeTab: 'home' | 'schedule' | 'polls' | 'profile' | 'cr-command' | 'attendance' | 'announcements';
   deferredPrompt: BeforeInstallPromptEvent | null;
 
+  // Global selection for teacher console
+  selectedSectionId?: string;
+  selectedSubjectId?: string;
+  setSelectedSectionId?: (id: string) => void;
+  setSelectedSubjectId?: (id: string) => void;
+
 
   // ── Actions ──
   setUser: (user: UserInfo | null) => void;
@@ -346,6 +355,8 @@ export const useAppStore = create<AppState>()(
       hub: null,
       activeTab: 'home',
       deferredPrompt: null,
+      selectedSectionId: '',
+      selectedSubjectId: '',
 
       // Offline & Sync Cache
       offlineCache: {},
@@ -379,6 +390,8 @@ export const useAppStore = create<AppState>()(
       setActiveTab: (activeTab) => set({ activeTab }),
       setDeferredPrompt: (deferredPrompt) => set({ deferredPrompt }),
       setFirstTime: (isFirstTime) => set({ isFirstTime }),
+      setSelectedSectionId: (selectedSectionId) => set({ selectedSectionId }),
+      setSelectedSubjectId: (selectedSubjectId) => set({ selectedSubjectId }),
 
       refreshProfile: async () => {
         if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {

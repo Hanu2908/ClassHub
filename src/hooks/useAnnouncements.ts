@@ -32,8 +32,13 @@ interface AttachmentRow {
 
 // ── Announcements Query ──────────────────────────────────────────────────────
 
-export function useAnnouncements(opts?: { page?: number; limit?: number }) {
-  const { sectionId, userId, isAuthenticated } = useAuthContext();
+export function useAnnouncements(opts?: { page?: number; limit?: number; sectionId?: string }) {
+  const auth = useAuthContext();
+  const sectionId = opts?.sectionId ?? auth.sectionId;
+  const userId = auth.userId;
+  const isDemo = sectionId === 'demo-section';
+  const isAuthenticated = auth.isAuthenticated || isDemo;
+
   const page = opts?.page ?? 0;
   const limit = opts?.limit ?? 100; // default cap to avoid unbounded fetches
   const queryResult = useQuery<(Announcement & { isAcknowledged: boolean })[]>({
@@ -47,7 +52,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
         const { data: anns, error: annErr } = await supabase
           .from('announcements')
           .select(`
-            id, title, message_content, priority, deadline_at, expires_at, created_at, target_batch,
+            id, author_id, title, message_content, priority, deadline_at, expires_at, created_at, target_batch,
             attachments (id, filename, file_size, file_type, storage_path)
           `)
           .eq('section_id', sectionId!)
@@ -69,6 +74,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number }) {
 
         const result = (anns ?? []).map(a => ({
           id: a.id,
+          authorId: a.author_id,
           title: a.title,
           body: a.message_content,
           priority: a.priority as 'critical' | 'general',

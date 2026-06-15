@@ -513,6 +513,9 @@ export type Database = {
           student_id: string
           note_text: string
           created_at: string
+          student_response: string | null
+          student_response_updated_at: string | null
+          counsellor_remark_updated_at: string | null
         }
         Insert: {
           id?: string
@@ -520,6 +523,9 @@ export type Database = {
           student_id: string
           note_text: string
           created_at?: string
+          student_response?: string | null
+          student_response_updated_at?: string | null
+          counsellor_remark_updated_at?: string | null
         }
         Update: {
           id?: string
@@ -527,6 +533,9 @@ export type Database = {
           student_id?: string
           note_text?: string
           created_at?: string
+          student_response?: string | null
+          student_response_updated_at?: string | null
+          counsellor_remark_updated_at?: string | null
         }
         Relationships: [
           {

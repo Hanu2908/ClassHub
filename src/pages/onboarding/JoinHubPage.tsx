@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, AlertCircle, GraduationCap } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { toast } from 'sonner';
@@ -40,6 +40,44 @@ export default function JoinHubPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+
+  const [showCourseLinking, setShowCourseLinking] = useState(false);
+  const [joinedSectionId, setJoinedSectionId] = useState<string | null>(null);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [fetchingSubjects, setFetchingSubjects] = useState(false);
+  const [selectedSubjects, setSelectedSubjects] = useState<Record<string, { linked: boolean; applyAll: boolean }>>({});
+  const [savingCourses, setSavingCourses] = useState(false);
+
+  useEffect(() => {
+    if (!showCourseLinking || !joinedSectionId) return;
+
+    const fetchSectionSubjects = async () => {
+      setFetchingSubjects(true);
+      try {
+        if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+          setSubjects([
+            { id: 'sub-1', code: 'CS-301', name: 'Computer Networks', semester: 5, accent: '#4A9EFF' },
+            { id: 'sub-2', code: 'CS-302', name: 'Compiler Design', semester: 5, accent: '#6366F1' },
+            { id: 'sub-3', code: 'CS-303', name: 'Software Engineering', semester: 5, accent: '#10B981' },
+          ]);
+        } else {
+          const { data, error } = await supabase
+            .from('subjects')
+            .select('*')
+            .eq('section_id', joinedSectionId)
+            .order('code');
+          if (error) throw error;
+          setSubjects(data || []);
+        }
+      } catch (err: any) {
+        toast.error('Failed to load subjects: ' + err.message);
+      } finally {
+        setFetchingSubjects(false);
+      }
+    };
+
+    fetchSectionSubjects();
+  }, [showCourseLinking, joinedSectionId]);
 
   // Load and pre-fill pending invite code from URL parameters or sessionStorage
   useEffect(() => {
@@ -111,6 +149,7 @@ export default function JoinHubPage() {
           classRoll: '00',
           universityRoll: 'TEACHER',
         });
+        setJoinedSectionId('demo-section');
       } else {
         setRole('student');
         const parsedSectionName = hubCode.length >= 2 ? hubCode.slice(0, 1).toUpperCase() : 'Demo Section';
@@ -143,10 +182,13 @@ export default function JoinHubPage() {
 
     try {
       if (isTeacherFlow) {
-        const { error } = await supabase.rpc('join_section_as_teacher', {
+        const { data, error } = await supabase.rpc('join_section_as_teacher', {
           invite: hubCode.trim().toUpperCase(),
         });
         if (error) throw error;
+        if (data) {
+          setJoinedSectionId((data as any).section_id);
+        }
       } else {
         const { error } = await supabase.rpc('join_section', {
           invite: hubCode.trim().toUpperCase(),
@@ -183,6 +225,222 @@ export default function JoinHubPage() {
       }
     }
   };
+
+  const handleSaveCourses = async () => {
+    const sectionId = joinedSectionId;
+    if (!sectionId) {
+      toast.error('No section associated. Please try again.');
+      return;
+    }
+    setSavingCourses(true);
+    try {
+      const selectedEntries = Object.entries(selectedSubjects).filter(([_, val]) => val.linked);
+      if (selectedEntries.length === 0) {
+        toast.success('Joined successfully! Welcome 🎓');
+        navigate('/app/teacher-dashboard');
+        return;
+      }
+
+      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+        toast.success('Demo: Subjects linked successfully!');
+        navigate('/app/teacher-dashboard');
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      // 1. Fetch other sections linked to teacher
+      const { data: stData } = await supabase
+        .from('section_teachers')
+        .select('section_id')
+        .eq('teacher_id', user.id);
+      const otherSections = Array.from(new Set((stData || []).map(x => x.section_id).filter(id => id !== sectionId)));
+
+      for (const [subId, val] of selectedEntries) {
+        // Link to current section
+        await supabase
+          .from('section_teachers')
+          .insert({
+            section_id: sectionId,
+            teacher_id: user.id,
+            subject_id: subId
+          });
+        
+        // If applyAll and there are other sections
+        if (val.applyAll && otherSections.length > 0) {
+          const currentSubject = subjects.find(s => s.id === subId);
+          if (currentSubject) {
+            // Find subject IDs with same code in other sections
+            const { data: matchSubjects } = await supabase
+              .from('subjects')
+              .select('id, section_id')
+              .eq('code', currentSubject.code)
+              .in('section_id', otherSections);
+
+            if (matchSubjects && matchSubjects.length > 0) {
+              const insertRows = matchSubjects.map(ms => ({
+                section_id: ms.section_id,
+                teacher_id: user.id,
+                subject_id: ms.id
+              }));
+              await supabase.from('section_teachers').insert(insertRows);
+            }
+          }
+        }
+      }
+
+      toast.success('Courses linked successfully!');
+      navigate('/app/teacher-dashboard');
+    } catch (err: any) {
+      toast.error('Failed to link courses: ' + err.message);
+    } finally {
+      setSavingCourses(false);
+    }
+  };
+
+  if (showCourseLinking) {
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--bg-base)', padding: '24px 20px 48px' }}>
+        <div style={{ maxWidth: 420, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Header info */}
+          <div style={{ textAlign: 'center', margin: '24px 0 12px' }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+            }}>
+              <GraduationCap size={24} color="var(--accent-primary)" />
+            </div>
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)', marginBottom: 8 }}>Link Your Courses</h1>
+            <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
+              Select the subjects you teach in this section. You can also edit these later in your profile.
+            </p>
+          </div>
+
+          {/* Subjects list */}
+          {fetchingSubjects ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+              <Loader2 size={32} className="animate-spin" color="var(--text-secondary)" />
+            </div>
+          ) : subjects.length === 0 ? (
+            <div style={{
+              padding: 24, textAlign: 'center', background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)'
+            }}>
+              <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>No subjects found</p>
+              <p className="t-body" style={{ color: 'var(--text-secondary)' }}>
+                This section Rep has not added any subjects to this hub yet.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {subjects.map(subject => {
+                const isSelected = !!selectedSubjects[subject.id]?.linked;
+                const applyAll = !!selectedSubjects[subject.id]?.applyAll;
+                return (
+                  <div key={subject.id} style={{
+                    padding: '14px 16px',
+                    background: isSelected ? 'var(--bg-elevated)' : 'var(--bg-base)',
+                    border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-default)'}`,
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    transition: 'all 0.2s ease',
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', width: '100%' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          setSelectedSubjects(prev => ({
+                            ...prev,
+                            [subject.id]: {
+                              linked: !prev[subject.id]?.linked,
+                              applyAll: prev[subject.id]?.applyAll ?? false,
+                            }
+                          }));
+                        }}
+                        style={{ width: 18, height: 18, accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{
+                            padding: '2px 6px', borderRadius: 4, background: `${subject.accent}20`,
+                            color: subject.accent, fontSize: 11, fontWeight: 600, fontFamily: 'monospace'
+                          }}>{subject.code}</span>
+                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Sem {subject.semester}</span>
+                        </div>
+                        <p className="t-card-title" style={{ color: 'var(--text-primary)', marginTop: 4, fontSize: 15 }}>
+                          {subject.name}
+                        </p>
+                      </div>
+                    </label>
+
+                    {isSelected && (
+                      <div style={{
+                        paddingTop: 8,
+                        borderTop: '1px solid var(--border-default)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                      }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={applyAll}
+                            onChange={() => {
+                              setSelectedSubjects(prev => ({
+                                ...prev,
+                                [subject.id]: {
+                                  ...prev[subject.id],
+                                  applyAll: !prev[subject.id]?.applyAll,
+                                }
+                              }));
+                            }}
+                            style={{ width: 14, height: 14, accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                          />
+                          <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>Apply to all my sections</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+            <button
+              onClick={handleSaveCourses}
+              disabled={savingCourses}
+              className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              {savingCourses ? <Loader2 size={18} className="animate-spin" /> : 'Save & Continue'}
+            </button>
+            <button
+              onClick={() => {
+                toast.success('Joined successfully! Welcome 🎓');
+                navigate('/app/teacher-dashboard');
+              }}
+              disabled={savingCourses}
+              style={{
+                width: '100%', padding: '12px', background: 'transparent',
+                border: '1px solid var(--border-default)', color: 'var(--text-secondary)',
+                borderRadius: 'var(--radius-md)', fontWeight: 500, cursor: 'pointer',
+                textAlign: 'center', transition: 'all 0.2s ease',
+              }}
+            >
+              Skip for now
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg-base)', padding: '0 0 32px' }}>
@@ -434,8 +692,13 @@ export default function JoinHubPage() {
           type={isTeacherFlow ? "create" : "join"}
           isComplete={isComplete}
           onFinished={() => {
-            toast.success(isTeacherFlow ? 'Joined as teacher successfully! Welcome 🎓' : 'Joined hub successfully! Welcome 🎉');
-            navigate(isTeacherFlow ? '/app/teacher-dashboard' : '/app/home');
+            if (isTeacherFlow && joinedSectionId) {
+              setLoading(false);
+              setShowCourseLinking(true);
+            } else {
+              toast.success('Joined hub successfully! Welcome 🎉');
+              navigate('/app/home');
+            }
           }}
         />
       )}

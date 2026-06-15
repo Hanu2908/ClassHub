@@ -29,8 +29,11 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // ── Schedule Query ───────────────────────────────────────────────────────────
 
-export function useSchedule() {
-  const { sectionId, isAuthenticated } = useAuthContext();
+export function useSchedule(opts?: { sectionId?: string }) {
+  const auth = useAuthContext();
+  const sectionId = opts?.sectionId ?? auth.sectionId;
+  const isDemo = sectionId === 'demo-section';
+  const isAuthenticated = auth.isAuthenticated || isDemo;
 
   return useQuery<ScheduleMap>({
     queryKey: ['schedule', sectionId],
@@ -98,11 +101,14 @@ export function useUpsertScheduleSlot() {
       type?: string;
       teacher?: string;
       targetBatch?: string | null;
+      sectionId?: string;
     }) => {
       // 1. Enforce strict CR/Teacher authorization check
       if (role !== 'cr' && role !== 'teacher') {
         throw new Error('Unauthorized: Only Class Representatives and Teachers can manage timetable slots');
       }
+
+      const targetSectionId = input.sectionId ?? sectionId;
 
       // 2. Enforce Zod schema validation
       const validated = timetableSlotSchema.parse({
@@ -118,7 +124,7 @@ export function useUpsertScheduleSlot() {
 
       const row = {
         ...(input.id ? { id: input.id } : {}),
-        section_id: sectionId!,
+        section_id: targetSectionId!,
         subject_id: validated.subjectId ?? null,
         day_of_week: validated.dayOfWeek,
         start_time: validated.startTime,
@@ -133,14 +139,14 @@ export function useUpsertScheduleSlot() {
       if (error) throw error;
 
       // Trigger push notification broadcast
-      if (sectionId) {
+      if (targetSectionId) {
         const action = input.id ? 'Updated' : 'Added';
         try {
           await supabase.functions.invoke('send-custom-notification', {
             body: {
               title: `📅 Timetable ${action}`,
               body: `A class slot has been ${action.toLowerCase()} in the timetable.`,
-              sectionId: sectionId,
+              sectionId: targetSectionId,
               skipDbInsert: true
             }
           });
@@ -190,9 +196,12 @@ export function useDeleteScheduleSlot() {
 
 // ── Clear Timetable Day Slots Mutation ───────────────────────────────────────
 
-export function useClearDaySlots() {
+export function useClearDaySlots(opts?: { sectionId?: string }) {
   const qc = useQueryClient();
-  const { sectionId, role } = useAuthContext();
+  const auth = useAuthContext();
+  const sectionId = opts?.sectionId ?? auth.sectionId;
+  const role = auth.role;
+
   return useMutation({
     mutationFn: async (dayOfWeek: number) => {
       // Enforce strict CR/Teacher authorization check
@@ -227,9 +236,13 @@ export function useClearDaySlots() {
 
 // ── Copy Timetable Day Slots Mutation ───────────────────────────────────────
 
-export function useCopyDaySlots() {
+export function useCopyDaySlots(opts?: { sectionId?: string }) {
   const qc = useQueryClient();
-  const { sectionId, userId, role } = useAuthContext();
+  const auth = useAuthContext();
+  const sectionId = opts?.sectionId ?? auth.sectionId;
+  const userId = auth.userId;
+  const role = auth.role;
+
   return useMutation({
     mutationFn: async ({ fromDay, toDay }: { fromDay: number; toDay: number }) => {
       // Enforce strict CR/Teacher authorization check

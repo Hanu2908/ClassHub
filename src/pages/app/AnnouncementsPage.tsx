@@ -6,7 +6,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
-import { CROnly, EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
+import { EmptyState, timeAgo, deadlineBadgeClass, deadlineLabel } from '../../components/Shared';
 import { useAppStore, isExpired, type Announcement, type Attachment } from '../../store/appStore';
 import { toast } from 'sonner';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -46,7 +46,17 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
   const userId = authUser?.id;
 
   const { data: subjects = [] } = useSubjects();
-  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const globalSelectedSubjectId = useAppStore(s => s.selectedSubjectId);
+  const role = useAppStore(s => s.role);
+  const [selectedSubjectId, setSelectedSubjectId] = useState(() => {
+    return role === 'teacher' ? (globalSelectedSubjectId || '') : '';
+  });
+
+  useEffect(() => {
+    if (open && role === 'teacher' && globalSelectedSubjectId) {
+      setSelectedSubjectId(globalSelectedSubjectId);
+    }
+  }, [open, role, globalSelectedSubjectId]);
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -57,6 +67,21 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
   const [files, setFiles] = useState<File[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Autocomplete Mentions
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { data: sectionMembers = [] } = useSectionMembers();
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionFilterText, setMentionFilterText] = useState('');
+  const [mentionTriggerIndex, setMentionTriggerIndex] = useState(-1);
+
+  const filteredMembers = useMemo(() => {
+    if (!showMentionSuggestions) return [];
+    const query = mentionFilterText.toLowerCase();
+    return sectionMembers
+      .filter(m => m.name.toLowerCase().includes(query) && m.id !== userId)
+      .slice(0, 5);
+  }, [showMentionSuggestions, mentionFilterText, sectionMembers, userId]);
 
   // Smart Parsing: regex check if title/body mentions a batch number
   const detectBatch = (text: string): 'all' | '1' | '2' => {
@@ -76,6 +101,49 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
     setBody(val);
     const parsed = detectBatch(title + ' ' + val);
     if (parsed !== 'all') setTargetBatch(parsed);
+
+    // Mentions parsing
+    if (!textareaRef.current) return;
+    const selectionEnd = textareaRef.current.selectionEnd;
+    const textBeforeCursor = val.slice(0, selectionEnd);
+    const lastAtIdx = textBeforeCursor.lastIndexOf('@');
+    if (lastAtIdx !== -1) {
+      const textAfterAt = textBeforeCursor.slice(lastAtIdx + 1);
+      const hasWhitespace = /\s/.test(textAfterAt);
+      const isPrecededBySpace = lastAtIdx === 0 || /\s/.test(textBeforeCursor.charAt(lastAtIdx - 1));
+
+      if (!hasWhitespace && isPrecededBySpace) {
+        setShowMentionSuggestions(true);
+        setMentionFilterText(textAfterAt);
+        setMentionTriggerIndex(lastAtIdx);
+        return;
+      }
+    }
+    setShowMentionSuggestions(false);
+    setMentionFilterText('');
+    setMentionTriggerIndex(-1);
+  };
+
+  const handleSelectMention = (memberName: string) => {
+    if (mentionTriggerIndex === -1 || !textareaRef.current) return;
+    const val = body;
+    const selectionEnd = textareaRef.current.selectionEnd;
+    const prefix = val.slice(0, mentionTriggerIndex);
+    const suffix = val.slice(selectionEnd);
+    const cleanName = memberName.replace(/\s+/g, '');
+    const mentionString = `@${cleanName} `;
+    const newVal = prefix + mentionString + suffix;
+    setBody(newVal);
+    setShowMentionSuggestions(false);
+    setMentionFilterText('');
+    setMentionTriggerIndex(-1);
+    const newCursorPos = mentionTriggerIndex + mentionString.length;
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 50);
   };
 
   useEffect(() => {
@@ -180,14 +248,112 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
         </div>
         <div>
           <label htmlFor="composer-body" className="t-label" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message (Optional)</label>
-          <textarea 
-            id="composer-body"
-            style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} 
-            className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
-            placeholder="Details of the announcement…" 
-            value={body} 
-            onChange={e => handleBodyChange(e.target.value)} 
-          />
+          <div style={{ position: 'relative' }}>
+            <textarea 
+              ref={textareaRef}
+              id="composer-body"
+              style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} 
+              className={`input-adaptive ${priority === 'critical' ? 'focus-critical' : 'focus-violet'}`}
+              placeholder="Details of the announcement…" 
+              value={body} 
+              onChange={e => handleBodyChange(e.target.value)} 
+            />
+            <AnimatePresence>
+              {showMentionSuggestions && filteredMembers.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: 0,
+                    right: 0,
+                    marginBottom: '8px',
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    background: 'rgba(10, 11, 18, 0.95)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: 'var(--shadow-elevated)',
+                    zIndex: 50,
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  {filteredMembers.map(member => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => handleSelectMention(member.name)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                        color: 'var(--text-primary)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        transition: 'background var(--transition-fast)',
+                        outline: 'none',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'none';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {member.avatarUrl ? (
+                          <img 
+                            src={member.avatarUrl} 
+                            alt={member.name} 
+                            style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} 
+                          />
+                        ) : (
+                          <div style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '9px',
+                            fontWeight: 600
+                          }}>
+                            {member.name.charAt(0)}
+                          </div>
+                        )}
+                        <span style={{ fontWeight: 500 }}>{member.name}</span>
+                        {member.role === 'cr' && (
+                          <span style={{
+                            background: 'rgba(167, 139, 250, 0.15)',
+                            color: 'var(--status-announcement)',
+                            padding: '1px 4px',
+                            borderRadius: '4px',
+                            fontSize: '8px',
+                            fontWeight: 700,
+                          }}>
+                            CR
+                          </span>
+                        )}
+
+                      </div>
+                      {member.classRoll && (
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                          {member.classRoll}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
         
         <div style={{ display: 'flex', gap: 10 }}>
@@ -493,6 +659,7 @@ export function AnnouncementCardComponent({
   onShare,
   searchQuery
 }: AnnouncementCardComponentProps) {
+  const authUser = useAppStore(s => s.authUser);
   const [isExpanded, setIsExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [zoomModalData, setZoomModalData] = useState<{
@@ -587,8 +754,8 @@ export function AnnouncementCardComponent({
           )}
         </div>
 
-        {/* CR Tools (Delete, Receipt Tracking) */}
-        {role === 'cr' && (
+        {/* CR and Teacher (if author) Tools (Delete, Receipt Tracking) */}
+        {(role === 'cr' || (role === 'teacher' && ann.authorId === authUser?.id)) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
             <button
               type="button"
@@ -1058,6 +1225,11 @@ function ShareOptionsContent({
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const role = useAppStore(s => s.role);
+  const authUser = useAppStore(s => s.authUser);
+  const globalSelectedSectionId = useAppStore(s => s.selectedSectionId);
+  const globalSelectedSubjectId = useAppStore(s => s.selectedSubjectId);
+
   const [filter, setFilter] = useState<Filter>('all');
   const [activeTab, setActiveTab] = useState<ChannelTab>('active');
   const [layoutMode, setLayoutMode] = useState<'timeline' | 'feed'>(() => {
@@ -1088,8 +1260,18 @@ export default function AnnouncementsPage() {
   const [showCreate, setShowCreate] = useState(location.state?.openCreate || false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: subjects = [] } = useSubjects();
-  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('all');
+  const { data: subjects = [] } = useSubjects({
+    sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
+  });
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState(() => {
+    return role === 'teacher' ? (globalSelectedSubjectId || 'all') : 'all';
+  });
+
+  useEffect(() => {
+    if (role === 'teacher' && globalSelectedSubjectId) {
+      setSelectedSubjectFilter(globalSelectedSubjectId);
+    }
+  }, [role, globalSelectedSubjectId]);
   const [filterHasAttachment, setFilterHasAttachment] = useState(false);
   const [filterUnacknowledgedOnly, setFilterUnacknowledgedOnly] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -1347,11 +1529,45 @@ export default function AnnouncementsPage() {
     }
   };
 
-  const role = useAppStore(s => s.role);
-  const authUser = useAppStore(s => s.authUser);
-  const sectionId = authUser?.sectionId;
+  const sectionId = role === 'teacher' ? (globalSelectedSectionId || authUser?.sectionId) : authUser?.sectionId;
 
-  const { data: announcements = [], isLoading } = useAnnouncements();
+  const { data: teacherMappings = [] } = useQuery({
+    queryKey: ['teacher-mappings-announcements', authUser?.id],
+    queryFn: async () => {
+      if (!authUser?.id) return [];
+      const { data, error } = await supabase
+        .from('section_teachers')
+        .select('subject_id')
+        .eq('teacher_id', authUser.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!authUser?.id && role === 'teacher',
+  });
+
+  const { data: rawAnnouncements = [], isLoading } = useAnnouncements({
+    sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
+  });
+
+  // Filter rawAnnouncements if the user is a teacher
+  const announcements = useMemo(() => {
+    if (role !== 'teacher') return rawAnnouncements;
+    const teacherSubjectIds = new Set(teacherMappings.map(m => m.subject_id).filter(Boolean));
+    const cleanTeacherName = authUser?.name ? authUser.name.replace(/\s+/g, '').toLowerCase() : '';
+
+    return rawAnnouncements.filter(a => {
+      const isAuthor = a.authorId === authUser?.id;
+      const matched = matchSubject(a.title, a.body, subjects);
+      const teachesSubject = matched && teacherSubjectIds.has(matched.id);
+      
+      const isTagged = cleanTeacherName && (
+        (a.title || '').toLowerCase().includes('@' + cleanTeacherName) ||
+        (a.body || '').toLowerCase().includes('@' + cleanTeacherName)
+      );
+      return isAuthor || teachesSubject || isTagged;
+    });
+  }, [role, rawAnnouncements, teacherMappings, authUser?.id, authUser?.name, subjects]);
+
   const deleteAnn = useDeleteAnnouncement();
   const ackMutation = useAcknowledge();
   const queryClient = useQueryClient();
@@ -2208,7 +2424,7 @@ export default function AnnouncementsPage() {
                     <span>Got it</span>
                   </button>
 
-                  {role === 'cr' && (
+                  {(role === 'cr' || (role === 'teacher' && fp.authorId === authUser?.id)) && (
                     <button 
                       onClick={() => setPendingDeleteId(fp.id)} 
                       style={{
@@ -2303,11 +2519,11 @@ export default function AnnouncementsPage() {
         <div style={{ height: '80px', flexShrink: 0 }} aria-hidden="true" />
       </main>
 
-      <CROnly>
+      {(role === 'cr' || role === 'teacher') && (
         <button id="post-ann-fab" onClick={() => setShowCreate(true)} className="fab" aria-label="Post announcement">
           <Plus size={22} />
         </button>
-      </CROnly>
+      )}
 
       <CreateAnnouncementSheet 
         open={showCreate}

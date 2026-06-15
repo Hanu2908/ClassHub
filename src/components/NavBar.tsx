@@ -28,7 +28,6 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/app/profile':           () => import('../pages/app/ProfilePage'),
   '/app/teacher-dashboard': () => import('../pages/app/TeacherDashboardPage'),
   '/app/counsellor':        () => import('../pages/app/CounsellorConsolePage'),
-  '/app/teacher-command':   () => import('../pages/app/TeacherCommandPage'),
 };
 
 function prefetchRoute(path: string) {
@@ -44,12 +43,12 @@ export function NavBar() {
   if (role === 'teacher') {
     const tabs = [
       { id: 'teacher-dashboard', label: 'Dashboard', icon: Home, path: '/app/teacher-dashboard' },
+      { id: 'announcements', label: 'Notices', icon: Megaphone, path: '/app/announcements' },
     ];
     if (authUser?.isCounsellorForBatch) {
       tabs.push({ id: 'counsellor', label: 'Counsellor', icon: Users, path: '/app/counsellor' });
     }
     tabs.push(
-      { id: 'teacher-command', label: 'Command', icon: ShieldCheck, path: '/app/teacher-command' },
       { id: 'profile', label: 'Profile', icon: User, path: '/app/profile' }
     );
     TABS = tabs;

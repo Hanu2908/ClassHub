@@ -1,6 +1,8 @@
 import { useState, useMemo, type CSSProperties, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Megaphone, BarChart2, ClipboardList, CheckCircle2 } from 'lucide-react';
+import { Bell, Megaphone, BarChart2, ClipboardList, CheckCircle2, ShieldAlert, Send, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
 import { NavBar } from '../../components/NavBar';
 import { timeUntil } from '../../components/Shared';
 import { useAppStore, isExpired } from '../../store/appStore';
@@ -77,6 +79,25 @@ export default function DashboardPage() {
   const { data: assignments = [] } = useAssignments();
   const { data: attendance = { subjects: [], overall: 0, lastUpdated: null } } = useAttendance();
   const { data: polls = [] } = usePolls();
+
+  // Fetch counsellor note for the student
+  const { data: counsellorNote, refetch: refetchCounsellorNote } = useQuery({
+    queryKey: ['student-counsellor-note', authUser?.id],
+    queryFn: async () => {
+      if (!authUser?.id || role === 'teacher') return null;
+      const { data, error } = await supabase
+        .from('counsellor_notes')
+        .select(`
+          id, counsellor_id, note_text, student_response, student_response_updated_at, created_at,
+          counsellor:counsellor_id (name)
+        `)
+        .eq('student_id', authUser.id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as any) || null;
+    },
+    enabled: !!authUser?.id && role !== 'teacher',
+  });
 
   const [showNotifs, setShowNotifs] = useState(false);
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
@@ -278,6 +299,12 @@ export default function DashboardPage() {
           showPushCTA={showPushCTA}
           onDismissPushCTA={handleDismissPushCTA}
         />
+        {counsellorNote && (
+          <CounsellorAlertCard 
+            note={counsellorNote} 
+            refetch={refetchCounsellorNote} 
+          />
+        )}
         {role === 'cr' && <CRDashboardStation />}
         
         {/* Dynamic Academic Hero Banner */}
@@ -670,6 +697,209 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface CounsellorAlertCardProps {
+  note: {
+    id: string;
+    counsellor_id: string;
+    note_text: string;
+    student_response: string | null;
+    student_response_updated_at: string | null;
+    created_at: string;
+    counsellor: { name: string } | null;
+  };
+  refetch: () => void;
+}
+
+function CounsellorAlertCard({ note, refetch }: CounsellorAlertCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [response, setResponse] = useState(note.student_response || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setResponse(note.student_response || '');
+  }, [note.student_response]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!response.trim()) {
+      toast.error('Response cannot be empty');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('counsellor_notes')
+        .update({
+          student_response: response.trim(),
+        } as any)
+        .eq('id', note.id);
+
+      if (error) throw error;
+
+      toast.success('Explanation submitted successfully! ✓');
+      refetch();
+    } catch (err: any) {
+      toast.error('Failed to submit: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const counsellorName = note.counsellor?.name || 'Counsellor';
+  const hasReplied = !!note.student_response;
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%)',
+      border: '1px solid rgba(245, 158, 11, 0.25)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '16px',
+      marginBottom: '16px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+      transition: 'all 0.3s ease',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    }}>
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          cursor: 'pointer',
+          userSelect: 'none'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            background: 'rgba(245, 158, 11, 0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+          }}>
+            <ShieldAlert size={16} color="var(--status-warning)" />
+          </div>
+          <div>
+            <h4 className="t-card-title" style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Counsellor Remark Received
+            </h4>
+            <p className="t-caption" style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+              From {counsellorName} • {new Date(note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-pill)',
+            fontSize: '10px',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            background: hasReplied ? 'rgba(52, 211, 153, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+            color: hasReplied ? 'var(--status-safe)' : 'var(--status-warning)',
+            border: `1px solid ${hasReplied ? 'rgba(52, 211, 153, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+          }}>
+            {hasReplied ? 'Responded' : 'Action Required'}
+          </span>
+          <button style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            padding: 4,
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div style={{ 
+          borderTop: '1px solid rgba(245, 158, 11, 0.15)', 
+          paddingTop: 12, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 12 
+        }}>
+          <div style={{
+            padding: '12px',
+            background: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-default)',
+          }}>
+            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', marginBottom: 4 }}>
+              Counsellor's Remark:
+            </p>
+            <p className="t-body" style={{ color: 'var(--text-primary)', margin: 0, fontSize: '13px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+              {note.note_text}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: '10px', textTransform: 'uppercase' }}>
+                Your Explanation / Response:
+              </label>
+              <textarea
+                value={response}
+                onChange={e => setResponse(e.target.value)}
+                placeholder="Provide your explanation or response to the counsellor..."
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  minHeight: '80px',
+                  padding: '10px 12px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  lineHeight: '1.5',
+                  outline: 'none',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                {note.student_response_updated_at && `Last updated: ${new Date(note.student_response_updated_at).toLocaleString()}`}
+              </span>
+              <button
+                type="submit"
+                disabled={isSubmitting || !response.trim() || response.trim() === note.student_response}
+                className="btn-primary"
+                style={{
+                  width: 'auto',
+                  minHeight: '32px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                {hasReplied ? 'Update Response' : 'Submit Response'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

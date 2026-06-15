@@ -32,8 +32,12 @@ type SubjectIdCode = { id: string; code: string };
 
 // ── Subjects Query ───────────────────────────────────────────────────────────
 
-export function useSubjects() {
-  const { sectionId, isAuthenticated } = useAuthContext();
+export function useSubjects(opts?: { sectionId?: string }) {
+  const auth = useAuthContext();
+  const sectionId = opts?.sectionId ?? auth.sectionId;
+  const isDemo = sectionId === 'demo-section';
+  const isAuthenticated = auth.isAuthenticated || isDemo;
+
   return useQuery<SubjectInfo[]>({
     queryKey: ['subjects', sectionId],
     enabled: !!sectionId && isAuthenticated,

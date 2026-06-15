@@ -59,8 +59,12 @@ export interface CRTransferEntry {
 
 // ── Section Info Query ───────────────────────────────────────────────────────
 
-export function useSection() {
-  const { sectionId, isAuthenticated } = useAuthContext();
+export function useSection(opts?: { sectionId?: string }) {
+  const auth = useAuthContext();
+  const sectionId = opts?.sectionId ?? auth.sectionId;
+  const isDemo = sectionId === 'demo-section';
+  const isAuthenticated = auth.isAuthenticated || isDemo;
+
   return useQuery<SectionInfo | null>({
     queryKey: ['section', sectionId],
     enabled: !!sectionId && isAuthenticated,

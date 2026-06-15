@@ -13,6 +13,7 @@ import { signOutGlobal } from '../../components/AuthProvider';
 import { useUserTags, useDeleteTag, MAX_ACTIVE_TAGS } from '../../hooks/useUserTags';
 import { TagPill } from '../../components/TagPill';
 import { AddTagSheet } from '../../components/AddTagSheet';
+import { BottomSheet } from '../../components/BottomSheet';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -48,6 +49,26 @@ export default function ProfilePage() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
   const [showAddTagSheet, setShowAddTagSheet] = useState(false);
+  const [showLinkSubjectsSheet, setShowLinkSubjectsSheet] = useState(false);
+
+  const { data: myLinkedSubjects = [], refetch: refetchLinked } = useQuery({
+    queryKey: ['my-linked-subjects', authUser?.id],
+    queryFn: async () => {
+      if (!authUser?.id) return [];
+      const { data, error } = await supabase
+        .from('section_teachers')
+        .select(`
+          subject_id,
+          section_id,
+          sections:section_id (name),
+          subjects:subject_id (code, name, accent)
+        `)
+        .eq('teacher_id', authUser.id);
+      if (error) throw error;
+      return (data || []).filter(item => item.subject_id !== null);
+    },
+    enabled: !!authUser?.id && role === 'teacher',
+  });
 
   // Tags
   const { data: myTags = [] } = useUserTags();
@@ -407,6 +428,69 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Linked Courses (Teacher only) */}
+        {role === 'teacher' && (
+          <div>
+            <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>LINKED COURSES</p>
+            <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {myLinkedSubjects.length === 0 ? (
+                <p className="t-caption" style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '8px 0' }}>
+                  No subjects linked to your account yet.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {myLinkedSubjects.map((item: any) => {
+                    const sub = item.subjects;
+                    const sec = item.sections;
+                    if (!sub) return null;
+                    return (
+                      <div key={item.subject_id + '-' + item.section_id} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 12px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-default)'
+                      }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{
+                              padding: '1px 5px', borderRadius: 4, background: `${sub.accent}20`,
+                              color: sub.accent, fontSize: 10, fontWeight: 600, fontFamily: 'monospace'
+                            }}>{sub.code}</span>
+                            <span className="badge badge-info" style={{ fontSize: 9, padding: '1px 6px' }}>{sec?.name || 'Unknown Section'}</span>
+                          </div>
+                          <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 4 }}>{sub.name}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <button
+                id="manage-linkings-btn"
+                onClick={() => setShowLinkSubjectsSheet(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: 'var(--accent-primary)',
+                  background: 'rgba(74, 158, 255, 0.06)',
+                  border: '1px dashed rgba(74, 158, 255, 0.2)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast)',
+                }}
+              >
+                <Plus size={14} />
+                <span>Link Subjects</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Counsellor Section */}
         {counsellor && (
           <div>
@@ -651,6 +735,217 @@ export default function ProfilePage() {
       <NavBar />
       <FeedbackSheet open={showFeedbackSheet} onClose={() => setShowFeedbackSheet(false)} />
       <AddTagSheet open={showAddTagSheet} onClose={() => setShowAddTagSheet(false)} />
+      {role === 'teacher' && authUser && sectionId && (
+        <LinkSubjectsSheet
+          open={showLinkSubjectsSheet}
+          onClose={() => setShowLinkSubjectsSheet(false)}
+          teacherId={authUser.id}
+          sectionId={sectionId}
+          linkedSubjects={myLinkedSubjects}
+          refetchLinked={refetchLinked}
+        />
+      )}
     </div>
+  );
+}
+
+interface LinkSubjectsSheetProps {
+  open: boolean;
+  onClose: () => void;
+  teacherId: string;
+  sectionId: string;
+  linkedSubjects: any[];
+  refetchLinked: () => void;
+}
+
+function LinkSubjectsSheet({ open, onClose, teacherId, sectionId, linkedSubjects, refetchLinked }: LinkSubjectsSheetProps) {
+  const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
+  const [globalChecked, setGlobalChecked] = useState<Record<string, boolean>>({});
+
+  const { data: sectionSubjects = [] } = useQuery({
+    queryKey: ['subjects-for-linking', sectionId],
+    queryFn: async () => {
+      if (!sectionId) return [];
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('section_id', sectionId)
+        .order('code');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!sectionId && open,
+  });
+
+  const handleToggleSubject = async (subjectId: string, subjectCode: string, currentLinked: boolean) => {
+    setLoadingMap(prev => ({ ...prev, [subjectId]: true }));
+    try {
+      const applyAll = !!globalChecked[subjectId];
+
+      if (currentLinked) {
+        // Unlink
+        // 1. Delete for current section
+        const { error: delErr } = await supabase
+          .from('section_teachers')
+          .delete()
+          .eq('section_id', sectionId)
+          .eq('teacher_id', teacherId)
+          .eq('subject_id', subjectId);
+        if (delErr) throw delErr;
+
+        // 2. If applyAll, find sections taught by teacher and delete subject with same code
+        if (applyAll) {
+          const { data: stData } = await supabase
+            .from('section_teachers')
+            .select('section_id')
+            .eq('teacher_id', teacherId);
+          const otherSections = Array.from(new Set((stData || []).map(x => x.section_id).filter(id => id !== sectionId)));
+
+          if (otherSections.length > 0) {
+            const { data: matchSubjects } = await supabase
+              .from('subjects')
+              .select('id, section_id')
+              .eq('code', subjectCode)
+              .in('section_id', otherSections);
+
+            if (matchSubjects && matchSubjects.length > 0) {
+              const matchSubjectIds = matchSubjects.map(ms => ms.id);
+              await supabase
+                .from('section_teachers')
+                .delete()
+                .eq('teacher_id', teacherId)
+                .in('subject_id', matchSubjectIds);
+            }
+          }
+        }
+        toast.success('Subject unlinked ✓');
+      } else {
+        // Link
+        // 1. Insert for current section
+        const { error: insErr } = await supabase
+          .from('section_teachers')
+          .insert({
+            section_id: sectionId,
+            teacher_id: teacherId,
+            subject_id: subjectId
+          });
+        if (insErr) throw insErr;
+
+        // 2. If applyAll, find sections taught by teacher and insert subject with same code
+        if (applyAll) {
+          const { data: stData } = await supabase
+            .from('section_teachers')
+            .select('section_id')
+            .eq('teacher_id', teacherId);
+          const otherSections = Array.from(new Set((stData || []).map(x => x.section_id).filter(id => id !== sectionId)));
+
+          if (otherSections.length > 0) {
+            const { data: matchSubjects } = await supabase
+              .from('subjects')
+              .select('id, section_id')
+              .eq('code', subjectCode)
+              .in('section_id', otherSections);
+
+            if (matchSubjects && matchSubjects.length > 0) {
+              const insertRows = matchSubjects.map(ms => ({
+                section_id: ms.section_id,
+                teacher_id: teacherId,
+                subject_id: ms.id
+              }));
+              await supabase.from('section_teachers').insert(insertRows);
+            }
+          }
+        }
+        toast.success('Subject linked ✓');
+      }
+      refetchLinked();
+    } catch (err: any) {
+      toast.error('Failed to link subject: ' + err.message);
+    } finally {
+      setLoadingMap(prev => ({ ...prev, [subjectId]: false }));
+    }
+  };
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Link Subjects">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {sectionSubjects.length === 0 ? (
+          <p className="t-body" style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '24px 0' }}>
+            No subjects found in this section.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
+            {sectionSubjects.map(subject => {
+              const isLinked = linkedSubjects.some(ls => ls.subject_id === subject.id);
+              const isLoading = !!loadingMap[subject.id];
+              const isGlobal = !!globalChecked[subject.id];
+
+              return (
+                <div key={subject.id} style={{
+                  padding: '12px 14px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  opacity: isLoading ? 0.6 : 1,
+                  pointerEvents: isLoading ? 'none' : 'auto',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={isLinked}
+                      disabled={isLoading}
+                      onChange={() => handleToggleSubject(subject.id, subject.code, isLinked)}
+                      style={{ width: 16, height: 16, accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{
+                          padding: '1px 5px', borderRadius: 4, background: `${subject.accent}20`,
+                          color: subject.accent, fontSize: 10, fontWeight: 600, fontFamily: 'monospace'
+                        }}>{subject.code}</span>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11 }}>Sem {subject.semester}</span>
+                      </div>
+                      <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 2 }}>{subject.name}</p>
+                    </div>
+                  </div>
+
+                  {isLinked && (
+                    <div style={{
+                      paddingTop: 6,
+                      borderTop: '1px dashed var(--border-default)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                    }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={isGlobal}
+                          onChange={() => setGlobalChecked(prev => ({ ...prev, [subject.id]: !prev[subject.id] }))}
+                          style={{ width: 13, height: 13, accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                        />
+                        <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>Apply globally to all my sections</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-primary"
+          style={{ width: '100%', padding: '12px' }}
+        >
+          Done
+        </button>
+      </div>
+    </BottomSheet>
   );
 }

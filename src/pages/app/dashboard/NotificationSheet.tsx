@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { type AppNotification } from '../../../store/appStore';
+import { type AppNotification, useAppStore } from '../../../store/appStore';
 import { useNotifications } from '../../../hooks/useNotifications';
 import { BottomSheet } from '../../../components/BottomSheet';
 import { timeAgo } from '../../../components/Shared';
@@ -14,6 +14,7 @@ interface NotificationSheetProps {
 
 export default function NotificationSheet({ open, onClose }: NotificationSheetProps) {
   const navigate = useNavigate();
+  const authUser = useAppStore(s => s.authUser);
   const { notifications, markAllRead, clear, clearAll } = useNotifications();
 
   const [now] = useState(() => Date.now());
@@ -38,6 +39,9 @@ export default function NotificationSheet({ open, onClose }: NotificationSheetPr
     if (table === 'assignments') return id ? `/app/assignments?highlight=${id}` : '/app/assignments';
     if (table === 'announcements') return id ? `/app/announcements?highlight=${id}` : '/app/announcements';
     if (table === 'timetable_slots') return '/app/schedule';
+    if (table === 'counsellor_notes' || table === 'counsellor_remark' || table === 'counsellor_remark_reply') {
+      return authUser?.role === 'teacher' ? '/app/counsellor' : '/app/home';
+    }
     return null;
   }
 

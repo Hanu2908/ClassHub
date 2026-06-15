@@ -69,15 +69,21 @@ interface AddSlotSheetProps {
 }
 
 function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) {
-  const { data: subjects = [] } = useSubjects();
+  const role = useAppStore(s => s.role);
+  const globalSelectedSectionId = useAppStore(s => s.selectedSectionId);
+  const authUser = useAppStore(s => s.authUser);
+  const sectionId = role === 'teacher' ? (globalSelectedSectionId || authUser?.sectionId) : authUser?.sectionId;
+
+  const { data: subjects = [] } = useSubjects({
+    sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
+  });
   const upsertSlot = useUpsertScheduleSlot();
-  const { data: section } = useSection();
+  const { data: section } = useSection({
+    sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
+  });
   const sectionName = section?.name || '';
   const [subjectId, setSubjectId] = useState('');
   const [room, setRoom] = useState('');
-  
-  const authUser = useAppStore(s => s.authUser);
-  const sectionId = authUser?.sectionId;
 
   // Query section teachers
   const { data: sectionTeachers = [] } = useQuery({
@@ -192,6 +198,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
         type: mapUiTypeToDb(type),
         teacher: finalTeacher.trim() || undefined,
         targetBatch: targetBatch === 'all' ? null : targetBatch,
+        sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
       });
       setAddedCount(c => c + 1);
       toast.success(`Slot added (${addedCount + 1})`);
@@ -385,8 +392,12 @@ function CopyDaySheet({ open, targetDay, schedule, onClose }: {
   schedule: Record<string, { id: string }[]>;
   onClose: () => void;
 }) {
+  const role = useAppStore(s => s.role);
+  const globalSelectedSectionId = useAppStore(s => s.selectedSectionId);
   const [sourceDay, setSourceDay] = useState('');
-  const copyMutation = useCopyDaySlots();
+  const copyMutation = useCopyDaySlots({
+    sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
+  });
   const sourceDays = DAYS.filter(d => d !== targetDay && (schedule[d]?.length ?? 0) > 0);
   const sourceCount = schedule[sourceDay]?.length ?? 0;
   const targetCount = schedule[targetDay]?.length ?? 0;
@@ -636,11 +647,19 @@ export default function SchedulePage() {
 
   const role = useAppStore(s => s.role);
   const isCR = role === 'cr';
-  const { data: schedule = {}, isLoading } = useSchedule();
-  const { data: section } = useSection();
+  const globalSelectedSectionId = useAppStore(s => s.selectedSectionId);
+
+  const { data: schedule = {}, isLoading } = useSchedule({
+    sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
+  });
+  const { data: section } = useSection({
+    sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
+  });
   const sectionName = section?.name || '';
   const deleteSlotMutation = useDeleteScheduleSlot();
-  const clearDayMutation = useClearDaySlots();
+  const clearDayMutation = useClearDaySlots({
+    sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
+  });
 
   const authUser = useAppStore(s => s.authUser);
   const subBatch = authUser?.subBatch;

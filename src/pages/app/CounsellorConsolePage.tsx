@@ -37,6 +37,9 @@ interface CounsellorNote {
   id: string;
   student_id: string;
   note_text: string;
+  student_response: string | null;
+  student_response_updated_at: string | null;
+  counsellor_remark_updated_at: string | null;
   created_at: string;
 }
 
@@ -100,15 +103,15 @@ export default function CounsellorConsolePage() {
   });
 
   // 4. Fetch counsellor remarks/notes
-  const { data: counsellorNotes = [] } = useQuery<CounsellorNote[]>({
+  const { data: counsellorNotes } = useQuery<CounsellorNote[]>({
     queryKey: ['counsellor-remarks', authUser?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('counsellor_notes')
-        .select('id, student_id, note_text, created_at')
+        .select('id, student_id, note_text, student_response, student_response_updated_at, counsellor_remark_updated_at, created_at')
         .eq('counsellor_id', authUser?.id || '');
       if (error) throw error;
-      return data || [];
+      return (data as any) || [];
     },
     enabled: !!authUser?.id,
   });
@@ -148,7 +151,8 @@ export default function CounsellorConsolePage() {
         alertPriority = subjectsBelow75.length;
       }
 
-      const note = counsellorNotes.find(n => n.student_id === student.id);
+      const notesList = (counsellorNotes || []) as CounsellorNote[];
+      const note = notesList.find((n: CounsellorNote) => n.student_id === student.id);
 
       return {
         ...student,
@@ -158,6 +162,8 @@ export default function CounsellorConsolePage() {
         hasLowAggregate,
         alertPriority,
         noteText: note?.note_text || '',
+        studentResponse: note?.student_response || null,
+        studentResponseUpdatedAt: note?.student_response_updated_at || null,
       };
     }).sort((a, b) => b.alertPriority - a.alertPriority); // Sort by alert priority descending
   }, [students, attendanceRecords, counsellorNotes]);
@@ -170,6 +176,31 @@ export default function CounsellorConsolePage() {
       (s.university_roll || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [processedStudents, searchQuery]);
+
+  // Compute batch statistics
+  const batchMetrics = useMemo(() => {
+    let totalPctSum = 0;
+    let studentCountWithAttendance = 0;
+    let lowAttendanceCount = 0;
+
+    processedStudents.forEach(s => {
+      if (s.overallPercent !== null) {
+        totalPctSum += s.overallPercent;
+        studentCountWithAttendance++;
+        if (s.overallPercent < 75) {
+          lowAttendanceCount++;
+        }
+      }
+    });
+
+    const classAverage = studentCountWithAttendance > 0 ? Math.round(totalPctSum / studentCountWithAttendance) : 100;
+
+    return {
+      classAverage,
+      lowAttendanceCount,
+      totalStudents: students.length,
+    };
+  }, [processedStudents, students.length]);
 
   const selectedStudent = useMemo(() => {
     return processedStudents.find(s => s.id === selectedStudentId) || null;
@@ -238,7 +269,49 @@ export default function CounsellorConsolePage() {
         </div>
       </header>
 
-      <main className="page-content" style={{ paddingBottom: 100 }}>
+      <main className="page-content" style={{ paddingBottom: 100, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Insightful Analytics Metric Row */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 16,
+          padding: '0 16px',
+          marginTop: 16,
+        }}>
+          {/* Card 1: Batch Strength */}
+          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, background: 'linear-gradient(135deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.03) 100%)', border: '1px solid var(--border-default)' }}>
+            <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Users size={20} color="rgb(99, 102, 241)" />
+            </div>
+            <div>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>Batch Size</span>
+              <p className="t-feature" style={{ color: 'var(--text-primary)', margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{batchMetrics.totalStudents}</p>
+            </div>
+          </div>
+
+          {/* Card 2: Batch Attendance Average */}
+          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, background: 'linear-gradient(135deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.03) 100%)', border: '1px solid var(--border-default)' }}>
+            <div style={{ width: 42, height: 42, borderRadius: '50%', background: batchMetrics.classAverage >= 75 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BarChart3 size={20} color={batchMetrics.classAverage >= 75 ? 'var(--status-safe)' : 'var(--status-critical)'} />
+            </div>
+            <div>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>Class Average</span>
+              <p className="t-feature" style={{ color: batchMetrics.classAverage >= 75 ? 'var(--status-safe)' : 'var(--status-critical)', margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{batchMetrics.classAverage}%</p>
+            </div>
+          </div>
+
+          {/* Card 3: At Risk */}
+          <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, background: 'linear-gradient(135deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.03) 100%)', border: '1px solid var(--border-default)' }}>
+            <div style={{ width: 42, height: 42, borderRadius: '50%', background: batchMetrics.lowAttendanceCount > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertTriangle size={20} color={batchMetrics.lowAttendanceCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)'} />
+            </div>
+            <div>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>At Risk (&lt;75%)</span>
+              <p className="t-feature" style={{ color: batchMetrics.lowAttendanceCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)', margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{batchMetrics.lowAttendanceCount}</p>
+            </div>
+          </div>
+        </div>
+
         <div className="counsellor-layout" style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(280px, 1fr) minmax(320px, 1.2fr)',
@@ -287,7 +360,7 @@ export default function CounsellorConsolePage() {
                 }}>
                   {filteredStudents.map(student => {
                     const isSelected = student.id === selectedStudentId;
-                    const avatar = student.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${student.name}`;
+                    const avatar = student.avatar_url || `https://api.dicebear.com/7.x/personas/svg?seed=${encodeURIComponent(student.name)}`;
                     
                     let badgeColor = 'var(--text-muted)';
                     let badgeBg = 'rgba(255, 255, 255, 0.02)';
@@ -345,11 +418,22 @@ export default function CounsellorConsolePage() {
 
                         {/* Name & Roll */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p className="t-mono-sm" style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          <p className="t-mono-sm" style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                             {student.name}
+                            {student.studentResponse && (
+                              <span style={{
+                                width: 8, height: 8, borderRadius: '50%',
+                                background: 'var(--status-announcement)',
+                                display: 'inline-block',
+                                boxShadow: '0 0 6px var(--status-announcement)'
+                              }} title="Student responded" />
+                            )}
                           </p>
-                          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 2 }}>
-                            Roll: {student.section_roll || '—'}
+                          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Roll: {student.section_roll || '—'}</span>
+                            {student.studentResponse && (
+                              <span style={{ fontSize: 9, color: 'var(--status-announcement)', fontWeight: 600 }}>Responded</span>
+                            )}
                           </p>
                         </div>
 
@@ -378,7 +462,7 @@ export default function CounsellorConsolePage() {
                 <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                     <img
-                      src={selectedStudent.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${selectedStudent.name}`}
+                      src={selectedStudent.avatar_url || `https://api.dicebear.com/7.x/personas/svg?seed=${encodeURIComponent(selectedStudent.name)}`}
                       alt={selectedStudent.name}
                       style={{ width: 56, height: 56, borderRadius: '50%', border: '2px solid var(--border-default)', objectFit: 'cover' }}
                     />
@@ -486,9 +570,47 @@ export default function CounsellorConsolePage() {
                     <FileText size={16} color="var(--accent-primary)" />
                     Secure Counsellor Remarks
                   </h3>
-                  <p className="t-caption" style={{ color: 'var(--text-muted)' }}>
-                    These remarks are strictly confidential and only visible to you (the Batch Counsellor).
+                  <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>
+                    These remarks are visible to the student. They can submit an explanation in response.
                   </p>
+
+                  {selectedStudent.studentResponse ? (
+                    <div style={{
+                      padding: 12,
+                      background: 'rgba(99, 102, 241, 0.05)',
+                      border: '1px solid rgba(99, 102, 241, 0.25)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                      marginTop: 4
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--status-announcement)', letterSpacing: '0.04em' }}>STUDENT RESPONSE</span>
+                        {selectedStudent.studentResponseUpdatedAt && (
+                          <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                            {new Date(selectedStudent.studentResponseUpdatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="t-body" style={{ color: 'var(--text-primary)', fontSize: 13, margin: 0, lineHeight: 1.4 }}>
+                        {selectedStudent.studentResponse}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{
+                      padding: '10px 12px',
+                      background: 'rgba(255,255,255,0.01)',
+                      border: '1px dashed var(--border-default)',
+                      borderRadius: 'var(--radius-md)',
+                      textAlign: 'center',
+                      marginTop: 4
+                    }}>
+                      <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0, fontSize: 11 }}>
+                        No response submitted by student yet.
+                      </p>
+                    </div>
+                  )}
 
                   <textarea
                     className="input"
