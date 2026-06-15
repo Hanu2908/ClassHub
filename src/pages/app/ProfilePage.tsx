@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
@@ -50,6 +50,9 @@ export default function ProfilePage() {
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
   const [showAddTagSheet, setShowAddTagSheet] = useState(false);
   const [showLinkSubjectsSheet, setShowLinkSubjectsSheet] = useState(false);
+  const [showJoinSectionDialog, setShowJoinSectionDialog] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [joiningSection, setJoiningSection] = useState(false);
 
   const { data: myLinkedSubjects = [], refetch: refetchLinked } = useQuery({
     queryKey: ['my-linked-subjects', authUser?.id],
@@ -270,6 +273,50 @@ export default function ProfilePage() {
     }
   };
 
+  const handleJoinSection = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inviteCodeInput.trim() || inviteCodeInput.trim().length < 6) {
+      toast.error('Enter a valid invite code (min 6 characters)');
+      return;
+    }
+
+    setJoiningSection(true);
+    try {
+      const code = inviteCodeInput.trim().toUpperCase();
+
+      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+        toast.success('Joined section successfully! [Demo]');
+        setShowJoinSectionDialog(false);
+        setInviteCodeInput('');
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('join_section_as_teacher', {
+        invite: code,
+      });
+
+      if (error) throw error;
+
+      toast.success('Joined section successfully! 👨‍🏫');
+      
+      await refreshProfile();
+      refetchLinked();
+      
+      setShowJoinSectionDialog(false);
+      setInviteCodeInput('');
+      
+      if (data) {
+        setTimeout(() => {
+          setShowLinkSubjectsSheet(true);
+        }, 300);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to join section');
+    } finally {
+      setJoiningSection(false);
+    }
+  };
+
   return (
     <div className="page-shell">
       <header style={{
@@ -464,29 +511,54 @@ export default function ProfilePage() {
                   })}
                 </div>
               )}
-              <button
-                id="manage-linkings-btn"
-                onClick={() => setShowLinkSubjectsSheet(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  width: '100%',
-                  padding: '10px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: 'var(--accent-primary)',
-                  background: 'rgba(74, 158, 255, 0.06)',
-                  border: '1px dashed rgba(74, 158, 255, 0.2)',
-                  borderRadius: 'var(--radius-md)',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)',
-                }}
-              >
-                <Plus size={14} />
-                <span>Link Subjects</span>
-              </button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  id="manage-linkings-btn"
+                  onClick={() => setShowLinkSubjectsSheet(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    flex: 1,
+                    padding: '10px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--accent-primary)',
+                    background: 'rgba(74, 158, 255, 0.06)',
+                    border: '1px dashed rgba(74, 158, 255, 0.2)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Link Subjects</span>
+                </button>
+                <button
+                  id="join-section-profile-btn"
+                  onClick={() => setShowJoinSectionDialog(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    flex: 1,
+                    padding: '10px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--accent-primary)',
+                    background: 'rgba(74, 158, 255, 0.06)',
+                    border: '1px dashed rgba(74, 158, 255, 0.2)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Join Section</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -744,6 +816,67 @@ export default function ProfilePage() {
           linkedSubjects={myLinkedSubjects}
           refetchLinked={refetchLinked}
         />
+      )}
+      {showJoinSectionDialog && (
+        <BottomSheet
+          open={showJoinSectionDialog}
+          onClose={() => { setShowJoinSectionDialog(false); setInviteCodeInput(''); }}
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Plus size={15} style={{ color: 'var(--accent-primary)' }} />
+              <span className="t-subtitle" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>Join New Section Hub</span>
+            </div>
+          }
+        >
+          <form onSubmit={handleJoinSection} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              Enter the Teacher Invite Code provided by the Class Representative (CR) of the section you want to join.
+            </p>
+
+            <div>
+              <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
+                Teacher Invite Code
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. T-P2WXYZ"
+                value={inviteCodeInput}
+                onChange={e => setInviteCodeInput(e.target.value.toUpperCase())}
+                className="input mono"
+                maxLength={10}
+                style={{
+                  letterSpacing: inviteCodeInput ? '0.15em' : 'normal',
+                  fontSize: inviteCodeInput ? '16px' : '13px',
+                  textAlign: 'center',
+                  minHeight: '44px',
+                  padding: '8px 12px',
+                }}
+                required
+                disabled={joiningSection}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ flex: 1 }}
+                onClick={() => { setShowJoinSectionDialog(false); setInviteCodeInput(''); }}
+                disabled={joiningSection}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                disabled={joiningSection || !inviteCodeInput.trim()}
+              >
+                {joiningSection ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Join
+              </button>
+            </div>
+          </form>
+        </BottomSheet>
       )}
     </div>
   );

@@ -4,11 +4,12 @@ import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { 
   Users, Check, Bell, 
   BookOpen, Clock, Loader2,
   Trash2, Edit3, MessageSquare, Send,
-  Grid, List, MoreVertical, Search, Plus
+  Grid, List, MoreVertical, Search, Plus, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -57,6 +58,11 @@ export default function TeacherDashboardPage() {
   // Course linking drawer state
   const [showLinkSubjectsDrawer, setShowLinkSubjectsDrawer] = useState(false);
 
+  // Join Section Dialog state
+  const [showJoinSectionDialog, setShowJoinSectionDialog] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [joiningSection, setJoiningSection] = useState(false);
+
   // 1. Fetch sections and subjects taught by this teacher
   const { data: mappings = EMPTY_ARRAY, isLoading: isMappingsLoading } = useQuery<SectionTeacherRow[]>({
     queryKey: ['teacher-mappings', authUser?.id],
@@ -92,6 +98,36 @@ export default function TeacherDashboardPage() {
     return Object.values(distinct);
   }, [mappings]);
 
+  const classesBySection = useMemo(() => {
+    const groups: Record<string, { 
+      sectionId: string; 
+      sectionName: string; 
+      subjects: Array<{ id: string; name: string; code: string }> 
+    }> = {};
+
+    mappings.forEach(m => {
+      if (!m.section_id || !m.sections) return;
+      if (!groups[m.section_id]) {
+        groups[m.section_id] = {
+          sectionId: m.section_id,
+          sectionName: m.sections.name,
+          subjects: []
+        };
+      }
+      if (m.subject_id && m.subjects) {
+        if (!groups[m.section_id].subjects.some(s => s.id === m.subject_id)) {
+          groups[m.section_id].subjects.push({
+            id: m.subject_id,
+            name: m.subjects.name,
+            code: m.subjects.code
+          });
+        }
+      }
+    });
+
+    return Object.values(groups);
+  }, [mappings]);
+
   const selectedSectionId = useAppStore(s => s.selectedSectionId) || '';
   const selectedSubjectId = useAppStore(s => s.selectedSubjectId) || '';
   const setSelectedSectionId = useAppStore(s => s.setSelectedSectionId)!;
@@ -102,7 +138,7 @@ export default function TeacherDashboardPage() {
     if (sections.length > 0 && !selectedSectionId) {
       setSelectedSectionId(sections[0].id);
     }
-  }, [sections, selectedSectionId]);
+  }, [sections, selectedSectionId, setSelectedSectionId]);
 
   const subjectsForSelectedSection = useMemo(() => {
     if (!selectedSectionId) return EMPTY_ARRAY;
@@ -127,7 +163,7 @@ export default function TeacherDashboardPage() {
     } else if (subjectsForSelectedSection.length > 0 && !subjectsForSelectedSection.find(s => s.id === selectedSubjectId)) {
       setSelectedSubjectId(subjectsForSelectedSection[0].id);
     }
-  }, [subjectsForSelectedSection, selectedSubjectId]);
+  }, [subjectsForSelectedSection, selectedSubjectId, setSelectedSubjectId]);
 
   const selectedSubjectCode = useMemo(() => {
     return subjectsForSelectedSection.find(s => s.id === selectedSubjectId)?.code || '';
@@ -136,6 +172,10 @@ export default function TeacherDashboardPage() {
   const selectedSubjectName = useMemo(() => {
     return subjectsForSelectedSection.find(s => s.id === selectedSubjectId)?.name || '';
   }, [subjectsForSelectedSection, selectedSubjectId]);
+
+  const selectedSectionName = useMemo(() => {
+    return sections.find(s => s.id === selectedSectionId)?.name || '';
+  }, [sections, selectedSectionId]);
 
   // Fetch timetable slots for standard slot mapping
   const { data: schedule = {} } = useSchedule();
@@ -431,6 +471,53 @@ export default function TeacherDashboardPage() {
     );
     setAlertOpen(false);
   };
+
+  const handleJoinSection = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inviteCodeInput.trim() || inviteCodeInput.trim().length < 6) {
+      toast.error('Enter a valid invite code (min 6 characters)');
+      return;
+    }
+
+    setJoiningSection(true);
+    try {
+      const code = inviteCodeInput.trim().toUpperCase();
+
+      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+        toast.success('Joined section successfully! [Demo]');
+        setShowJoinSectionDialog(false);
+        setInviteCodeInput('');
+        setSelectedSectionId('demo-section');
+        setShowLinkSubjectsDrawer(true);
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('join_section_as_teacher', {
+        invite: code,
+      });
+
+      if (error) throw error;
+
+      toast.success('Joined section successfully! 👨‍🏫');
+      
+      await qc.invalidateQueries({ queryKey: ['teacher-mappings', authUser?.id] });
+      
+      if (data) {
+        const newSectionId = (data as any).section_id;
+        setSelectedSectionId(newSectionId);
+        setShowJoinSectionDialog(false);
+        setInviteCodeInput('');
+        setTimeout(() => {
+          setShowLinkSubjectsDrawer(true);
+        }, 300);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to join section');
+    } finally {
+      setJoiningSection(false);
+    }
+  };
+
 const presentCount = useMemo(() => {
     return Object.values(localMarkings).filter(v => v === 'present').length;
   }, [localMarkings]);
@@ -522,52 +609,148 @@ const presentCount = useMemo(() => {
 
         {/* Global Section & Course Selector */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {sections.length > 0 && (
-            <select
-              value={selectedSectionId}
-              onChange={e => setSelectedSectionId(e.target.value)}
-              className="input mono"
-              style={{
-                padding: '4px 10px',
-                height: 32,
-                fontSize: 12,
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-default)',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                width: 'auto',
-                minWidth: 70
-              }}
-            >
-              {sections.map(sec => (
-                <option key={sec.id} value={sec.id}>{sec.name}</option>
-              ))}
-            </select>
-          )}
+          {classesBySection.length > 0 ? (
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  className="filter-tab"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '0 12px',
+                    color: 'var(--text-primary)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    height: '32px',
+                    userSelect: 'none',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <span>
+                    {selectedSubjectCode ? `${selectedSubjectCode} (${selectedSectionName})` : 'Select Class'}
+                  </span>
+                  <ChevronDown size={13} style={{ opacity: 0.6 }} />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={6}
+                  className="dropdown-content animate-slide-up no-scrollbar"
+                  style={{ zIndex: 10000, minWidth: '220px', maxHeight: '350px', overflowY: 'auto' }}
+                >
+                  {classesBySection.map((group, gIdx) => (
+                    <div key={group.sectionId}>
+                      <div
+                        className="t-mono-sm"
+                        style={{
+                          padding: '6px 10px',
+                          color: 'var(--text-muted)',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          letterSpacing: '0.05em',
+                          borderTop: gIdx > 0 ? '1px solid var(--border-default)' : 'none',
+                          marginTop: gIdx > 0 ? '4px' : '0',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Section {group.sectionName}
+                      </div>
 
-          {subjectsForSelectedSection.length > 0 && (
-            <select
-              value={selectedSubjectId}
-              onChange={e => setSelectedSubjectId(e.target.value)}
-              className="input mono"
+                      {group.subjects.length === 0 ? (
+                        <DropdownMenu.Item
+                          disabled
+                          className="dropdown-item"
+                          style={{
+                            color: 'var(--text-muted)',
+                            fontStyle: 'italic',
+                            cursor: 'default',
+                            opacity: 0.7,
+                            fontSize: '12px',
+                          }}
+                        >
+                          No subjects linked
+                        </DropdownMenu.Item>
+                      ) : (
+                        group.subjects.map(sub => {
+                          const isSelected = selectedSectionId === group.sectionId && selectedSubjectId === sub.id;
+                          return (
+                            <DropdownMenu.Item
+                              key={sub.id}
+                              onClick={() => {
+                                setSelectedSectionId(group.sectionId);
+                                setSelectedSubjectId(sub.id);
+                                toast.success(`Switched to ${sub.code} in Section ${group.sectionName}`);
+                              }}
+                              className="dropdown-item"
+                              style={{
+                                color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                background: isSelected ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                                fontWeight: isSelected ? 600 : 400,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 8,
+                                fontSize: '12px',
+                              }}
+                            >
+                              <span>{sub.code} - {sub.name}</span>
+                              {isSelected && <Check size={13} />}
+                            </DropdownMenu.Item>
+                          );
+                        })
+                      )}
+                    </div>
+                  ))}
+
+                  <DropdownMenu.Separator style={{ height: 1, background: 'var(--border-default)', margin: '4px 0' }} />
+                  
+                  <DropdownMenu.Item
+                    onClick={() => setShowJoinSectionDialog(true)}
+                    className="dropdown-item"
+                    style={{
+                      color: 'var(--accent-primary)',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: '12px',
+                    }}
+                  >
+                    <Plus size={13} />
+                    <span>Join Another Section</span>
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          ) : (
+            <button
+              onClick={() => setShowJoinSectionDialog(true)}
+              className="filter-tab"
               style={{
-                padding: '4px 10px',
-                height: 32,
-                fontSize: 12,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'var(--accent-primary-glow)',
+                border: '1px solid rgba(74, 158, 255, 0.3)',
                 borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-default)',
-                color: 'var(--text-primary)',
+                padding: '0 12px',
+                color: 'var(--accent-primary)',
+                fontSize: '12px',
+                fontWeight: 600,
                 cursor: 'pointer',
-                width: 'auto',
-                minWidth: 90
+                height: '32px',
+                userSelect: 'none',
               }}
             >
-              {subjectsForSelectedSection.map(subj => (
-                <option key={subj.id} value={subj.id}>{subj.code}</option>
-              ))}
-            </select>
+              <Plus size={13} />
+              <span>Join Section</span>
+            </button>
           )}
         </div>
       </header>
@@ -596,13 +779,27 @@ const presentCount = useMemo(() => {
             <p className="t-body" style={{ color: 'var(--text-secondary)', maxWidth: 320, margin: '0 auto 24px', lineHeight: 1.5 }}>
               You haven't linked any subjects to your account yet. Let's link your courses to start marking attendance.
             </p>
-            <button
-              onClick={() => setShowLinkSubjectsDrawer(true)}
-              className="btn-primary"
-              style={{ padding: '12px 24px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8 }}
-            >
-              <Plus size={16} /> Link Subject
-            </button>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {authUser?.sectionId && (
+                <button
+                  onClick={() => {
+                    if (!selectedSectionId && authUser.sectionId) setSelectedSectionId(authUser.sectionId);
+                    setShowLinkSubjectsDrawer(true);
+                  }}
+                  className="btn-primary"
+                  style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  <Plus size={16} /> Link Subjects
+                </button>
+              )}
+              <button
+                onClick={() => setShowJoinSectionDialog(true)}
+                className="btn-secondary"
+                style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 8 }}
+              >
+                <Plus size={16} /> Join Section
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -1701,6 +1898,66 @@ const presentCount = useMemo(() => {
           }}
         />
       )}
+      {/* --- 5. Join Section Drawer --- */}
+      <BottomSheet
+        open={showJoinSectionDialog}
+        onClose={() => { setShowJoinSectionDialog(false); setInviteCodeInput(''); }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={15} style={{ color: 'var(--accent-primary)' }} />
+            <span className="t-subtitle" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>Join New Section Hub</span>
+          </div>
+        }
+      >
+        <form onSubmit={handleJoinSection} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+            Enter the Teacher Invite Code provided by the Class Representative (CR) of the section you want to join.
+          </p>
+
+          <div>
+            <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
+              Teacher Invite Code
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. T-P2WXYZ"
+              value={inviteCodeInput}
+              onChange={e => setInviteCodeInput(e.target.value.toUpperCase())}
+              className="input mono"
+              maxLength={10}
+              style={{
+                letterSpacing: inviteCodeInput ? '0.15em' : 'normal',
+                fontSize: inviteCodeInput ? '16px' : '13px',
+                textAlign: 'center',
+                minHeight: '44px',
+                padding: '8px 12px',
+              }}
+              required
+              disabled={joiningSection}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ flex: 1 }}
+              onClick={() => { setShowJoinSectionDialog(false); setInviteCodeInput(''); }}
+              disabled={joiningSection}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              disabled={joiningSection || !inviteCodeInput.trim()}
+            >
+              {joiningSection ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Join
+            </button>
+          </div>
+        </form>
+      </BottomSheet>
 
       <NavBar />
     </div>
