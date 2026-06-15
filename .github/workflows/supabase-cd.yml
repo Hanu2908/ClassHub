@@ -9,6 +9,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_AUTH_GOOGLE_CLIENT_ID: "dummy-client-id"
+      SUPABASE_AUTH_GOOGLE_SECRET: "dummy-secret"
 
     steps:
       - name: Checkout Repository

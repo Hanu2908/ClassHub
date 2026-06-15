@@ -28,6 +28,4 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.send-custom-notification]
-enabled = true
 verify_jwt = true
-entrypoint = "./functions/send-custom-notification/index.ts"
