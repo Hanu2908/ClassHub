@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, BookOpen, Award, BarChart3, ChevronDown, Target, Loader2 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { useGPAStore } from '../../store/gpaStore';
+import { supabase } from '../../lib/supabase';
 import {
   BRANCHES, marksToGrade,
-  computeSGPA, computeCGPA, computePercentage,
 } from '../../lib/gpaData';
 import type { Branch } from '../../lib/gpaData';
 
@@ -184,14 +184,44 @@ export default function GPACalculatorPage() {
   const {
     activeBranch, setActiveBranch,
     activeSemester, setActiveSemester,
-    semesters, manualHistory,
+    semesters,
+    useRelativeGrading, setUseRelativeGrading,
+    setRelativeStats, getSGPA, getCGPA, getPercentage,
   } = useGPAStore();
 
   const [activeTab, setActiveTab] = useState<TabId>('calc');
 
-  const sgpa = useMemo(() => computeSGPA(semesters[activeSemester]?.subjects ?? []), [semesters, activeSemester]);
-  const cgpa = useMemo(() => computeCGPA(semesters, manualHistory), [semesters, manualHistory]);
-  const pct  = useMemo(() => computePercentage(cgpa), [cgpa]);
+  // Load relative GPA statistics for the section on mount
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const { data, error } = await (supabase as any).rpc('get_section_gpa_stats');
+        if (error) {
+          console.error('Failed to load relative GPA stats:', error);
+        } else if (data) {
+          const statsMap: Record<number, Record<string, any>> = {};
+          data.forEach((row: any) => {
+            const sem = row.semester_num;
+            if (!statsMap[sem]) statsMap[sem] = {};
+            statsMap[sem][row.subject_name] = {
+              mean: Number(row.mean_marks),
+              stddev: Number(row.stddev_marks),
+              total: row.total_count
+            };
+          });
+          setRelativeStats(statsMap);
+        }
+      } catch (err) {
+        console.error('Error fetching relative GPA stats:', err);
+      }
+    };
+
+    loadStats();
+  }, [setRelativeStats]);
+
+  const sgpa = getSGPA(activeSemester);
+  const cgpa = getCGPA();
+  const pct  = getPercentage();
 
   const getSemStatus = useCallback((sem: number) => {
     const subs = semesters[sem]?.subjects ?? [];
@@ -250,11 +280,40 @@ export default function GPACalculatorPage() {
         {/* CGPAHero concentric rings */}
         <CGPAHero cgpa={cgpa} sgpa={sgpa} pct={pct} isPartial={getSemStatus(activeSemester) === 'partial'} />
 
+        {/* Relative Grading Toggle Card */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)',
+          padding: '10px 14px', borderRadius: 'var(--radius-lg)', gap: 12
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Relative Grading Mode</span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>Dynamic course curves using section aggregates</span>
+          </div>
+          <button 
+            onClick={() => setUseRelativeGrading(!useRelativeGrading)}
+            style={{
+              width: 34, height: 18, borderRadius: 9,
+              background: useRelativeGrading ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)',
+              border: 'none', position: 'relative', cursor: 'pointer',
+              transition: 'background 0.2s', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0
+            }}
+            aria-label="Toggle relative grading mode"
+          >
+            <div style={{
+              width: 12, height: 12, borderRadius: '50%',
+              background: '#fff', position: 'absolute',
+              left: useRelativeGrading ? 19 : 3,
+              transition: 'left 0.2s'
+            }} />
+          </button>
+        </div>
+
         {/* Semester nav switcher */}
         <GlassCard style={{ padding: '10px 12px' }}>
           <div style={{ display: 'flex', gap: 4, overflowX: 'auto' }} className="hide-scrollbar">
             {[1,2,3,4,5,6,7,8].map(sem => {
-              const semSgpa  = computeSGPA(semesters[sem]?.subjects ?? []);
+              const semSgpa  = getSGPA(sem);
               const status   = getSemStatus(sem);
               const isActive = activeSemester === sem;
               return (

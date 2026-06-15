@@ -36,6 +36,49 @@ export function marksToColor(marks: number | null): string {
   return marksToGrade(marks).color;
 }
 
+export interface SubjectStats {
+  mean: number;
+  stddev: number;
+  total: number;
+}
+
+/** Returns the relative grade entry based on class stats (Z-score mapping). Fallbacks to absolute if stats is insufficient. */
+export function marksToGradeRelative(
+  marks: number | null,
+  stats?: SubjectStats
+): GradeEntry {
+  const fallback = marksToGrade(marks);
+  if (marks === null || !stats || stats.total < 5) {
+    return fallback;
+  }
+
+  // Enforce absolute fail limit: must score >= 40 to pass
+  if (marks < 40) {
+    return GRADE_SCALE[GRADE_SCALE.length - 1]; // F
+  }
+
+  const { mean, stddev } = stats;
+  if (stddev === 0) return fallback;
+
+  const z = (marks - mean) / stddev;
+
+  // Standard RTU/SKIT Relative Grading Z-Score mapping:
+  // z >= 1.5   => O (10 pts)
+  // z >= 1.0   => A+ (9 pts)
+  // z >= 0.5   => A (8 pts)
+  // z >= 0.0   => B+ (7 pts)
+  // z >= -0.5  => B (6 pts)
+  // z >= -1.0  => C (5 pts)
+  // z < -1.0   => P (4 pts) (marks >= 40 is guaranteed here)
+  if (z >= 1.5)  return GRADE_SCALE[0]; // O
+  if (z >= 1.0)  return GRADE_SCALE[1]; // A+
+  if (z >= 0.5)  return GRADE_SCALE[2]; // A
+  if (z >= 0.0)  return GRADE_SCALE[3]; // B+
+  if (z >= -0.5) return GRADE_SCALE[4]; // B
+  if (z >= -1.0) return GRADE_SCALE[5]; // C
+  return GRADE_SCALE[6]; // P
+}
+
 // ── Subject row type ──────────────────────────────────────────────────────────
 export interface SubjectRow {
   id:      string;
@@ -45,17 +88,25 @@ export interface SubjectRow {
 }
 
 // ── Computation helpers ───────────────────────────────────────────────────────
-export function computeSGPA(subjects: SubjectRow[]): number {
+export function computeSGPA(
+  subjects: SubjectRow[],
+  relativeStats?: Record<string, SubjectStats>
+): number {
   const entered = subjects.filter(s => s.marks !== null && s.credits > 0);
   if (entered.length === 0) return 0;
-  const totalWeighted = entered.reduce((acc, s) => acc + s.credits * marksToPoint(s.marks), 0);
+  const totalWeighted = entered.reduce((acc, s) => {
+    const stats = relativeStats?.[s.name];
+    const gp = stats ? marksToGradeRelative(s.marks, stats).point : marksToPoint(s.marks);
+    return acc + s.credits * gp;
+  }, 0);
   const totalCredits  = entered.reduce((acc, s) => acc + s.credits, 0);
   return totalCredits > 0 ? parseFloat((totalWeighted / totalCredits).toFixed(2)) : 0;
 }
 
 export function computeCGPA(
   semesterData: { [sem: number]: { subjects: SubjectRow[]; locked: boolean } },
-  manualHistory: { [sem: number]: number }
+  manualHistory: { [sem: number]: number },
+  allSemestersRelativeStats?: Record<number, Record<string, SubjectStats>>
 ): number {
   let totalWeighted = 0;
   let totalCredits  = 0;
@@ -64,7 +115,12 @@ export function computeCGPA(
     const entered = (semesterData[sem]?.subjects ?? []).filter(s => s.marks !== null && s.credits > 0);
 
     if (entered.length > 0) {
-      const semWeighted = entered.reduce((acc, s) => acc + s.credits * marksToPoint(s.marks), 0);
+      const stats = allSemestersRelativeStats?.[sem];
+      const semWeighted = entered.reduce((acc, s) => {
+        const subStats = stats?.[s.name];
+        const gp = subStats ? marksToGradeRelative(s.marks, subStats).point : marksToPoint(s.marks);
+        return acc + s.credits * gp;
+      }, 0);
       const semCredits = entered.reduce((acc, s) => acc + s.credits, 0);
       totalWeighted += semWeighted;
       totalCredits  += semCredits;

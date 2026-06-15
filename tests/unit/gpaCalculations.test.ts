@@ -4,7 +4,9 @@ import {
   computeSGPA, 
   computeCGPA, 
   computePercentage,
-  type SubjectRow 
+  marksToGradeRelative,
+  type SubjectRow,
+  type SubjectStats
 } from '../../src/lib/gpaData';
 
 describe('GPA Calculation Logic (SKIT Autonomous Scheme)', () => {
@@ -164,6 +166,68 @@ describe('GPA Calculation Logic (SKIT Autonomous Scheme)', () => {
     it('should convert CGPA to percentage using CGPA * 10 standard', () => {
       expect(computePercentage(8.33)).toBe(83.30);
       expect(computePercentage(9.5)).toBe(95.0);
+    });
+  });
+
+  describe('7. Relative Grading (Z-Score & Fallbacks)', () => {
+    const stats: SubjectStats = { mean: 65, stddev: 10, total: 10 };
+
+    it('should map marks to grades based on standard deviation and mean (Z-scores)', () => {
+      // z = (marks - 65) / 10
+      // marks = 80 => z = 1.5 => O (10 pts)
+      // marks = 75 => z = 1.0 => A+ (9 pts)
+      // marks = 70 => z = 0.5 => A (8 pts)
+      // marks = 65 => z = 0.0 => B+ (7 pts)
+      // marks = 60 => z = -0.5 => B (6 pts)
+      // marks = 55 => z = -1.0 => C (5 pts)
+      // marks = 50 => z = -1.5 => P (4 pts)
+      expect(marksToGradeRelative(80, stats).label).toBe('O');
+      expect(marksToGradeRelative(75, stats).label).toBe('A+');
+      expect(marksToGradeRelative(70, stats).label).toBe('A');
+      expect(marksToGradeRelative(65, stats).label).toBe('B+');
+      expect(marksToGradeRelative(60, stats).label).toBe('B');
+      expect(marksToGradeRelative(55, stats).label).toBe('C');
+      expect(marksToGradeRelative(50, stats).label).toBe('P');
+    });
+
+    it('should always fail if marks are below 40 absolute limit', () => {
+      // Even if Z-score is high or stats mean is very low, mark < 40 must fail.
+      const lowMeanStats: SubjectStats = { mean: 35, stddev: 5, total: 10 };
+      // z = (39 - 35)/5 = 0.8 => normally would be A, but marks < 40 => F
+      expect(marksToGradeRelative(39, lowMeanStats).label).toBe('F');
+      expect(marksToGradeRelative(39, lowMeanStats).point).toBe(0);
+
+      // 40 should pass (z = 1.0 => A+)
+      expect(marksToGradeRelative(40, lowMeanStats).label).toBe('A+');
+      expect(marksToGradeRelative(40, lowMeanStats).point).toBe(9);
+    });
+
+    it('should fallback to absolute grading if total count is < 5', () => {
+      const smallStats: SubjectStats = { mean: 80, stddev: 5, total: 4 };
+      // fallback to absolute: 80 marks => O (90+) is not met, 80 is A+ (80-89)
+      expect(marksToGradeRelative(80, smallStats).label).toBe('A+');
+    });
+
+    it('should fallback to absolute grading if stddev is 0', () => {
+      const zeroStddevStats: SubjectStats = { mean: 65, stddev: 0, total: 10 };
+      // fallback to absolute: 65 marks => B+ (60-69)
+      expect(marksToGradeRelative(65, zeroStddevStats).label).toBe('B+');
+    });
+
+    it('should compute relative SGPA and CGPA correctly', () => {
+      const subjects: SubjectRow[] = [
+        { id: '1', name: 'Maths', credits: 4, marks: 80 }, // z = 1.5 => O (10 pts)
+        { id: '2', name: 'Physics', credits: 3, marks: 60 }, // z = -0.5 => B (6 pts)
+      ];
+      const relativeStats = {
+        'Maths': { mean: 65, stddev: 10, total: 10 },
+        'Physics': { mean: 65, stddev: 10, total: 10 },
+      };
+
+      // weighted points: (4 * 10) + (3 * 6) = 40 + 18 = 58
+      // total credits: 7
+      // expected SGPA: 58 / 7 = 8.29
+      expect(computeSGPA(subjects, relativeStats)).toBe(8.29);
     });
   });
 });

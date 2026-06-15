@@ -8,7 +8,9 @@ import {
   marksToColor,
   marksToPoint,
   computeSGPA,
+  marksToGradeRelative,
 } from '../../../lib/gpaData';
+import type { SubjectStats } from '../../../lib/gpaData';
 import { toast } from 'sonner';
 
 const T = {
@@ -52,11 +54,11 @@ function useAnimatedNumber(target: number, duration = 400): number {
   return v;
 }
 
-function GradeBadge({ marks }: { marks: number | null }) {
+function GradeBadge({ marks, stats }: { marks: number | null; stats?: SubjectStats }) {
   if (marks === null) return (
     <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-mono)', color: N.text, padding: '3px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, whiteSpace: 'nowrap' }}>—</span>
   );
-  const g = marksToGrade(marks);
+  const g = marksToGradeRelative(marks, stats);
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-mono)', color: g.color, padding: '3px 8px', background: `${g.color}18`, border: `1px solid ${g.color}44`, borderRadius: 6, whiteSpace: 'nowrap', transition: 'all 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: g.color, flexShrink: 0, boxShadow: `0 0 4px ${g.color}` }} />
@@ -360,10 +362,13 @@ interface CalculatorTabProps {
 }
 
 export default function CalculatorTab({ sem }: CalculatorTabProps) {
-  const { semesters, addSubject, updateSubject, removeSubject, resetSemester, lockSemester } = useGPAStore();
+  const {
+    semesters, addSubject, updateSubject, removeSubject, resetSemester, lockSemester,
+    useRelativeGrading, relativeStats
+  } = useGPAStore();
   const { subjects = [], locked = false } = semesters[sem] ?? {};
   
-  const sgpa         = useMemo(() => computeSGPA(subjects), [subjects]);
+  const sgpa         = useMemo(() => computeSGPA(subjects, useRelativeGrading ? relativeStats[sem] : undefined), [subjects, useRelativeGrading, relativeStats, sem]);
   const totalCredits = useMemo(() => subjects.filter(s => s.marks !== null).reduce((a, s) => a + s.credits, 0), [subjects]);
   const animSGPA     = useAnimatedNumber(sgpa);
   
@@ -938,9 +943,11 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         {subjects.length === 0 ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: N.text, fontSize: 13 }}>No subjects. Add one below.</div>
         ) : subjects.map((sub, idx) => {
-          const gp = sub.marks !== null ? marksToPoint(sub.marks) : null;
+          const stats = useRelativeGrading ? relativeStats[sem]?.[sub.name] : undefined;
+          const gp = sub.marks !== null ? (stats ? marksToGradeRelative(sub.marks, stats).point : marksToPoint(sub.marks)) : null;
+          const gradeColor = sub.marks !== null ? (stats ? marksToGradeRelative(sub.marks, stats).color : marksToGrade(sub.marks).color) : 'transparent';
           return (
-            <div key={sub.id} style={{ borderBottom: idx < subjects.length - 1 ? `1px solid ${N.border}` : 'none', background: sub.marks !== null ? `${marksToGrade(sub.marks).color}07` : 'transparent', transition: 'background 0.25s' }}>
+            <div key={sub.id} style={{ borderBottom: idx < subjects.length - 1 ? `1px solid ${N.border}` : 'none', background: sub.marks !== null ? `${gradeColor}07` : 'transparent', transition: 'background 0.25s' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 40px 68px 48px 18px', gap: 6, padding: '9px 14px', alignItems: 'center' }}>
                 <div>
                   <RowSubjectNameInput
@@ -960,7 +967,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
                 />
                 <MarksInput value={sub.marks} onChange={v => updateSubject(sem, sub.id, { marks: v })} disabled={locked} subjectName={sub.name} subjectIndex={idx} />
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                  <GradeBadge marks={sub.marks} />
+                  <GradeBadge marks={sub.marks} stats={stats} />
                   {gp !== null && <span style={{ fontSize: 8, color: N.text, fontFamily: 'var(--font-mono)' }}>{gp}pt</span>}
                 </div>
                 <button onClick={() => removeSubject(sem, sub.id)} disabled={locked}

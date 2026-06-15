@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { SUBJECTS_DATA, computeSGPA, computeCGPA, computePercentage, getTotalCredits } from '../lib/gpaData';
-import type { Branch, SubjectRow } from '../lib/gpaData';
+import { SUBJECTS_DATA, computeSGPA, computeCGPA, computePercentage, getTotalCredits, marksToGradeRelative, marksToPoint } from '../lib/gpaData';
+import type { Branch, SubjectRow, SubjectStats } from '../lib/gpaData';
 
 // ── State shape ───────────────────────────────────────────────────────────────
 interface SemesterData {
@@ -15,6 +15,8 @@ interface GPAState {
   semesters:      { [sem: number]: SemesterData };
   manualHistory:  { [sem: number]: number }; // user-entered previous sem CGPA
   targetCgpa:     number | null; // User's goal
+  useRelativeGrading: boolean; // Toggle relative grading
+  relativeStats:      Record<number, Record<string, SubjectStats>>; // Section stats per sem
 
   // Actions
   setActiveBranch:   (branch: Branch) => void;
@@ -26,6 +28,8 @@ interface GPAState {
   lockSemester:      (sem: number, locked: boolean) => void;
   setManualHistory:  (sem: number, cgpa: number | null) => void;
   setTargetCgpa:     (cgpa: number | null) => void;
+  setUseRelativeGrading: (val: boolean) => void;
+  setRelativeStats:  (stats: Record<number, Record<string, SubjectStats>>) => void;
   hydrateState:      (state: Partial<GPAState>) => void;
 
   // Computed selectors
@@ -59,6 +63,8 @@ export const useGPAStore = create<GPAState>()(
       },
       manualHistory: {},
       targetCgpa: null,
+      useRelativeGrading: true, // Default to true as requested
+      relativeStats: {},
 
       setActiveBranch: (branch) => {
         const existing = get().semesters;
@@ -185,16 +191,27 @@ export const useGPAStore = create<GPAState>()(
 
       setTargetCgpa: (cgpa) => set({ targetCgpa: cgpa }),
 
+      setUseRelativeGrading: (val) => set({ useRelativeGrading: val }),
+
+      setRelativeStats: (stats) => set({ relativeStats: stats }),
+
       hydrateState: (newState) => set((state) => ({ ...state, ...newState })),
 
-      getSGPA: (sem) => computeSGPA(get().semesters[sem]?.subjects ?? []),
+      getSGPA: (sem) => computeSGPA(
+        get().semesters[sem]?.subjects ?? [],
+        get().useRelativeGrading ? get().relativeStats[sem] : undefined
+      ),
 
-      getCGPA: () => computeCGPA(get().semesters, get().manualHistory),
+      getCGPA: () => computeCGPA(
+        get().semesters,
+        get().manualHistory,
+        get().useRelativeGrading ? get().relativeStats : undefined
+      ),
 
       getPercentage: () => computePercentage(get().getCGPA()),
 
       getAllSemesterSGPAs: () => {
-        const { semesters, manualHistory } = get();
+        const { semesters, manualHistory, useRelativeGrading, relativeStats } = get();
         const result: { sem: number; sgpa: number; cgpa: number }[] = [];
         let runningWeighted = 0;
         let runningCredits  = 0;
@@ -205,9 +222,18 @@ export const useGPAStore = create<GPAState>()(
           const hasManual = manualHistory[sem] !== undefined;
 
           if (entered.length > 0) {
-            const sgpa    = computeSGPA(entered);
+            const semStats = useRelativeGrading ? relativeStats[sem] : undefined;
+            const sgpa    = computeSGPA(entered, semStats);
             const credits = entered.reduce((acc, s) => acc + s.credits, 0);
-            runningWeighted += sgpa * credits;
+            
+            // Calculate weighted points using relative or absolute points
+            const semWeighted = entered.reduce((acc, s) => {
+              const subStats = semStats?.[s.name];
+              const gp = subStats ? marksToGradeRelative(s.marks, subStats).point : marksToPoint(s.marks);
+              return acc + s.credits * gp;
+            }, 0);
+
+            runningWeighted += semWeighted;
             runningCredits  += credits;
             result.push({
               sem, sgpa,
@@ -231,13 +257,14 @@ export const useGPAStore = create<GPAState>()(
         getTotalCredits(get().semesters[sem]?.subjects ?? []),
     }),
     {
-      name: 'classhub-gpa-v2', // bumped version since SubjectRow shape changed
+      name: 'classhub-gpa-v3', // bumped version since relative grading was added
       partialize: (state) => ({
         activeBranch:   state.activeBranch,
         activeSemester: state.activeSemester,
         semesters:      state.semesters,
         manualHistory:  state.manualHistory,
         targetCgpa:     state.targetCgpa,
+        useRelativeGrading: state.useRelativeGrading,
       }),
     }
   )
