@@ -3,6 +3,7 @@ import { getFunctionContext, requireCr } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWebPush } from "../_shared/push.ts";
 import { processBatched } from "../_shared/batch.ts";
+import { isRateLimited } from "../_shared/rateLimit.ts";
 
 // ── Main handler: Send push notifications when a new poll is created ──
 
@@ -16,6 +17,15 @@ Deno.serve(async (req: Request) => {
 
     const ctx = getFunctionContext(req);
     const { serviceClient, profile, user } = await requireCr(ctx);
+
+    // Enforce rate limiting: max 10 requests per 60 seconds per user
+    const isLimited = await isRateLimited(user.id, 10, 60);
+    if (isLimited) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Too many requests. Please wait a minute before trying again." }),
+        { headers: { ...headers, "Content-Type": "application/json" }, status: 429 }
+      );
+    }
 
     // Fetch the poll — must belong to CR's section
     const { data: poll, error: pollError } = await serviceClient

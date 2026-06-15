@@ -324,6 +324,13 @@ to their section. Tags enable member discovery via tap-to-filter.
 expires_at > NOW()`), consistent with announcement expiry pattern.
 **Date:** June 2026
 
+## ADR-021 — Authentication Security, Rate Limiting, and API Key Management
+**Decision:**
+1. **Email Verification**: Do not enable standard email/password signup or custom verification loops. Leverage Google OAuth as the sole identity provider; Google handles email verification implicitly. Reject any email domain not ending in `@skit.ac.in` immediately on both frontend and database layers.
+2. **Rate Limiting**: Enforce IP-level and account-level rate limits natively through the Supabase project dashboard (Settings -> Auth -> Rate Limits) to restrict signup/sign-in attempts, email sending, SMS sending, and metadata changes per IP.
+3. **API Key Security**: Ensure only the public `VITE_SUPABASE_ANON_KEY` is loaded in the frontend bundle. Enforce strict PostgreSQL Row Level Security (RLS) on all tables to prevent public anon key abuse. Keep private keys (like the `SUPABASE_SERVICE_ROLE_KEY` and VAPID private key) strictly server-side in Supabase Edge Functions. Route any future third-party integrations (such as AI API keys) through secure Supabase Edge Functions.
+**Date:** June 2026
+
 ---
 
 ## Change Log
@@ -333,3 +340,4 @@ expires_at > NOW()`), consistent with announcement expiry pattern.
 | 1.1 | ADR-017 (deferred), ADR-018 (Multi-CR) added | Himanshu Saini |
 | 1.2 | ADR-019 (Android PWA Share Inbox) added | Himanshu Saini |
 | 1.3 | ADR-004 removed (obsolete), ADR-020 (Profile Tags) added | Himanshu Saini |
+| 1.4 | ADR-021 (Auth Security & Rate Limiting) added | Himanshu Saini |

@@ -3,6 +3,7 @@ import { getFunctionContext, requireCr } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWebPush } from "../_shared/push.ts";
 import { processBatched } from "../_shared/batch.ts";
+import { isRateLimited } from "../_shared/rateLimit.ts";
 
 // ── Main handler ──
 
@@ -16,6 +17,15 @@ Deno.serve(async (req) => {
 
     const ctx = getFunctionContext(req);
     const { serviceClient, profile, user } = await requireCr(ctx);
+
+    // Enforce rate limiting: max 10 requests per 60 seconds per user
+    const isLimited = await isRateLimited(user.id, 10, 60);
+    if (isLimited) {
+      return Response.json(
+        { error: "Too many requests. Please wait a minute before trying again." },
+        { status: 429, headers }
+      );
+    }
 
     // Fetch announcement — must be in CR's section and critical
     const { data: announcement, error: announcementError } = await serviceClient
