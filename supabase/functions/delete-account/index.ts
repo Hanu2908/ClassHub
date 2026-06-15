@@ -24,8 +24,6 @@ Deno.serve(async (req: Request) => {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Origin": allowed.includes(origin)
       ? origin
-      : allowed.length === 1
-      ? allowed[0]
       : "*", // default to wildcard — JWT is the real security gate
   };
 

@@ -16,11 +16,11 @@ export function getCorsHeaders(req: Request) {
     return headers;
   }
 
-  // If origin matches configured list, echo it; otherwise fall back to the first allowed origin
+  // If origin matches configured list, echo it; otherwise fall back to wildcard
   if (allowed.includes(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
-  } else if (allowed.length === 1) {
-    headers["Access-Control-Allow-Origin"] = allowed[0];
+  } else {
+    headers["Access-Control-Allow-Origin"] = "*";
   }
 
   return headers;
