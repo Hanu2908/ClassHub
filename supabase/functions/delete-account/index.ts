@@ -36,7 +36,6 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const jwt = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
 
     if (!supabaseUrl || !serviceRoleKey || !jwt) {
@@ -46,20 +45,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify JWT — use anon client so RLS applies, proving token is valid
-    const anonClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    });
-    const { data: authData, error: authError } = await anonClient.auth.getUser();
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Verify JWT on the service client instance to ensure token is valid and extract user ID
+    const { data: authData, error: authError } = await serviceClient.auth.getUser(jwt);
     if (authError || !authData.user) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Unauthorized", detail: authError?.message }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const userId = authData.user.id;
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
     // Step 1a: Null out attachments.uploaded_by (ON DELETE RESTRICT → must clear manually)
     const { error: attachErr } = await serviceClient
@@ -81,6 +78,15 @@ Deno.serve(async (req: Request) => {
       .from("cr_transfer_log")
       .update({ target_id: null })
       .eq("target_id", userId);
+
+    // Step 1c: Delete mass_bunks created by the user (avoids RESTRICT constraints if migration not yet applied)
+    const { error: mbErr } = await serviceClient
+      .from("mass_bunks")
+      .delete()
+      .eq("created_by", userId);
+    if (mbErr) {
+      console.error("[delete-account] Failed to delete mass_bunks:", mbErr);
+    }
 
     // Step 2: Delete public.users row.
     // FK cascades clean up:
