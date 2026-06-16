@@ -3,26 +3,12 @@ import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
 import type { AttendanceSubject } from '../store/appStore';
 import type { Database } from '../types/database.types';
+import { useAuthContext } from './useAuthContext';
 
 type AttendanceUpsertRow = Database['public']['Tables']['attendance_records']['Insert'];
 type SubjectIdCode = { id: string; code: string };
 
-// ── Helper: current user context ─────────────────────────────────────────────
 
-function useAuthContext() {
-  const authUser = useAppStore(s => s.authUser);
-  const session = useAppStore(s => s.session);
-  const isAuthLoading = useAppStore(s => s.isAuthLoading);
-  const isDemo = authUser?.sectionId === 'demo-section';
-  const isAuthenticated = !!session || isDemo;
-  return {
-    userId: authUser?.id ?? null,
-    sectionId: authUser?.sectionId ?? null,
-    role: authUser?.role ?? 'student',
-    isAuthLoading,
-    isAuthenticated,
-  };
-}
 
 type SubjectRelation = { code: string; name: string; semester?: number } | null;
 

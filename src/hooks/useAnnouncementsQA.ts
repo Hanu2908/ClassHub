@@ -1,23 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useAppStore } from "../store/appStore";
 import { toast } from 'sonner';
 import { subscribeToAnnouncementQA } from "../lib/realtimeBroker";
-
-// Helper to access auth context from Zustand appStore
-function useAuthContext() {
-  const authUser = useAppStore((s) => s.authUser);
-  const session = useAppStore((s) => s.session);
-  const isDemo = authUser?.sectionId === "demo-section";
-  const isAuthenticated = !!session || isDemo;
-  return {
-    userId: authUser?.id ?? null,
-    sectionId: authUser?.sectionId ?? null,
-    role: authUser?.role ?? "student",
-    isAuthenticated,
-  };
-}
+import { useAuthContext } from './useAuthContext';
 
 export interface QAReaction {
   id: string;

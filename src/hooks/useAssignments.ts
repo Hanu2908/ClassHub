@@ -1,25 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
+import { useAuthContext } from './useAuthContext';
 import type { Assignment, AssignmentSet } from '../store/appStore';
 import { assignmentSchema } from '../lib/validation/assignments.schema';
 
-// ── Helper: current user context ─────────────────────────────────────────────
-
-function useAuthContext() {
-  const authUser = useAppStore(s => s.authUser);
-  const session = useAppStore(s => s.session);
-  const isAuthLoading = useAppStore(s => s.isAuthLoading);
-  const isDemo = authUser?.sectionId === 'demo-section';
-  const isAuthenticated = !!session || isDemo;
-  return {
-    userId: authUser?.id ?? null,
-    sectionId: authUser?.sectionId ?? null,
-    role: authUser?.role ?? 'student',
-    isAuthLoading,
-    isAuthenticated,
-  };
-}
 
 type SubjectRelation = { code: string; name: string; semester?: number } | null;
 type AssignmentSetRelation = {

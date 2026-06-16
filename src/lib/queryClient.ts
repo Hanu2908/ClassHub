@@ -6,9 +6,11 @@ export const queryClient = new QueryClient({
       staleTime: 30_000,        // 30s — avoids refetch spam
       retry: 1,                 // retry once on network error
       refetchOnWindowFocus: false,
+      networkMode: 'offlineFirst',  // return cached data immediately when offline
     },
     mutations: {
       retry: 0,
+      networkMode: 'offlineFirst',
     },
   },
 });

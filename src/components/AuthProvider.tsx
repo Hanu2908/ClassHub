@@ -202,11 +202,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const safetyTimeout = setTimeout(() => {
       if (mounted && store.isAuthLoading) {
         if (import.meta.env.DEV) {
-          console.warn('[Auth] Safety timeout — stopping loading spinner after 15s');
+          console.warn('[Auth] Safety timeout — stopping loading spinner after 7s');
         }
         store.setAuthLoading(false);
       }
-    }, 15000);
+    }, 7000);
 
     async function getInitialSession() {
       // If there is an auth hash in the URL, let onAuthStateChange handle the event cleanly to avoid Supabase client deadlock
@@ -218,6 +218,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Offline fast-path: if we're offline and have a cached authUser with a sectionId,
+      // trust the persisted Zustand state instead of calling getSession() which will
+      // hang or fail when attempting to refresh an expired JWT.
+      if (!navigator.onLine) {
+        const offlineStore = useAppStore.getState();
+        if (offlineStore.authUser?.sectionId) {
+          if (import.meta.env.DEV) {
+            console.log('[Auth] Offline with cached authUser — using persisted profile, skipping getSession().');
+          }
+          offlineStore.setAuthLoading(false);
+          return;
+        }
+      }
+
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (!mounted) return;
@@ -225,14 +239,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (error) {
             console.error('[Auth] Error fetching initial session:', error);
           }
-          // If no active session, clear the stale persisted user profile so they aren't stuck with guard-bypassed null session
+          // If no active session while ONLINE, clear stale persisted user profile.
+          // When OFFLINE, preserve the cached authUser — it's the user's only source of identity.
           const store = useAppStore.getState();
-          if (store.authUser?.sectionId !== 'demo-section') {
+          if (store.authUser?.sectionId !== 'demo-section' && navigator.onLine) {
             if (import.meta.env.DEV) {
-              console.log('[Auth] No active session found. Clearing cached authUser to prevent guard bypass.');
+              console.log('[Auth] No active session found (online). Clearing cached authUser to prevent guard bypass.');
             }
             store.setAuthUser(null);
             store.setSession(null);
+          } else if (!navigator.onLine && import.meta.env.DEV) {
+            console.log('[Auth] No active session found (offline). Preserving cached authUser for offline mode.');
           }
           store.setAuthLoading(false);
         } else {
@@ -255,9 +272,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.error('[Auth] getInitialSession failed with critical exception:', err);
-        // Clear cached authUser on critical exception to be safe
+        // Clear cached authUser on critical exception — but only when online.
+        // Offline exceptions (network timeouts) should not wipe the user's cached identity.
         const store = useAppStore.getState();
-        if (store.authUser?.sectionId !== 'demo-section') {
+        if (store.authUser?.sectionId !== 'demo-section' && navigator.onLine) {
           store.setAuthUser(null);
           store.setSession(null);
         }

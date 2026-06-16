@@ -43,9 +43,10 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   
-  // Allow through if active session exists OR we are in a persisted demo session
+  // Allow through if active session exists, demo session, or offline with cached user
   const isDemo = authUser?.sectionId === 'demo-section';
-  const isAuthenticated = !!session || isDemo;
+  const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
+  const isAuthenticated = !!session || isDemo || isOfflineWithCache;
 
   if (!isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
@@ -105,9 +106,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   // Cache-first: bypass spinner if session and authUser are already cached
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   
-  // If user has active session OR we are in a persisted demo session, redirect to appropriate page
+  // If user has active session, demo session, or offline with cached user, redirect to appropriate page
   const isDemo = authUser?.sectionId === 'demo-section';
-  const isAuthenticated = !!session || isDemo;
+  const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
+  const isAuthenticated = !!session || isDemo || isOfflineWithCache;
 
   if (isAuthenticated) {
     if (authUser?.role === 'teacher') {
@@ -129,7 +131,8 @@ function ShareIntakeRoute() {
   const inboxId = new URLSearchParams(window.location.search).get('id');
 
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
-  if (!session && authUser?.sectionId !== 'demo-section') {
+  const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
+  if (!session && authUser?.sectionId !== 'demo-section' && !isOfflineWithCache) {
     if (inboxId) sessionStorage.setItem('classhub-pending-share-inbox-id', inboxId);
     return <Navigate to="/" replace />;
   }

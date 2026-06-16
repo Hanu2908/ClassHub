@@ -4,25 +4,13 @@ import { useAppStore } from '../store/appStore';
 import type { ScheduleSlot, ScheduleMap } from '../store/appStore';
 import type { Database } from '../types/database.types';
 import { timetableSlotSchema } from '../lib/validation/timetable.schema';
+import { useAuthContext } from './useAuthContext';
 
 type SlotType = Database['public']['Enums']['slot_type'];
 
 // ── Helper: current user context ─────────────────────────────────────────────
 
-function useAuthContext() {
-  const authUser = useAppStore(s => s.authUser);
-  const session = useAppStore(s => s.session);
-  const isAuthLoading = useAppStore(s => s.isAuthLoading);
-  const isDemo = authUser?.sectionId === 'demo-section';
-  const isAuthenticated = !!session || isDemo;
-  return {
-    userId: authUser?.id ?? null,
-    sectionId: authUser?.sectionId ?? null,
-    role: authUser?.role ?? 'student',
-    isAuthLoading,
-    isAuthenticated,
-  };
-}
+
 
 type SubjectRelation = { code: string; name: string; semester?: number } | null;
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
