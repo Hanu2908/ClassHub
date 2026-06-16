@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar, Layout, Table, Clock, MapPin, User } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
@@ -11,7 +11,7 @@ import { useSubjects } from '../../hooks/useSubjects';
 import { useSection } from '../../hooks/useSectionMembers';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
-import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS, formatTime, formatTimeRange } from '../../lib/scheduleUtils';
+import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS, formatTime, formatTimeRange, getSubjectAcronym } from '../../lib/scheduleUtils';
 import Skeleton from 'react-loading-skeleton';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -473,17 +473,19 @@ interface SwipeableCardSlot {
   type: string;
   startTime: string;
   endTime: string;
+  targetBatch?: string | null;
 }
 
 // ── Swipeable schedule card ──────────────────────────────────────────────────
 
-function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
+function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName }: {
   cls: SwipeableCardSlot;
   isNow: boolean;
   isPast: boolean;
   isCR: boolean;
   onDelete: (cls: SwipeableCardSlot) => void;
   style: React.CSSProperties;
+  sectionName?: string;
 }) {
   const [swipeX, setSwipeX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
@@ -556,7 +558,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
             transition: 'opacity 0.25s ease',
           }}
         >
-          <Trash2 size={18} />
+          <Trash2 size={18} aria-hidden="true" />
         </div>
       )}
       <div
@@ -567,7 +569,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
           height: '100%',
           transform: `translate3d(${swipeX}px, 0, 0)`,
           transition: isSwiping ? 'none' : 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
-          background: catStyle.bg,
+          background: `linear-gradient(135deg, ${catStyle.bg} 0%, #121520 100%)`,
           borderColor: catStyle.border,
           touchAction: 'pan-y',
         }}
@@ -577,12 +579,69 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style }: {
         onPointerCancel={handlePointerCancel}
       >
         <div className="schedule-card-accent" style={{ background: catStyle.color }} />
-        <div className="schedule-card-body">
-          <div className="schedule-subject">{cls.subject}</div>
-          <div className="schedule-meta">
-            {formatTimeRange(cls.startTime, cls.endTime)} · {cls.code}{cls.room ? ` · ${cls.room}` : ''}{cls.teacher ? ` · ${cls.teacher}` : ''}
+        <div 
+          className="schedule-card-body" 
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'space-between', 
+            padding: '8px 10px 8px 12px', 
+            flex: 1, 
+            minWidth: 0, 
+            boxSizing: 'border-box' 
+          }}
+        >
+          {/* Top section */}
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            {/* Title & Batch */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 4, marginBottom: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {cls.subject}
+              </span>
+              {cls.targetBatch && (
+                <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(96, 165, 250, 0.15)', color: 'var(--accent-primary)', fontWeight: 700, flexShrink: 0 }}>
+                  {(sectionName || 'B') + cls.targetBatch}
+                </span>
+              )}
+            </div>
+
+            {/* Time & Category */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              <Clock size={10} style={{ opacity: 0.6 }} aria-hidden="true" />
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTimeRange(cls.startTime, cls.endTime).replace(/\s/g, '\u00A0')}</span>
+              <span>·</span>
+              <span style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color }}>{CATEGORY_LABELS[cat] || cls.type}</span>
+            </div>
           </div>
-          <div className="schedule-type">{CATEGORY_LABELS[cat] || cls.type}</div>
+
+          {/* Bottom metadata section with Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: 6, marginTop: 4 }}>
+            {/* Room */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <MapPin size={10} style={{ opacity: 0.6 }} aria-hidden="true" />
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cls.room || 'No Room'}</span>
+            </div>
+
+            {/* Instructor */}
+            {cls.teacher && (
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 4, 
+                  minWidth: 0, 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  maxWidth: '60%'
+                }}
+                title={cls.teacher}
+              >
+                <User size={10} style={{ opacity: 0.6 }} aria-hidden="true" />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cls.teacher}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -626,6 +685,8 @@ export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState<ScheduleDay>(
     isScheduleDay(todayKey) ? todayKey : 'Mon'
   );
+  const [viewLayout, setViewLayout] = useState<'timeline' | 'week'>('timeline');
+  const [selectedCellSlots, setSelectedCellSlots] = useState<SwipeableCardSlot[] | null>(null);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [showCopySheet, setShowCopySheet] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
@@ -672,6 +733,74 @@ export default function SchedulePage() {
     }
     return raw;
   }, [schedule, selectedDay, viewMode, subBatch]);
+
+  // Group parallel items for Timeline overlapping layout
+  const groupedClasses = useMemo(() => {
+    const annotated: { slot: typeof classes[number]; colIndex: number; colCount: number }[] = [];
+    const clusters: { slots: typeof classes[number][]; start: number; end: number }[] = [];
+    
+    classes.forEach(slot => {
+      const start = toMinutes(slot.startTime);
+      const end = toMinutes(slot.endTime);
+      
+      let merged = false;
+      for (const cluster of clusters) {
+        if (!(end <= cluster.start || start >= cluster.end)) {
+          cluster.slots.push(slot);
+          cluster.start = Math.min(cluster.start, start);
+          cluster.end = Math.max(cluster.end, end);
+          merged = true;
+          break;
+        }
+      }
+      
+      if (!merged) {
+        clusters.push({ slots: [slot], start, end });
+      }
+    });
+
+    clusters.forEach(cluster => {
+      const count = cluster.slots.length;
+      cluster.slots.sort((a, b) => a.startTime.localeCompare(b.startTime) || a.id.localeCompare(b.id));
+      cluster.slots.forEach((slot, index) => {
+        annotated.push({
+          slot,
+          colIndex: index,
+          colCount: count
+        });
+      });
+    });
+
+    return annotated.sort((a, b) => a.slot.startTime.localeCompare(b.slot.startTime));
+  }, [classes]);
+
+  // Weekly grid time range calculation
+  const weeklyTimeRange = useMemo(() => {
+    let allSlots: any[] = [];
+    DAYS.forEach(d => {
+      const raw = schedule[d] ?? [];
+      let list = raw;
+      if (viewMode === 'my-batch' && subBatch) {
+        list = raw.filter(cls => !cls.targetBatch || cls.targetBatch === subBatch);
+      }
+      allSlots.push(...list);
+    });
+    if (allSlots.length === 0) return { startHour: 8, endHour: 17 };
+    const firstMin = Math.min(...allSlots.map(c => toMinutes(c.startTime)));
+    const lastMin = Math.max(...allSlots.map(c => toMinutes(c.endTime)));
+    return {
+      startHour: Math.max(0, Math.floor(firstMin / 60)),
+      endHour: Math.min(23, Math.ceil(lastMin / 60)),
+    };
+  }, [schedule, viewMode, subBatch]);
+
+  const weeklyHours = useMemo(() => {
+    const hours: string[] = [];
+    for (let h = weeklyTimeRange.startHour; h < weeklyTimeRange.endHour; h++) {
+      hours.push(`${h.toString().padStart(2, '0')}:00`);
+    }
+    return hours;
+  }, [weeklyTimeRange]);
 
   // Calculate class counts per day for badges
   const dayCounts = useMemo(() => {
@@ -779,6 +908,7 @@ export default function SchedulePage() {
   const dragStartRef = useRef({ x: 0, y: 0, isSwipe: false, isLocked: false });
 
   const handleTimelinePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (viewLayout === 'week') return;
     const target = e.target as HTMLElement;
     if (target.closest('.schedule-card') || target.closest('.swipe-delete-zone') || target.closest('.t-button') || target.closest('button')) {
       return;
@@ -796,6 +926,7 @@ export default function SchedulePage() {
   };
 
   const handleTimelinePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (viewLayout === 'week') return;
     if (!isTimelineDragging) return;
     
     const ref = dragStartRef.current;
@@ -829,6 +960,7 @@ export default function SchedulePage() {
   };
 
   const handleTimelinePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (viewLayout === 'week') return;
     if (!isTimelineDragging) return;
     setIsTimelineDragging(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
@@ -907,9 +1039,29 @@ export default function SchedulePage() {
             aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-            <Calendar size={18} color="var(--accent-primary)" />
-            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Schedule</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+            <Calendar size={18} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Schedule</h1>
+          </div>
+
+          {/* Segmented Layout Switcher */}
+          <div className="schedule-layout-switcher" style={{ marginRight: 6 }}>
+            <button
+              onClick={() => setViewLayout('timeline')}
+              className={`layout-btn ${viewLayout === 'timeline' ? 'active' : ''}`}
+              aria-label="Timeline view"
+            >
+              <Layout size={11} aria-hidden="true" />
+              Timeline
+            </button>
+            <button
+              onClick={() => setViewLayout('week')}
+              className={`layout-btn ${viewLayout === 'week' ? 'active' : ''}`}
+              aria-label="Week view"
+            >
+              <Table size={11} aria-hidden="true" />
+              Week
+            </button>
           </div>
 
           {/* Legend toggle */}
@@ -944,8 +1096,14 @@ export default function SchedulePage() {
           )}
         </div>
 
-        {/* Day tabs with class count badges */}
-        <div className="day-tabs" style={{ paddingBottom: 12 }} role="tablist" aria-label="Schedule days">
+        {/* Sliding Backdrop Day Tabs Container */}
+        <div className="schedule-day-tabs-container" style={{ marginBottom: 12 }} role="tablist" aria-label="Schedule days">
+          <div 
+            className="schedule-day-tab-sliding-pill"
+            style={{
+              left: `calc(${(DAYS.indexOf(selectedDay) * 16.66)}% + 4px)`,
+            }}
+          />
           {DAYS.map(day => {
             const isActive = day === selectedDay;
             const isDayToday = day === todayKey;
@@ -954,15 +1112,21 @@ export default function SchedulePage() {
               <button
                 key={day}
                 id={`day-tab-${day}`}
-                className={`day-tab${isActive ? ' active' : ''}${isDayToday ? ' today' : ''}`}
+                className={`schedule-day-tab-btn${isActive ? ' active' : ''}`}
                 onClick={() => handleDaySelect(day)}
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`schedule-panel-${day}`}
               >
-                <span>{day}</span>
-                {count > 0 && <span className="day-badge">{count}</span>}
-                <div className="day-dot" style={{ background: isDayToday ? 'currentColor' : 'transparent' }} />
+                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>{day}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                  {isDayToday && <span style={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: isActive ? 'var(--accent-primary)' : 'var(--text-muted)' }} />}
+                  {count > 0 && (
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 700, color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                      {count}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
@@ -1046,12 +1210,132 @@ export default function SchedulePage() {
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            transform: `translate3d(${dragX}px, 0, 0)`,
+            transform: viewLayout === 'timeline' ? `translate3d(${dragX}px, 0, 0)` : 'none',
             transition: isTimelineDragging ? 'none' : 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
           }}
         >
           {isLoading ? (
             <ScheduleSkeleton />
+          ) : viewLayout === 'week' ? (
+            <div className="week-grid-container" role="grid" aria-label="Weekly schedule grid">
+              <div className="week-grid-header" role="row">
+                <div role="columnheader" style={{ borderRight: '1px solid rgba(255, 255, 255, 0.04)' }}>Time</div>
+                {DAYS.map(day => (
+                  <div 
+                    key={day} 
+                    role="columnheader" 
+                    aria-sort={day === selectedDay ? 'ascending' : 'none'}
+                    style={{ 
+                      backgroundColor: day === selectedDay ? 'rgba(96, 165, 250, 0.05)' : 'transparent', 
+                      color: day === selectedDay ? 'var(--accent-primary)' : 'inherit' 
+                    }}
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {weeklyHours.map(hourStr => (
+                  <div 
+                    key={hourStr} 
+                    className="week-grid-row"
+                    role="row"
+                  >
+                    <div className="week-grid-hour-col" role="gridcell">
+                      {hourStr.replace(/\s/g, '\u00A0')}
+                    </div>
+
+                    {DAYS.map(day => {
+                      const daySlots = (schedule[day] ?? []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+                      
+                      const filteredSlots = viewMode === 'my-batch' && subBatch
+                        ? daySlots.filter(cls => !cls.targetBatch || cls.targetBatch === subBatch)
+                        : daySlots;
+
+                      const currentHourNum = Number(hourStr.split(':')[0]);
+                      const cellSlots = filteredSlots.filter(s => {
+                        const sh = Number(s.startTime.split(':')[0]);
+                        const eh = Number(s.endTime.split(':')[0]);
+                        return currentHourNum >= sh && currentHourNum < eh;
+                      });
+
+                      const isSelectedDay = day === selectedDay;
+
+                      if (cellSlots.length > 0) {
+                        const firstSlot = cellSlots[0];
+                        const cat = getCategory(firstSlot.code, firstSlot.type);
+                        const catStyle = CATEGORY_COLORS[cat] || CATEGORY_COLORS.other;
+                        const isStartHour = cellSlots.some(s => Number(s.startTime.split(':')[0]) === currentHourNum);
+
+                        const labelText = cellSlots.map(s => `${s.subject} (${s.code}) in Room ${s.room || 'N/A'}`).join(', ');
+
+                        return (
+                          <div 
+                            key={day}
+                            onClick={() => {
+                              handleDaySelect(day);
+                              setSelectedCellSlots(cellSlots);
+                            }}
+                            className="week-grid-cell week-grid-cell-filled"
+                            style={{ 
+                              backgroundColor: `${catStyle.color}15`,
+                              borderBottom: `1px solid ${catStyle.border}`,
+                              outline: isSelectedDay ? '1.5px solid var(--accent-primary)' : 'none',
+                              zIndex: isSelectedDay ? 2 : 1
+                            }}
+                            role="gridcell"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleDaySelect(day);
+                                setSelectedCellSlots(cellSlots);
+                              }
+                            }}
+                            aria-label={`${day} at ${hourStr}: ${labelText}`}
+                          >
+                            <div className="week-grid-cell-accent-strip" style={{ backgroundColor: catStyle.color }} />
+                            {isStartHour ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', boxSizing: 'border-box', paddingLeft: 4 }}>
+                                <span style={{ fontWeight: 700, color: '#fff', fontSize: 7, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {getSubjectAcronym(firstSlot.subject)}{cellSlots.length > 1 ? `+${cellSlots.length - 1}` : ''}
+                                </span>
+                                <span style={{ fontSize: 6, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+                                  {cellSlots.map(s => s.room).filter(Boolean).join('/')}
+                                </span>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 6, color: 'rgba(255, 255, 255, 0.15)', fontFamily: 'var(--font-mono)', textAlign: 'center', marginTop: 12 }}>CONT.</div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div 
+                          key={day} 
+                          onClick={() => handleDaySelect(day)}
+                          className="week-grid-cell"
+                          style={{ 
+                            backgroundColor: isSelectedDay ? 'rgba(96, 165, 250, 0.01)' : 'transparent',
+                          }}
+                          role="gridcell"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleDaySelect(day);
+                            }
+                          }}
+                          aria-label={`${day} at ${hourStr}: Empty slot`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : classes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
               <div className="schedule-empty-icon">
@@ -1086,13 +1370,13 @@ export default function SchedulePage() {
                 const h = (gap.duration / 60) * PX_PER_HOUR;
                 return (
                   <div key={`gap-${i}`} className="schedule-gap" style={{ top: y, height: h }}>
-                    <span className="schedule-gap-label">{formatDuration(gap.duration)}</span>
+                    <span className="schedule-gap-label">{formatDuration(gap.duration).replace(/\s/g, '\u00A0')}</span>
                   </div>
                 );
               })}
 
               {/* Class cards */}
-              {classes.map((cls, i) => {
+              {groupedClasses.map(({ slot: cls, colIndex, colCount }, i) => {
                 const startMin = toMinutes(cls.startTime);
                 const endMin = toMinutes(cls.endTime);
                 const durationMin = endMin - startMin;
@@ -1110,12 +1394,13 @@ export default function SchedulePage() {
                     isCR={isCR}
                     onDelete={setSlotToDelete}
                     style={{
-                      top: y,
-                      height: h,
-                      left: 52,
-                      right: 8,
+                      top: y + 2,
+                      height: h - 2,
+                      left: `calc(52px + (${colIndex} * (100% - 60px) / ${colCount}))`,
+                      width: `calc(((100% - 60px) / ${colCount}) - 4px)`,
                       animationDelay: `${i * 40}ms`,
                     }}
+                    sectionName={sectionName}
                   />
                 );
               })}
@@ -1162,6 +1447,93 @@ export default function SchedulePage() {
         schedule={schedule}
         onClose={() => setShowCopySheet(false)}
       />
+
+      <BottomSheet open={!!selectedCellSlots} onClose={() => setSelectedCellSlots(null)} title="Class Inspector">
+        {selectedCellSlots && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 0 20px' }} aria-live="polite">
+            {selectedCellSlots.map((slot) => {
+              const cat = getCategory(slot.code, slot.type);
+              const catStyle = CATEGORY_COLORS[cat] || CATEGORY_COLORS.other;
+              return (
+                <div 
+                  key={slot.id} 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: 12, 
+                    padding: 14, 
+                    background: 'rgba(255, 255, 255, 0.02)', 
+                    border: `1px solid ${catStyle.border}`, 
+                    borderRadius: 'var(--radius-lg)', 
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, backgroundColor: catStyle.color }} />
+                  <div style={{ paddingLeft: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color, letterSpacing: '0.05em' }}>
+                      {CATEGORY_LABELS[cat]}
+                    </span>
+                    <h2 style={{ fontSize: 16, fontWeight: 700, margin: '4px 0', color: 'var(--text-primary)' }}>
+                      {slot.subject}
+                    </h2>
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)' }}>
+                      Code: {slot.code}
+                    </p>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingLeft: 8 }}>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6, border: '1px solid var(--border-default)' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>TIME</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {formatTime(slot.startTime).replace(/\s/g, '\u00A0')} – {formatTime(slot.endTime).replace(/\s/g, '\u00A0')}
+                      </span>
+                    </div>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6, border: '1px solid var(--border-default)' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>ROOM</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {slot.room || 'No Room'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingLeft: 8 }}>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6, border: '1px solid var(--border-default)' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>INSTRUCTOR</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {slot.teacher || 'Not Assigned'}
+                      </span>
+                    </div>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6, border: '1px solid var(--border-default)' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>BATCH SCOPING</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {slot.targetBatch ? `Batch B${slot.targetBatch}` : 'Full Section'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <button
+              onClick={() => setSelectedCellSlots(null)}
+              className="t-button"
+              style={{
+                marginTop: 4,
+                padding: '13px',
+                background: 'var(--accent-primary)',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+                color: '#fff',
+                fontWeight: 600,
+                textAlign: 'center'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </BottomSheet>
 
       <BottomSheet open={Boolean(slotToDelete)} onClose={() => setSlotToDelete(null)} title="Remove Class from Timetable">
         {prevSlotToDelete && (

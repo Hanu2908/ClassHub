@@ -1125,7 +1125,7 @@ body {
   left: 44px;
   right: 0;
   height: 2px;
-  background: var(--status-critical);
+  background: #ffffff;
   z-index: 10;
   pointer-events: none;
 }
@@ -1134,12 +1134,12 @@ body {
   content: '';
   position: absolute;
   left: 0;
-  top: -4px;
-  width: 10px;
-  height: 10px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--status-critical);
-  box-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
 }
 
 /* ── Gap indicator ── */
@@ -3158,5 +3158,149 @@ body {
 [data-sonner-toast][data-type="warning"] {
   border-color: rgba(251, 191, 36, 0.4) !important; /* amber-400 */
 }
+
+/* ── Schedule Page Refinements & Week Grid ── */
+.schedule-layout-switcher {
+  display: flex;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  padding: 2px;
+  width: fit-content;
+  align-items: center;
+}
+
+.schedule-layout-switcher .layout-btn {
+  background: none;
+  border: none;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font: 600 11px var(--font-body);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.schedule-layout-switcher .layout-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
+}
+
+.schedule-day-tabs-container {
+  position: relative;
+  background: #13161c;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.schedule-day-tab-sliding-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background-color: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  width: calc(16.66% - 8px);
+  pointer-events: none;
+}
+
+.schedule-day-tab-btn {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+  box-sizing: border-box;
+}
+
+.schedule-day-tab-btn.active {
+  color: var(--accent-primary);
+}
+
+.week-grid-container {
+  background: #11141e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.week-grid-header {
+  display: grid;
+  grid-template-columns: 50px repeat(6, 1fr);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.01);
+  text-align: center;
+  font: 700 8px var(--font-body);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  padding: 8px 0;
+}
+
+.week-grid-row {
+  display: grid;
+  grid-template-columns: 50px repeat(6, 1fr);
+  min-height: 52px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  align-items: stretch;
+}
+
+.week-grid-hour-col {
+  background-color: rgba(255, 255, 255, 0.005);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.week-grid-cell {
+  cursor: pointer;
+  background-color: transparent;
+  transition: background-color var(--transition-fast);
+}
+
+.week-grid-cell-filled {
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.week-grid-cell-accent-strip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+}
+
 
 

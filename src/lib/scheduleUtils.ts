@@ -11,10 +11,10 @@ export function getCategory(code: string, type: string): SubjectCategory {
 }
 
 export const CATEGORY_COLORS: Record<SubjectCategory, { color: string; bg: string; border: string }> = {
-  technical:     { color: '#4A9EFF', bg: 'rgba(74,158,255,0.08)',  border: 'rgba(74,158,255,0.25)' }, // Blue
-  lab:           { color: '#FFB547', bg: 'rgba(255,181,71,0.08)',   border: 'rgba(255,181,71,0.25)' },   // Orange
-  'non-technical':{ color: '#A78BFA', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)' }, // Purple
-  other:         { color: '#2DD4BF', bg: 'rgba(45,212,191,0.08)',  border: 'rgba(45,212,191,0.25)' },  // Teal
+  technical:     { color: '#60A5FA', bg: 'rgba(96,165,250,0.15)',  border: 'rgba(96,165,250,0.3)' }, // Blue
+  lab:           { color: '#FFB547', bg: 'rgba(255,181,71,0.15)',   border: 'rgba(255,181,71,0.3)' },   // Orange
+  'non-technical':{ color: '#A78BFA', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' }, // Purple
+  other:         { color: '#2DD4BF', bg: 'rgba(45,212,191,0.15)',  border: 'rgba(45,212,191,0.3)' },  // Teal
 };
 
 export const CATEGORY_LABELS: Record<SubjectCategory, string> = {
@@ -68,3 +68,17 @@ export function formatTimeRange(startStr: string, endStr: string): string {
   }
   return `${sFormatted} ${startSuffix} – ${eFormatted} ${endSuffix}`;
 }
+
+export function getSubjectAcronym(name: string): string {
+  if (!name) return '??';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return name.slice(0, 2).toUpperCase();
+  }
+  return words
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 4);
+}
+
