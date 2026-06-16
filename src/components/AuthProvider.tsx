@@ -373,7 +373,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const store = useAppStore.getState();
 
     // Set initial status based on current browser environment
-    store.setSyncStatus(navigator.onLine ? 'online' : 'offline');
+    const isOfflineInitially = !navigator.onLine;
+    store.setSyncStatus(isOfflineInitially ? 'offline' : 'online');
+    if (isOfflineInitially) {
+      toast.warning('Offline Mode. Timetable and attendance loaded from cache.');
+    }
 
     const triggerClientPlayback = () => {
       store.setSyncStatus('syncing');
@@ -391,6 +395,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .catch((err) => {
           console.error('[OfflineSync] Client sync playback failed:', err);
           store.setSyncStatus('online'); // Reset back to standard online to avoid stuck pill
+          toast.error('Some offline changes could not be synchronized. They will be retried when the connection improves.');
         });
     };
 
