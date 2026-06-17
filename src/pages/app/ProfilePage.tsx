@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2 } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
@@ -719,7 +719,18 @@ export default function ProfilePage() {
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </div>
-          </div>
+
+            {/* Ko-fi Support */}
+            <div
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', borderTop: '1px solid var(--border-default)' }}
+              onClick={() => window.open('https://ko-fi.com/himanshuhanu', '_blank', 'noopener,noreferrer')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Heart size={16} color="#FF5E5B" />
+                <span className="t-body" style={{ color: 'var(--text-primary)' }}>Support on Ko-fi</span>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </div>
         </div>
 
         {/* Account — Sign Out */}

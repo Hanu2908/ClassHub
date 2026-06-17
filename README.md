@@ -30,7 +30,7 @@ ClassHub is a progressive web app that replaces scattered WhatsApp groups and Go
 <!-- <img src="docs/screenshots/assignments.png" alt="Assignments" width="280" /> -->
 <!-- <img src="docs/screenshots/cr-command-center.png" alt="CR Command Center" width="280" /> -->
 
-*Screenshots coming soon — add images to `docs/screenshots/`*
+*Screenshots coming soon *
 
 </div>
 
@@ -180,7 +180,7 @@ npm test         # Run Vitest unit tests
 
 ClassHub enforces strict data isolation across every layer:
 
-- **Row-Level Security (RLS)** — enforced on all 12 tables; every query filters by `section_id` from the authenticated user's session
+- **Row-Level Security (RLS)** — enforced on all tables; every query filters by `section_id` from the authenticated user's session
 - **Domain Authorization** — Google OAuth restricted to `@skit.ac.in` institutional emails only
 - **No Third-Party Credentials** — student ERP logins and private credentials are **never** requested, scraped, or stored
 - **Vote Integrity** — cryptographic hash validation on polls prevents duplicate and tampered votes
