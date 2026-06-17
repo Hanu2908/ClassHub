@@ -1,128 +1,218 @@
+<div align="center">
+
 # 🎓 ClassHub
 
-> **Multi-tenant Academic Management PWA** designed for students and classroom representatives.
-> 
-> *Active Development — V1.0 Closed Beta (Section P2, SKIT Jaipur)*
+**Your Academic Workspace**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed-Vercel-black?logo=vercel)](https://classshub.vercel.app)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Backend-Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![PWA](https://img.shields.io/badge/PWA-Installable-8A2BE2)](https://web.dev/progressive-web-apps/)
+[![Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/himanshuhanu)
+
+</div>
 
 ---
 
-ClassHub is a high-performance Progressive Web App (PWA) tailored specifically for managing class academic workflows. Built using a modern, reactive stack, it empowers student coordinators (CRs) to distribute announcements, organize assignment sets, coordinate student acknowledgments, conduct real-time polls, and track student metrics—all scoped securely to individual class sections.
+ClassHub is a progressive web app that replaces scattered WhatsApp groups and Google Forms with a single, secure academic workspace. Built for Indian engineering college sections, it gives Class Representatives a command center and students a unified dashboard for everything academic.
 
 ---
 
-## ✨ Features & Capabilities
+## 📸 Screenshots
 
-### 📢 Announcements Feed
-- **Channel Scoping**: Filter announcements by *Active Feed*, *Exams*, *Schedule*, and *Campus* channels.
-- **Priority & Deadlines**: Highlight urgent deadlines and critical notifications.
-- **Acknowledgments tracking**: Student feedback tracking to ensure messages are read.
+<div align="center">
 
-### 📝 Assignment & Submission Management
-- **Assignment Sets**: Group multiple assignment instructions together under specific subjects.
-- **Digital Submissions**: Direct student file uploads (documents, PDFs, source code, images).
-- **CR Evaluation Hub**: Centralized view for CRs to monitor submissions.
+<!-- Add your screenshots to docs/screenshots/ and uncomment the lines below -->
 
-### 📊 Real-Time Interactive Polls
-- **Secured Voting**: Anonymized, unique-vote validation powered by cryptographic hashing (polls and salt checks) preventing duplicate submissions.
-- **Live Analytics**: Real-time visual summaries of class preferences.
+<!-- <img src="docs/screenshots/dashboard.png" alt="Student Dashboard" width="280" /> -->
+<!-- <img src="docs/screenshots/assignments.png" alt="Assignments" width="280" /> -->
+<!-- <img src="docs/screenshots/cr-command-center.png" alt="CR Command Center" width="280" /> -->
 
-### ⚡ Premium Image & Media Optimization
-- **Dual-Tier WebP Delivery**: Upload-time thumbnail generation reduces images up to 99.5% in size (~30-50KB WebP files) for instant mobile rendering.
-- **Option D Fallback**: Hardware-accelerated, decode-time canvas downscaling (`createImageBitmap`) for legacy images, preventing GPU memory spikes on mobile devices.
-- **Progressive Zoom Modal**: Instantly displays the cached thumbnail inside the modal, fetches the high-resolution source in the background, and crossfades seamlessly with full zoom/pan control.
+*Screenshots coming soon — add images to `docs/screenshots/`*
+
+</div>
+
+---
+
+## ✨ Features
+
+### 📊 Dashboard
+- **Today's Schedule** — live class timetable with room numbers and status tags &nbsp; 👤
+- **Quick Stats** — pending assignments, submissions, and alerts at a glance &nbsp; 👤
+- **Attendance Overview** — subject-wise attendance rings with weekly tracking &nbsp; 👤
+- **Campus Poll** — live poll results embedded right on the dashboard &nbsp; 👤
+
+### 📢 Announcements
+- **Channel Scoping** — filter by Active Feed, Exams, Schedule, and Campus &nbsp; 👤
+- **Priority & Deadlines** — urgent deadline highlights and critical alerts &nbsp; 👤 👑
+- **Acknowledgment Tracking** — track who's read each announcement with nudge support &nbsp; 👑
+- **Broadcast** — push announcements to the entire section instantly &nbsp; 👑
+
+### 📝 Assignments
+- **Assignment Sets** — group assignment instructions under specific subjects &nbsp; 👑
+- **Roll-Based Distribution** — auto-assign question sets based on roll number &nbsp; 👤
+- **Digital Submissions** — file uploads (docs, PDFs, code, images) with Drive links &nbsp; 👤
+- **Submission Health Monitor** — track submitted vs pending across all assignments &nbsp; 👑
+
+### 📊 Polls
+- **Anonymous Voting** — cryptographic hash validation prevents duplicate votes &nbsp; 👤
+- **CR-Visible Polls** — optional transparency mode where CR can see individual responses &nbsp; 👑
+- **Live Analytics** — real-time visual summaries of class preferences &nbsp; 👤 👑
+
+### 👑 CR Command Center
+- **Section Pulse** — student count, active tasks, and live polls overview &nbsp; 👑
+- **Quick Actions** — create announcements, assignments, polls, and timetables &nbsp; 👑
+- **Acknowledgment Progress** — visual progress bars with nudge-unacknowledged action &nbsp; 👑
+- **Submissions Hub** — centralized evaluation view across all assignments &nbsp; 👑
+
+### 🖼️ Media Optimization
+- **Dual-Tier WebP Delivery** — upload-time thumbnail generation reduces images up to 99.5% in size
+- **Hardware-Accelerated Fallback** — `createImageBitmap` canvas downscaling for legacy images
+- **Progressive Zoom Modal** — cached thumbnail → high-res crossfade with full zoom/pan
 
 ### 📈 GPA Calculator & Analytics
-- Complete calculation tools and interactive reports to track GPA target completion goals.
+- **Target Tracking** — interactive GPA calculation with semester goal visualization &nbsp; 👤
+- **Relative Grading** — grade distribution analysis tools &nbsp; 👤
+
+> 👤 = Student &nbsp;&nbsp; 👑 = Class Representative (CR)
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Tech Stack
 
-| Layer | Technologies Used |
+| Layer | Technologies |
 |---|---|
-| **Frontend Core** | **React 18**, **Vite**, **TypeScript (Strict Mode)**, **React Router v6** |
-| **Styling** | **Tailwind CSS v3** (Utility-first styling with sleek dark-mode glassmorphic aesthetics) |
-| **State Management** | **Zustand** (Global client state stores), **TanStack Query v5** (Server state synchronization) |
-| **Backend Integration** | **Supabase JS Client v2** (Realtime databases, Auth, Edge Functions) |
-| **Database** | **PostgreSQL 15** with Row-Level Security (RLS) mandatory section isolation |
-| **PWA Capability** | **Vite PWA Plugin** with custom Service Worker caching & precaching support |
+| **Frontend** | React 18, Vite, TypeScript (Strict), React Router v6 |
+| **Styling** | Tailwind CSS v3 — dark-mode glassmorphic design system |
+| **State** | Zustand (client state), TanStack Query v5 (server state) |
+| **Backend** | Supabase JS v2 — Realtime, Auth, Edge Functions |
+| **Database** | PostgreSQL 15 with Row-Level Security on all 12 tables |
+| **Auth** | Google OAuth restricted to `@skit.ac.in` domain |
+| **PWA** | Vite PWA Plugin with Service Worker caching & precaching |
+| **Deploy** | Vercel (frontend), Supabase Cloud (backend) |
 
 ---
 
-## 📁 System Architecture
+## 🏗️ Architecture
 
 ```mermaid
 graph TD
-    subgraph PWA Client (React 18 + Vite)
-        UI[Tailwind UI Components]
-        Store[Zustand Local Store]
-        Query[TanStack Query Cache]
-        SW[Service Worker Caching]
-        Uploader[uploadAttachment Utility]
-        Resizer[imageResize.ts OffscreenCanvas]
+    subgraph Client["PWA Client · React 18 + Vite"]
+        UI["Tailwind UI Components"]
+        Store["Zustand Store"]
+        Query["TanStack Query Cache"]
+        SW["Service Worker"]
+        Upload["Upload Pipeline"]
+        Resize["imageResize.ts · WebP Thumbs"]
     end
 
-    subgraph Backend Services (Supabase)
-        Auth[Google OAuth / Auth Domain Checks]
-        Storage[Storage Buckets: original + .thumb.webp]
-        DB[(PostgreSQL 15 Database)]
-        Edge[Edge Functions]
+    subgraph Backend["Supabase Cloud"]
+        Auth["Google OAuth · @skit.ac.in"]
+        Storage["Storage Buckets · original + .thumb.webp"]
+        DB[("PostgreSQL 15 · RLS on 12 tables")]
+        Edge["Edge Functions"]
     end
 
     UI --> Store
     UI --> Query
-    UI --> Uploader
-    Uploader --> Resizer
-    Resizer -.->|Option C WebP Thumb| Storage
-    Uploader -->|Original File| Storage
-    Uploader -->|DB Insertion| DB
-    Query -->|Realtime Subscriptions| DB
-    Auth -->|restricted to @skit.ac.in| DB
+    UI --> Upload
+    Upload --> Resize
+    Resize -.->|"WebP Thumbnail"| Storage
+    Upload -->|"Original File"| Storage
+    Upload -->|"DB Insert"| DB
+    Query -->|"Realtime Subscriptions"| DB
+    Auth -->|"Domain-restricted"| DB
+    Edge -->|"Push Notifications"| Client
 ```
+
+> For the full architecture breakdown, see [docs/architecture.md](docs/architecture.md).
+
+---
+
+## 🔗 Live Demo
+
+> 🔐 **Live at [classshub.vercel.app](https://classshub.vercel.app)** — requires an `@skit.ac.in` Google Workspace account.
+>
+> See screenshots above for a full preview of the app experience.
 
 ---
 
 ## 🚀 Local Development
 
 ### Prerequisites
-- Node.js (v18+ recommended)
-- Supabase CLI (optional, for backend migrations)
+- Node.js v18+
+- npm v9+
 
-### 1. Installation
-Clone the repository and install all dependencies:
+### Setup
+
 ```bash
+# Clone the repository
 git clone https://github.com/Hanu2908/ClassHub.git
-cd ClassHub-1
+cd ClassHub
+
+# Install dependencies
 npm install
-```
 
-### 2. Environment Variables
-Create a `.env` file in the root directory and configure your Supabase credentials:
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+# Create environment file
+cp .env.example .env
+# Edit .env with your Supabase project URL and anon key
 
-### 3. Development Server
-Run Vite's fast HMR development server:
-```bash
+# Start development server
 npm run dev
 ```
 
-### 4. Code Quality & Formatting
-Ensure typescript schemas compile cleanly and follow ESLint compliance:
-```bash
-# Run ESLint linter
-npm run lint
+### Available Commands
 
-# Compile and build the production bundle
-npm run build
+```bash
+npm run dev      # Start Vite HMR dev server
+npm run build    # TypeScript compile + production build
+npm run lint     # ESLint check
+npm test         # Run Vitest unit tests
 ```
+
+> See [docs/schema.sql](docs/schema.sql) for the database schema, [docs/decisions.md](docs/decisions.md) for architectural decisions, and [docs/architecture.md](docs/architecture.md) for the full system design.
 
 ---
 
-## 🔒 Security & Data Isolation
-ClassHub enforces absolute data isolation through strict database architecture rules:
-- **Row-Level Security (RLS)**: Enforced across all 12 tables. Queries must strictly filter records by `section_id` derived from the user's authenticated section.
-- **Domain Authorization**: Restricts registrations and logins solely to authorized institutional emails (`*@skit.ac.in`).
-- **No Third-Party Credentials**: Student ERP logins and private credentials are **never** requested, scraped, or stored.
+## 🔒 Security
+
+ClassHub enforces strict data isolation across every layer:
+
+- **Row-Level Security (RLS)** — enforced on all 12 tables; every query filters by `section_id` from the authenticated user's session
+- **Domain Authorization** — Google OAuth restricted to `@skit.ac.in` institutional emails only
+- **No Third-Party Credentials** — student ERP logins and private credentials are **never** requested, scraped, or stored
+- **Vote Integrity** — cryptographic hash validation on polls prevents duplicate and tampered votes
+
+> See [docs/rls-test-plan.md](docs/rls-test-plan.md) and [docs/security-remediation.md](docs/security-remediation.md) for security testing details.
+
+---
+
+## 🤝 Contributing
+
+ClassHub is under active development by a small team at SKIT Jaipur. We're not accepting external contributions at this time, but feel free to [open an issue](https://github.com/Hanu2908/ClassHub/issues) for feature suggestions or bug reports.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## ☕ Support
+
+If ClassHub is useful to you, consider buying us a coffee!
+
+<a href="https://ko-fi.com/himanshuhanu" target="_blank">
+  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko-fi" />
+</a>
+
+---
+
+<div align="center">
+
+**Built by [Himanshu Saini](https://github.com/Hanu2908)** · SKIT Jaipur
+
+</div>
