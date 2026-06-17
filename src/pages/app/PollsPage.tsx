@@ -12,6 +12,7 @@ import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { BottomSheet } from '../../components/BottomSheet';
 import { haptics } from '../../lib/haptics';
 import Skeleton from 'react-loading-skeleton';
+import { logEvent } from '../../lib/analytics';
 
 function PollsSkeleton() {
   return (
@@ -50,6 +51,7 @@ function timeLeft(iso: string): string {
 
 function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id: string) => void; totalStudents: number }) {
   const role = useAppStore(s => s.role);
+  const authUser = useAppStore(s => s.authUser);
   const voteMutation = useVotePoll();
   const userVotes = poll.userVotes ?? (poll.userVote ? [poll.userVote] : []);
   const [showWarning, setShowWarning] = useState(poll.type === 'actionable' && userVotes.length === 0);
@@ -85,6 +87,9 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
         allowMultiple: poll.allowMultiple,
         isSelected
       });
+      if (authUser?.id && authUser?.sectionId) {
+        logEvent('poll_voted', authUser.id, authUser.sectionId, { pollId: poll.id, optionId: optId, isSelected });
+      }
       toast.success(isSelected ? 'Vote removed' : 'Vote submitted!');
     } catch {
       toast.error('Failed to vote');

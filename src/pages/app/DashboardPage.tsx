@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { isPushSupported, getPushPermission } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
 import { generateGradient } from '../../lib/utils';
+import { trackAppOpened } from '../../lib/analytics';
 
 
 // Dashboard sub-components
@@ -110,6 +111,12 @@ export default function DashboardPage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (authUser?.id && authUser?.sectionId) {
+      trackAppOpened(authUser.id, authUser.sectionId);
+    }
+  }, [authUser]);
 
   // ── Unified Deadlines Aggregation ──
   const unifiedDeadlines = useMemo(() => {

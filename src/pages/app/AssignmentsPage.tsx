@@ -18,6 +18,7 @@ import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import Skeleton from 'react-loading-skeleton';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
 import { generateGradient } from '../../lib/utils';
+import { logEvent } from '../../lib/analytics';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
 
@@ -864,6 +865,12 @@ export default function AssignmentsPage() {
   const [highlightId] = useState<string | null>(() => new URLSearchParams(location.search).get('highlight'));
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (authUser?.id && authUser?.sectionId) {
+      logEvent('assignment_viewed', authUser.id, authUser.sectionId);
+    }
+  }, [authUser]);
+
   // Scroll to highlighted assignment when data loads
   useEffect(() => {
     if (!highlightId || !assignments.length) return;
@@ -883,6 +890,9 @@ export default function AssignmentsPage() {
   };
 
   const handleOpenPdfUrl = async (urlOrPath: string, title: string, pageRange?: string) => {
+    if (authUser?.id && authUser?.sectionId) {
+      logEvent('assignment_viewed', authUser.id, authUser.sectionId, { urlOrPath, title, pageRange });
+    }
     if (openingSet) return;
     
     if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
@@ -914,6 +924,9 @@ export default function AssignmentsPage() {
     try {
       haptics.doublePulse();
       await submitMutation.mutateAsync({ assignmentId: id, link: 'marked-submitted' });
+      if (authUser?.id && authUser?.sectionId) {
+        logEvent('assignment_submitted', authUser.id, authUser.sectionId, { assignmentId: id });
+      }
       toast.success('Marked as submitted', {
         duration: 4000,
         action: {

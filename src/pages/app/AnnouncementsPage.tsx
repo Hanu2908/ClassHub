@@ -26,6 +26,7 @@ import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../.
 import RichTextBody from '../../components/RichTextBody';
 import { matchSubject } from '../../lib/utils/announcements';
 import { HighlightText } from '../../components/HighlightText';
+import { logEvent } from '../../lib/analytics';
 
 import { OffscreenSharePortal } from '../../components/announcement-qa/OffscreenSharePortal';
 import { shareAnnouncementCard } from '../../lib/utils/shareCard';
@@ -1799,6 +1800,9 @@ export default function AnnouncementsPage() {
   const handleAcknowledge = async (id: string) => {
     try {
       await ackMutation.mutateAsync(id);
+      if (authUser?.id && sectionId) {
+        logEvent('announcement_acknowledged', authUser.id, sectionId, { announcementId: id });
+      }
       toast.success('Acknowledged ✓');
       setJustAckedIds(prev => {
         const next = new Set(prev);

@@ -47,3 +47,28 @@ export async function requireCr(ctx: FunctionContext) {
 
   return { serviceClient, user: authUser.user, profile };
 }
+
+export async function requireDeveloper(ctx: FunctionContext) {
+  const userClient = createClient(ctx.supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+    global: { headers: { Authorization: `Bearer ${ctx.jwt}` } },
+  });
+
+  const { data: authUser, error: authError } = await userClient.auth.getUser();
+  if (authError || !authUser.user) {
+    throw new Error("Invalid user JWT");
+  }
+
+  const serviceClient = createClient(ctx.supabaseUrl, ctx.serviceRoleKey);
+  const { data: profile, error: profileError } = await serviceClient
+    .from("users")
+    .select("id, role, section_id, is_developer")
+    .eq("id", authUser.user.id)
+    .single();
+
+  if (profileError || !profile || !profile.is_developer) {
+    throw new Error("Developer role required");
+  }
+
+  return { serviceClient, user: authUser.user, profile };
+}
+

@@ -17,7 +17,11 @@ import {
   FileText,
   User,
   Bell,
-  ShieldAlert
+  ShieldAlert,
+  BarChart3,
+  TrendingUp,
+  AlertTriangle,
+  Zap
 } from 'lucide-react';
 import { subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
 
@@ -79,6 +83,56 @@ export default function DeveloperConsolePage() {
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState('');
   const [updatingNotesId, setUpdatingNotesId] = useState<string | null>(null);
+
+  // Product Analytics states & functions
+  const [analyticsExpanded, setAnalyticsExpanded] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [purgingAnalytics, setPurgingAnalytics] = useState(false);
+
+  const fetchAnalytics = async () => {
+    if (!authUser?.sectionId) return;
+    setLoadingAnalytics(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-analytics-summary', {
+        body: { sectionId: authUser.sectionId }
+      });
+      if (error) throw error;
+      setAnalyticsData(data);
+    } catch (err: any) {
+      console.error('[Analytics Error]', err);
+      toast.error(err.message || 'Failed to load analytics summary');
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  const handlePurgeStaleAnalytics = async () => {
+    if (!window.confirm('Are you sure you want to purge all analytics events older than 60 days?')) return;
+    setPurgingAnalytics(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-analytics-summary', {
+        body: { action: 'purge' }
+      });
+      if (error) throw error;
+      toast.success(`Successfully purged ${data.purgedCount || 0} stale events ✓`);
+      if (analyticsData) {
+        fetchAnalytics();
+      }
+    } catch (err: any) {
+      console.error('[Purge Error]', err);
+      toast.error(err.message || 'Failed to purge stale analytics');
+    } finally {
+      setPurgingAnalytics(false);
+    }
+  };
+
+  useEffect(() => {
+    if (analyticsExpanded && !analyticsData && !loadingAnalytics) {
+      fetchAnalytics();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyticsExpanded]);
 
   // 1. Supabase Presence (Online count)
   useEffect(() => {
@@ -557,6 +611,285 @@ export default function DeveloperConsolePage() {
               <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
                 You must subscribe this device before triggering a test push broadcast.
               </span>
+            </div>
+          )}
+        </div>
+
+        {/* ═══════════════ Product Analytics & Usage Metrics ═══════════════ */}
+        <div className="card" style={{ padding: 0, marginBottom: 20, border: analyticsExpanded ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-default)', overflow: 'hidden', transition: 'border-color 0.2s ease' }}>
+          {/* Collapsible Header */}
+          <button
+            onClick={() => setAnalyticsExpanded(!analyticsExpanded)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', gap: 10
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.05))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <BarChart3 size={16} color="#10B981" />
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <h3 style={{ margin: 0, font: '600 14px var(--font-display)', color: 'var(--text-primary)' }}>
+                  Product Analytics & Usage Metrics
+                </h3>
+                <span style={{ font: '11px var(--font-mono)', color: 'var(--text-muted)' }}>
+                  WAU · DAU · Retention · Feature Ranking
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 9, background: 'rgba(16, 185, 129, 0.1)', color: '#34D399', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)' }}>
+                BETA
+              </span>
+              {analyticsExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+            </div>
+          </button>
+
+          {/* Expanded Analytics Content */}
+          {analyticsExpanded && (
+            <div style={{ padding: '0 20px 20px', borderTop: '1px solid var(--border-default)' }}>
+
+              {/* Controls Row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+                <button
+                  onClick={fetchAnalytics}
+                  disabled={loadingAnalytics}
+                  style={{
+                    background: 'none', border: 'none', cursor: loadingAnalytics ? 'wait' : 'pointer',
+                    color: 'var(--accent-primary)', font: '600 11px var(--font-mono)',
+                    display: 'flex', alignItems: 'center', gap: 4, padding: 0
+                  }}
+                >
+                  <RefreshCw size={11} className={loadingAnalytics ? 'animate-spin' : ''} /> REFRESH DATA
+                </button>
+                <button
+                  onClick={handlePurgeStaleAnalytics}
+                  disabled={purgingAnalytics}
+                  style={{
+                    background: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.2)',
+                    borderRadius: 6, padding: '5px 10px', cursor: purgingAnalytics ? 'wait' : 'pointer',
+                    color: '#FB7185', font: '600 10px var(--font-mono)', display: 'flex', alignItems: 'center', gap: 4
+                  }}
+                >
+                  <Trash2 size={10} /> {purgingAnalytics ? 'PURGING…' : 'PURGE 60d+'}
+                </button>
+              </div>
+
+              {/* Loading State */}
+              {loadingAnalytics && !analyticsData && (
+                <div style={{ padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <RefreshCw size={20} color="#10B981" className="animate-spin" />
+                  <span style={{ font: '11px var(--font-mono)', color: 'var(--text-muted)' }}>COMPUTING ANALYTICS...</span>
+                </div>
+              )}
+
+              {/* Analytics Widgets Grid */}
+              {analyticsData && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                  {/* Row 1: WAU + Retention side by side */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+                    {/* Widget 1 — WAU Counter */}
+                    <div style={{
+                      background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-default)',
+                      borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6
+                    }}>
+                      <Users size={16} color="#8B5CF6" />
+                      <span style={{ font: '9px var(--font-mono)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Weekly Active
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                        <span style={{
+                          font: '700 28px var(--font-mono)',
+                          color: (analyticsData.wau?.percentage ?? 0) >= 70 ? '#34D399' : (analyticsData.wau?.percentage ?? 0) >= 40 ? '#FBBF24' : '#F43F5E'
+                        }}>
+                          {analyticsData.wau?.active ?? 0}
+                        </span>
+                        <span style={{ font: '500 13px var(--font-mono)', color: 'var(--text-muted)' }}>
+                          /{analyticsData.wau?.total ?? 0}
+                        </span>
+                      </div>
+                      <div style={{
+                        padding: '3px 8px', borderRadius: 20, font: '600 10px var(--font-mono)',
+                        background: (analyticsData.wau?.percentage ?? 0) >= 70 ? 'rgba(52, 211, 153, 0.1)' : (analyticsData.wau?.percentage ?? 0) >= 40 ? 'rgba(251, 191, 36, 0.1)' : 'rgba(244, 63, 94, 0.1)',
+                        color: (analyticsData.wau?.percentage ?? 0) >= 70 ? '#34D399' : (analyticsData.wau?.percentage ?? 0) >= 40 ? '#FBBF24' : '#FB7185'
+                      }}>
+                        {analyticsData.wau?.percentage ?? 0}% USAGE
+                      </div>
+                    </div>
+
+                    {/* Widget 3 — Retention Indicator */}
+                    <div style={{
+                      background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-default)',
+                      borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6
+                    }}>
+                      <TrendingUp size={16} color="#EC4899" />
+                      <span style={{ font: '9px var(--font-mono)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        7-Day Retention
+                      </span>
+                      <span style={{
+                        font: '700 28px var(--font-mono)',
+                        color: (analyticsData.retention?.percentage ?? 0) >= 60 ? '#34D399' : (analyticsData.retention?.percentage ?? 0) >= 30 ? '#FBBF24' : '#F43F5E'
+                      }}>
+                        {analyticsData.retention?.percentage ?? 0}%
+                      </span>
+                      <span style={{ font: '10px var(--font-mono)', color: 'var(--text-muted)' }}>
+                        {analyticsData.retention?.returned7d ?? 0} users returned
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Widget 2 — DAU Sparkline (7-day CSS bar chart) */}
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-default)',
+                    borderRadius: 10, padding: 16
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Activity size={14} color="#38BDF8" />
+                        <span style={{ font: '600 11px var(--font-mono)', color: 'var(--text-secondary)' }}>DAILY ACTIVE USERS</span>
+                      </div>
+                      <span style={{ font: '10px var(--font-mono)', color: 'var(--text-muted)' }}>LAST 7 DAYS</span>
+                    </div>
+                    {analyticsData.dauSeries && analyticsData.dauSeries.length > 0 ? (() => {
+                      const maxCount = Math.max(...analyticsData.dauSeries.map((d: any) => d.count), 1);
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 72 }}>
+                          {analyticsData.dauSeries.map((day: any, i: number) => {
+                            const heightPct = Math.max((day.count / maxCount) * 100, 4);
+                            const dayLabel = new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short' }).slice(0, 2);
+                            return (
+                              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
+                                <span style={{ font: '600 9px var(--font-mono)', color: '#38BDF8' }}>{day.count}</span>
+                                <div style={{
+                                  width: '100%', borderRadius: '4px 4px 0 0',
+                                  height: `${heightPct}%`, minHeight: 3,
+                                  background: `linear-gradient(180deg, #38BDF8 0%, rgba(56, 189, 248, 0.3) 100%)`,
+                                  transition: 'height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                                }} />
+                                <span style={{ font: '8px var(--font-mono)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{dayLabel}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })() : (
+                      <div style={{ padding: '16px 0', textAlign: 'center', font: '11px var(--font-mono)', color: 'var(--text-muted)' }}>
+                        No DAU data available yet
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Widget 4 — Feature Usage Ranking */}
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-default)',
+                    borderRadius: 10, padding: 16
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                      <Zap size={14} color="#FBBF24" />
+                      <span style={{ font: '600 11px var(--font-mono)', color: 'var(--text-secondary)' }}>FEATURE ENGAGEMENT RANKING</span>
+                    </div>
+                    {analyticsData.featureRanking && analyticsData.featureRanking.length > 0 ? (() => {
+                      const maxFeature = Math.max(...analyticsData.featureRanking.map((f: any) => f.count), 1);
+                      const eventLabels: Record<string, string> = {
+                        attendance_updated: '📋 Attendance',
+                        assignment_viewed: '📄 Assignment View',
+                        assignment_submitted: '✅ Assignment Submit',
+                        announcement_acknowledged: '📢 Announcement Ack',
+                        poll_voted: '🗳️ Poll Vote',
+                        profile_viewed: '👤 Profile View',
+                      };
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {analyticsData.featureRanking.map((feature: any, i: number) => {
+                            const barWidth = Math.max((feature.count / maxFeature) * 100, 2);
+                            return (
+                              <div key={i}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                  <span style={{ font: '11px var(--font-mono)', color: 'var(--text-primary)' }}>
+                                    {eventLabels[feature.event_name] || feature.event_name}
+                                  </span>
+                                  <span style={{ font: '600 10px var(--font-mono)', color: 'var(--text-muted)' }}>{feature.count}×</span>
+                                </div>
+                                <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                                  <div style={{
+                                    height: '100%', borderRadius: 2, width: `${barWidth}%`,
+                                    background: `linear-gradient(90deg, #FBBF24, #F59E0B)`,
+                                    transition: 'width 0.5s ease'
+                                  }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })() : (
+                      <div style={{ padding: '12px 0', textAlign: 'center', font: '11px var(--font-mono)', color: 'var(--text-muted)' }}>
+                        No feature engagement data yet
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Widget 5 — Inactive Students */}
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-default)',
+                    borderRadius: 10, padding: 16
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                      <AlertTriangle size={14} color="#F43F5E" />
+                      <span style={{ font: '600 11px var(--font-mono)', color: 'var(--text-secondary)' }}>INACTIVE STUDENTS (7d+)</span>
+                      {analyticsData.inactiveStudents && (
+                        <span style={{
+                          marginLeft: 'auto', font: '600 10px var(--font-mono)',
+                          background: analyticsData.inactiveStudents.length > 0 ? 'rgba(244, 63, 94, 0.1)' : 'rgba(52, 211, 153, 0.1)',
+                          color: analyticsData.inactiveStudents.length > 0 ? '#FB7185' : '#34D399',
+                          padding: '2px 6px', borderRadius: 4
+                        }}>
+                          {analyticsData.inactiveStudents.length}
+                        </span>
+                      )}
+                    </div>
+                    {analyticsData.inactiveStudents && analyticsData.inactiveStudents.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
+                        {analyticsData.inactiveStudents.map((student: any, i: number) => (
+                          <div key={i} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '8px 10px', borderRadius: 6,
+                            background: 'rgba(244, 63, 94, 0.03)', border: '1px solid rgba(244, 63, 94, 0.08)'
+                          }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <span style={{ font: '12px var(--font-mono)', color: 'var(--text-primary)' }}>{student.name}</span>
+                              <span style={{ font: '9px var(--font-mono)', color: 'var(--text-muted)' }}>{student.email}</span>
+                            </div>
+                            <span style={{ font: '9px var(--font-mono)', color: '#FB7185', whiteSpace: 'nowrap' }}>
+                              {student.lastSeen ? `Last: ${new Date(student.lastSeen).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Never seen'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ padding: '12px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <span style={{ font: '11px var(--font-mono)', color: '#34D399' }}>🎉 All students active in the last 7 days!</span>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              )}
+
+              {/* Empty state — no data and not loading */}
+              {!analyticsData && !loadingAnalytics && (
+                <div style={{ padding: '30px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <BarChart3 size={24} color="var(--text-muted)" style={{ opacity: 0.5 }} />
+                  <span style={{ font: '11px var(--font-mono)', color: 'var(--text-muted)' }}>Click REFRESH DATA to load analytics</span>
+                </div>
+              )}
             </div>
           )}
         </div>

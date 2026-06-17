@@ -14,6 +14,7 @@ import { useUserTags, useDeleteTag, MAX_ACTIVE_TAGS } from '../../hooks/useUserT
 import { TagPill } from '../../components/TagPill';
 import { AddTagSheet } from '../../components/AddTagSheet';
 import { BottomSheet } from '../../components/BottomSheet';
+import { logEvent } from '../../lib/analytics';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -85,6 +86,12 @@ export default function ProfilePage() {
       });
     }
   }, [authUser?.notificationsEnabled]);
+
+  useEffect(() => {
+    if (authUser?.id && authUser?.sectionId) {
+      logEvent('profile_viewed', authUser.id, authUser.sectionId);
+    }
+  }, [authUser]);
 
   const pushSupported = isPushSupported();
   const pushBlocked = pushSupported && getPushPermission() === 'denied';

@@ -17,6 +17,7 @@ import { useSchedule } from '../../hooks/useSchedule';
 import { useEnsureSubjects } from '../../hooks/useSubjects';
 import { haptics } from '../../lib/haptics';
 import Skeleton from 'react-loading-skeleton';
+import { logEvent } from '../../lib/analytics';
 
 
 import { parseERPAttendance } from '../../lib/utils/attendance';
@@ -521,6 +522,9 @@ export default function AttendancePage() {
     bulkUpsert.mutate(importItems, {
       onSuccess: () => {
         toast.success('ERP attendance imported successfully');
+        if (authUser?.id && authUser?.sectionId) {
+          logEvent('attendance_updated', authUser.id, authUser.sectionId);
+        }
       },
       onError: (err: Error) => {
         console.error('ERP import error', err);
