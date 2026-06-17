@@ -226,7 +226,7 @@ export default function App() {
 
                 {/* App shell — needs auth + hub */}
                 <Route path="/app/home" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><DashboardPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
-                <Route path="/app/schedule" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><SchedulePage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/schedule" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><SchedulePage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/polls" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><PollsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/profile" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ProfilePage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/resource-hub" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><ResourceHubPage /></ErrorBoundary></RequireHub></RequireAuth>} />

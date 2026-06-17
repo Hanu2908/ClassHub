@@ -43,6 +43,7 @@ export function NavBar() {
   if (role === 'teacher') {
     const tabs = [
       { id: 'teacher-dashboard', label: 'Dashboard', icon: Home, path: '/app/teacher-dashboard' },
+      { id: 'schedule', label: 'Schedule', icon: Calendar, path: '/app/schedule' },
       { id: 'announcements', label: 'Notices', icon: Megaphone, path: '/app/announcements' },
     ];
     if (authUser?.isCounsellorForBatch) {

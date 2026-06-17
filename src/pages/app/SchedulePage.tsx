@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { type SubjectCategory, getCategory, CATEGORY_COLORS, CATEGORY_LABELS, calculateEndTime, TYPE_DURATIONS, formatTime, formatTimeRange, getSubjectAcronym } from '../../lib/scheduleUtils';
 import Skeleton from 'react-loading-skeleton';
+import TeacherScheduleManager from './TeacherScheduleManager';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 type ScheduleDay = typeof DAYS[number];
@@ -112,6 +113,11 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
   const [targetBatch, setTargetBatch] = useState<'all' | '1' | '2'>('all');
   const [addedCount, setAddedCount] = useState(0);
 
+  const [notifyClass, setNotifyClass] = useState(false);
+  const [noticeTitle, setNoticeTitle] = useState('');
+  const [noticeBody, setNoticeBody] = useState('');
+  const [noticePriority, setNoticePriority] = useState<'general' | 'critical'>('general');
+
   // Smart defaults: start after last existing or added slot
   const lastEndTime = useMemo(() => {
     const allSlots = [...existingSlots].sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -189,7 +195,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       : customTeacher;
 
     try {
-      await upsertSlot.mutateAsync({
+      const payload: any = {
         subjectId,
         dayOfWeek: DAY_MAP[day] ?? 1,
         startTime,
@@ -198,8 +204,19 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
         type: mapUiTypeToDb(type),
         teacher: finalTeacher.trim() || undefined,
         targetBatch: targetBatch === 'all' ? null : targetBatch,
-        sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
-      });
+        sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined,
+      };
+
+      if (notifyClass) {
+        const sub = subjects.find(s => s.id === subjectId);
+        const subName = sub?.name || 'Class';
+        payload.publishNotice = true;
+        payload.noticeTitle = noticeTitle.trim() || `📅 Schedule Update: ${subName}`;
+        payload.noticeBody = noticeBody.trim() || `A new weekly class slot has been scheduled.`;
+        payload.priority = noticePriority;
+      }
+
+      await upsertSlot.mutateAsync(payload);
       setAddedCount(c => c + 1);
       toast.success(`Slot added (${addedCount + 1})`);
 
@@ -210,6 +227,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       // Room & teacher remembered, subject cleared for next pick, reset batch scoping
       setSubjectId('');
       setTargetBatch('all');
+      setNotifyClass(false);
     } catch (err: any) { toast.error(`Failed to add slot: ${err.message || 'Unknown'}`); }
   };
 
@@ -308,6 +326,48 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
             <label htmlFor="slot-end-input" style={labelStyle}>End * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({TYPE_DURATIONS[type] ?? 60}m)</span></label>
             <input id="slot-end-input" style={inputStyle} type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
           </div>
+        </div>
+
+        {/* Announcement Bridge Toggle */}
+        <div style={{ padding: '10px 12px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.01)', width: '100%', boxSizing: 'border-box' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={notifyClass}
+              onChange={e => {
+                setNotifyClass(e.target.checked);
+                if (e.target.checked && subjectId) {
+                  const subName = subjects.find(s => s.id === subjectId)?.name || 'Class';
+                  setNoticeTitle(`📅 Class Scheduled: ${subName}`);
+                  setNoticeBody(`A new ${type} for ${subName} has been scheduled on ${DAY_FULL[day] || day} from ${startTime} to ${endTime} in Room ${room || 'TBD'}.`);
+                }
+              }}
+              style={{ width: 16, height: 16, accentColor: 'var(--accent-primary)' }}
+            />
+            <span className="t-mono-sm" style={{ color: 'var(--text-primary)', fontSize: 12 }}>
+              Notify Class & Post formal Notice
+            </span>
+          </label>
+          
+          {notifyClass && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10, borderTop: '1px solid var(--border-default)', paddingTop: 10 }}>
+              <div>
+                <label style={{ ...labelStyle, marginBottom: 3 }}>Notice Title</label>
+                <input type="text" value={noticeTitle} onChange={e => setNoticeTitle(e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, marginBottom: 3 }}>Notice Content</label>
+                <textarea value={noticeBody} onChange={e => setNoticeBody(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, marginBottom: 3 }}>Priority</label>
+                <select value={noticePriority} onChange={e => setNoticePriority(e.target.value as any)} style={inputStyle}>
+                  <option value="general">General (Standard post)</option>
+                  <option value="critical">Critical (Send Push notification instantly 🚨)</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         {isEarlyAM && (
@@ -679,7 +739,7 @@ function ScheduleSkeleton() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function SchedulePage() {
+function StudentSchedulePage() {
   const navigate = useNavigate();
   const todayKey = currentDayKey();
   const [selectedDay, setSelectedDay] = useState<ScheduleDay>(
@@ -697,11 +757,20 @@ export default function SchedulePage() {
   const [slotToDelete, setSlotToDelete] = useState<SwipeableCardSlot | null>(null);
   const [prevSlotToDelete, setPrevSlotToDelete] = useState<SwipeableCardSlot | null>(null);
 
+  const [deleteNotifyClass, setDeleteNotifyClass] = useState(false);
+  const [deleteNoticeTitle, setDeleteNoticeTitle] = useState('');
+  const [deleteNoticeBody, setDeleteNoticeBody] = useState('');
+  const [deleteNoticePriority, setDeleteNoticePriority] = useState<'general' | 'critical'>('general');
+
   useEffect(() => {
     if (slotToDelete) {
       setPrevSlotToDelete(slotToDelete);
+      setDeleteNotifyClass(false);
+      setDeleteNoticeTitle(`❌ Class Cancelled: ${slotToDelete.subject}`);
+      setDeleteNoticeBody(`The class for ${slotToDelete.subject} scheduled for ${selectedDay} at ${formatTime(slotToDelete.startTime)} has been cancelled/removed from the schedule.`);
+      setDeleteNoticePriority('general');
     }
-  }, [slotToDelete]);
+  }, [slotToDelete, selectedDay]);
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const nowLineRef = useRef<HTMLDivElement>(null);
@@ -1581,6 +1650,41 @@ export default function SchedulePage() {
               </div>
             </div>
 
+            {/* Announcement Bridge Toggle for Deletion */}
+            <div style={{ padding: '10px 12px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.01)', width: '100%', boxSizing: 'border-box' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={deleteNotifyClass}
+                  onChange={e => setDeleteNotifyClass(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: 'var(--accent-primary)' }}
+                />
+                <span className="t-mono-sm" style={{ color: 'var(--text-primary)', fontSize: 12 }}>
+                  Notify Class & Post formal Notice
+                </span>
+              </label>
+              
+              {deleteNotifyClass && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10, borderTop: '1px solid var(--border-default)', paddingTop: 10 }}>
+                  <div>
+                    <label style={{ ...labelStyle, marginBottom: 3 }}>Notice Title</label>
+                    <input type="text" value={deleteNoticeTitle} onChange={e => setDeleteNoticeTitle(e.target.value)} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={{ ...labelStyle, marginBottom: 3 }}>Notice Content</label>
+                    <textarea value={deleteNoticeBody} onChange={e => setDeleteNoticeBody(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} />
+                  </div>
+                  <div>
+                    <label style={{ ...labelStyle, marginBottom: 3 }}>Priority</label>
+                    <select value={deleteNoticePriority} onChange={e => setDeleteNoticePriority(e.target.value as any)} style={inputStyle}>
+                      <option value="general">General (Standard post)</option>
+                      <option value="critical">Critical (Send Push notification instantly 🚨)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setSlotToDelete(null)}
@@ -1602,7 +1706,17 @@ export default function SchedulePage() {
                 onClick={async () => {
                   if (prevSlotToDelete) {
                     try {
-                      await deleteSlotMutation.mutateAsync(prevSlotToDelete.id);
+                      await deleteSlotMutation.mutateAsync(
+                        deleteNotifyClass
+                          ? {
+                              id: prevSlotToDelete.id,
+                              publishNotice: true,
+                              noticeTitle: deleteNoticeTitle.trim() || `❌ Class Cancelled: ${prevSlotToDelete.subject}`,
+                              noticeBody: deleteNoticeBody.trim() || `The class for ${prevSlotToDelete.subject} has been cancelled.`,
+                              priority: deleteNoticePriority,
+                            }
+                          : prevSlotToDelete.id
+                      );
                       toast.info('Class successfully removed');
                     } catch (err: any) {
                       toast.error(`Failed to remove class: ${err.message || 'Unknown'}`);
@@ -1670,3 +1784,13 @@ export default function SchedulePage() {
     </div>
   );
 }
+
+export default function SchedulePage() {
+  const role = useAppStore(s => s.role);
+
+  if (role === 'teacher') {
+    return <TeacherScheduleManager />;
+  }
+  return <StudentSchedulePage />;
+}
+

@@ -90,6 +90,10 @@ export function useUpsertScheduleSlot() {
       teacher?: string;
       targetBatch?: string | null;
       sectionId?: string;
+      publishNotice?: boolean;
+      noticeTitle?: string;
+      noticeBody?: string;
+      priority?: 'general' | 'critical';
     }) => {
       // 1. Enforce strict CR/Teacher authorization check
       if (role !== 'cr' && role !== 'teacher') {
@@ -126,8 +130,35 @@ export function useUpsertScheduleSlot() {
       const { error } = await supabase.from('timetable_slots').upsert(row);
       if (error) throw error;
 
-      // Trigger push notification broadcast
-      if (targetSectionId) {
+      // Publish Announcement Notice if selected
+      if (input.publishNotice && input.noticeTitle && input.noticeBody) {
+        try {
+          const { data: annData, error: annErr } = await supabase
+            .from('announcements')
+            .insert({
+              section_id: targetSectionId!,
+              author_id: userId!,
+              title: input.noticeTitle,
+              message_content: input.noticeBody,
+              priority: input.priority ?? 'general',
+              target_batch: input.targetBatch ?? null,
+            })
+            .select('id')
+            .single();
+
+          if (annErr) throw annErr;
+
+          // If critical notice, trigger push broadcast
+          if (input.priority === 'critical' && annData?.id) {
+            await supabase.functions.invoke('send-critical-announcement', {
+              body: { announcementId: annData.id },
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to publish announcement for timetable change:', err);
+        }
+      } else if (targetSectionId) {
+        // Fallback to standard push notification broadcast
         const action = input.id ? 'Updated' : 'Added';
         try {
           await supabase.functions.invoke('send-custom-notification', {
@@ -151,30 +182,76 @@ export function useUpsertScheduleSlot() {
 
 export function useDeleteScheduleSlot() {
   const qc = useQueryClient();
-  const { role } = useAuthContext();
+  const { role, userId } = useAuthContext();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (input: string | {
+      id: string;
+      publishNotice?: boolean;
+      noticeTitle?: string;
+      noticeBody?: string;
+      sectionId?: string;
+      priority?: 'general' | 'critical';
+    }) => {
       // Enforce strict CR/Teacher authorization check
       if (role !== 'cr' && role !== 'teacher') {
         throw new Error('Unauthorized: Only Class Representatives and Teachers can delete timetable slots');
       }
 
+      const id = typeof input === 'string' ? input : input.id;
+      const publishNotice = typeof input === 'string' ? false : !!input.publishNotice;
+      const noticeTitle = typeof input === 'string' ? undefined : input.noticeTitle;
+      const noticeBody = typeof input === 'string' ? undefined : input.noticeBody;
+      const inputSectionId = typeof input === 'string' ? undefined : input.sectionId;
+      const priority = typeof input === 'string' ? 'general' : (input.priority ?? 'general');
+
       const { error } = await supabase.from('timetable_slots').delete().eq('id', id);
       if (error) throw error;
 
-      const sectionId = (await supabase.auth.getUser()).data.user?.user_metadata?.sectionId;
-      if (sectionId) {
-        try {
-          await supabase.functions.invoke('send-custom-notification', {
-            body: {
-              title: `❌ Timetable Updated`,
-              body: `A class slot has been removed from the timetable.`,
-              sectionId: sectionId,
-              skipDbInsert: true
+      // Get sectionId
+      let targetSectionId = inputSectionId;
+      if (!targetSectionId) {
+        const userRes = await supabase.auth.getUser();
+        targetSectionId = userRes.data.user?.user_metadata?.sectionId;
+      }
+
+      if (targetSectionId) {
+        if (publishNotice && noticeTitle && noticeBody) {
+          try {
+            const { data: annData, error: annErr } = await supabase
+              .from('announcements')
+              .insert({
+                section_id: targetSectionId,
+                author_id: userId!,
+                title: noticeTitle,
+                message_content: noticeBody,
+                priority: priority,
+              })
+              .select('id')
+              .single();
+
+            if (annErr) throw annErr;
+
+            if (priority === 'critical' && annData?.id) {
+              await supabase.functions.invoke('send-critical-announcement', {
+                body: { announcementId: annData.id },
+              });
             }
-          });
-        } catch (err) {
-          console.warn('Failed to send push notification for timetable change:', err);
+          } catch (err) {
+            console.warn('Failed to publish cancellation announcement:', err);
+          }
+        } else {
+          try {
+            await supabase.functions.invoke('send-custom-notification', {
+              body: {
+                title: `❌ Timetable Updated`,
+                body: `A class slot has been removed from the timetable.`,
+                sectionId: targetSectionId,
+                skipDbInsert: true
+              }
+            });
+          } catch (err) {
+            console.warn('Failed to send push notification for timetable change:', err);
+          }
         }
       }
     },
