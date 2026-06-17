@@ -732,6 +732,7 @@ export default function ProfilePage() {
               <ChevronRight size={16} color="var(--text-muted)" />
             </div>
         </div>
+        </div>
 
         {/* Account — Sign Out */}
         <div>
