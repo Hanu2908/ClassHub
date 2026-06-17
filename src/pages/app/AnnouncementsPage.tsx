@@ -1784,6 +1784,7 @@ export default function AnnouncementsPage() {
   // Force re-measure when layout mode changes or announcements load to avoid stale height cache
   useEffect(() => {
     virtualizer.measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layoutMode, announcements.length]);
 
 

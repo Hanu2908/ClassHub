@@ -234,7 +234,7 @@ export default function JoinHubPage() {
     }
     setSavingCourses(true);
     try {
-      const selectedEntries = Object.entries(selectedSubjects).filter(([_, val]) => val.linked);
+      const selectedEntries = Object.entries(selectedSubjects).filter(([, val]) => val.linked);
       if (selectedEntries.length === 0) {
         toast.success('Joined successfully! Welcome 🎓');
         navigate('/app/teacher-dashboard');

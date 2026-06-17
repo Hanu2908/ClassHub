@@ -183,7 +183,7 @@ export default function AttendancePage() {
       } else {
         toast.error('Clipboard is empty');
       }
-    } catch (err) {
+    } catch {
       toast.error('Clipboard permission denied. Please paste manually.');
     }
   };

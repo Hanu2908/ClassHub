@@ -133,7 +133,7 @@ export default function CreateHubPage() {
     const handleShare = async () => {
       try {
         await navigator.share({ title: 'Join my ClassHub!', text: `Join Section hub with code: ${generatedCode}` });
-      } catch (err) {
+      } catch {
         try {
           await navigator.clipboard.writeText(directLink);
           toast.success('Direct link copied to clipboard!');

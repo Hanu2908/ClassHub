@@ -776,7 +776,7 @@ export default function SchedulePage() {
 
   // Weekly grid time range calculation
   const weeklyTimeRange = useMemo(() => {
-    let allSlots: any[] = [];
+    const allSlots: any[] = [];
     DAYS.forEach(d => {
       const raw = schedule[d] ?? [];
       let list = raw;
