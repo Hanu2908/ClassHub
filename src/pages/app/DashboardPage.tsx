@@ -66,6 +66,10 @@ const notificationBadgeStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   border: '1.5px solid var(--bg-base)',
+  fontSize: '9px',
+  fontWeight: 'bold',
+  fontFamily: 'var(--font-mono)',
+  lineHeight: 1,
 };
 
 

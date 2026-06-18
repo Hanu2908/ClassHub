@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
@@ -78,11 +78,13 @@ function SubmissionTracker() {
   const { data: submissions = [], isLoading } = useAssignmentSubmissions(selected?.id ?? null);
   const crToggle = useCRToggleSubmission();
 
+  const studentMembers = useMemo(() => members.filter(m => m.role !== 'teacher'), [members]);
+
   // CR tracker uses cr_verified (CR's own mark), not student's self-reported status
-  const submittedMembers = members.filter(m =>
+  const submittedMembers = studentMembers.filter(m =>
     submissions.some(s => s.studentId === m.id && s.crVerified === true)
   );
-  const pendingMembers = members.filter(m =>
+  const pendingMembers = studentMembers.filter(m =>
     !submissions.some(s => s.studentId === m.id && s.crVerified === true)
   );
 
@@ -471,15 +473,19 @@ function ClassAttendance() {
   const [commuteFilter, setCommuteFilter] = useState<'all' | 'ds' | 'hostel'>('all');
   const [sortBy, setSortBy] = useState<'roll' | 'attendance_asc' | 'attendance_desc'>('roll');
 
+  const studentMembers = useMemo(() => members.filter(m => m.role !== 'teacher'), [members]);
+
   // Map each member with their attendance aggregate
-  const membersWithAttendance = members.map(m => {
-    const att = attendanceMap[m.id];
-    return {
-      ...m,
-      overallPercentage: att?.overallPercentage ?? null,
-      totalHeld: att?.totalHeld ?? 0,
-    };
-  });
+  const membersWithAttendance = useMemo(() => {
+    return studentMembers.map(m => {
+      const att = attendanceMap[m.id];
+      return {
+        ...m,
+        overallPercentage: att?.overallPercentage ?? null,
+        totalHeld: att?.totalHeld ?? 0,
+      };
+    });
+  }, [studentMembers, attendanceMap]);
 
   // Calculate section aggregates
   const validPercent = membersWithAttendance.filter(m => m.overallPercentage !== null);

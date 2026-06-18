@@ -12,10 +12,10 @@ export interface SectionMember {
   email: string;
   classRoll: string | null;
   universityRoll: string | null;
-  role: 'student' | 'cr';
+  role: 'student' | 'cr' | 'teacher';
   crRank: 'primary' | 'co' | null;
   avatarUrl: string | null;
-  dayScholar: boolean;
+  dayScholar: boolean | null;
 }
 
 export interface StudentAttendanceAggregate {
@@ -126,7 +126,7 @@ export function useSectionMembers() {
         email: u.email,
         classRoll: u.section_roll,
         universityRoll: u.university_roll,
-        role: u.role as 'student' | 'cr',
+        role: u.role as 'student' | 'cr' | 'teacher',
         crRank: (u as Record<string, unknown>).cr_rank as 'primary' | 'co' | null ?? null,
         avatarUrl: u.avatar_url,
         dayScholar: u.day_scholar,

@@ -28,7 +28,7 @@ export interface AuthUser {
   sectionId: string | null;
   sectionRoll: string | null;
   universityRoll: string | null;
-  dayScholar: boolean;
+  dayScholar: boolean | null;
   notificationsEnabled: boolean;
   isDeveloper: boolean;
   subBatch?: string | null;

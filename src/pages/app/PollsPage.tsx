@@ -808,7 +808,7 @@ export default function PollsPage() {
 
   const { data: schedule } = useSchedule();
   const { data: members = [] } = useSectionMembers();
-  const totalStudents = members.length || 1;
+  const totalStudents = members.filter(m => (m.role as string) !== 'teacher').length || 1;
 
   const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'short' });
   const todaysClasses = (schedule?.[todayStr] || []).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));

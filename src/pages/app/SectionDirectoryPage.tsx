@@ -124,7 +124,7 @@ export default function SectionDirectoryPage() {
 
   // Filter members by tag if query param present, and exclude teachers
   const filteredMembers = useMemo(() => {
-    const nonTeachers = members.filter(m => (m.role as string) !== 'teacher');
+    const nonTeachers = members.filter(m => m.role !== 'teacher');
     if (!tagFilter) return nonTeachers;
     const lower = tagFilter.toLowerCase();
     return nonTeachers.filter(m => {

@@ -19,15 +19,16 @@ export function useNotifications() {
 
   // ── 2. Query to Fetch Notifications ──
   const query = useQuery<AppNotification[]>({
-    queryKey: ['notifications', userId],
-    enabled: !!userId,
+    queryKey: ['notifications', userId, authUser?.sectionId],
+    enabled: !!userId && !!authUser?.sectionId,
     staleTime: 60 * 1000, // 1 minute
     queryFn: async () => {
-      if (!userId) return [];
+      if (!userId || !authUser?.sectionId) return [];
       const { data, error } = await supabase
         .from('notification_events')
         .select('*')
         .eq('recipient_id', userId)
+        .or(`section_id.eq.${authUser.sectionId},section_id.is.null`)
         .order('created_at', { ascending: false })
         .limit(50); // Cap at 50 to keep it fast
 
@@ -64,11 +65,13 @@ export function useNotifications() {
           }
 
           // Force cache invalidation so React Query fetches the latest snapshot
-          queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+          queryClient.invalidateQueries({ queryKey: ['notifications', userId, authUser?.sectionId] });
 
           if (payload.eventType === 'INSERT') {
             const newNotif = mapDbNotification(payload.new as DbNotification);
-            toast.info(newNotif.title);
+            if (!newNotif.section_id || newNotif.section_id === authUser?.sectionId) {
+              toast.info(newNotif.title);
+            }
           }
         }
       )
@@ -84,23 +87,24 @@ export function useNotifications() {
       }
       supabase.removeChannel(channel);
     };
-  }, [userId, queryClient, instanceId]);
+  }, [userId, queryClient, instanceId, authUser?.sectionId]);
 
   // ── 3. Mutation: Mark All Read ──
   const markAllRead = useMutation({
     mutationFn: async () => {
-      if (!userId) return;
+      if (!userId || !authUser?.sectionId) return;
       const nowStr = new Date().toISOString();
       const { error } = await supabase
         .from('notification_events')
         .update({ read_at: nowStr })
         .eq('recipient_id', userId)
+        .or(`section_id.eq.${authUser.sectionId},section_id.is.null`)
         .is('read_at', null);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId, authUser?.sectionId] });
     },
   });
 
@@ -115,7 +119,7 @@ export function useNotifications() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId, authUser?.sectionId] });
     },
   });
 
@@ -131,7 +135,7 @@ export function useNotifications() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId, authUser?.sectionId] });
     },
   });
 

@@ -46,6 +46,12 @@ scratch/
 
 # AI agent tooling (local only)
 .agents/
+.agent-native/
+.claude/
+.cursor/
+.mcp.json
+opencode.json
+plan-blocks.md
 AGENTS.md
 AGENTS.original.md
 CLAUDE.md
