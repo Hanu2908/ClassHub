@@ -44,7 +44,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   
   // Allow through if active session exists, demo session, or offline with cached user
-  const isDemo = authUser?.sectionId === 'demo-section';
+  const isDemo = import.meta.env.DEV && authUser?.sectionId === 'demo-section';
   const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
   const isAuthenticated = !!session || isDemo || isOfflineWithCache;
 
@@ -107,7 +107,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   
   // If user has active session, demo session, or offline with cached user, redirect to appropriate page
-  const isDemo = authUser?.sectionId === 'demo-section';
+  const isDemo = import.meta.env.DEV && authUser?.sectionId === 'demo-section';
   const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
   const isAuthenticated = !!session || isDemo || isOfflineWithCache;
 
@@ -132,12 +132,13 @@ function ShareIntakeRoute() {
 
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
-  if (!session && authUser?.sectionId !== 'demo-section' && !isOfflineWithCache) {
-    if (inboxId) sessionStorage.setItem('classhub-pending-share-inbox-id', inboxId);
+  const isDemoBypass = import.meta.env.DEV && authUser?.sectionId === 'demo-section';
+  if (!session && !isDemoBypass && !isOfflineWithCache) {
+    if (inboxId) localStorage.setItem('classhub-pending-share-inbox-id', inboxId);
     return <Navigate to="/" replace />;
   }
   if (!authUser?.sectionId) return <Navigate to="/onboarding/choice" replace />;
-  if (inboxId) sessionStorage.removeItem('classhub-pending-share-inbox-id');
+  if (inboxId) localStorage.removeItem('classhub-pending-share-inbox-id');
   return <ErrorBoundary variant="page"><ShareIntakePage /></ErrorBoundary>;
 }
 

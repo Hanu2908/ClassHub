@@ -84,6 +84,7 @@ export default function SectionDirectoryPage() {
       email: string;
       avatarUrl: string | null;
       isCounsellorForBatch: '1' | '2' | null;
+      phone: string | null;
       subjects: { name: string; code: string }[];
     }> = {};
 
@@ -308,7 +309,7 @@ export default function SectionDirectoryPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigator.clipboard.writeText(teacher.phone);
+                              navigator.clipboard.writeText(teacher.phone || '');
                               toast.success('Phone number copied!');
                             }}
                             style={{

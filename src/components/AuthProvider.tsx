@@ -15,7 +15,7 @@ import { subscribeToSection } from '../lib/realtimeBroker';
 const SKIT_DOMAIN = '@skit.ac.in';
 
 // ── Helper: fetch user profile from public.users ──
-async function fetchProfile(userId: string): Promise<AuthUser | null> {
+async function fetchProfile(userId: string): Promise<{ profile: AuthUser | null; isError: boolean }> {
   const { data, error } = await supabase
     .from('users')
     .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer, sub_batch, phone, branch')
@@ -24,14 +24,14 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
 
   if (error) {
     console.error('[Auth] fetchProfile error:', error);
-    return null;
+    return { profile: null, isError: true };
   }
 
   if (!data) {
     if (import.meta.env.DEV) {
       console.log('[Auth] fetchProfile: no profile row returned for user:', userId);
     }
-    return null;
+    return { profile: null, isError: false };
   }
 
   let isCounsellorForBatch: '1' | '2' | null = null;
@@ -49,7 +49,7 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
     }
   }
 
-  return {
+  const profile: AuthUser = {
     id: data.id,
     name: data.name,
     email: data.email,
@@ -67,6 +67,8 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
     phone: data.phone ?? null,
     branch: data.branch ?? null,
   };
+
+  return { profile, isError: false };
 }
 
 // ── Helper: extract basic info from Supabase auth user ──
@@ -106,8 +108,8 @@ async function handleSession(
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
-  // Domain check
-  if (!user.email?.endsWith(SKIT_DOMAIN)) {
+  // Domain check (case-insensitive)
+  if (!user.email?.toLowerCase().endsWith(SKIT_DOMAIN)) {
     await supabase.auth.signOut();
     store.setAuthUser(null);
     store.setSession(null);
@@ -118,43 +120,48 @@ async function handleSession(
 
   store.setSession(session);
   saveSession(session.access_token, user.id);
-  // Try to fetch the backend profile; retry a few times in case of eventual consistency
-  let profile = await fetchProfile(user.id);
-  if (!profile) {
-    // Retry with a short backoff — helpful when account row was just created elsewhere
+
+  // Try to fetch the backend profile; retry ONLY in case of query/network errors
+  let { profile, isError } = await fetchProfile(user.id);
+  if (!profile && isError) {
+    // Retry with a short backoff — helpful when network/DB is temporarily glitching
     for (let attempt = 0; attempt < 3 && !profile; attempt++) {
-      // 200ms, 400ms, 600ms
-       
       await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
-       
-      profile = await fetchProfile(user.id);
+      const res = await fetchProfile(user.id);
+      profile = res.profile;
+      isError = res.isError;
     }
   }
 
   if (profile) {
     store.setAuthUser(profile);
-  } else {
-    // Log a warning so debugging on mobile/other devices is easier
-    if (import.meta.env.DEV) {
-      console.warn('[Auth] no backend profile found for user', user.id);
-    }
-    
-    // If the user has a valid cached profile with the same ID, preserve it (prevents network/latency logout loop)
+  } else if (isError) {
+    // A network or query error occurred. Fall back to cached profile to prevent logout loops during flaky connections.
     const existing = store.authUser;
     if (existing && existing.id === user.id) {
       store.setAuthUser(existing);
-    } else if (existing?.sectionId === 'demo-section') {
+    } else if (import.meta.env.DEV && existing?.sectionId === 'demo-section') {
       store.setAuthUser(existing);
     } else {
-      // Surface a lightweight diagnostic to the user so mobile issues are visible
       const isAppRoute = window.location.pathname.startsWith('/app');
       if (isAppRoute) {
         try {
-          toast.warning('Signed in but profile not found — loading basic profile. If this persists, refresh or contact support.');
+          toast.warning('Signed in but profile fetch failed due to a network glitch. Loading basic profile.');
         } catch {
           // ignore if toast system is not yet mounted
         }
       }
+      store.setAuthUser(authUserToBasicProfile(user));
+    }
+  } else {
+    // Database query succeeded but returned no profile row.
+    // The user has either been deleted from public.users or has not yet completed onboarding.
+    // Force set the basic profile (which has sectionId: null) so they are sent to onboarding choice.
+    // This resolves the security bypass where deleted users could navigate with cached credentials.
+    const existing = store.authUser;
+    if (import.meta.env.DEV && existing?.sectionId === 'demo-section') {
+      store.setAuthUser(existing);
+    } else {
       store.setAuthUser(authUserToBasicProfile(user));
     }
   }
@@ -188,11 +195,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const inviteCode = params.get('invite') || params.get('code');
-    // Valid ClassHub invite codes are exactly 6 alphanumeric characters
-    if (inviteCode && /^[A-Za-z0-9]{2}[A-Za-z]{4}$/.test(inviteCode)) {
-      sessionStorage.setItem('classhub-pending-invite-code', inviteCode.toUpperCase());
-      if (import.meta.env.DEV) {
-        console.log('[Auth] Captured pending invite code:', inviteCode.toUpperCase());
+    if (inviteCode) {
+      const isStudentCode = /^[A-Za-z0-9]{2}[A-Za-z]{4}$/.test(inviteCode);
+      const isTeacherCode = /^T-[A-Za-z0-9]{6}$/i.test(inviteCode);
+      if (isStudentCode || isTeacherCode) {
+        localStorage.setItem('classhub-pending-invite-code', inviteCode.toUpperCase());
+        if (import.meta.env.DEV) {
+          console.log('[Auth] Captured pending invite code:', inviteCode.toUpperCase());
+        }
       }
     }
   }, []);
@@ -243,17 +253,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (error) {
             console.error('[Auth] Error fetching initial session:', error);
           }
-          // If no active session while ONLINE, clear stale persisted user profile.
-          // When OFFLINE, preserve the cached authUser — it's the user's only source of identity.
+
+          const isNetworkError = error && (
+            error.message?.toLowerCase().includes('fetch') ||
+            error.message?.toLowerCase().includes('network') ||
+            error.message?.toLowerCase().includes('load failed') ||
+            error.status === 0 ||
+            error.status === 503 ||
+            error.status === 504
+          );
+
+          // If no active session while ONLINE and not a network error, clear stale persisted user profile.
+          // During network errors or OFFLINE, preserve the cached authUser to prevent accidental logouts.
           const store = useAppStore.getState();
-          if (store.authUser?.sectionId !== 'demo-section' && navigator.onLine) {
+          const isDemoBypass = import.meta.env.DEV && store.authUser?.sectionId === 'demo-section';
+          if (!isDemoBypass && navigator.onLine && !isNetworkError) {
             if (import.meta.env.DEV) {
               console.log('[Auth] No active session found (online). Clearing cached authUser to prevent guard bypass.');
             }
             store.setAuthUser(null);
             store.setSession(null);
-          } else if (!navigator.onLine && import.meta.env.DEV) {
-            console.log('[Auth] No active session found (offline). Preserving cached authUser for offline mode.');
+          } else if (import.meta.env.DEV) {
+            console.log('[Auth] No active session found (offline/network error). Preserving cached authUser.');
           }
           store.setAuthLoading(false);
         } else {
@@ -274,12 +295,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
           }, 0);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('[Auth] getInitialSession failed with critical exception:', err);
-        // Clear cached authUser on critical exception — but only when online.
-        // Offline exceptions (network timeouts) should not wipe the user's cached identity.
+        const errMsg = err?.message?.toLowerCase() || '';
+        const isNetworkError = errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('load failed');
+        // Clear cached authUser on critical exception — but only when online and not a network failure.
         const store = useAppStore.getState();
-        if (store.authUser?.sectionId !== 'demo-section' && navigator.onLine) {
+        const isDemoBypass = import.meta.env.DEV && store.authUser?.sectionId === 'demo-section';
+        if (!isDemoBypass && navigator.onLine && !isNetworkError) {
           store.setAuthUser(null);
           store.setSession(null);
         }
@@ -319,6 +342,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           store.setSession(null);
           store.setAuthUser(null);
           store.setAuthLoading(false);
+          localStorage.removeItem('classhub-pending-invite-code');
+          localStorage.removeItem('classhub-pending-share-inbox-id');
           queryClient.clear();
           clearSession();
         } else if (event === 'TOKEN_REFRESHED' && session) {
@@ -465,8 +490,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
  */
 export async function signInWithGoogle() {
   try {
-    const pendingShareInboxId = sessionStorage.getItem('classhub-pending-share-inbox-id');
-    const pendingInviteCode = sessionStorage.getItem('classhub-pending-invite-code');
+    const pendingShareInboxId = localStorage.getItem('classhub-pending-share-inbox-id');
+    const pendingInviteCode = localStorage.getItem('classhub-pending-invite-code');
     const redirectPath = pendingShareInboxId
       ? `/share-intake?id=${encodeURIComponent(pendingShareInboxId)}`
       : (pendingInviteCode ? '/onboarding/join' : '/onboarding/choice');
@@ -503,6 +528,8 @@ export async function signInWithGoogle() {
 export async function signOutGlobal(navigate: (path: string) => void) {
   await supabase.auth.signOut().catch(() => {});
   useAppStore.getState().signOut();
+  localStorage.removeItem('classhub-pending-invite-code');
+  localStorage.removeItem('classhub-pending-share-inbox-id');
   queryClient.clear();
   navigate('/');
 }

@@ -32,7 +32,11 @@ export default function JoinHubPage() {
   const { setRole, setHub, refreshProfile, authUser } = useAppStore();
   const setAuthUser = useAppStore(s => s.setAuthUser);
 
-  const [isTeacherFlow] = useState(() => new URLSearchParams(window.location.search).get('role') === 'teacher');
+  const [isTeacherFlow] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get('invite') || params.get('code') || localStorage.getItem('classhub-pending-invite-code');
+    return params.get('role') === 'teacher' || (!!invite && invite.toUpperCase().startsWith('T-'));
+  });
   const [hubCode, setHubCode] = useState('');
   const [classRoll, setClassRoll] = useState('');
   const [universityRoll, setUniversityRoll] = useState('');
@@ -111,11 +115,11 @@ export default function JoinHubPage() {
     fetchSectionSubjects();
   }, [showCourseLinking, joinedSectionId]);
 
-  // Load and pre-fill pending invite code from URL parameters or sessionStorage
+  // Load and pre-fill pending invite code from URL parameters or localStorage
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlCode = params.get('invite') || params.get('code');
-    const storedCode = sessionStorage.getItem('classhub-pending-invite-code');
+    const storedCode = localStorage.getItem('classhub-pending-invite-code');
     const activeCode = urlCode || storedCode;
 
     if (activeCode) {
@@ -125,8 +129,8 @@ export default function JoinHubPage() {
         setHubCode(activeCode.toUpperCase());
       }
       
-      // Clean up sessionStorage
-      sessionStorage.removeItem('classhub-pending-invite-code');
+      // Clean up localStorage
+      localStorage.removeItem('classhub-pending-invite-code');
       
       // Clean up URL parameters to keep the URL address bar clean
       if (urlCode) {

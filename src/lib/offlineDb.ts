@@ -95,21 +95,23 @@ export async function getSession(): Promise<AuthSession | null> {
 }
 
 /**
- * Delete the active user session on sign out.
+ * Delete the active user session and clear offline queues/cache on sign out.
  */
 export async function clearSession(): Promise<void> {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction('auth-session', 'readwrite');
-      const store = transaction.objectStore('auth-session');
-      const request = store.delete('session');
+      const transaction = db.transaction(['auth-session', 'offline-actions', 'share-inbox'], 'readwrite');
+      
+      transaction.objectStore('auth-session').delete('session');
+      transaction.objectStore('offline-actions').clear();
+      transaction.objectStore('share-inbox').clear();
 
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
     });
   } catch (err) {
-    console.error('[OfflineDb] Failed to clear session:', err);
+    console.error('[OfflineDb] Failed to clear session and offline caches:', err);
   }
 }
 

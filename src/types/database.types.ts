@@ -1140,6 +1140,7 @@ export type Database = {
       }
       sections: {
         Row: {
+          branch: string | null
           college: string
           created_at: string
           created_by: string | null
@@ -1149,6 +1150,7 @@ export type Database = {
           teacher_invite_code: string | null
         }
         Insert: {
+          branch?: string | null
           college?: string
           created_at?: string
           created_by?: string | null
@@ -1158,6 +1160,7 @@ export type Database = {
           teacher_invite_code?: string | null
         }
         Update: {
+          branch?: string | null
           college?: string
           created_at?: string
           created_by?: string | null
@@ -1467,6 +1470,7 @@ export type Database = {
       users: {
         Row: {
           avatar_url: string | null
+          branch: string | null
           cr_rank: string | null
           created_at: string
           day_scholar: boolean
@@ -1475,6 +1479,7 @@ export type Database = {
           is_developer: boolean
           name: string
           notifications_enabled: boolean
+          phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           section_id: string | null
           section_roll: string | null
@@ -1484,6 +1489,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          branch?: string | null
           cr_rank?: string | null
           created_at?: string
           day_scholar?: boolean
@@ -1492,6 +1498,7 @@ export type Database = {
           is_developer?: boolean
           name: string
           notifications_enabled?: boolean
+          phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           section_id?: string | null
           section_roll?: string | null
@@ -1501,6 +1508,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          branch?: string | null
           cr_rank?: string | null
           created_at?: string
           day_scholar?: boolean
@@ -1509,6 +1517,7 @@ export type Database = {
           is_developer?: boolean
           name?: string
           notifications_enabled?: boolean
+          phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           section_id?: string | null
           section_roll?: string | null

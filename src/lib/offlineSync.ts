@@ -15,6 +15,13 @@ export async function playbackOfflineActionsClient(): Promise<void> {
   const actions = await getQueuedActions();
   if (actions.length === 0) return;
 
+  // Retrieve/refresh the session to ensure a valid JWT is set in headers before playing back actions
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !session) {
+    console.warn('[OfflineSync] Aborting playback: active session is missing or invalid.');
+    return;
+  }
+
   console.log(`[OfflineSync] Found ${actions.length} queued offline actions. Starting playback...`);
 
   for (const action of actions) {

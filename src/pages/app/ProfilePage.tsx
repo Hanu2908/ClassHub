@@ -281,7 +281,8 @@ export default function ProfilePage() {
   };
 
   const handleUpdatePhone = async () => {
-    const currentPhone = authUser?.phone || '';
+    if (!authUser) return;
+    const currentPhone = authUser.phone || '';
     const newPhone = prompt('Enter your 10-digit Indian phone number:', currentPhone);
     if (newPhone === null) return;
     const trimmed = newPhone.trim();
@@ -310,7 +311,7 @@ export default function ProfilePage() {
       const { error } = await supabase
         .from('users')
         .update({ phone: trimmed || null })
-        .eq('id', authUser?.id);
+        .eq('id', authUser.id);
       if (error) throw error;
       await refreshProfile();
       toast.success('Phone number updated successfully!');
