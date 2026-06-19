@@ -24,7 +24,7 @@ import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
 import RichTextBody from '../../components/RichTextBody';
-import { matchSubject } from '../../lib/utils/announcements';
+import { matchSubject, getSubjectAbbreviation } from '../../lib/utils/announcements';
 import { HighlightText } from '../../components/HighlightText';
 import { logEvent } from '../../lib/analytics';
 
@@ -835,7 +835,7 @@ export function AnnouncementCardComponent({
             lineHeight: 1,
             pointerEvents: 'none',
           }}>
-            {ann.matchedSubject.code}
+            {getSubjectAbbreviation(ann.matchedSubject)}
           </span>
         )}
         <span>

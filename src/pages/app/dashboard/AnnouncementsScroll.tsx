@@ -6,7 +6,7 @@ import { useAppStore, isExpired, type Announcement, type Attachment } from '../.
 import { useAnnouncements, useAcknowledge } from '../../../hooks/useAnnouncements';
 import { useSection } from '../../../hooks/useSectionMembers';
 import { useSubjects, type SubjectInfo } from '../../../hooks/useSubjects';
-import { matchSubject } from '../../../lib/utils/announcements';
+import { matchSubject, getSubjectAbbreviation } from '../../../lib/utils/announcements';
 import { toast } from 'sonner';
 import { AttachmentCard } from '../../../components/AttachmentCard';
 import { ImageCarousel } from '../../../components/ImageCarousel';
@@ -736,7 +736,7 @@ export default function AnnouncementsScroll() {
                                 lineHeight: 1,
                                 flexShrink: 0,
                               }}>
-                                {ann.matchedSubject.code}
+                                {getSubjectAbbreviation(ann.matchedSubject)}
                               </span>
                             )}
                             <span style={{
@@ -888,13 +888,12 @@ export default function AnnouncementsScroll() {
                     borderRadius: '6px',
                     fontSize: '12px',
                     fontWeight: 700,
-                    textTransform: 'uppercase',
                     backgroundColor: `${(prevSelectedAnn as any).matchedSubject.accent}15`,
                     color: (prevSelectedAnn as any).matchedSubject.accent,
                     border: `1px solid ${(prevSelectedAnn as any).matchedSubject.accent}30`,
                     lineHeight: 1,
                   }}>
-                    {(prevSelectedAnn as any).matchedSubject.code}
+                    {getSubjectAbbreviation((prevSelectedAnn as any).matchedSubject)}
                   </span>
                 )}
                 <span>{prevSelectedAnn.title}</span>

@@ -16,11 +16,9 @@ export function getCorsHeaders(req: Request) {
     return headers;
   }
 
-  // If origin matches configured list, echo it; otherwise fall back to wildcard
+  // If origin matches configured list, echo it; otherwise do not set Access-Control-Allow-Origin (blocks unauthorized origins)
   if (allowed.includes(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
-  } else {
-    headers["Access-Control-Allow-Origin"] = "*";
   }
 
   return headers;

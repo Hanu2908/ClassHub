@@ -169,3 +169,93 @@ export function matchSubject(title: string, body: string, subjects: SubjectInfo[
 
   return null;
 }
+
+/**
+ * Computes a clean, short abbreviation for a subject.
+ * First checks common mappings, then falls back to generating an acronym from the name,
+ * and finally defaults to the subject code or the name itself.
+ */
+export function getSubjectAbbreviation(subject: SubjectInfo | null | undefined): string {
+  if (!subject) return '';
+  const name = (subject.name || '').trim();
+  const nameLower = name.toLowerCase();
+
+  // 1. Check direct common mapping dictionary rules
+  const dict: Record<string, string> = {
+    'computer networks': 'CN',
+    'computer network': 'CN',
+    'database management systems': 'DBMS',
+    'database management system': 'DBMS',
+    'data structures': 'DSA',
+    'data structure': 'DSA',
+    'discrete mathematics': 'Discrete',
+    'discrete structure': 'Discrete',
+    'object oriented programming': 'OOP',
+    'object oriented': 'OOP',
+    'operating systems': 'OS',
+    'operating system': 'OS',
+    'digital electronics': 'DE',
+    'software engineering': 'SE',
+    'theory of computation': 'TOC',
+    'compiler design': 'CD',
+    'analysis design of algorithms': 'DAA',
+    'analysis design of algorithm': 'DAA',
+    'computer organization': 'COA',
+    'computer architecture': 'COA',
+    'web technology': 'WT',
+    'artificial intelligence': 'AI',
+    'machine learning': 'ML',
+    'engineering physics': 'Physics',
+    'physics': 'Physics',
+    'engineering chemistry': 'Chemistry',
+    'chemistry': 'Chemistry',
+    'engineering graphics': 'Graphics',
+    'mechanical engineering': 'ME',
+    'civil engineering': 'CE',
+    'electrical engineering': 'EE',
+    'mathematics': 'Maths',
+    'math': 'Maths',
+    'microprocessors': 'Micro',
+    'microprocessor': 'Micro',
+    'programming': 'Prog',
+    'electronics': 'Electronics',
+    'english': 'English',
+    'biology': 'Biology',
+    'economics': 'Eco',
+    'seminar': 'Seminar',
+    'workshop': 'Workshop',
+    'project': 'Project',
+  };
+
+  // Check exact or partial match in dictionary
+  for (const [key, val] of Object.entries(dict)) {
+    if (nameLower === key || nameLower.includes(key)) {
+      return val;
+    }
+  }
+
+  // 2. Acronym Generation from multi-word names
+  const words = name.split(/\s+/).filter(w => w.length > 0);
+  if (words.length > 1) {
+    const acronym = words
+      .map(w => w.replace(/[^a-zA-Z0-9]/g, '')[0])
+      .filter(Boolean)
+      .join('')
+      .toUpperCase();
+    if (acronym.length >= 2) {
+      return acronym;
+    }
+  }
+
+  // 3. Fallback: single word or short name (no code!)
+  if (name.length > 0) {
+    if (words.length === 1) {
+      return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    }
+    // Capitalize each word if multi-word but acronym generation wasn't used
+    return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  }
+
+  return '';
+}
+
