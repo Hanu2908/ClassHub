@@ -9,7 +9,7 @@ max_rows = 1000
 [auth]
 enabled = true
 site_url = "http://localhost:5173"
-additional_redirect_urls = ["https://classhub.vercel.app"]
+additional_redirect_urls = ["https://classhub.vercel.app", "https://classshub.vercel.app"]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 
