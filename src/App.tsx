@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './components/AuthProvider';
+import PageTitleManager from './components/PageTitleManager';
 import { useAppStore, type BeforeInstallPromptEvent } from './store/appStore';
 import { Toaster, toast } from 'sonner';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -193,6 +194,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <PageTitleManager />
       <AuthProvider>
         <LazyMotion features={domAnimation}>
           <Toaster
