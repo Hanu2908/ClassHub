@@ -14,10 +14,15 @@ Deno.serve(async (req: Request) => {
   // CORS — fall back to wildcard when ALLOWED_ORIGINS is not configured.
   // Auth security comes from JWT verification below, not from origin restriction.
   const origin = req.headers.get("Origin") ?? "";
-  const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
+  const rawAllowed = Deno.env.get("ALLOWED_ORIGINS") ?? "";
+  
+  // Parse allowed origins, stripping leading/trailing spaces, quotes, and trailing slashes
+  const allowed = rawAllowed
     .split(",")
-    .map(s => s.trim().replace(/\/+$/, ""))
+    .map(s => s.trim().replace(/^['"]|['"]$/g, "").trim().replace(/\/+$/, ""))
     .filter(Boolean);
+
+  console.log(`[CORS delete-account] Request Origin: "${origin}" | Configured ALLOWED_ORIGINS: "${rawAllowed}" | Parsed:`, allowed);
 
   // CORS — only echo back origins in the allowed list.
   // Auth security comes from JWT verification below; CORS is defense-in-depth.
