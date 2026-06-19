@@ -34,6 +34,8 @@ export default function CreateHubPage() {
   const [universityRoll, setUniversityRoll] = useState('');
   const [dayScholar, setDayScholar] = useState(true);
   const [batch, setBatch] = useState('1');
+  const [phone, setPhone] = useState('');
+  const [branch, setBranch] = useState('Computer Science & Engineering');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -53,6 +55,11 @@ export default function CreateHubPage() {
     if (!hubName.trim()) e.hubName = 'Hub name is required';
     if (!classRollRegex.test(classRoll)) e.classRoll = 'Class roll must be exactly 2 digits (01–99)';
     if (!uniRollRegex.test(universityRoll.toUpperCase())) e.universityRoll = 'Enter a valid university roll (e.g. 25ESKCX089)';
+    if (!phone.trim()) {
+      e.phone = 'Phone number is required';
+    } else if (!/^[6-9]\d{9}$/.test(phone.trim())) {
+      e.phone = 'Enter a valid 10-digit Indian phone number (starting with 6-9)';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -70,7 +77,15 @@ export default function CreateHubPage() {
       localStorage.setItem('demo_section_id', 'demo-section');
       setRole('cr');
       if (authUser) {
-        setAuthUser({ ...authUser, role: 'cr', sectionId: 'demo-section', dayScholar, subBatch: batch });
+        setAuthUser({ 
+          ...authUser, 
+          role: 'cr', 
+          sectionId: 'demo-section', 
+          dayScholar, 
+          subBatch: batch,
+          phone: phone.trim(),
+          branch: branch
+        });
       }
       setHub({
         hubCode: inviteCode,
@@ -87,7 +102,8 @@ export default function CreateHubPage() {
         inviteCode: inviteCode,
         teacherInviteCode: 'T-DEMOCO',
         createdBy: authUser?.id || 'demo-user-id',
-      });
+        branch: branch
+      } as any);
       pendingCodeRef.current = inviteCode;
       setIsComplete(true);
       return;
@@ -99,6 +115,8 @@ export default function CreateHubPage() {
         invite: inviteCode,
         class_roll: classRoll,
         uni_roll: universityRoll.toUpperCase(),
+        p_branch: branch,
+        p_phone: phone.trim(),
       });
 
       if (error) throw error;
@@ -110,7 +128,12 @@ export default function CreateHubPage() {
       if (authUserObj) {
         await supabase
           .from('users')
-          .update({ day_scholar: dayScholar, sub_batch: batch })
+          .update({ 
+            day_scholar: dayScholar, 
+            sub_batch: batch,
+            phone: phone.trim(),
+            branch: branch
+          })
           .eq('id', authUserObj.id);
       }
 
@@ -233,6 +256,53 @@ export default function CreateHubPage() {
           <input id="hub-name-input" className={`input${errors.hubName ? ' input-error' : ''}`} placeholder="Section P — SKIT"
             value={hubName} onChange={e => setHubName(e.target.value)} />
           <FieldError msg={errors.hubName} />
+        </div>
+
+        <div>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+            Branch <span style={{ color: 'var(--status-critical)' }}>*</span>
+          </label>
+          <select
+            id="branch-select"
+            className="input"
+            value={branch}
+            onChange={e => setBranch(e.target.value)}
+            style={{ width: '100%', background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px' }}
+          >
+            <option value="Computer Science & Engineering">Computer Science & Engineering</option>
+            <option value="Information Technology">Information Technology</option>
+            <option value="Electronics & Communication Engineering">Electronics & Communication Engineering</option>
+            <option value="Electrical Engineering">Electrical Engineering</option>
+            <option value="Mechanical Engineering">Mechanical Engineering</option>
+            <option value="Civil Engineering">Civil Engineering</option>
+            <option value="CSE (Artificial Intelligence)">CSE (Artificial Intelligence)</option>
+            <option value="CSE (Data Science)">CSE (Data Science)</option>
+            <option value="CSE (IoT)">CSE (IoT)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+            Phone Number <span style={{ color: 'var(--status-critical)' }}>*</span>
+          </label>
+          <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+            <span style={{
+              background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', 
+              justifyContent: 'center', padding: '0 12px', color: 'var(--text-muted)',
+              fontFamily: 'monospace', borderRight: '1px solid var(--border-default)', fontSize: 14
+            }}>+91</span>
+            <input
+              id="phone-input"
+              type="tel"
+              className={`input${errors.phone ? ' input-error' : ''}`}
+              placeholder="9314293931"
+              maxLength={10}
+              value={phone}
+              onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+              style={{ flex: 1, border: 'none', borderRadius: 0, outline: 'none' }}
+            />
+          </div>
+          <FieldError msg={errors.phone} />
         </div>
 
         <div>

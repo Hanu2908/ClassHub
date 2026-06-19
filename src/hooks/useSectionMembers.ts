@@ -16,6 +16,7 @@ export interface SectionMember {
   crRank: 'primary' | 'co' | null;
   avatarUrl: string | null;
   dayScholar: boolean | null;
+  phone: string | null;
 }
 
 export interface StudentAttendanceAggregate {
@@ -115,7 +116,7 @@ export function useSectionMembers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, section_roll, university_roll, role, cr_rank, avatar_url, day_scholar')
+        .select('id, name, email, section_roll, university_roll, role, cr_rank, avatar_url, day_scholar, phone')
         .eq('section_id', sectionId!)
         .order('section_roll')
         .limit(200); // safeguard: avoid extremely large member lists on the dashboard
@@ -130,6 +131,7 @@ export function useSectionMembers() {
         crRank: (u as Record<string, unknown>).cr_rank as 'primary' | 'co' | null ?? null,
         avatarUrl: u.avatar_url,
         dayScholar: u.day_scholar,
+        phone: u.phone ?? null,
       }));
     },
   });

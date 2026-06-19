@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, X, Users, Mail, BookOpen } from 'lucide-react';
+import { ArrowLeft, X, Users, Mail, BookOpen, Copy } from 'lucide-react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import Skeleton from 'react-loading-skeleton';
 import { useQuery } from '@tanstack/react-query';
@@ -67,7 +67,7 @@ export default function SectionDirectoryPage() {
         .select(`
           id,
           is_counsellor_for_batch,
-          teacher:teacher_id (id, name, email, avatar_url),
+          teacher:teacher_id (id, name, email, avatar_url, phone),
           subjects:subject_id (name, code)
         `)
         .eq('section_id', sectionId || '');
@@ -95,6 +95,7 @@ export default function SectionDirectoryPage() {
           id: tId,
           name: row.teacher.name,
           email: row.teacher.email,
+          phone: row.teacher.phone,
           avatarUrl: row.teacher.avatar_url,
           isCounsellorForBatch: row.is_counsellor_for_batch,
           subjects: [],
@@ -299,6 +300,37 @@ export default function SectionDirectoryPage() {
                           {teacher.email}
                         </span>
                       </div>
+                      {teacher.phone && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                            +91 {teacher.phone}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(teacher.phone);
+                              toast.success('Phone number copied!');
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '2px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'var(--text-muted)',
+                              borderRadius: '4px',
+                              transition: 'color 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+                            title="Copy Phone Number"
+                          >
+                            <Copy size={11} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -508,6 +540,38 @@ export default function SectionDirectoryPage() {
                         </span>
                       )}
                     </div>
+
+                    {member.phone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                          +91 {member.phone}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(member.phone!);
+                            toast.success('Phone number copied!');
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '2px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--text-muted)',
+                            borderRadius: '4px',
+                            transition: 'color 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+                          title="Copy Phone Number"
+                        >
+                          <Copy size={11} />
+                        </button>
+                      </div>
+                    )}
 
                     {/* Tags */}
                     {tags.length > 0 && (

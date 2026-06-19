@@ -18,7 +18,7 @@ const SKIT_DOMAIN = '@skit.ac.in';
 async function fetchProfile(userId: string): Promise<AuthUser | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer, sub_batch')
+    .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer, sub_batch, phone, branch')
     .eq('id', userId)
     .maybeSingle();
 
@@ -64,6 +64,8 @@ async function fetchProfile(userId: string): Promise<AuthUser | null> {
     isDeveloper: data.is_developer ?? false,
     subBatch: (data as Record<string, unknown>).sub_batch as string | null ?? null,
     isCounsellorForBatch,
+    phone: data.phone ?? null,
+    branch: data.branch ?? null,
   };
 }
 
@@ -83,6 +85,8 @@ function authUserToBasicProfile(authUser: SupabaseUser): AuthUser {
     dayScholar: true,
     notificationsEnabled: false,
     isDeveloper: false,
+    phone: null,
+    branch: null,
   };
 }
 

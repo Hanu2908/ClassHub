@@ -14,6 +14,7 @@ interface FormErrors {
   hubCode?: string;
   classRoll?: string;
   universityRoll?: string;
+  phone?: string;
 }
 
 function FieldError({ msg }: { msg?: string }) {
@@ -35,6 +36,8 @@ export default function JoinHubPage() {
   const [hubCode, setHubCode] = useState('');
   const [classRoll, setClassRoll] = useState('');
   const [universityRoll, setUniversityRoll] = useState('');
+  const [phone, setPhone] = useState('');
+  const [sectionBranch, setSectionBranch] = useState<string | null>(null);
   const [dayScholar, setDayScholar] = useState(true);
   const [batch, setBatch] = useState('1');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -47,6 +50,35 @@ export default function JoinHubPage() {
   const [fetchingSubjects, setFetchingSubjects] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<Record<string, { linked: boolean; applyAll: boolean }>>({});
   const [savingCourses, setSavingCourses] = useState(false);
+
+  // Auto-fetch branch from section invite code
+  useEffect(() => {
+    if (isTeacherFlow || !hubCodeRegex.test(hubCode)) {
+      setSectionBranch(null);
+      return;
+    }
+    const fetchBranch = async () => {
+      try {
+        if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+          setSectionBranch('Information Technology');
+          return;
+        }
+        const { data, error } = await supabase
+          .from('sections')
+          .select('branch')
+          .eq('invite_code', hubCode)
+          .single();
+        if (error) {
+          setSectionBranch(null);
+        } else if (data) {
+          setSectionBranch(data.branch);
+        }
+      } catch {
+        setSectionBranch(null);
+      }
+    };
+    fetchBranch();
+  }, [hubCode, isTeacherFlow]);
 
   useEffect(() => {
     if (!showCourseLinking || !joinedSectionId) return;
@@ -108,16 +140,28 @@ export default function JoinHubPage() {
     }
   }, [isTeacherFlow]);
 
-  const validate = (): boolean => {
+  const validate = (fields?: ('hubCode' | 'classRoll' | 'universityRoll' | 'phone')[]): boolean => {
     const e: FormErrors = {};
+    const checkField = (f: string) => !fields || fields.includes(f as any);
+
     if (isTeacherFlow) {
-      if (!hubCode.trim() || hubCode.trim().length < 6) {
+      if (checkField('hubCode') && (!hubCode.trim() || hubCode.trim().length < 6)) {
         e.hubCode = 'Enter a valid teacher invite code (minimum 6 characters)';
       }
+      if (checkField('phone') && phone.trim() && !/^[6-9]\d{9}$/.test(phone.trim())) {
+        e.phone = 'Enter a valid 10-digit Indian phone number';
+      }
     } else {
-      if (!hubCodeRegex.test(hubCode)) e.hubCode = 'Enter a valid 6-character hub code (e.g. P2WXYZ)';
-      if (!classRollRegex.test(classRoll)) e.classRoll = 'Class roll must be exactly 2 digits (01–99)';
-      if (!uniRollRegex.test(universityRoll.toUpperCase())) e.universityRoll = 'Enter a valid university roll (e.g. 25ESKCX089)';
+      if (checkField('hubCode') && !hubCodeRegex.test(hubCode)) e.hubCode = 'Enter a valid 6-character hub code (e.g. P2WXYZ)';
+      if (checkField('classRoll') && !classRollRegex.test(classRoll)) e.classRoll = 'Class roll must be exactly 2 digits (01–99)';
+      if (checkField('universityRoll') && !uniRollRegex.test(universityRoll.toUpperCase())) e.universityRoll = 'Enter a valid university roll (e.g. 25ESKCX089)';
+      if (checkField('phone')) {
+        if (!phone.trim()) {
+          e.phone = 'Phone number is required for peer directory';
+        } else if (!/^[6-9]\d{9}$/.test(phone.trim())) {
+          e.phone = 'Enter a valid 10-digit Indian phone number (starting with 6-9)';
+        }
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -198,12 +242,17 @@ export default function JoinHubPage() {
 
         if (error) throw error;
 
-        // Update day_scholar and sub_batch status in profile
+        // Update day_scholar, sub_batch, phone and branch in profile
         const { data: { user: authUserObj } } = await supabase.auth.getUser();
         if (authUserObj) {
           await supabase
             .from('users')
-            .update({ day_scholar: dayScholar, sub_batch: batch })
+            .update({ 
+              day_scholar: dayScholar, 
+              sub_batch: batch,
+              phone: phone.trim() || null,
+              branch: isTeacherFlow ? null : sectionBranch
+            })
             .eq('id', authUserObj.id);
         }
       }
@@ -455,6 +504,11 @@ export default function JoinHubPage() {
           <ArrowLeft size={22} />
         </button>
         <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>{isTeacherFlow ? 'Join as Teacher' : 'Join a Hub'}</h1>
+        {!isTeacherFlow && sectionBranch && (
+          <span className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontSize: 13, display: 'block', marginTop: 2 }}>
+            {sectionBranch}
+          </span>
+        )}
       </div>
 
       {/* Icon + subtitle */}
@@ -474,10 +528,10 @@ export default function JoinHubPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <form onSubmit={handleSubmit} style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Hub Code */}
         <div>
-          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
             {isTeacherFlow ? 'Teacher Invite Code' : 'Hub Code'} <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input
@@ -487,193 +541,152 @@ export default function JoinHubPage() {
             maxLength={isTeacherFlow ? 10 : 6}
             value={hubCode}
             onChange={e => setHubCode(e.target.value.toUpperCase())}
-            onBlur={() => {
-              if (isTeacherFlow) {
-                if (hubCode && hubCode.length < 6) {
-                  setErrors(p => ({ ...p, hubCode: 'Enter a valid teacher code (min 6 characters)' }));
-                } else setErrors(p => ({ ...p, hubCode: undefined }));
-              } else {
-                if (hubCode && !hubCodeRegex.test(hubCode))
-                  setErrors(p => ({ ...p, hubCode: 'Enter a valid 6-character hub code (e.g. P2WXYZ)' }));
-                else setErrors(p => ({ ...p, hubCode: undefined }));
-              }
-            }}
-            style={{ letterSpacing: '0.2em', fontSize: 20, textAlign: 'center' }}
+            onBlur={() => validate(['hubCode'])}
+            style={{ letterSpacing: '0.2em', fontSize: 18, textAlign: 'center' }}
           />
           <FieldError msg={errors.hubCode} />
-          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
-            {isTeacherFlow ? 'e.g. T-P2WXYZ — get this from the CR' : 'e.g. P2WXYZ — get this from your CR'}
-          </p>
         </div>
 
         {!isTeacherFlow && (
           <>
-            {/* Class Roll */}
-            <div>
-              <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                Class Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
-              </label>
-              <input
-                id="class-roll-input"
-                className={`input${errors.classRoll ? ' input-error' : ''}`}
-                placeholder="17"
-                maxLength={2}
-                inputMode="numeric"
-                value={classRoll}
-                onChange={e => setClassRoll(e.target.value.replace(/\D/g, ''))}
-                onBlur={() => {
-                  if (classRoll && !classRollRegex.test(classRoll))
-                    setErrors(p => ({ ...p, classRoll: 'Class roll must be exactly 2 digits (01–99)' }));
-                  else setErrors(p => ({ ...p, classRoll: undefined }));
-                }}
-              />
-              <FieldError msg={errors.classRoll} />
-              <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
-                Your 2-digit class roll (e.g. 17)
-              </p>
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* Class Roll */}
+              <div>
+                <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  Class Roll <span style={{ color: 'var(--status-critical)' }}>*</span>
+                </label>
+                <input
+                  id="class-roll-input"
+                  className={`input${errors.classRoll ? ' input-error' : ''}`}
+                  placeholder="17"
+                  maxLength={2}
+                  inputMode="numeric"
+                  value={classRoll}
+                  onChange={e => setClassRoll(e.target.value.replace(/\D/g, ''))}
+                  onBlur={() => validate(['classRoll'])}
+                />
+                <FieldError msg={errors.classRoll} />
+              </div>
 
-            {/* University Roll */}
-            <div>
-              <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                University Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
-              </label>
-              <input
-                id="uni-roll-input"
-                className={`input mono${errors.universityRoll ? ' input-error' : ''}`}
-                placeholder="25ESKCX089"
-                maxLength={12}
-                value={universityRoll}
-                onChange={e => setUniversityRoll(e.target.value.toUpperCase())}
-                onBlur={() => {
-                  const v = universityRoll.toUpperCase();
-                  if (v && !uniRollRegex.test(v))
-                    setErrors(p => ({ ...p, universityRoll: 'Enter a valid university roll (e.g. 25ESKCX089)' }));
-                  else setErrors(p => ({ ...p, universityRoll: undefined }));
-                }}
-              />
-              <FieldError msg={errors.universityRoll} />
-              <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
-                e.g. 25ESKCX089
-              </p>
-            </div>
-
-            {/* Commuter Status (Day Scholar vs. Hosteler) */}
-            <div>
-              <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                Commuter Status <span style={{ color: 'var(--status-critical)' }}>*</span>
-              </label>
-              <div style={{
-                display: 'flex',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                padding: 4,
-                gap: 4
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setDayScholar(true)}
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    background: dayScholar ? 'var(--accent-primary)' : 'transparent',
-                    color: dayScholar ? '#fff' : 'var(--text-secondary)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <span>🚌</span> Day Scholar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDayScholar(false)}
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    background: !dayScholar ? 'var(--accent-primary)' : 'transparent',
-                    color: !dayScholar ? '#fff' : 'var(--text-secondary)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <span>🏠</span> Hosteler
-                </button>
+              {/* University Roll */}
+              <div>
+                <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  Univ Roll <span style={{ color: 'var(--status-critical)' }}>*</span>
+                </label>
+                <input
+                  id="uni-roll-input"
+                  className={`input mono${errors.universityRoll ? ' input-error' : ''}`}
+                  placeholder="25ESKCX089"
+                  maxLength={12}
+                  value={universityRoll}
+                  onChange={e => setUniversityRoll(e.target.value.toUpperCase())}
+                  onBlur={() => validate(['universityRoll'])}
+                  style={{ fontSize: 14 }}
+                />
+                <FieldError msg={errors.universityRoll} />
               </div>
             </div>
 
-            {/* Batch Selection (Batch 1 vs. Batch 2) */}
+            {/* Mobile Phone Input */}
             <div>
-              <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                Batch <span style={{ color: 'var(--status-critical)' }}>*</span>
+              <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Phone Number <span style={{ color: 'var(--status-critical)' }}>*</span>
               </label>
-              <div style={{
-                display: 'flex',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                padding: 4,
-                gap: 4
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setBatch('1')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    background: batch === '1' ? 'var(--accent-primary)' : 'transparent',
-                    color: batch === '1' ? '#fff' : 'var(--text-secondary)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Batch 1
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBatch('2')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    background: batch === '2' ? 'var(--accent-primary)' : 'transparent',
-                    color: batch === '2' ? '#fff' : 'var(--text-secondary)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Batch 2
-                </button>
+              <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+                <span style={{
+                  background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', 
+                  justifyContent: 'center', padding: '0 12px', color: 'var(--text-muted)',
+                  fontFamily: 'monospace', borderRight: '1px solid var(--border-default)', fontSize: 14
+                }}>+91</span>
+                <input
+                  type="tel"
+                  className={`input${errors.phone ? ' input-error' : ''}`}
+                  placeholder="9314293931"
+                  maxLength={10}
+                  value={phone}
+                  onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                  onBlur={() => validate(['phone'])}
+                  style={{ flex: 1, border: 'none', borderRadius: 0, outline: 'none' }}
+                />
+              </div>
+              <FieldError msg={errors.phone} />
+            </div>
+
+            {/* Side-by-side Selectors Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 4 }}>
+              {/* Commuter Status */}
+              <div>
+                <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6, fontSize: 12 }}>
+                  Commuter Status <span style={{ color: 'var(--status-critical)' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: 3, gap: 2 }}>
+                  <button type="button" onClick={() => setDayScholar(true)} style={{
+                    flex: 1, padding: '6px', background: dayScholar ? 'var(--accent-primary)' : 'transparent',
+                    color: dayScholar ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer', fontSize: 11, fontWeight: 600
+                  }}>
+                    Day
+                  </button>
+                  <button type="button" onClick={() => setDayScholar(false)} style={{
+                    flex: 1, padding: '6px', background: !dayScholar ? 'var(--accent-primary)' : 'transparent',
+                    color: !dayScholar ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer', fontSize: 11, fontWeight: 600
+                  }}>
+                    Hostel
+                  </button>
+                </div>
+              </div>
+
+              {/* Batch */}
+              <div>
+                <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6, fontSize: 12 }}>
+                  Batch <span style={{ color: 'var(--status-critical)' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: 3, gap: 2 }}>
+                  <button type="button" onClick={() => setBatch('1')} style={{
+                    flex: 1, padding: '6px', background: batch === '1' ? 'var(--accent-primary)' : 'transparent',
+                    color: batch === '1' ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer', fontSize: 11, fontWeight: 600
+                  }}>
+                    B1
+                  </button>
+                  <button type="button" onClick={() => setBatch('2')} style={{
+                    flex: 1, padding: '6px', background: batch === '2' ? 'var(--accent-primary)' : 'transparent',
+                    color: batch === '2' ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer', fontSize: 11, fontWeight: 600
+                  }}>
+                    B2
+                  </button>
+                </div>
               </div>
             </div>
           </>
+        )}
+
+        {isTeacherFlow && (
+          <div>
+            <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+              Phone Number (Optional)
+            </label>
+            <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)' }}>
+              <span style={{
+                background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', 
+                justifyContent: 'center', padding: '0 12px', color: 'var(--text-muted)',
+                fontFamily: 'monospace', borderRight: '1px solid var(--border-default)', fontSize: 14
+              }}>+91</span>
+              <input
+                type="tel"
+                className={`input${errors.phone ? ' input-error' : ''}`}
+                placeholder="9314293931"
+                maxLength={10}
+                value={phone}
+                onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                onBlur={() => validate(['phone'])}
+                style={{ flex: 1, border: 'none', borderRadius: 0, outline: 'none' }}
+              />
+            </div>
+            <FieldError msg={errors.phone} />
+          </div>
         )}
 
         <button
@@ -681,9 +694,13 @@ export default function JoinHubPage() {
           type="submit"
           className="btn-primary"
           disabled={loading}
-          style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
-          {loading ? <><Loader2 size={18} className="animate-spin" /> {isTeacherFlow ? 'Joining as Teacher…' : 'Joining…'}</> : isTeacherFlow ? 'Join as Teacher' : 'Join Hub'}
+          {loading ? (
+            <><Loader2 size={18} className="animate-spin" /> {isTeacherFlow ? 'Joining as Teacher…' : 'Joining…'}</>
+          ) : (
+            isTeacherFlow ? 'Join as Teacher' : 'Join Hub'
+          )}
         </button>
       </form>
 

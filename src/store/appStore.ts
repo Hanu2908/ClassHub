@@ -33,6 +33,8 @@ export interface AuthUser {
   isDeveloper: boolean;
   subBatch?: string | null;
   isCounsellorForBatch?: '1' | '2' | null;
+  phone?: string | null;
+  branch?: string | null;
 }
 
 export interface HubInfo {
@@ -402,7 +404,7 @@ export const useAppStore = create<AppState>()(
         if (!user) return;
         const { data, error } = await supabase
           .from('users')
-          .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer, sub_batch')
+          .select('id, name, email, avatar_url, role, cr_rank, section_id, section_roll, university_roll, day_scholar, notifications_enabled, is_developer, sub_batch, phone, branch')
           .eq('id', user.id)
           .single();
         if (error || !data) return;
@@ -437,6 +439,8 @@ export const useAppStore = create<AppState>()(
           isDeveloper: data.is_developer ?? false,
           subBatch: (data as Record<string, unknown>).sub_batch as string | null ?? null,
           isCounsellorForBatch,
+          phone: data.phone ?? null,
+          branch: data.branch ?? null,
         };
         set({
           authUser: profile,

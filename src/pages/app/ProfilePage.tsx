@@ -280,6 +280,45 @@ export default function ProfilePage() {
     }
   };
 
+  const handleUpdatePhone = async () => {
+    const currentPhone = authUser?.phone || '';
+    const newPhone = prompt('Enter your 10-digit Indian phone number:', currentPhone);
+    if (newPhone === null) return;
+    const trimmed = newPhone.trim();
+    if (role === 'student' && !trimmed) {
+      toast.error('Phone number is required for students');
+      return;
+    }
+    if (trimmed && !/^[6-9]\d{9}$/.test(trimmed)) {
+      toast.error('Enter a valid 10-digit Indian phone number (starting with 6-9)');
+      return;
+    }
+    
+    const isDemoMode = import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true';
+    if (isDemoMode) {
+      useAppStore.setState((s) => {
+        if (!s.authUser) return s;
+        return {
+          authUser: { ...s.authUser, phone: trimmed || null }
+        };
+      });
+      toast.success('Phone number updated successfully! [Demo]');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ phone: trimmed || null })
+        .eq('id', authUser?.id);
+      if (error) throw error;
+      await refreshProfile();
+      toast.success('Phone number updated successfully!');
+    } catch (err: any) {
+      toast.error('Failed to update phone number: ' + err.message);
+    }
+  };
+
   const handleJoinSection = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inviteCodeInput.trim() || inviteCodeInput.trim().length < 6) {
@@ -354,6 +393,9 @@ export default function ProfilePage() {
               {displayRole === 'cr' ? '⭐ CR' : displayRole === 'teacher' ? '👨‍🏫 Teacher' : 'Student'}
             </span>
             <span className="badge badge-info">{sectionName}</span>
+            {authUser?.branch && (
+              <span className="badge badge-info">{authUser.branch}</span>
+            )}
             {displayRole !== 'teacher' && (
               <span className="t-mono" style={{ color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
                 Roll {classRoll}
@@ -436,6 +478,23 @@ export default function ProfilePage() {
                 )
               },
               { label: 'Institution', value: institution },
+              ...(authUser?.branch ? [
+                { label: 'Branch', value: authUser.branch }
+              ] : []),
+              { 
+                label: 'Phone Number', 
+                value: authUser?.phone ? `+91 ${authUser.phone}` : 'Not Provided',
+                action: (
+                  <button 
+                    id="change-phone-btn" 
+                    onClick={handleUpdatePhone} 
+                    className="t-label" 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Change
+                  </button>
+                )
+              },
               ...(role !== 'teacher' ? [
                 { label: 'University Roll', value: universityRoll },
                 { 
