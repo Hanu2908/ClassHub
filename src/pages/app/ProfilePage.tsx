@@ -808,7 +808,7 @@ export default function ProfilePage() {
             id="sign-out-btn"
             className="list-row"
             style={{ width: '100%' }}
-            onClick={() => { signOut(); navigate('/'); }}
+            onClick={() => signOutGlobal(navigate)}
           >
             <LogOut size={18} color="var(--status-critical)" />
             <span className="t-body-medium" style={{ flex: 1, color: 'var(--status-critical)', textAlign: 'left' }}>Sign Out</span>

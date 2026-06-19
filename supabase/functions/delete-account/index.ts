@@ -19,13 +19,16 @@ Deno.serve(async (req: Request) => {
     .map(s => s.trim().replace(/\/+$/, ""))
     .filter(Boolean);
 
+  // CORS — only echo back origins in the allowed list.
+  // Auth security comes from JWT verification below; CORS is defense-in-depth.
   const corsHeaders: Record<string, string> = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Origin": allowed.includes(origin)
-      ? origin
-      : "*", // default to wildcard — JWT is the real security gate
   };
+
+  if (allowed.includes(origin)) {
+    corsHeaders["Access-Control-Allow-Origin"] = origin;
+  }
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
