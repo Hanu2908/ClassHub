@@ -53,9 +53,13 @@ Deno.serve(async (req) => {
     const failedUserIds: string[] = [];
 
     await processBatched(subscriptions ?? [], async (sub) => {
+      const truncatedBody = announcement.message_content.length > 200
+        ? announcement.message_content.substring(0, 197) + "..."
+        : announcement.message_content;
+
       const result = await sendWebPush(sub, {
         title: announcement.title,
-        body: announcement.message_content,
+        body: truncatedBody,
         url: `/app/announcements?highlight=${announcement.id}`,
         tag: "announcements",
         type: "announcement",

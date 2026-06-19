@@ -144,8 +144,42 @@ export async function unsubscribeFromPush(): Promise<void> {
 export async function ensurePushSubscription(): Promise<void> {
   try {
     if (!isPushSupported()) return;
-    if (Notification.permission !== 'granted') return;
     if (!VAPID_PUBLIC_KEY) return;
+
+    if (Notification.permission !== 'granted') {
+      // Permission has been revoked or reset. Sync this to the database.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('notifications_enabled')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile?.notifications_enabled) {
+          console.warn('[Push] Permission revoked/not granted but profile indicates enabled. Cleaning up...');
+          
+          const reg = await getSWRegistration();
+          if (reg) {
+            const sub = await reg.pushManager.getSubscription().catch(() => null);
+            if (sub) {
+              await supabase.from('push_subscriptions')
+                .delete()
+                .eq('endpoint', sub.endpoint);
+              await sub.unsubscribe().catch(() => {});
+            }
+          }
+
+          await supabase
+            .from('users')
+            .update({ notifications_enabled: false })
+            .eq('id', user.id);
+            
+          useAppStore.getState().refreshProfile();
+        }
+      }
+      return;
+    }
 
     const reg = await getSWRegistration();
     if (!reg) return;

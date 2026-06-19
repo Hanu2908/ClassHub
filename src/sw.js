@@ -187,21 +187,8 @@ self.addEventListener("push", (e) => {
     actions: data.actions || [],
   };
 
-  // Only show OS notification if no focused ClassHub tab is visible.
   e.waitUntil(
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((clientList) => {
-        const hasFocusedClient = clientList.some(
-          (client) =>
-            client.url.startsWith(self.location.origin) &&
-            "focus" in client &&
-            client.focused
-        );
-        if (!hasFocusedClient) {
-          return self.registration.showNotification(title, options);
-        }
-      })
+    self.registration.showNotification(title, options)
   );
 });
 
@@ -284,13 +271,170 @@ self.addEventListener("notificationclick", (e) => {
 
 // ── Background Sync & Client Communication ──
 
+async function playbackOfflineActionsSW() {
+  const actions = await getQueuedActions();
+  if (actions.length === 0) return;
+
+  const session = await getSession();
+  if (!session || !session.token) {
+    console.warn('[SW Sync] Aborting background sync: no active session.');
+    return;
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  console.log(`[SW Sync] Found ${actions.length} queued offline actions. Starting service worker background playback...`);
+
+  for (const action of actions) {
+    try {
+      if (action.type === 'acknowledge') {
+        const { announcementId, userId } = action.payload;
+        const resolvedUserId = (userId === 'null-fallback' || !userId) ? session.userId : userId;
+
+        const res = await fetch(`${supabaseUrl}/rest/v1/acknowledgments`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${session.token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            announcement_id: announcementId,
+            user_id: resolvedUserId
+          })
+        });
+
+        if (res.ok || res.status === 409) {
+          await dequeueAction(action.id);
+        } else {
+          const text = await res.text();
+          if (text.includes('23505')) {
+            await dequeueAction(action.id);
+          } else {
+            console.error(`[SW Sync] Temporary failure for acknowledgment ${action.id}: status ${res.status} - ${text}`);
+            break; // Halt loop to maintain order
+          }
+        }
+      } else if (action.type === 'vote') {
+        const { pollId, optionId, pollType, allowMultiple, isSelected, userId } = action.payload;
+        const resolvedUserId = (userId === 'null-fallback' || !userId) ? session.userId : userId;
+        const isAnonymous = pollType === 'general' || pollType === 'anonymous';
+        let token = null;
+
+        if (isAnonymous) {
+          const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/calculate_anonymous_token`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseAnonKey,
+              'Authorization': `Bearer ${session.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: resolvedUserId,
+              poll_id: pollId
+            })
+          });
+          if (!rpcRes.ok) {
+            console.error(`[SW Sync] Failed to calculate anonymous token for action ${action.id}`);
+            break;
+          }
+          token = await rpcRes.json();
+        }
+
+        let res;
+        if (allowMultiple) {
+          if (isSelected) {
+            const queryParams = isAnonymous ? `anonymous_token=eq.${token}` : `student_id=eq.${resolvedUserId}`;
+            res = await fetch(`${supabaseUrl}/rest/v1/votes?option_id=eq.${optionId}&${queryParams}`, {
+              method: 'DELETE',
+              headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${session.token}`
+              }
+            });
+          } else {
+            res = await fetch(`${supabaseUrl}/rest/v1/votes`, {
+              method: 'POST',
+              headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${session.token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                poll_id: pollId,
+                option_id: optionId,
+                student_id: isAnonymous ? null : resolvedUserId,
+                anonymous_token: token
+              })
+            });
+          }
+        } else {
+          const queryParams = isAnonymous ? `anonymous_token=eq.${token}` : `student_id=eq.${resolvedUserId}`;
+          const delRes = await fetch(`${supabaseUrl}/rest/v1/votes?poll_id=eq.${pollId}&${queryParams}`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': supabaseAnonKey,
+              'Authorization': `Bearer ${session.token}`
+            }
+          });
+
+          if (!delRes.ok) {
+            console.error(`[SW Sync] Failed to delete existing votes for action ${action.id}`);
+            break;
+          }
+
+          if (!isSelected) {
+            res = await fetch(`${supabaseUrl}/rest/v1/votes`, {
+              method: 'POST',
+              headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${session.token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                poll_id: pollId,
+                option_id: optionId,
+                student_id: isAnonymous ? null : resolvedUserId,
+                anonymous_token: token
+              })
+            });
+          } else {
+            res = { ok: true, status: 200 };
+          }
+        }
+
+        if (res.ok || res.status === 409) {
+          await dequeueAction(action.id);
+        } else {
+          const text = typeof res.text === 'function' ? await res.text() : '';
+          if (text.includes('23505')) {
+            await dequeueAction(action.id);
+          } else {
+            console.error(`[SW Sync] Temporary failure for vote ${action.id}: status ${res?.status} - ${text}`);
+            break;
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`[SW Sync] Error playing back action ${action.id} in service worker:`, err);
+      break;
+    }
+  }
+}
+
 self.addEventListener('sync', (e) => {
   if (e.tag === 'sync-offline-actions') {
     e.waitUntil(
       self.clients.matchAll({ type: 'window' }).then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({ type: 'TRIGGER_SYNC_PLAYBACK' });
-        });
+        if (clients && clients.length > 0) {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'TRIGGER_SYNC_PLAYBACK' });
+          });
+        } else {
+          return playbackOfflineActionsSW();
+        }
       })
     );
   }
@@ -300,9 +444,13 @@ self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SYNC_ACTIONS') {
     e.waitUntil(
       self.clients.matchAll({ type: 'window' }).then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({ type: 'TRIGGER_SYNC_PLAYBACK' });
-        });
+        if (clients && clients.length > 0) {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'TRIGGER_SYNC_PLAYBACK' });
+          });
+        } else {
+          return playbackOfflineActionsSW();
+        }
       })
     );
   }

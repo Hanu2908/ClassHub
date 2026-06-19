@@ -390,11 +390,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!authUserId) return;
-    if (import.meta.env.PROD) {
-      ensurePushSubscription().catch((err) => {
-        console.warn('[Push] ensurePushSubscription on auth ready failed:', err);
-      });
-    }
+    ensurePushSubscription().catch((err) => {
+      console.warn('[Push] ensurePushSubscription on auth ready failed:', err);
+    });
   }, [authUserId]);
 
   // Listen for online/offline event transitions and manage Zustand syncStatus

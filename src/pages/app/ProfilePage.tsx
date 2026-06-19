@@ -93,6 +93,7 @@ export default function ProfilePage() {
     }
   }, [authUser]);
 
+  const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
   const pushSupported = isPushSupported();
   const pushBlocked = pushSupported && getPushPermission() === 'denied';
 
@@ -754,7 +755,11 @@ export default function ProfilePage() {
                     <p className="t-mono-sm" style={{ color: 'var(--status-critical)', marginTop: 2 }}>Blocked in browser settings</p>
                   )}
                   {!pushSupported && (
-                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>Not supported in this browser</p>
+                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>
+                      {isIOS 
+                        ? 'Add ClassHub to your Home Screen first to enable notifications.' 
+                        : 'Not supported in this browser'}
+                    </p>
                   )}
                 </div>
               </div>

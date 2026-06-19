@@ -45,7 +45,10 @@ Deno.serve(async (req: Request) => {
 
     if (subError) throw subError;
 
-    const notifTitle = `📊 New Poll: ${poll.question_text}`;
+    const truncatedQuestion = poll.question_text.length > 60 
+      ? poll.question_text.substring(0, 57) + "..." 
+      : poll.question_text;
+    const notifTitle = `📊 New Poll: ${truncatedQuestion}`;
     const notifBody = "Cast your vote on ClassHub!";
 
     let sent = 0;

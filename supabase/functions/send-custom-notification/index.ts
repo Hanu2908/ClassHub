@@ -59,9 +59,11 @@ Deno.serve(async (req: Request) => {
     const loggedUserIds = new Set<string>();
 
     await processBatched(subscriptions ?? [], async (subRecord) => {
+      const truncatedBody = body.length > 200 ? body.substring(0, 197) + "..." : body;
+
       const result = await sendWebPush(subRecord, {
         title,
-        body,
+        body: truncatedBody,
         url: '/app/home',
       });
 
