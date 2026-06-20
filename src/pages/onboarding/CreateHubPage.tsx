@@ -294,6 +294,7 @@ export default function CreateHubPage() {
             <input
               id="phone-input"
               type="tel"
+              inputMode="numeric"
               className={`input${errors.phone ? ' input-error' : ''}`}
               placeholder="9314293931"
               maxLength={10}

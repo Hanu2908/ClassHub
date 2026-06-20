@@ -603,7 +603,9 @@ export default function JoinHubPage() {
                   fontFamily: 'monospace', borderRight: '1px solid var(--border-default)', fontSize: 14
                 }}>+91</span>
                 <input
+                  id="phone-input"
                   type="tel"
+                  inputMode="numeric"
                   className={`input${errors.phone ? ' input-error' : ''}`}
                   placeholder="9314293931"
                   maxLength={10}
@@ -679,7 +681,9 @@ export default function JoinHubPage() {
                 fontFamily: 'monospace', borderRight: '1px solid var(--border-default)', fontSize: 14
               }}>+91</span>
               <input
+                id="teacher-phone-input"
                 type="tel"
+                inputMode="numeric"
                 className={`input${errors.phone ? ' input-error' : ''}`}
                 placeholder="9314293931"
                 maxLength={10}
