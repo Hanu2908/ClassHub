@@ -297,7 +297,7 @@ export default function CreateHubPage() {
               inputMode="numeric"
               autoComplete="tel"
               className={`input${errors.phone ? ' input-error' : ''}`}
-              placeholder="9314293931"
+              placeholder="9914293931"
               maxLength={10}
               value={phone}
               onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
@@ -312,7 +312,7 @@ export default function CreateHubPage() {
             Class Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="cr-class-roll-input" className={`input${errors.classRoll ? ' input-error' : ''}`} placeholder="01" maxLength={2} inputMode="numeric"
-            autoComplete="off"
+            autoComplete="on"
             value={classRoll} onChange={e => setClassRoll(e.target.value.replace(/\D/g, ''))} />
           <FieldError msg={errors.classRoll} />
         </div>
@@ -322,7 +322,7 @@ export default function CreateHubPage() {
             University Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <input id="cr-uni-roll-input" className={`input mono${errors.universityRoll ? ' input-error' : ''}`} placeholder="25ESKCX089" maxLength={12}
-            autoCapitalize="characters" autoCorrect="off" autoComplete="off" spellCheck="false"
+            autoCapitalize="characters" autoCorrect="off" autoComplete="on" spellCheck="false"
             value={universityRoll} onChange={e => setUniversityRoll(e.target.value.toUpperCase())} />
           <FieldError msg={errors.universityRoll} />
         </div>
