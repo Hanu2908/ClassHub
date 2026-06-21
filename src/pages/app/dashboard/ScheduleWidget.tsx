@@ -9,7 +9,7 @@ import type { ScheduleSlot } from '../../../store/appStore';
 export default function ScheduleWidget() {
   const navigate = useNavigate();
   const key = todayKey();
-  const { data: schedule, isLoading } = useSchedule();
+  const { data: schedule, isLoading } = useSchedule({ placeholder: true });
   const classes = useMemo(() => schedule?.[key] ?? [], [schedule, key]);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {

@@ -18,7 +18,7 @@ interface AttachmentRow {
 
 // ── Announcements Query ──────────────────────────────────────────────────────
 
-export function useAnnouncements(opts?: { page?: number; limit?: number; sectionId?: string }) {
+export function useAnnouncements(opts?: { page?: number; limit?: number; sectionId?: string; placeholder?: boolean }) {
   const auth = useAuthContext();
   const sectionId = opts?.sectionId ?? auth.sectionId;
   const userId = auth.userId;
@@ -31,6 +31,9 @@ export function useAnnouncements(opts?: { page?: number; limit?: number; section
     queryKey: ['announcements', sectionId, userId, page, limit],
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60, // 1 minute
+    placeholderData: opts?.placeholder
+      ? () => useAppStore.getState().offlineCache?.announcements
+      : undefined,
     queryFn: async () => {
       try {
         const from = page * limit;

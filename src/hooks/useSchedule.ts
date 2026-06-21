@@ -17,7 +17,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // ── Schedule Query ───────────────────────────────────────────────────────────
 
-export function useSchedule(opts?: { sectionId?: string }) {
+export function useSchedule(opts?: { sectionId?: string; placeholder?: boolean }) {
   const auth = useAuthContext();
   const sectionId = opts?.sectionId ?? auth.sectionId;
   const isDemo = sectionId === 'demo-section';
@@ -27,6 +27,9 @@ export function useSchedule(opts?: { sectionId?: string }) {
     queryKey: ['schedule', sectionId],
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 3, // 3 minutes
+    placeholderData: opts?.placeholder
+      ? () => useAppStore.getState().offlineCache?.schedule
+      : undefined,
     queryFn: async () => {
       try {
         const { data, error } = await supabase

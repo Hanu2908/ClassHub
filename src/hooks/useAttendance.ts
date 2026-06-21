@@ -14,12 +14,15 @@ type SubjectRelation = { code: string; name: string; semester?: number } | null;
 
 // ── Attendance Query ─────────────────────────────────────────────────────────
 
-export function useAttendance() {
+export function useAttendance(opts?: { placeholder?: boolean }) {
   const { userId, isAuthenticated } = useAuthContext();
   return useQuery<{ subjects: AttendanceSubject[]; overall: number; lastUpdated: string | null }>({
     queryKey: ['attendance', userId],
     enabled: !!userId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: opts?.placeholder
+      ? () => useAppStore.getState().offlineCache?.attendance
+      : undefined,
     queryFn: async () => {
       try {
         const { data, error } = await supabase

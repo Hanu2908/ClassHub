@@ -23,12 +23,15 @@ interface VoteRow {
 
 // ── Polls Query ──────────────────────────────────────────────────────────────
 
-export function usePolls() {
+export function usePolls(opts?: { placeholder?: boolean }) {
   const { sectionId, userId, isAuthenticated } = useAuthContext();
   const queryResult = useQuery<Poll[]>({
     queryKey: ['polls', sectionId, userId],
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60, // 1 minute
+    placeholderData: opts?.placeholder
+      ? () => useAppStore.getState().offlineCache?.polls
+      : undefined,
     queryFn: async () => {
       try {
         const { data: polls, error } = await supabase

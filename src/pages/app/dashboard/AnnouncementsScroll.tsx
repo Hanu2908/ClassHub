@@ -477,7 +477,7 @@ export default function AnnouncementsScroll() {
   };
 
   const { data: subjects = [] } = useSubjects();
-  const { data: announcements = [], isLoading } = useAnnouncements({ limit: 12 });
+  const { data: announcements = [], isLoading } = useAnnouncements({ limit: 12, placeholder: true });
   const visible = useMemo(() => {
     return announcements
       .filter(a => !isExpired(a.deadline))

@@ -27,7 +27,7 @@ interface AttachmentRow {
 
 // ── Assignments Query ────────────────────────────────────────────────────────
 
-export function useAssignments(opts?: { page?: number; limit?: number }) {
+export function useAssignments(opts?: { page?: number; limit?: number; placeholder?: boolean }) {
   const { sectionId, userId, isAuthenticated } = useAuthContext();
   const page = opts?.page ?? 0;
   const limit = opts?.limit ?? 100;
@@ -35,6 +35,9 @@ export function useAssignments(opts?: { page?: number; limit?: number }) {
     queryKey: ['assignments', sectionId, userId, page, limit],
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60, // 1 minute
+    placeholderData: opts?.placeholder
+      ? () => useAppStore.getState().offlineCache?.assignments
+      : undefined,
     queryFn: async () => {
       try {
         const from = page * limit;

@@ -1,4 +1,4 @@
-import { useState, useMemo, type CSSProperties, useEffect } from 'react';
+import { useState, useMemo, type CSSProperties, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Megaphone, BarChart2, ClipboardList, CheckCircle2, ShieldAlert, Send, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -80,10 +80,10 @@ export default function DashboardPage() {
 
   const { notifications } = useNotifications();
   const role = useAppStore(s => s.role);
-  const { data: announcements = [] } = useAnnouncements({ limit: 50 });
-  const { data: assignments = [] } = useAssignments();
-  const { data: attendance = { subjects: [], overall: 0, lastUpdated: null } } = useAttendance();
-  const { data: polls = [] } = usePolls();
+  const { data: announcements = [] } = useAnnouncements({ limit: 50, placeholder: true });
+  const { data: assignments = [] } = useAssignments({ placeholder: true });
+  const { data: attendance = { subjects: [], overall: 0, lastUpdated: null } } = useAttendance({ placeholder: true });
+  const { data: polls = [] } = usePolls({ placeholder: true });
 
   // Fetch counsellor note for the student
   const { data: counsellorNote, refetch: refetchCounsellorNote } = useQuery({
@@ -261,6 +261,41 @@ export default function DashboardPage() {
   const overallPercent = attendance?.overall ?? 0;
   const isLowAttendance = overallPercent < 75;
 
+  const [animatedPercent, setAnimatedPercent] = useState(0);
+  const animatedPercentRef = useRef(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const duration = 800; // 800ms
+    const startVal = animatedPercentRef.current;
+    const endVal = overallPercent;
+
+    if (Math.abs(startVal - endVal) < 0.1) return;
+
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easeProgress = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const currentVal = startVal + easeProgress * (endVal - startVal);
+      
+      animatedPercentRef.current = currentVal;
+      setAnimatedPercent(currentVal);
+
+      if (progress < 1) {
+        animationFrameId = window.requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = window.requestAnimationFrame(step);
+    return () => {
+      if (animationFrameId) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [overallPercent]);
+
   let statusLabel: string;
   let tierClass: string;
   let statusColor: string;
@@ -349,7 +384,7 @@ export default function DashboardPage() {
                       textShadow: `0 0 24px ${statusColor}33`,
                       lineHeight: 1
                     }}>
-                      {Math.round(overallPercent)}%
+                      {Math.round(animatedPercent)}%
                     </span>
                   </div>
                 </div>
@@ -410,11 +445,10 @@ export default function DashboardPage() {
                 }}>
                   <div style={{ 
                     height: '100%', 
-                    width: `${Math.min(100, Math.max(0, overallPercent))}%`, 
+                    width: `${Math.min(100, Math.max(0, animatedPercent))}%`, 
                     background: statusColor, 
                     borderRadius: 3,
-                    boxShadow: `0 0 10px ${statusColor}40`,
-                    transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                    boxShadow: `0 0 10px ${statusColor}40`
                   }} />
                 </div>
               </div>

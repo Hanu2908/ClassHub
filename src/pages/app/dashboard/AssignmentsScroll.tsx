@@ -22,7 +22,7 @@ function getSubjectAcronym(name: string) {
 
 export default function AssignmentsScroll() {
   const navigate = useNavigate();
-  const { data: assignments = [], isLoading } = useAssignments({ limit: 8 });
+  const { data: assignments = [], isLoading } = useAssignments({ limit: 8, placeholder: true });
   const visible = assignments
     .filter(a => !isExpired(a.dueDate) && a.status !== 'submitted')
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
