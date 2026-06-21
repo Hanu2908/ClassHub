@@ -35,6 +35,17 @@ export default function CreateHubPage() {
   const [dayScholar, setDayScholar] = useState(true);
   const [batch, setBatch] = useState('1');
   const [phone, setPhone] = useState('');
+
+  const handlePhoneChange = (val: string) => {
+    let cleaned = val.replace(/\D/g, '');
+    if (cleaned.startsWith('91') && cleaned.length > 10) {
+      cleaned = cleaned.replace(/^91/, '');
+    } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+      cleaned = cleaned.replace(/^0/, '');
+    }
+    setPhone(cleaned.slice(0, 10));
+  };
+
   const [branch, setBranch] = useState('Computer Science & Engineering');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -293,14 +304,14 @@ export default function CreateHubPage() {
             }}>+91</span>
             <input
               id="phone-input"
+              name="tel"
               type="tel"
               inputMode="numeric"
               autoComplete="tel"
               className={`input${errors.phone ? ' input-error' : ''}`}
               placeholder="9914293931"
-              maxLength={10}
               value={phone}
-              onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+              onChange={e => handlePhoneChange(e.target.value)}
               style={{ flex: 1, border: 'none', borderRadius: 0, outline: 'none' }}
             />
           </div>

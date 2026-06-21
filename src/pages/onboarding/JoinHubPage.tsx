@@ -41,6 +41,17 @@ export default function JoinHubPage() {
   const [classRoll, setClassRoll] = useState('');
   const [universityRoll, setUniversityRoll] = useState('');
   const [phone, setPhone] = useState('');
+
+  const handlePhoneChange = (val: string) => {
+    let cleaned = val.replace(/\D/g, '');
+    if (cleaned.startsWith('91') && cleaned.length > 10) {
+      cleaned = cleaned.replace(/^91/, '');
+    } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+      cleaned = cleaned.replace(/^0/, '');
+    }
+    setPhone(cleaned.slice(0, 10));
+  };
+
   const [sectionBranch, setSectionBranch] = useState<string | null>(null);
   const [dayScholar, setDayScholar] = useState(true);
   const [batch, setBatch] = useState('1');
@@ -606,14 +617,14 @@ export default function JoinHubPage() {
                 }}>+91</span>
                 <input
                   id="phone-input"
+                  name="tel"
                   type="tel"
                   inputMode="numeric"
                   autoComplete="tel"
                   className={`input${errors.phone ? ' input-error' : ''}`}
                   placeholder="9314293931"
-                  maxLength={10}
                   value={phone}
-                  onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                  onChange={e => handlePhoneChange(e.target.value)}
                   onBlur={() => validate(['phone'])}
                   style={{ flex: 1, border: 'none', borderRadius: 0, outline: 'none' }}
                 />
@@ -685,14 +696,14 @@ export default function JoinHubPage() {
               }}>+91</span>
               <input
                 id="teacher-phone-input"
+                name="tel"
                 type="tel"
                 inputMode="numeric"
                 autoComplete="tel"
                 className={`input${errors.phone ? ' input-error' : ''}`}
                 placeholder="9314293931"
-                maxLength={10}
                 value={phone}
-                onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                onChange={e => handlePhoneChange(e.target.value)}
                 onBlur={() => validate(['phone'])}
                 style={{ flex: 1, border: 'none', borderRadius: 0, outline: 'none' }}
               />
