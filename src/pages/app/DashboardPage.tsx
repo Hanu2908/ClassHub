@@ -296,6 +296,53 @@ export default function DashboardPage() {
     };
   }, [overallPercent]);
 
+  // Deadline progress bar animation
+  const targetDeadlinePercent = useMemo(() => {
+    if (shouldShowExam || !primaryDeadline) return 0;
+    const dueDate = new Date(primaryDeadline.dueDate).getTime();
+    /* eslint-disable-next-line react-hooks/purity */
+    const now = Date.now();
+    const diffMs = dueDate - now;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const horizonHours = 14 * 24;
+    return Math.min(100, Math.max(0, Math.sqrt(diffHours / horizonHours) * 100));
+  }, [shouldShowExam, primaryDeadline]);
+
+  const [animatedDeadlinePercent, setAnimatedDeadlinePercent] = useState(0);
+  const animatedDeadlinePercentRef = useRef(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const duration = 800; // 800ms
+    const startVal = animatedDeadlinePercentRef.current;
+    const endVal = targetDeadlinePercent;
+
+    if (Math.abs(startVal - endVal) < 0.1) return;
+
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easeProgress = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const currentVal = startVal + easeProgress * (endVal - startVal);
+      
+      animatedDeadlinePercentRef.current = currentVal;
+      setAnimatedDeadlinePercent(currentVal);
+
+      if (progress < 1) {
+        animationFrameId = window.requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = window.requestAnimationFrame(step);
+    return () => {
+      if (animationFrameId) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [targetDeadlinePercent]);
+
   let statusLabel: string;
   let tierClass: string;
   let statusColor: string;
@@ -483,9 +530,6 @@ export default function DashboardPage() {
                   urgencyColor = 'var(--accent-primary)';
                 }
 
-                // Continuous square-root decay curve anchored to a 14-day horizon (336 hours)
-                const horizonHours = 14 * 24;
-                const barPercent = Math.min(100, Math.max(0, Math.sqrt(diffHours / horizonHours) * 100));
                 const PrimaryIcon = primaryDeadline.icon;
 
                 return (
@@ -552,7 +596,7 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <div style={{ height: 3, borderRadius: 1.5, border: 'none', background: 'rgba(255,255,255,0.03)', width: '100%', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${barPercent}%`, background: barColor, boxShadow: `0 0 10px ${urgencyColor}40`, borderRadius: 1.5, transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                        <div style={{ height: '100%', width: `${animatedDeadlinePercent}%`, background: barColor, boxShadow: `0 0 10px ${urgencyColor}40`, borderRadius: 1.5 }} />
                       </div>
                     </div>
                   </div>
