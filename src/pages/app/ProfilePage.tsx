@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
@@ -791,6 +791,24 @@ export default function ProfilePage() {
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </div>
+        </div>
+        </div>
+
+        {/* More */}
+        <div>
+          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>MORE</p>
+          <div className="card" style={{ padding: 0 }}>
+            {/* Star on GitHub */}
+            <div
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer' }}
+              onClick={() => window.open('https://github.com/Hanu2908/ClassHub', '_blank', 'noopener,noreferrer')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Star size={16} color="var(--text-primary)" />
+                <span className="t-body" style={{ color: 'var(--text-primary)' }}>Star on GitHub</span>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </div>
 
             {/* Ko-fi Support */}
             <div
@@ -803,7 +821,7 @@ export default function ProfilePage() {
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </div>
-        </div>
+          </div>
         </div>
 
         {/* Account — Sign Out */}
