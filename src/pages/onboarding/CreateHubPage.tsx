@@ -293,7 +293,7 @@ export default function CreateHubPage() {
         </div>
 
         <div>
-          <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
+          <label htmlFor="phone-input" className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Phone Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)' }}>

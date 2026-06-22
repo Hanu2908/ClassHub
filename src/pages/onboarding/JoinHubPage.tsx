@@ -606,7 +606,7 @@ export default function JoinHubPage() {
 
             {/* Mobile Phone Input */}
             <div>
-              <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+              <label htmlFor="phone-input" className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
                 Phone Number <span style={{ color: 'var(--status-critical)' }}>*</span>
               </label>
               <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)' }}>
@@ -685,7 +685,7 @@ export default function JoinHubPage() {
 
         {isTeacherFlow && (
           <div>
-            <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+            <label htmlFor="teacher-phone-input" className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
               Phone Number (Optional)
             </label>
             <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)' }}>
