@@ -22,7 +22,12 @@ import { logEvent } from '../../lib/analytics';
 
 import { parseERPAttendance } from '../../lib/utils/attendance';
 import type { ParsedSubject } from '../../lib/utils/attendance';
-import { ACADEMIC_HOLIDAYS, ACADEMIC_BREAKS } from '../../lib/curriculumData';
+import {
+  linkAttendanceToSchedule,
+  predictOverallRecoveryDate,
+  predictSubjectRecoveryDate,
+  getSmartSkipAdvice,
+} from '../../lib/utils/attendancePrediction';
 
 interface ParsedERPSubject extends ParsedSubject {
   subjectId: string | null;
@@ -38,24 +43,7 @@ const STATUS_BG = (pct: number) => {
   return rounded >= 85 ? 'var(--status-safe-bg)' : rounded >= 75 ? 'var(--status-warning-bg)' : 'var(--status-critical-bg)';
 };
 
-function isHolidayOrSunday(date: Date): boolean {
-  if (date.getDay() === 0) return true;
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const dateStr = `${yyyy}-${mm}-${dd}`;
-  
-  if (ACADEMIC_HOLIDAYS.includes(dateStr)) return true;
-  
-  // Dynamic breaks matching
-  for (const b of ACADEMIC_BREAKS) {
-    const breakStart = new Date(yyyy, b.startMonth, b.startDay);
-    const breakEnd = new Date(yyyy, b.endMonth, b.endDay);
-    if (date >= breakStart && date <= breakEnd) return true;
-  }
-  
-  return false;
-}
+// isHolidayOrSunday is now imported from attendancePrediction.ts util
 
 function getArcSegment(centerX: number, centerY: number, radius: number, startAngle: number, endAngle: number) {
   const startRad = (startAngle * Math.PI) / 180;
@@ -152,6 +140,20 @@ export default function AttendancePage() {
     }
   }, [searchParams, setSearchParams]);
 
+  // Handle ?subject=CODE cross-link from Schedule page badges
+  const [highlightedSubjectCode, setHighlightedSubjectCode] = useState<string | null>(null);
+  useEffect(() => {
+    const subjectParam = searchParams.get('subject');
+    if (subjectParam) {
+      setHighlightedSubjectCode(subjectParam);
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('subject');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const [erpText, setErpText] = useState('');
   const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
   const [selectedImportSemester, setSelectedImportSemester] = useState<number>(1);
@@ -191,7 +193,7 @@ export default function AttendancePage() {
 
 
   // Playground / Sandbox States
-  const [activePlaygroundTab, setActivePlaygroundTab] = useState<'boost' | 'bunk' | 'target' | 'od' | 'mix'>('boost');
+  const [activePlaygroundTab, setActivePlaygroundTab] = useState<'boost' | 'bunk' | 'target' | 'od' | 'mix' | 'skip'>('boost');
   const [boostVal, setBoostVal] = useState<number>(5);
   const [bunkVal, setBunkVal] = useState<number>(3);
   const [targetVal, setTargetVal] = useState<number>(80);
@@ -201,6 +203,9 @@ export default function AttendancePage() {
 
   // Timetable Sync and Date prediction
   const { data: fullSchedule = {} } = useSchedule();
+  const { data: attendance, isLoading } = useAttendance();
+  const subjects = useMemo(() => attendance?.subjects ?? [], [attendance?.subjects]);
+  const overall = attendance?.overall ?? 0;
   const [scheduleOverrides, setScheduleOverrides] = useState<Record<string, number>>({
     Mon: 5, Tue: 5, Wed: 5, Thu: 6, Fri: 5, Sat: 5
   });
@@ -231,6 +236,24 @@ export default function AttendancePage() {
   const [predictedDate, setPredictedDate] = useState<string | null>(null);
   const [predictedDaysCount, setPredictedDaysCount] = useState<number | null>(null);
 
+  // Per-subject linked data and predictions (Schedule × Attendance integration)
+  const linkedSubjects = useMemo(() => {
+    if (!subjects.length || !fullSchedule || Object.keys(fullSchedule).length === 0) return [];
+    return linkAttendanceToSchedule(subjects, fullSchedule);
+  }, [subjects, fullSchedule]);
+
+  const perSubjectPredictions = useMemo(() => {
+    return linkedSubjects
+      .filter(s => s.percentage < 75 && s.total > 0)
+      .map(s => predictSubjectRecoveryDate(s))
+      .sort((a, b) => a.currentPct - b.currentPct);
+  }, [linkedSubjects]);
+
+  const skipAdvice = useMemo(() => {
+    if (!subjects.length) return [];
+    return getSmartSkipAdvice(subjects, fullSchedule);
+  }, [subjects, fullSchedule]);
+
   // SVG Chart States
   const [chartType, setChartType] = useState<'bar' | 'doughnut'>('doughnut');
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
@@ -245,13 +268,18 @@ export default function AttendancePage() {
   // Info Help boxes states
   const [activeInfoBox, setActiveInfoBox] = useState<string | null>(null);
 
+  // Auto-expand subject breakdown when navigated from Schedule badge
+  useEffect(() => {
+    if (highlightedSubjectCode) {
+      setListExpanded(true);
+      setSearchQuery(decodeURIComponent(highlightedSubjectCode));
+      setHighlightedSubjectCode(null);
+    }
+  }, [highlightedSubjectCode]);
+
   const bulkUpsert = useBulkUpsertAttendance();
   const ensureSubjects = useEnsureSubjects();
   const updateSubjectMut = useUpdateSubject();
-  const { data: attendance, isLoading } = useAttendance();
-
-  const subjects = useMemo(() => attendance?.subjects ?? [], [attendance?.subjects]);
-  const overall = attendance?.overall ?? 0;
 
   // Mathematically perfect sums to prevent sum-bugs
   const overallAttended = useMemo(() => subjects.reduce((sum, s) => sum + s.present, 0), [subjects]);
@@ -427,51 +455,11 @@ export default function AttendancePage() {
     return { percent: nextPercent, delta };
   }, [overallAttended, overallTotal, safeOverall, mixAttendVal, mixBunkVal]);
 
-  // Date Prediction engine
+  // Date Prediction engine — now uses extracted util
   const runPredictionDateCalculation = () => {
-    if (safeOverall >= 75) {
-      setPredictedDate("Relax! You are already above 75%. Enjoy your life! 😎");
-      setPredictedDaysCount(0);
-      return;
-    }
-
-    let needed = Math.ceil((0.75 * overallTotal - overallAttended) / 0.25);
-    let daysPassed = 0;
-    const currentDate = new Date();
-
-    const schedule = [
-      0, // Sun
-      scheduleOverrides.Mon || 0,
-      scheduleOverrides.Tue || 0,
-      scheduleOverrides.Wed || 0,
-      scheduleOverrides.Thu || 0,
-      scheduleOverrides.Fri || 0,
-      scheduleOverrides.Sat || 0
-    ];
-
-    while (needed > 0) {
-      currentDate.setDate(currentDate.getDate() + 1);
-      daysPassed++;
-      if (isHolidayOrSunday(currentDate)) continue;
-
-      const classesToday = schedule[currentDate.getDay()] || 0;
-      needed -= classesToday;
-
-      if (daysPassed > 365) {
-        setPredictedDate("Timetable slots are blank or 75% target is too far.");
-        setPredictedDaysCount(null);
-        return;
-      }
-    }
-
-    const dateString = currentDate.toLocaleDateString('en-IN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-    setPredictedDate(dateString);
-    setPredictedDaysCount(daysPassed);
+    const result = predictOverallRecoveryDate(overallAttended, overallTotal, scheduleOverrides);
+    setPredictedDate(result.predictedDate ?? result.message);
+    setPredictedDaysCount(result.predictedDays);
   };
 
   const handleParse = async () => {
@@ -937,6 +925,9 @@ export default function AttendancePage() {
                 <button className={`sandbox-tab ${activePlaygroundTab === 'mix' ? 'active' : ''}`} onClick={() => setActivePlaygroundTab('mix')}>
                   Mix Sandbox
                 </button>
+                <button className={`sandbox-tab ${activePlaygroundTab === 'skip' ? 'active' : ''}`} onClick={() => setActivePlaygroundTab('skip')}>
+                  <Calendar size={11} /> Smart Skip
+                </button>
               </div>
 
               {/* Tab Panel contents */}
@@ -1064,6 +1055,100 @@ export default function AttendancePage() {
                     </div>
                   </div>
                 )}
+
+                {activePlaygroundTab === 'skip' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* Empty state: No attendance data */}
+                    {subjects.length === 0 && (
+                      <div style={{ padding: '20px 14px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
+                        <RefreshCw size={20} style={{ color: 'var(--text-muted)', marginBottom: 8 }} aria-hidden="true" />
+                        <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>Import your ERP attendance first to unlock skip advice.</p>
+                        <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: 12 }} onClick={() => setErpOpen(true)}>
+                          <RefreshCw size={12} /> Update from ERP
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Empty state: No timetable */}
+                    {subjects.length > 0 && Object.keys(fullSchedule).length === 0 && (
+                      <div style={{ padding: '20px 14px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
+                        <Calendar size={20} style={{ color: 'var(--text-muted)', marginBottom: 8 }} aria-hidden="true" />
+                        <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>Set up your class timetable to get schedule-aware predictions.</p>
+                        <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: 12 }} onClick={() => navigate('/app/schedule')}>
+                          <Calendar size={12} /> Go to Schedule
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Empty state: All subjects safe */}
+                    {subjects.length > 0 && skipAdvice.length > 0 && skipAdvice.every(s => s.riskLevel === 'safe') && (
+                      <div style={{ padding: '14px', background: 'var(--status-safe-bg)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(52, 211, 153, 0.15)', textAlign: 'center' }}>
+                        <CheckCircle2 size={18} style={{ color: 'var(--status-safe)', marginBottom: 4 }} aria-hidden="true" />
+                        <p className="t-label" style={{ color: 'var(--status-safe)' }}>All subjects clear! 🎯 Every subject is safely above 75%.</p>
+                      </div>
+                    )}
+
+                    {/* Skip advice rows */}
+                    {skipAdvice.map((advice, idx) => {
+                      const riskColor = advice.riskLevel === 'safe'
+                        ? 'var(--status-safe)'
+                        : advice.riskLevel === 'warning'
+                          ? 'var(--status-warning)'
+                          : 'var(--status-critical)';
+                      const riskBg = advice.riskLevel === 'safe'
+                        ? 'var(--status-safe-bg)'
+                        : advice.riskLevel === 'warning'
+                          ? 'var(--status-warning-bg)'
+                          : 'var(--status-critical-bg)';
+
+                      return (
+                        <div
+                          key={advice.code}
+                          style={{
+                            padding: '10px 12px',
+                            background: 'rgba(255,255,255,0.02)',
+                            borderRadius: 'var(--radius-md)',
+                            border: `1px solid ${advice.riskLevel === 'critical' ? 'rgba(248,113,113,0.2)' : 'var(--border-default)'}`,
+                            animation: 'fadeSlideUp 0.3s ease both',
+                            animationDelay: `${idx * 60}ms`,
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: riskColor, flexShrink: 0 }} />
+                              <span className="t-label" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {advice.name}
+                              </span>
+                            </div>
+                            <span
+                              className="t-badge"
+                              style={{
+                                background: riskBg,
+                                color: riskColor,
+                                padding: '2px 8px',
+                                borderRadius: 'var(--radius-pill)',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              {advice.currentPct.toFixed(0)}%
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
+                              Can skip: <strong style={{ color: riskColor, fontVariantNumeric: 'tabular-nums' }}>{advice.canSkip}</strong> classes
+                            </span>
+                            {advice.nextScheduledDay && (
+                              <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
+                                Next: {advice.nextScheduledDay}{advice.nextScheduledTime ? ` ${advice.nextScheduledTime}` : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1127,6 +1212,70 @@ export default function AttendancePage() {
                   {predictedDaysCount !== null && predictedDaysCount > 0 && (
                     <p className="t-helper" style={{ color: 'var(--text-muted)', marginTop: 4 }}>({predictedDaysCount} days of college from now)</p>
                   )}
+                </div>
+              )}
+
+              {/* Per-Subject Recovery Breakdown */}
+              {perSubjectPredictions.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <p className="t-helper" style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>Per-subject recovery breakdown:</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {perSubjectPredictions.map((pred, idx) => (
+                      <div
+                        key={pred.code}
+                        style={{
+                          padding: '10px 12px',
+                          background: 'rgba(248, 113, 113, 0.04)',
+                          border: '1px solid rgba(248, 113, 113, 0.12)',
+                          borderRadius: 'var(--radius-md)',
+                          animation: 'fadeSlideUp 0.3s ease both',
+                          animationDelay: `${idx * 60}ms`,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <span className="t-label" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                            {pred.name}
+                          </span>
+                          <span className="t-badge" style={{ background: 'var(--status-critical-bg)', color: 'var(--status-critical)', padding: '2px 8px', borderRadius: 'var(--radius-pill)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                            {pred.currentPct.toFixed(0)}%
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                          <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
+                            Need <strong style={{ color: 'var(--status-critical)', fontVariantNumeric: 'tabular-nums' }}>{pred.neededClasses}</strong> classes
+                            {pred.predictedDate && <> · by <strong style={{ color: '#a78bfa' }}>{pred.predictedDate}</strong></>}
+                          </span>
+                          {pred.scheduledDays.length > 0 && (
+                            <button
+                              className="t-mono-sm"
+                              style={{
+                                color: 'var(--accent-primary)',
+                                background: 'rgba(96, 165, 250, 0.08)',
+                                border: '1px solid rgba(96, 165, 250, 0.15)',
+                                borderRadius: 'var(--radius-pill)',
+                                padding: '2px 8px',
+                                cursor: 'pointer',
+                                transition: 'opacity var(--transition-fast)',
+                              }}
+                              onClick={() => navigate('/app/schedule')}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  navigate('/app/schedule');
+                                }
+                              }}
+                              aria-label={`View ${pred.name} schedule on ${pred.scheduledDays.join(', ')}`}
+                            >
+                              📅 {pred.scheduledDays.join(', ')}
+                            </button>
+                          )}
+                          {pred.scheduledDays.length === 0 && (
+                            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>not in timetable</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

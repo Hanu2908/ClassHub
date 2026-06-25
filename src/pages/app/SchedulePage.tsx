@@ -8,6 +8,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { toast } from 'sonner';
 import { useSchedule, useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSchedule';
 import { useSubjects } from '../../hooks/useSubjects';
+import { useAttendance } from '../../hooks/useAttendance';
 import { useSection } from '../../hooks/useSectionMembers';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
@@ -538,7 +539,7 @@ interface SwipeableCardSlot {
 
 // ── Swipeable schedule card ──────────────────────────────────────────────────
 
-function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName }: {
+function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName, attendancePct }: {
   cls: SwipeableCardSlot;
   isNow: boolean;
   isPast: boolean;
@@ -546,7 +547,9 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName 
   onDelete: (cls: SwipeableCardSlot) => void;
   style: React.CSSProperties;
   sectionName?: string;
+  attendancePct?: number;
 }) {
+  const navigate = useNavigate();
   const [swipeX, setSwipeX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const startXRef = useRef(0);
@@ -662,6 +665,31 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName 
                 <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(96, 165, 250, 0.15)', color: 'var(--accent-primary)', fontWeight: 700, flexShrink: 0 }}>
                   {(sectionName || 'B') + cls.targetBatch}
                 </span>
+              )}
+              {attendancePct !== undefined && (
+                <button
+                  className={`attendance-pill ${
+                    attendancePct >= 85
+                      ? 'attendance-pill-safe'
+                      : attendancePct >= 75
+                        ? 'attendance-pill-warning'
+                        : 'attendance-pill-critical'
+                  }`}
+                  aria-label={`${cls.subject} attendance: ${attendancePct.toFixed(0)}%`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/app/attendance?subject=${encodeURIComponent(cls.code)}`);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate(`/app/attendance?subject=${encodeURIComponent(cls.code)}`);
+                    }
+                  }}
+                >
+                  {attendancePct.toFixed(0)}%
+                </button>
               )}
             </div>
 
@@ -794,6 +822,18 @@ function StudentSchedulePage() {
   const authUser = useAppStore(s => s.authUser);
   const subBatch = authUser?.subBatch;
   const [viewMode, setViewMode] = useState<'my-batch' | 'full'>('my-batch');
+
+  // Attendance data for badge overlay on schedule cards
+  const { data: attendanceData } = useAttendance();
+  const codeToPct = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (attendanceData?.subjects) {
+      for (const sub of attendanceData.subjects) {
+        map[sub.code.toLowerCase().trim()] = sub.percentage;
+      }
+    }
+    return map;
+  }, [attendanceData]);
 
   const classes = useMemo(() => {
     const raw = (schedule[selectedDay] ?? []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -1470,6 +1510,7 @@ function StudentSchedulePage() {
                       animationDelay: `${i * 40}ms`,
                     }}
                     sectionName={sectionName}
+                    attendancePct={codeToPct[cls.code.toLowerCase().trim()]}
                   />
                 );
               })}
