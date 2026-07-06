@@ -1,37 +1,31 @@
-export type SubjectCategory = 'technical' | 'lab' | 'non-technical' | 'other';
+export type SubjectCategory = 'lecture' | 'lab' | 'tutorial';
 
-export function getCategory(code: string, type: string): SubjectCategory {
-  if (type === 'Lab' || type === 'lab' || code.endsWith('L') || code.endsWith('P')) return 'lab';
-  if (type === 'tutorial' || type === 'Tutorial' || type === 'Non-Tech Lecture') return 'non-technical';
-  // Technical / Core engineering subjects
-  if (/^(CS|AI|DS|EC|EE|ME|IT|SE)/i.test(code)) return 'technical';
-  // Non-technical / Humanities / Management subjects
-  if (/^(ES|EN|HU|MGT|BBA|MBA)/i.test(code)) return 'non-technical';
-  return 'other';
+export function getCategory(_code: string, type: string): SubjectCategory {
+  const t = type.toLowerCase();
+  if (t === 'lab' || t === 'practical' || t === 'laboratory') return 'lab';
+  if (t === 'tutorial' || t === 'tut') return 'tutorial';
+  return 'lecture';
 }
 
 export const CATEGORY_COLORS: Record<SubjectCategory, { color: string; bg: string; border: string }> = {
-  technical:     { color: '#60A5FA', bg: 'rgba(96,165,250,0.15)',  border: 'rgba(96,165,250,0.3)' }, // Blue
-  lab:           { color: '#FFB547', bg: 'rgba(255,181,71,0.15)',   border: 'rgba(255,181,71,0.3)' },   // Orange
-  'non-technical':{ color: '#A78BFA', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' }, // Purple
-  other:         { color: '#2DD4BF', bg: 'rgba(45,212,191,0.15)',  border: 'rgba(45,212,191,0.3)' },  // Teal
+  lecture:  { color: '#60A5FA', bg: 'rgba(96,165,250,0.15)',  border: 'rgba(96,165,250,0.3)' },  // Blue
+  lab:     { color: '#FFB547', bg: 'rgba(255,181,71,0.15)',   border: 'rgba(255,181,71,0.3)' },   // Orange
+  tutorial:{ color: '#A78BFA', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },  // Purple
 };
 
 export const CATEGORY_LABELS: Record<SubjectCategory, string> = {
-  technical:     'Tech Lecture',
-  lab:           'Lab',
-  'non-technical': 'Non-Tech Lecture',
-  other:         'Other',
+  lecture:  'Lecture',
+  lab:      'Lab',
+  tutorial: 'Tutorial',
 };
 
 // ── Quick-add time helpers ────────────────────────────────────────────────────
 
 /** Default slot duration in minutes, keyed by slot type */
 export const TYPE_DURATIONS: Record<string, number> = {
-  'Tech Lecture':      60,
-  'Lab':               120,
-  'Non-Tech Lecture':  60,
-  'Other':             60,
+  'Lecture':   60,
+  'Lab':       120,
+  'Tutorial':  60,
 };
 
 /**

@@ -102,3 +102,111 @@ export function parseERPAttendance(rawText: string): ParsedSubject[] {
 
   return subjects;
 }
+
+export type ParsedERPSubject = {
+  code: string;
+  name: string;
+  semester?: number;
+};
+
+export function parseERPSubjects(rawText: string): ParsedERPSubject[] {
+  if (!rawText) return [];
+
+  const lines = rawText.trim().split(/\r?\n/);
+  const subjects: ParsedERPSubject[] = [];
+  const TYPES = new Set(['LECTURE', 'TUTORIAL', 'LAB', 'PRACTICAL', 'LABORATORY', 'TUT', 'L', 'T', 'P', 'PR']);
+
+  // Wider regex: 4-15 chars, allows dots and parentheses (e.g. NU99.5, ITUL301(Tut.))
+  const CODE_RE = /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9-.()]{4,15}$/;
+
+  function isTypeOrIndex(str: string): boolean {
+    if (!str) return true;
+    const upper = str.toUpperCase().trim();
+    return /^\d+$/.test(upper) || TYPES.has(upper);
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const isTSV = trimmed.includes('\t');
+    const cols = isTSV
+      ? trimmed.split('\t').map(c => c.trim()).filter(Boolean)
+      : trimmed.split(/\s+/).map(c => c.trim()).filter(Boolean);
+
+    const codeIdx = cols.findIndex(c => CODE_RE.test(c));
+    if (codeIdx === -1) continue;
+
+    const code = cols[codeIdx].toUpperCase();
+    const startIdx = /^\d+$/.test(cols[0] ?? '') ? 1 : 0;
+
+    let name = '';
+    let semester: number | undefined;
+
+    if (isTSV) {
+      // For TSV: check if column before code is a real name (not index/type)
+      const prevCol = cols[codeIdx - 1];
+      const nextCol = cols[codeIdx + 1];
+
+      if (prevCol && !isTypeOrIndex(prevCol)) {
+        name = prevCol;
+      } else if (nextCol && !isTypeOrIndex(nextCol)) {
+        name = nextCol;
+      }
+
+      // Search remaining columns for semester number
+      for (let i = codeIdx + 1; i < cols.length; i++) {
+        const num = parseInt(cols[i], 10);
+        if (!isNaN(num) && num >= 1 && num <= 8 && /^\d+$/.test(cols[i])) {
+          semester = num;
+          break;
+        }
+      }
+    } else {
+      // For space-separated: find type column from end to avoid matching "Lab" in subject name
+      let typeIdx = -1;
+      for (let i = cols.length - 1; i >= 0; i--) {
+        if (TYPES.has(cols[i].toUpperCase())) {
+          typeIdx = i;
+          break;
+        }
+      }
+
+      if (codeIdx > startIdx) {
+        // Name is before code (common: # Name Code Type)
+        name = cols.slice(startIdx, codeIdx).join(' ');
+      } else {
+        // Name is after code
+        const endIdx = (typeIdx > codeIdx) ? typeIdx : cols.length;
+        name = cols.slice(codeIdx + 1, endIdx).join(' ');
+      }
+
+      // Search for semester in trailing columns
+      for (let i = Math.max(codeIdx + 1, typeIdx + 1); i < cols.length; i++) {
+        const num = parseInt(cols[i], 10);
+        if (!isNaN(num) && num >= 1 && num <= 8 && /^\d+$/.test(cols[i])) {
+          semester = num;
+          break;
+        }
+      }
+    }
+
+    if (name) {
+      subjects.push({ code, name, semester });
+    }
+  }
+
+  // If we found subjects, return them
+  if (subjects.length > 0) {
+    return subjects;
+  }
+
+  // Fallback: Try parsing using the attendance table parser
+  const attendanceSubjects = parseERPAttendance(rawText);
+  return attendanceSubjects.map(s => ({
+    code: s.code,
+    name: s.name,
+  }));
+}
+
+

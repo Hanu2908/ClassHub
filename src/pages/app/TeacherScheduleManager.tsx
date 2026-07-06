@@ -445,7 +445,7 @@ export default function TeacherScheduleManager() {
             filteredSlots.map(slot => {
               const isMine = slot.subjectId && teacherSubjectIds.has(slot.subjectId);
               const cat = getCategory(slot.code, slot.type);
-              const style = CATEGORY_COLORS[cat] || CATEGORY_COLORS.other;
+              const style = CATEGORY_COLORS[cat] || CATEGORY_COLORS.lecture;
 
               return (
                 <div

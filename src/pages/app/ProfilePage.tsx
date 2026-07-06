@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star } from 'lucide-react';
+import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
@@ -499,6 +499,20 @@ export default function ProfilePage() {
               },
               ...(role !== 'teacher' ? [
                 { label: 'University Roll', value: universityRoll },
+                { 
+                  label: 'Curriculum', 
+                  value: 'Subjects', 
+                  action: (
+                    <button 
+                      id="view-subjects-profile-btn" 
+                      onClick={() => navigate('/app/cr/subjects')} 
+                      className="t-label" 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      <BookOpen size={13} /> View
+                    </button>
+                  )
+                },
                 { 
                   label: 'Status', 
                   value: authUser?.dayScholar ? 'DS 🚌' : 'Hostel 🏠', 

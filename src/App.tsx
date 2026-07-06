@@ -237,7 +237,7 @@ export default function App() {
                 <Route path="/app/assignments" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><AssignmentsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/attendance" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><AttendancePage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/cr-command" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><CRCommandPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
-                <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireStudentOrCR><RequireDeveloper><ErrorBoundary variant="page"><ManageSubjectsPage /></ErrorBoundary></RequireDeveloper></RequireStudentOrCR></RequireHub></RequireAuth>} />
+                <Route path="/app/cr/subjects" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><ManageSubjectsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/pdf-viewer" element={<RequireAuth><RequireHub><ErrorBoundary variant="page"><PDFViewerPage /></ErrorBoundary></RequireHub></RequireAuth>} />
                 <Route path="/app/exams" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><ExamsPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />
                 <Route path="/app/gpa" element={<RequireAuth><RequireHub><RequireStudentOrCR><ErrorBoundary variant="page"><GPACalculatorPage /></ErrorBoundary></RequireStudentOrCR></RequireHub></RequireAuth>} />

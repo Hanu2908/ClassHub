@@ -13,7 +13,7 @@ export interface SubjectInfo {
   sectionId: string;
 }
 
-type SubjectIdCode = { id: string; code: string };
+
 
 // ── Subjects Query ───────────────────────────────────────────────────────────
 
@@ -163,31 +163,87 @@ export function useEnsureSubjects() {
   const qc = useQueryClient();
   const { sectionId } = useAuthContext();
   return useMutation({
-    mutationFn: async (items: Array<{ code: string; name?: string; semester?: number; accent?: string }>) => {
+    mutationFn: async (
+      payload:
+        | Array<{ code: string; name?: string; semester?: number; accent?: string }>
+        | {
+            items: Array<{ code: string; name?: string; semester?: number; accent?: string }>;
+            syncDelete?: boolean;
+          }
+    ) => {
       if (!sectionId) throw new Error('Missing section context');
+      
+      const items = Array.isArray(payload) ? payload : payload.items;
+      const syncDelete = Array.isArray(payload) ? false : !!payload.syncDelete;
+
       const codes = Array.from(new Set(items.map(i => i.code).filter(Boolean)));
       if (codes.length === 0) return {} as Record<string, string>;
 
-      const { data: existing, error: existingErr } = await supabase.from('subjects').select('id,code').in('code', codes).eq('section_id', sectionId);
+      // 1. Fetch ALL existing subjects in this section to support custom accent preservation and delete detection
+      const { data: existing, error: existingErr } = await supabase
+        .from('subjects')
+        .select('id, code, accent')
+        .eq('section_id', sectionId);
       if (existingErr) throw existingErr;
 
-      const existingMap = new Map<string, string>();
-      (existing ?? []).forEach((s: SubjectIdCode) => existingMap.set(s.code, s.id));
+      const existingMap = new Map<string, { id: string; accent: string }>();
+      (existing ?? []).forEach((s) => existingMap.set(s.code, { id: s.id, accent: s.accent }));
 
-      const missing = items
-        .filter(i => i.code && !existingMap.has(i.code))
-        .map(i => ({ section_id: sectionId!, code: i.code, name: i.name ?? i.code, semester: i.semester ?? 1, accent: i.accent ?? '#4A9EFF' }));
+      // 2. Prepare payload for upsert (do NOT include id key!)
+      const upsertItems = items.map(i => {
+        const existingSub = existingMap.get(i.code);
+        return {
+          section_id: sectionId!,
+          code: i.code,
+          name: i.name ?? i.code,
+          semester: i.semester ?? 1,
+          accent: existingSub?.accent ?? i.accent ?? '#4A9EFF'
+        };
+      });
 
-      let inserted: SubjectIdCode[] = [];
-      if (missing.length > 0) {
-        const { data: ins, error: insErr } = await supabase.from('subjects').insert(missing).select('id,code');
-        if (insErr) throw insErr;
-        inserted = ins ?? [];
+      // 3. Perform the upsert (inserts new, updates existing)
+      const { data: upserted, error: upsertErr } = await supabase
+        .from('subjects')
+        .upsert(upsertItems, { onConflict: 'section_id,code' })
+        .select('id, code');
+      if (upsertErr) throw upsertErr;
+
+      // 4. Handle Deleting obsolete subjects if syncDelete is enabled
+      let hasFailedDeletions = false;
+      if (syncDelete) {
+        const importedCodesSet = new Set(codes);
+        const obsoleteSubjects = (existing ?? []).filter(s => !importedCodesSet.has(s.code));
+
+        for (const obsolete of obsoleteSubjects) {
+          try {
+            const { error: delErr } = await supabase
+              .from('subjects')
+              .delete()
+              .eq('id', obsolete.id);
+            if (delErr) {
+              console.warn(`Could not delete obsolete subject ${obsolete.code}:`, delErr);
+              hasFailedDeletions = true;
+            }
+          } catch (e) {
+            console.warn(`Error deleting obsolete subject ${obsolete.code}:`, e);
+            hasFailedDeletions = true;
+          }
+        }
       }
 
+      // 5. Construct output mapping & attach non-enumerable hasFailedDeletions flag
       const mapping: Record<string, string> = {};
-      (existing ?? []).forEach((s: SubjectIdCode) => mapping[s.code] = s.id);
-      inserted.forEach(s => mapping[s.code] = s.id);
+      (upserted ?? []).forEach((s) => {
+        mapping[s.code] = s.id;
+      });
+
+      Object.defineProperty(mapping, '_hasFailedDeletions', {
+        value: hasFailedDeletions,
+        enumerable: false,
+        writable: true,
+        configurable: true
+      });
+
       return mapping;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['subjects'] }),

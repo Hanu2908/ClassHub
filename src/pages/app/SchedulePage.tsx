@@ -22,13 +22,13 @@ const DAY_MAP: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5
 const DAY_FULL: Record<string, string> = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' };
 const PX_PER_HOUR = 80;
 const MIN_CARD_HEIGHT = 40;
-const SUBJECT_TYPES = ['Tech Lecture', 'Lab', 'Non-Tech Lecture', 'Other'];
+const SUBJECT_TYPES = ['Lecture', 'Lab', 'Tutorial'];
 
 function mapUiTypeToDb(uiType: string): string {
-  if (uiType === 'Tech Lecture') return 'lecture';
-  if (uiType === 'Non-Tech Lecture') return 'tutorial';
+  if (uiType === 'Lecture') return 'lecture';
   if (uiType === 'Lab') return 'lab';
-  return 'other';
+  if (uiType === 'Tutorial') return 'tutorial';
+  return 'lecture';
 }
 
 function currentDayKey(): string {
@@ -110,7 +110,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
 
   const [selectedTeacherOption, setSelectedTeacherOption] = useState('');
   const [customTeacher, setCustomTeacher] = useState('');
-  const [type, setType] = useState('Tech Lecture');
+  const [type, setType] = useState('Lecture');
   const [targetBatch, setTargetBatch] = useState<'all' | '1' | '2'>('all');
   const [addedCount, setAddedCount] = useState(0);
 
@@ -126,7 +126,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
   }, [existingSlots]);
 
   const [startTime, setStartTime] = useState(lastEndTime);
-  const [endTime, setEndTime] = useState(() => calculateEndTime(lastEndTime, 'Tech Lecture'));
+  const [endTime, setEndTime] = useState(() => calculateEndTime(lastEndTime, 'Lecture'));
 
   // Auto-recalculate end time when type changes
   const handleTypeChange = (newType: string) => {
@@ -1245,7 +1245,7 @@ function StudentSchedulePage() {
       {/* Collapsible legend */}
       <div className={`legend-collapsible${showLegend ? ' open' : ''}`}>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          {(['technical', 'lab', 'non-technical', 'other'] as SubjectCategory[]).map(c => (
+          {(['lecture', 'lab', 'tutorial'] as SubjectCategory[]).map(c => (
             <LegendChip key={c} cat={c} />
           ))}
         </div>
@@ -1374,7 +1374,7 @@ function StudentSchedulePage() {
                       if (cellSlots.length > 0) {
                         const firstSlot = cellSlots[0];
                         const cat = getCategory(firstSlot.code, firstSlot.type);
-                        const catStyle = CATEGORY_COLORS[cat] || CATEGORY_COLORS.other;
+                        const catStyle = CATEGORY_COLORS[cat] || CATEGORY_COLORS.lecture;
                         const isStartHour = cellSlots.some(s => Number(s.startTime.split(':')[0]) === currentHourNum);
 
                         const labelText = cellSlots.map(s => `${s.subject} (${s.code}) in Room ${s.room || 'N/A'}`).join(', ');
@@ -1563,7 +1563,7 @@ function StudentSchedulePage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 0 20px' }} aria-live="polite">
             {selectedCellSlots.map((slot) => {
               const cat = getCategory(slot.code, slot.type);
-              const catStyle = CATEGORY_COLORS[cat] || CATEGORY_COLORS.other;
+              const catStyle = CATEGORY_COLORS[cat] || CATEGORY_COLORS.lecture;
               return (
                 <div 
                   key={slot.id} 
