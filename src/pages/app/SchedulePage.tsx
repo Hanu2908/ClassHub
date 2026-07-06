@@ -63,6 +63,18 @@ const labelStyle: React.CSSProperties = {
   color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: 11,
 };
 
+const LECTURE_PRESETS = [
+  { label: 'P1', start: '08:15', end: '09:15' },
+  { label: 'P2', start: '09:15', end: '10:15' },
+  { label: 'P3', start: '10:15', end: '11:15' },
+  { label: 'P4', start: '12:00', end: '13:00' },
+];
+const LAB_PRESETS = [
+  { label: 'Morning Lab', start: '08:15', end: '11:15' },
+  { label: 'Afternoon Lab', start: '12:00', end: '15:00' },
+];
+
+
 interface AddSlotSheetProps {
   open: boolean;
   day: string;
@@ -93,7 +105,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('section_teachers')
-        .select('users(name)')
+        .select('subject_id, users(name)')
         .eq('section_id', sectionId || '');
       if (error) throw error;
       return data || [];
@@ -107,6 +119,41 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       .filter((name: string | null | undefined): name is string => typeof name === 'string' && name.trim().length > 0);
     return Array.from(new Set(names)).sort();
   }, [sectionTeachers]);
+
+  // Fetch full schedule slots for historical auto-fill
+  const { data: schedule = {} } = useSchedule({
+    sectionId: sectionId || undefined
+  });
+
+  const historicalTeacherNames = useMemo(() => {
+    const names = new Set<string>();
+    Object.values(schedule).forEach(daySlots => {
+      daySlots.forEach(s => {
+        if (s.teacher && s.teacher.trim().length > 0) {
+          names.add(s.teacher.trim());
+        }
+      });
+    });
+    return Array.from(names).sort();
+  }, [schedule]);
+
+  const subjectToLastTeacherMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    Object.values(schedule).forEach(daySlots => {
+      daySlots.forEach(s => {
+        if (s.subjectId && s.teacher && s.teacher.trim().length > 0) {
+          map[s.subjectId] = s.teacher.trim();
+        }
+      });
+    });
+    return map;
+  }, [schedule]);
+
+  const historicalOnlyNames = useMemo(() => {
+    const registeredSet = new Set(teacherNames);
+    return historicalTeacherNames.filter(name => !registeredSet.has(name));
+  }, [teacherNames, historicalTeacherNames]);
+
 
   const [selectedTeacherOption, setSelectedTeacherOption] = useState('');
   const [customTeacher, setCustomTeacher] = useState('');
@@ -155,7 +202,31 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       const parsed = parseBatchFromText(sub.name + ' ' + sub.code);
       if (parsed !== 'all') setTargetBatch(parsed);
     }
+
+    // Auto-fill teacher
+    const matchedSt = sectionTeachers.find((st: any) => st.subject_id === val);
+    const registeredTeacherName = matchedSt?.users?.name;
+    const historicalTeacherName = subjectToLastTeacherMap[val];
+    const teacherToFill = registeredTeacherName || historicalTeacherName;
+
+    if (teacherToFill) {
+      const cleanName = teacherToFill.trim();
+      const isRegistered = teacherNames.includes(cleanName);
+      const isHistorical = historicalOnlyNames.includes(cleanName);
+
+      if (isRegistered || isHistorical) {
+        setSelectedTeacherOption(cleanName);
+        setCustomTeacher('');
+      } else {
+        setSelectedTeacherOption('custom');
+        setCustomTeacher(cleanName);
+      }
+    } else {
+      setSelectedTeacherOption('');
+      setCustomTeacher('');
+    }
   };
+
 
   const handleRoomChange = (val: string) => {
     setRoom(val);
@@ -191,9 +262,11 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       return;
     }
 
-    const finalTeacher = teacherNames.length > 0
+    const hasDropdownOptions = teacherNames.length > 0 || historicalOnlyNames.length > 0;
+    const finalTeacher = hasDropdownOptions
       ? (selectedTeacherOption === 'custom' ? customTeacher : selectedTeacherOption)
       : customTeacher;
+
 
     try {
       const payload: any = {
@@ -283,7 +356,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
         </div>
         <div>
           <label htmlFor="slot-teacher-input" style={labelStyle}>Teacher (optional)</label>
-          {teacherNames.length === 0 ? (
+          {teacherNames.length === 0 && historicalOnlyNames.length === 0 ? (
             <input
               id="slot-teacher-input"
               style={inputStyle}
@@ -300,9 +373,20 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
                 onChange={e => handleTeacherSelectChange(e.target.value)}
               >
                 <option value="">Select teacher…</option>
-                {teacherNames.map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
+                {teacherNames.length > 0 && (
+                  <optgroup label="Section Teachers (Registered)">
+                    {teacherNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {historicalOnlyNames.length > 0 && (
+                  <optgroup label="Previously Used Names">
+                    {historicalOnlyNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </optgroup>
+                )}
                 <option value="custom">Other / Write custom name...</option>
               </select>
               {selectedTeacherOption === 'custom' && (
@@ -318,6 +402,37 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
             </div>
           )}
         </div>
+
+        {/* Timing Presets */}
+        <div>
+          <span style={labelStyle}>Standard Timings</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4, marginBottom: 12 }}>
+            {(type.toLowerCase() === 'lab' ? LAB_PRESETS : LECTURE_PRESETS).map(p => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => {
+                  setStartTime(p.start);
+                  setEndTime(p.end);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 11,
+                  borderRadius: '9999px',
+                  background: startTime === p.start && endTime === p.end ? '#ffffff' : '#27272a',
+                  border: '1px solid transparent',
+                  color: startTime === p.start && endTime === p.end ? '#18181b' : '#a1a1aa',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {p.start} - {p.end}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
             <label htmlFor="slot-start-input" style={labelStyle}>Start *</label>
@@ -328,6 +443,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
             <input id="slot-end-input" style={inputStyle} type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
           </div>
         </div>
+
 
         {/* Announcement Bridge Toggle */}
         <div style={{ padding: '10px 12px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.01)', width: '100%', boxSizing: 'border-box' }}>
