@@ -211,7 +211,7 @@ function ShareOptionsContent({
                   justifyContent: 'center',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                   color: '#fff',
-                  fontSize: '10px',
+                  fontSize: '12px',
                   fontWeight: 'bold'
                 }}>
                   {isSelected && '✓'}
@@ -233,7 +233,7 @@ function ShareOptionsContent({
             color: selectedPhotos.length === 0 ? 'var(--text-muted)' : '#fff',
             cursor: selectedPhotos.length === 0 ? 'default' : 'pointer',
             fontWeight: 600,
-            fontSize: '14px',
+            fontSize: '15px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -664,7 +664,7 @@ export default function AnnouncementsScroll() {
                                     border: `1px solid ${category.borderColor}`,
                                   }}>
                                     {category.icon}
-                                    <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '10px' }}>
+                                    <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
                                       {category.name}
                                     </span>
                                   </div>
@@ -710,7 +710,7 @@ export default function AnnouncementsScroll() {
                             )}
                           </div>
                           <p className="t-button" style={{ 
-                            fontSize: '14px', 
+                            fontSize: '15px', 
                             color: 'var(--text-primary)', 
                             marginBottom: 2, 
                             display: 'flex', 
@@ -727,7 +727,7 @@ export default function AnnouncementsScroll() {
                                 alignItems: 'center',
                                 padding: '1px 6px',
                                 borderRadius: '4px',
-                                fontSize: '9px',
+                                fontSize: '12px',
                                 fontWeight: 700,
                                 textTransform: 'uppercase',
                                 backgroundColor: `${ann.matchedSubject.accent}15`,
@@ -858,11 +858,11 @@ export default function AnnouncementsScroll() {
                         border: `1px solid ${category.borderColor}`,
                       }}>
                         {category.icon}
-                        <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '10px' }}>
+                        <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
                           {category.name}
                         </span>
                       </div>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>·</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>·</span>
                       <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
                         {timeAgo(prevSelectedAnn.postedAt)}
                       </span>
@@ -871,7 +871,7 @@ export default function AnnouncementsScroll() {
                 })()}
               </div>
               <h2 className="t-card-title" style={{ 
-                fontSize: 20, 
+                fontSize: 21, 
                 color: 'var(--text-primary)', 
                 lineHeight: 1.3, 
                 textAlign: 'left',

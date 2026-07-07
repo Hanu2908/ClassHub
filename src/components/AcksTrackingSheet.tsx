@@ -126,7 +126,7 @@ export default function AcksTrackingSheet({ open, announcement, onClose, section
               <strong style={{ color: 'var(--status-announcement)' }}>{ackedStudents.length} / {totalStudents.length} acknowledged</strong>
             </p>
             {pushEvents.length > 0 && (
-              <p className="t-caption" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, fontSize: '11px', margin: 0 }}>
+              <p className="t-caption" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, fontSize: '12px', margin: 0 }}>
                 <span>Push reach:</span>
                 <span>
                   🟢 <strong style={{ color: 'var(--status-safe)' }}>{deliveredCount}</strong> Delivered
@@ -225,7 +225,7 @@ export default function AcksTrackingSheet({ open, announcement, onClose, section
                             gap: 3,
                             padding: '1px 6px',
                             borderRadius: '4px',
-                            fontSize: '9px',
+                            fontSize: '12px',
                             fontWeight: 600,
                             background: isSent ? 'rgba(52, 211, 153, 0.08)' : 'rgba(239, 68, 68, 0.08)',
                             color: isSent ? 'var(--status-safe)' : 'var(--status-critical)',

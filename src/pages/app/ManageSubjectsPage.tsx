@@ -450,7 +450,7 @@ export default function ManageSubjectsPage() {
                 style={{
                   width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                  color: '#fff', outline: 'none', fontSize: 14
+                  color: '#fff', outline: 'none', fontSize: 15
                 }}
               >
                 <option value="">No Teacher Assigned</option>
@@ -500,7 +500,7 @@ export default function ManageSubjectsPage() {
                       width: 22, height: 22, borderRadius: '50%',
                       background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                      fontSize: '12px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
                     }}>1</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                       <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Open Student ERP</span>
@@ -522,7 +522,7 @@ export default function ManageSubjectsPage() {
                           border: '1px solid rgba(99, 102, 241, 0.2)',
                           borderRadius: 'var(--radius-sm, 6px)',
                           color: 'var(--accent-primary)',
-                          fontSize: '11px',
+                          fontSize: '12px',
                           fontWeight: 600,
                           textDecoration: 'none',
                           transition: 'all 0.2s'
@@ -539,7 +539,7 @@ export default function ManageSubjectsPage() {
                       width: 22, height: 22, borderRadius: '50%',
                       background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                      fontSize: '12px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
                     }}>2</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Copy Curriculum Table</span>
@@ -555,7 +555,7 @@ export default function ManageSubjectsPage() {
                       width: 22, height: 22, borderRadius: '50%',
                       background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                      fontSize: '12px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
                     }}>3</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Paste & Import</span>
@@ -631,7 +631,7 @@ export default function ManageSubjectsPage() {
                     style={{
                       width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)',
                       border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                      color: '#fff', outline: 'none', fontFamily: 'monospace', fontSize: 12, resize: 'vertical'
+                      color: '#fff', outline: 'none', fontFamily: 'var(--font-mono)', fontSize: 12, resize: 'vertical'
                     }}
                   />
                 </div>

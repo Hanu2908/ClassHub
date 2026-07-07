@@ -29,7 +29,7 @@ function GlassCard({ children, style: sx }: { children: React.ReactNode; style?:
 
 function ChartTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 style={{ fontSize: 10, fontWeight: 600, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+    <h3 style={{ fontSize: 12, fontWeight: 600, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
       {children}
     </h3>
   );
@@ -150,7 +150,7 @@ export default function GoalsTab() {
               onTouchEnd={() => setTargetCgpa(val)}
               style={{ width: '100%', accentColor: insight?.color || 'var(--accent-primary)', cursor: 'pointer' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               <span>4.00</span>
               <span>10.00</span>
             </div>
@@ -167,7 +167,7 @@ export default function GoalsTab() {
           boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
           transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
-          <h3 style={{ fontSize: 10, fontWeight: 600, color: insight.color, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h3 style={{ fontSize: 12, fontWeight: 600, color: insight.color, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
             {insight.icon} {insight.title}
           </h3>
           <div style={{ padding: '10px 4px', textAlign: 'center' }}>

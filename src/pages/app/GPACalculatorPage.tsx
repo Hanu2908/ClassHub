@@ -112,11 +112,11 @@ function CGPAHero({ cgpa, sgpa, pct, isPartial }: { cgpa: number; sgpa: number; 
 
         {/* Center score indicator */}
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: -2 }}>Overall</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: -2 }}>Overall</span>
           <span className="t-mono" style={{ fontSize: 32, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
             {aCGPA.toFixed(2)}
           </span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-primary)', padding: '2px 8px', background: 'var(--bg-elevated)', borderRadius: 12, marginTop: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', padding: '2px 8px', background: 'var(--bg-elevated)', borderRadius: 12, marginTop: 4 }}>
             {grade.label}
           </span>
         </div>
@@ -129,7 +129,7 @@ function CGPAHero({ cgpa, sgpa, pct, isPartial }: { cgpa: number; sgpa: number; 
             <span>Current semester SGPA</span>
             {isPartial && (
               <span style={{
-                fontSize: 9, fontWeight: 700, color: '#FBBF24',
+                fontSize: 12, fontWeight: 700, color: '#FBBF24',
                 background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)',
                 padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: '0.04em'
               }}>
@@ -138,16 +138,16 @@ function CGPAHero({ cgpa, sgpa, pct, isPartial }: { cgpa: number; sgpa: number; 
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span className="t-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{aSGPA.toFixed(2)}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ 10</span>
+            <span className="t-mono" style={{ fontSize: 21, fontWeight: 700, color: 'var(--text-primary)' }}>{aSGPA.toFixed(2)}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>/ 10</span>
           </div>
         </div>
         <div style={{ height: 1, background: 'var(--border-default)' }} />
         <div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>Percentage</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span className="t-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{aPct.toFixed(1)}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>%</span>
+            <span className="t-mono" style={{ fontSize: 21, fontWeight: 700, color: 'var(--text-primary)' }}>{aPct.toFixed(1)}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>%</span>
           </div>
         </div>
       </div>
@@ -246,7 +246,7 @@ export default function GPACalculatorPage() {
           <button onClick={() => navigate('/app/profile')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: 2 }} aria-label="Back">
             <ChevronLeft size={20} />
           </button>
-          <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1, fontSize: 16 }}>GPA Calculator</h1>
+          <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1, fontSize: 17 }}>GPA Calculator</h1>
           <div style={{ position: 'relative' }}>
             <select
               value={activeBranch}
@@ -287,8 +287,8 @@ export default function GPACalculatorPage() {
           padding: '10px 14px', borderRadius: 'var(--radius-lg)', gap: 12
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Relative Grading Mode</span>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>Dynamic course curves using section aggregates</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Relative Grading Mode</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>Dynamic course curves using section aggregates</span>
           </div>
           <button 
             onClick={() => setUseRelativeGrading(!useRelativeGrading)}
@@ -320,9 +320,9 @@ export default function GPACalculatorPage() {
                 <button key={sem} onClick={() => setActiveSemester(sem)}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '6px 6px 5px', borderRadius: 10, flexShrink: 0, minWidth: 46, background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent', border: `1.5px solid ${isActive ? 'rgba(255,255,255,0.15)' : 'transparent'}`, cursor: 'pointer', transition: 'all 0.15s' }}>
                   <RingGauge value={status === 'empty' ? 0 : semSgpa} max={10} size={34} stroke={3} color={statusColor[status]}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: isActive ? T.heading : T.label, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>S{sem}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? T.heading : T.label, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>S{sem}</span>
                   </RingGauge>
-                  {status !== 'empty' && <span style={{ fontSize: 8, color: isActive ? T.body : T.label, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>{semSgpa.toFixed(1)}</span>}
+                  {status !== 'empty' && <span style={{ fontSize: 12, color: isActive ? T.body : T.label, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>{semSgpa.toFixed(1)}</span>}
                 </button>
               );
             })}

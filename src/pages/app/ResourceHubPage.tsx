@@ -30,7 +30,7 @@ const customTheme = {
   textMeta: '#6060A0',
   accent: '#8B5CF6', // Electric violet
   statusLive: '#4ADE80',
-  fontDisplay: "'Bebas Neue', sans-serif", // Intended bold condensed block style!
+  fontDisplay: "var(--font-display)", // Outfit 700 uppercase replaces Bebas Neue
   fontMono: "var(--font-mono)",
 };
 
@@ -304,7 +304,7 @@ export default function ResourceHubPage() {
                 border: `1px solid ${customTheme.borderMid}`,
                 color: customTheme.textSecondary,
                 padding: '4px 8px',
-                fontSize: '11px',
+                fontSize: '12px',
                 fontFamily: customTheme.fontMono,
                 cursor: 'pointer',
               }}
@@ -327,7 +327,7 @@ export default function ResourceHubPage() {
                   display: 'flex',
                   alignItems: 'center',
                   fontFamily: customTheme.fontMono,
-                  fontSize: '11px',
+                  fontSize: '12px',
                 }}
               >
                 <ChevronLeft size={14} /> BACK
@@ -344,7 +344,7 @@ export default function ResourceHubPage() {
                 </h1>
                 <p style={{
                   fontFamily: customTheme.fontMono,
-                  fontSize: '9px',
+                  fontSize: '12px',
                   color: customTheme.textMeta,
                   letterSpacing: '1px',
                   textTransform: 'uppercase',
@@ -365,7 +365,7 @@ export default function ResourceHubPage() {
                   cursor: 'pointer',
                   color: customTheme.textPrimary,
                   fontFamily: customTheme.fontMono,
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: 400,
                   letterSpacing: '1px',
                   padding: '5px 8px',
@@ -380,7 +380,7 @@ export default function ResourceHubPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '5px',
-                fontSize: '9px',
+                fontSize: '12px',
                 letterSpacing: '2px',
                 color: customTheme.statusLive,
               }}>
@@ -422,7 +422,7 @@ export default function ResourceHubPage() {
                   border: `1.5px solid ${isActive ? customTheme.accent : customTheme.borderMid}`,
                   color: isActive ? customTheme.accent : customTheme.textSecondary,
                   fontFamily: customTheme.fontMono,
-                  fontSize: '11px',
+                  fontSize: '12px',
                   padding: '3px 8px',
                   borderRadius: '4px',
                   whiteSpace: 'nowrap',
@@ -438,7 +438,7 @@ export default function ResourceHubPage() {
 
         {/* Branch selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '10px', color: customTheme.textDim }}>BRANCH:</span>
+          <span style={{ fontSize: '12px', color: customTheme.textDim }}>BRANCH:</span>
           <select
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
@@ -447,7 +447,7 @@ export default function ResourceHubPage() {
               border: `1px solid ${customTheme.borderMid}`,
               color: customTheme.textPrimary,
               fontFamily: customTheme.fontMono,
-              fontSize: '11px',
+              fontSize: '12px',
               padding: '4px 6px',
               borderRadius: '4px',
               outline: 'none',
@@ -483,7 +483,7 @@ export default function ResourceHubPage() {
               }}>
                 <div style={{
                   fontFamily: customTheme.fontMono,
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: 600,
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
@@ -503,7 +503,7 @@ export default function ResourceHubPage() {
                       border: `1px solid ${customTheme.accent}`,
                       color: customTheme.accent,
                       fontFamily: customTheme.fontMono,
-                      fontSize: '10px',
+                      fontSize: '12px',
                       padding: '3px 8px',
                       display: 'flex',
                       alignItems: 'center',
@@ -548,7 +548,7 @@ export default function ResourceHubPage() {
                         <div>
                           <div style={{
                             fontFamily: customTheme.fontMono,
-                            fontSize: '9px',
+                            fontSize: '12px',
                             color: `${subject.accentColor}75`,
                             marginBottom: '2px',
                           }}>
@@ -565,7 +565,7 @@ export default function ResourceHubPage() {
                           </h3>
                           <div style={{
                             fontFamily: customTheme.fontMono,
-                            fontSize: '11px',
+                            fontSize: '12px',
                             color: customTheme.textDim,
                             marginTop: '4px'
                           }}>
@@ -582,7 +582,7 @@ export default function ResourceHubPage() {
                               border: `1px solid ${customTheme.borderMid}`,
                               cursor: 'pointer',
                               color: customTheme.accent,
-                              fontSize: '10px',
+                              fontSize: '12px',
                               fontFamily: customTheme.fontMono,
                               padding: '3px 8px',
                               display: 'flex',
@@ -623,7 +623,7 @@ export default function ResourceHubPage() {
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
                                   fontFamily: customTheme.fontMono,
-                                  fontSize: '11px',
+                                  fontSize: '12px',
                                   color: customTheme.textSecondary,
                                   background: 'rgba(255,255,255,0.02)',
                                   border: `1px solid ${customTheme.borderFaint}`,
@@ -653,7 +653,7 @@ export default function ResourceHubPage() {
                                 key={ft.key}
                                 style={{
                                   fontFamily: customTheme.fontMono,
-                                  fontSize: '11px',
+                                  fontSize: '12px',
                                   color: customTheme.textDim,
                                   border: `1px dashed ${customTheme.borderFaint}`,
                                   padding: '8px 10px',
@@ -688,7 +688,7 @@ export default function ResourceHubPage() {
               }}>
                 <div style={{
                   fontFamily: customTheme.fontMono,
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: 600,
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
@@ -708,7 +708,7 @@ export default function ResourceHubPage() {
                       border: `1px solid ${customTheme.accent}`,
                       color: customTheme.accent,
                       fontFamily: customTheme.fontMono,
-                      fontSize: '10px',
+                      fontSize: '12px',
                       padding: '3px 8px',
                       display: 'flex',
                       alignItems: 'center',
@@ -785,12 +785,12 @@ export default function ResourceHubPage() {
                         </div>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 600, color: customTheme.accent }}>
+                            <span style={{ fontSize: '15px', fontWeight: 600, color: customTheme.accent }}>
                               End-Term {paper.year}
                             </span>
                             {paper.isLatest && (
                               <span style={{
-                                fontSize: '9px',
+                                fontSize: '12px',
                                 fontWeight: 600,
                                 padding: '1px 6px',
                                 borderRadius: '10px',
@@ -801,7 +801,7 @@ export default function ResourceHubPage() {
                               </span>
                             )}
                           </div>
-                          <span style={{ fontSize: '11px', color: customTheme.textDim }}>{paper.semester}</span>
+                          <span style={{ fontSize: '12px', color: customTheme.textDim }}>{paper.semester}</span>
                         </div>
                       </a>
 
@@ -826,7 +826,7 @@ export default function ResourceHubPage() {
                           <Trash2 size={14} />
                         </button>
                       ) : (
-                        <span style={{ fontSize: '11px', color: customTheme.textDim }}>↗ Open PDF</span>
+                        <span style={{ fontSize: '12px', color: customTheme.textDim }}>↗ Open PDF</span>
                       )}
                     </div>
                   ))}
@@ -838,7 +838,7 @@ export default function ResourceHubPage() {
             <footer style={{
               textAlign: 'center',
               padding: '32px 0 10px',
-              fontSize: '10px',
+              fontSize: '12px',
               color: customTheme.textDim,
               letterSpacing: '1px',
               textTransform: 'uppercase'
@@ -858,7 +858,7 @@ export default function ResourceHubPage() {
         >
           <form onSubmit={handleSaveSubject} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <p style={{
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--text-secondary)',
               fontFamily: customTheme.fontMono,
               lineHeight: 1.4,
@@ -872,7 +872,7 @@ export default function ResourceHubPage() {
             {/* Render Subject Code and Name fields for editing/adding */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                   Subject Code *
                 </label>
                 <input
@@ -894,7 +894,7 @@ export default function ResourceHubPage() {
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                   Subject Name *
                 </label>
                 <input
@@ -920,7 +920,7 @@ export default function ResourceHubPage() {
             {/* Semester, Branch and Color Pickers */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                   Semester *
                 </label>
                 <select
@@ -944,7 +944,7 @@ export default function ResourceHubPage() {
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                   Branch *
                 </label>
                 <input
@@ -968,7 +968,7 @@ export default function ResourceHubPage() {
 
             {/* Accent Color Border Glow Picker */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                 Border Glow Theme Color
               </label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
@@ -1000,7 +1000,7 @@ export default function ResourceHubPage() {
               { label: 'Lab Manual Link', val: editLab, setVal: setEditLab }
             ].map((field, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                   {field.label}
                 </label>
                 <input
@@ -1092,7 +1092,7 @@ export default function ResourceHubPage() {
         >
           <form onSubmit={handleCreatePYQ} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <p style={{
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--text-secondary)',
               fontFamily: customTheme.fontMono,
               lineHeight: 1.4
@@ -1101,7 +1101,7 @@ export default function ResourceHubPage() {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                 Semester *
               </label>
               <select
@@ -1126,7 +1126,7 @@ export default function ResourceHubPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                 Exam Year *
               </label>
               <input
@@ -1149,7 +1149,7 @@ export default function ResourceHubPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono }}>
                 PDF Drive Link *
               </label>
               <input
@@ -1179,7 +1179,7 @@ export default function ResourceHubPage() {
                 onChange={(e) => setPyqLatest(e.target.checked)}
                 style={{ cursor: 'pointer', width: '16px', height: '16px' }}
               />
-              <label htmlFor="pyq-latest-check" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono, cursor: 'pointer' }}>
+              <label htmlFor="pyq-latest-check" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: customTheme.fontMono, cursor: 'pointer' }}>
                 Mark as "Latest" paper
               </label>
             </div>

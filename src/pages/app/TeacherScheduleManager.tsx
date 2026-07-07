@@ -41,7 +41,7 @@ const inputStyle: React.CSSProperties = {
   outline: 'none', fontSize: 13,
 };
 const labelStyle: React.CSSProperties = {
-  color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: 11,
+  color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: 12,
 };
 
 export default function TeacherScheduleManager() {
@@ -369,7 +369,7 @@ export default function TeacherScheduleManager() {
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Calendar size={18} color="var(--accent-primary)" />
-            <h1 className="t-page-title" style={{ color: 'var(--text-primary)', fontSize: 16 }}>Schedule Manager</h1>
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)', fontSize: 17 }}>Schedule Manager</h1>
           </div>
         </div>
 
@@ -465,7 +465,7 @@ export default function TeacherScheduleManager() {
                       </span>
                       {slot.targetBatch && (
                         <span className="t-mono-sm" style={{
-                          padding: '1px 5px', fontSize: 8, background: 'rgba(96, 165, 250, 0.15)',
+                          padding: '1px 5px', fontSize: 12, background: 'rgba(96, 165, 250, 0.15)',
                           color: 'var(--accent-primary)', borderRadius: 4, fontWeight: 700
                         }}>
                           Batch {slot.targetBatch}
@@ -473,7 +473,7 @@ export default function TeacherScheduleManager() {
                       )}
                       {isMine && (
                         <span style={{
-                          padding: '1px 5px', fontSize: 8, background: 'rgba(52, 211, 153, 0.15)',
+                          padding: '1px 5px', fontSize: 12, background: 'rgba(52, 211, 153, 0.15)',
                           color: 'var(--status-safe)', borderRadius: 4, fontWeight: 700
                         }}>
                           My Subject
@@ -481,7 +481,7 @@ export default function TeacherScheduleManager() {
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Clock size={12} />
                         <span>{slot.startTime} - {slot.endTime}</span>
@@ -649,7 +649,7 @@ export default function TeacherScheduleManager() {
       <BottomSheet open={showEditOptionSheet} onClose={() => setShowEditOptionSheet(false)} title="Manage Class Slot">
         {selectedSlot && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0 20px' }}>
-            <p className="t-mono-sm" style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: 10 }}>
+            <p className="t-mono-sm" style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: 10 }}>
               Adjust or reschedule the weekly slot for <strong>{selectedSlot.subject}</strong> ({selectedSlot.startTime} - {selectedSlot.endTime}).
             </p>
 
@@ -694,7 +694,7 @@ export default function TeacherScheduleManager() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '4px 0 20px' }}>
             <div style={{ display: 'flex', gap: 10, background: 'rgba(248, 113, 113, 0.04)', border: '1px solid rgba(248, 113, 113, 0.15)', padding: 10, borderRadius: 'var(--radius-md)', marginBottom: 8 }}>
               <AlertTriangle size={16} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 2 }} />
-              <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+              <p className="t-mono-sm" style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
                 This will delete the timetable slot for today, send a push notification, and post a cancellation alert to the Notice board.
               </p>
             </div>

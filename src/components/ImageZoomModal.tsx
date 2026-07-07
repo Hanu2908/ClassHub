@@ -494,7 +494,7 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
             border: '1px solid rgba(255,255,255,0.1)',
             color: '#fff',
             cursor: 'pointer',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 600,
             fontFamily: 'var(--font-mono)',
             padding: '4px 12px',
@@ -528,7 +528,7 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
         {/* HD loading indicator */}
         {!isFullLoaded && currentImage.thumbUrl !== currentImage.fullUrl && (
           <span style={{
-            fontSize: 9,
+            fontSize: 12,
             fontWeight: 600,
             fontFamily: 'var(--font-mono)',
             color: 'rgba(255,255,255,0.45)',

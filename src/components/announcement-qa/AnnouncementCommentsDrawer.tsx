@@ -247,7 +247,7 @@ export function AnnouncementCommentsDrawer({
           border: '1px solid var(--border-default)',
           borderRadius: 'var(--radius-md)',
         }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             Discuss or answer questions regarding this notice
           </span>
           
@@ -261,7 +261,7 @@ export function AnnouncementCommentsDrawer({
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: '11px',
+              fontSize: '12px',
               fontWeight: 600,
               outline: 'none',
             }}
@@ -349,7 +349,7 @@ export function AnnouncementCommentsDrawer({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {/* Verified header badge */}
                       {isCommentVerified && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--status-safe)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--status-safe)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                           <Check size={11} strokeWidth={3} />
                           <span>Verified Answer</span>
                         </div>
@@ -362,22 +362,22 @@ export function AnnouncementCommentsDrawer({
                             {comment.authorName} {isSelf && '(You)'}
                           </span>
                           {comment.authorRoll && (
-                            <span className="t-mono-sm" style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: 4, fontSize: '10px', color: 'var(--text-secondary)' }}>
+                            <span className="t-mono-sm" style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: 4, fontSize: '12px', color: 'var(--text-secondary)' }}>
                               {comment.authorRoll}
                             </span>
                           )}
                           {isAuthorCR && (
-                            <span className="t-mono-sm" style={{ background: 'rgba(167, 139, 250, 0.15)', color: 'var(--status-announcement)', padding: '1px 5px', borderRadius: 4, fontSize: '9px', fontWeight: 700, letterSpacing: '0.05em' }}>
+                            <span className="t-mono-sm" style={{ background: 'rgba(167, 139, 250, 0.15)', color: 'var(--status-announcement)', padding: '1px 5px', borderRadius: 4, fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em' }}>
                               CR
                             </span>
                           )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                             {timeAgo(comment.createdAt)}
                           </span>
                           {comment.editedAt && (
-                            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px', fontStyle: 'italic' }}>
+                            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '12px', fontStyle: 'italic' }}>
                               • (Edited)
                             </span>
                           )}
@@ -434,7 +434,7 @@ export function AnnouncementCommentsDrawer({
                               <span
                                 className="t-mono-sm"
                                 style={{
-                                  fontSize: '9px',
+                                  fontSize: '12px',
                                   color: editInputVal.length > 500 ? 'var(--status-critical)' : 'var(--text-muted)',
                                   fontWeight: 600,
                                 }}
@@ -448,7 +448,7 @@ export function AnnouncementCommentsDrawer({
                                   className="t-button-secondary"
                                   style={{
                                     padding: '4px 12px',
-                                    fontSize: '11px',
+                                    fontSize: '12px',
                                     height: 'auto',
                                     lineHeight: 'normal',
                                     cursor: 'pointer',
@@ -463,7 +463,7 @@ export function AnnouncementCommentsDrawer({
                                   className="t-button"
                                   style={{
                                     padding: '4px 12px',
-                                    fontSize: '11px',
+                                    fontSize: '12px',
                                     height: 'auto',
                                     lineHeight: 'normal',
                                     background: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
@@ -503,7 +503,7 @@ export function AnnouncementCommentsDrawer({
                                 border: 'none',
                                 cursor: 'pointer',
                                 color: isCommentVerified ? 'var(--text-muted)' : 'var(--status-safe)',
-                                fontSize: '10px',
+                                fontSize: '12px',
                                 fontWeight: 600,
                                 display: 'flex',
                                 alignItems: 'center',
@@ -679,7 +679,7 @@ export function AnnouncementCommentsDrawer({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '9px',
+                          fontSize: '12px',
                           fontWeight: 600
                         }}>
                           {member.name.charAt(0)}
@@ -692,7 +692,7 @@ export function AnnouncementCommentsDrawer({
                           color: 'var(--status-announcement)',
                           padding: '1px 4px',
                           borderRadius: '4px',
-                          fontSize: '8px',
+                          fontSize: '12px',
                           fontWeight: 700,
                         }}>
                           CR
@@ -700,7 +700,7 @@ export function AnnouncementCommentsDrawer({
                       )}
                     </div>
                     {member.classRoll && (
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)' }}>
                         {member.classRoll}
                       </span>
                     )}
@@ -742,7 +742,7 @@ export function AnnouncementCommentsDrawer({
                 position: 'absolute',
                 bottom: 8,
                 right: 12,
-                fontSize: '9px',
+                fontSize: '12px',
                 color: inputVal.length > 500 ? 'var(--status-critical)' : 'var(--text-muted)',
                 fontWeight: 600,
               }}
@@ -752,7 +752,7 @@ export function AnnouncementCommentsDrawer({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
               💡 Use @Name to tag section members
             </p>
             <motion.button

@@ -350,7 +350,7 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
                                 className="badge badge-info"
                                 style={{
                                   padding: '2px 8px',
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   background: 'rgba(34, 211, 238, 0.06)',
                                   border: '1px solid rgba(34, 211, 238, 0.12)'
                                 }}
@@ -542,7 +542,7 @@ export function CreatePollSheet({ open, onClose }: { open: boolean; onClose: () 
               }}>
                 {todaysClasses.length > 0 ? (
                   <>
-                    <div style={{ padding: '6px 12px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border-default)' }}>
+                    <div style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border-default)' }}>
                       Select Today's Class:
                     </div>
                     {todaysClasses.map((c: any) => (
@@ -573,7 +573,7 @@ export function CreatePollSheet({ open, onClose }: { open: boolean; onClose: () 
                     <div style={{ borderTop: '1px solid var(--border-default)', margin: '4px 0' }} />
                   </>
                 ) : (
-                  <div style={{ padding: '6px 12px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  <div style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
                     No classes scheduled today
                   </div>
                 )}
@@ -959,7 +959,7 @@ export default function PollsPage() {
                     }}
                   >
                     <span>{c.subject}</span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>({c.startTime})</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>({c.startTime})</span>
                     <Plus size={11} />
                   </button>
                 ))}
@@ -1013,7 +1013,7 @@ export default function PollsPage() {
                     border: '1px solid rgba(251, 191, 36, 0.3)',
                     borderRadius: 'var(--radius-md)',
                     color: 'var(--status-warning)',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     cursor: 'pointer',
                     outline: 'none',

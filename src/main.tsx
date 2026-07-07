@@ -86,7 +86,7 @@ const PAGE_LOAD_TIME = Date.now();
     z-index: 99999;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
-    font-family: var(--font-display, system-ui, sans-serif);
+    font-family: var(--font-display, 'Outfit', system-ui, sans-serif);
     color: #ffffff;
   `;
 

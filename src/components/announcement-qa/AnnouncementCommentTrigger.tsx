@@ -54,7 +54,7 @@ export function AnnouncementCommentTrigger({ announcementId, onOpenComments }: A
             background: 'var(--status-safe-bg)',
             border: '1px solid rgba(52, 211, 153, 0.3)',
             color: 'var(--status-safe)',
-            fontSize: '9px',
+            fontSize: '12px',
             fontWeight: 700,
             padding: '1px 5px',
             borderRadius: '8px',

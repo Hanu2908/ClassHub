@@ -599,10 +599,10 @@ const presentCount = useMemo(() => {
         gap: 12
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 className="t-page-title" style={{ color: 'var(--text-primary)', fontSize: 18, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <h1 className="t-page-title" style={{ color: 'var(--text-primary)', fontSize: 21, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {selectedSubjectCode || 'Teacher Console'}
           </h1>
-          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
             {selectedSubjectName || 'Section Course Mappings'}
           </p>
         </div>
@@ -651,7 +651,7 @@ const presentCount = useMemo(() => {
                         style={{
                           padding: '6px 10px',
                           color: 'var(--text-muted)',
-                          fontSize: '10px',
+                          fontSize: '12px',
                           fontWeight: 600,
                           letterSpacing: '0.05em',
                           borderTop: gIdx > 0 ? '1px solid var(--border-default)' : 'none',
@@ -907,7 +907,7 @@ const presentCount = useMemo(() => {
                             style={{
                               flex: 1,
                               padding: '6px 8px',
-                              fontSize: '11px',
+                              fontSize: '12px',
                               fontWeight: 600,
                               background: targetBatch === b ? 'var(--bg-elevated)' : 'transparent',
                               color: targetBatch === b ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -942,7 +942,7 @@ const presentCount = useMemo(() => {
                             style={{
                               flex: 1,
                               padding: '6px 8px',
-                              fontSize: '11px',
+                              fontSize: '12px',
                               fontWeight: 600,
                               background: lectureCount === w ? 'var(--bg-elevated)' : 'transparent',
                               color: lectureCount === w ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -1108,13 +1108,13 @@ const presentCount = useMemo(() => {
                                 <p className="t-mono-sm" style={{ fontWeight: 'bold', color: 'var(--text-primary)', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {student.name.split(' ')[0]}
                                 </p>
-                                <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '9px', marginTop: '2px' }}>
+                                <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>
                                   Roll: {student.section_roll || '—'}
                                 </p>
 
                                 {/* Mini Status Badge */}
                                 <span className="t-mono-sm" style={{
-                                  fontSize: 9, fontWeight: 700, marginTop: 8, padding: '2px 6px', borderRadius: 4,
+                                  fontSize: 12, fontWeight: 700, marginTop: 8, padding: '2px 6px', borderRadius: 4,
                                   background: status === 'present' ? 'rgba(52, 211, 153, 0.15)' : status === 'absent' ? 'rgba(248, 113, 113, 0.15)' : status === 'od' ? 'rgba(251, 191, 36, 0.15)' : 'rgba(167, 139, 250, 0.15)',
                                   color: status === 'present' ? 'var(--status-safe)' : status === 'absent' ? 'var(--status-critical)' : status === 'od' ? 'var(--status-warning)' : 'var(--status-announcement)'
                                 }}>
@@ -1168,7 +1168,7 @@ const presentCount = useMemo(() => {
                                   />
                                   <div>
                                     <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>{student.name}</p>
-                                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>Roll: {student.section_roll || '—'}</p>
+                                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>Roll: {student.section_roll || '—'}</p>
                                   </div>
                                 </div>
 
@@ -1269,7 +1269,7 @@ const presentCount = useMemo(() => {
                               return (
                                 <th key={s.id} style={{ padding: '10px 12px', textAlign: 'center', borderRight: '1px solid var(--border-default)', minWidth: 80 }}>
                                   {dateLabel}
-                                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 'normal', marginTop: 2 }}>
+                                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 'normal', marginTop: 2 }}>
                                     {s.target_batch ? `B-${s.target_batch}` : 'All'}
                                   </div>
                                 </th>
@@ -1297,7 +1297,7 @@ const presentCount = useMemo(() => {
                                 
                                 if (!isTargeted) {
                                   return (
-                                    <td key={s.id} style={{ padding: '8px', textAlign: 'center', borderRight: '1px solid var(--border-default)', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', fontSize: 11 }}>
+                                    <td key={s.id} style={{ padding: '8px', textAlign: 'center', borderRight: '1px solid var(--border-default)', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', fontSize: 12 }}>
                                       N/A
                                     </td>
                                   );
@@ -1373,11 +1373,11 @@ const presentCount = useMemo(() => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: 1 }}>
                             <h4 className="t-mono" style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               {formattedDate} 
-                              <span style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', color: 'var(--text-muted)', fontWeight: 'normal' }}>
+                              <span style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 'normal' }}>
                                 {session.lecture_count}x weight
                               </span>
                               {session.target_batch && (
-                                <span style={{ background: 'rgba(96, 165, 250, 0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(96, 165, 250, 0.2)', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 'bold' }}>
+                                <span style={{ background: 'rgba(96, 165, 250, 0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(96, 165, 250, 0.2)', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
                                   Batch {session.target_batch}
                                 </span>
                               )}
@@ -1385,7 +1385,7 @@ const presentCount = useMemo(() => {
                             <p className="t-mono-sm" style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               Slot: {slotLabel}
                             </p>
-                            <div style={{ display: 'flex', gap: '8px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '4px' }}>
+                            <div style={{ display: 'flex', gap: '8px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '4px' }}>
                               <span style={{ color: 'var(--status-safe)', fontWeight: 'bold' }}>{session.present_count} P</span>
                               <span>•</span>
                               <span style={{ color: 'var(--status-critical)', fontWeight: 'bold' }}>{session.absent_count} A</span>
@@ -1645,7 +1645,7 @@ const presentCount = useMemo(() => {
                     <p className="t-mono-sm" style={{ fontWeight: 'bold', color: 'var(--text-primary)', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {student.name.split(' ')[0]}
                     </p>
-                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '9px', marginTop: '2px' }}>
+                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>
                       Roll: {student.section_roll || '—'}
                     </p>
 
@@ -1681,7 +1681,7 @@ const presentCount = useMemo(() => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              fontSize: '9px',
+                              fontSize: '12px',
                               fontWeight: 'bold',
                               color,
                               backgroundColor: bg,
@@ -1732,7 +1732,7 @@ const presentCount = useMemo(() => {
                 borderColor: 'rgba(251, 191, 36, 0.25)',
                 background: 'rgba(251, 191, 36, 0.05)',
                 color: 'var(--status-warning)',
-                fontSize: '10px',
+                fontSize: '12px',
                 fontWeight: 'bold',
                 display: 'flex',
                 alignItems: 'center',
@@ -1784,7 +1784,7 @@ const presentCount = useMemo(() => {
                           padding: '6px 12px',
                           minHeight: '28px',
                           borderRadius: 'var(--radius-sm)',
-                          fontSize: '10px',
+                          fontSize: '12px',
                           fontWeight: 'bold',
                           color: 'var(--accent-primary)',
                           background: 'rgba(96, 165, 250, 0.05)',
@@ -1797,7 +1797,7 @@ const presentCount = useMemo(() => {
                         Open Submission
                       </a>
                     ) : (
-                      <span className="badge badge-critical" style={{ fontSize: '10px', padding: '4px 10px' }}>
+                      <span className="badge badge-critical" style={{ fontSize: '12px', padding: '4px 10px' }}>
                         Pending
                       </span>
                     )}
@@ -2119,9 +2119,9 @@ function LinkSubjectsSheet({ open, onClose, teacherId, sectionId, linkedSubjects
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{
                           padding: '1px 5px', borderRadius: 4, background: `${subject.accent}20`,
-                          color: subject.accent, fontSize: 10, fontWeight: 600, fontFamily: 'monospace'
+                          color: subject.accent, fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)'
                         }}>{subject.code}</span>
-                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11 }}>Sem {subject.semester}</span>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>Sem {subject.semester}</span>
                       </div>
                       <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 2 }}>{subject.name}</p>
                     </div>
@@ -2142,7 +2142,7 @@ function LinkSubjectsSheet({ open, onClose, teacherId, sectionId, linkedSubjects
                           onChange={() => setGlobalChecked(prev => ({ ...prev, [subject.id]: !prev[subject.id] }))}
                           style={{ width: 13, height: 13, accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
                         />
-                        <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>Apply globally to all my sections</span>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Apply globally to all my sections</span>
                       </label>
                     </div>
                   )}

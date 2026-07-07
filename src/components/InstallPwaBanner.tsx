@@ -333,7 +333,7 @@ export default function InstallPwaBanner() {
                   2
                 </div>
                 <p className="t-body" style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  Scroll down and choose <span style={{ display: 'inline-flex', padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: 6, color: '#fff', fontSize: '11px', fontWeight: 600, alignItems: 'center', gap: 4 }}><Plus size={12} /> Add to Home Screen</span>.
+                  Scroll down and choose <span style={{ display: 'inline-flex', padding: '4px 8px', background: 'rgba(255,255,255,0.08)', borderRadius: 6, color: '#fff', fontSize: '12px', fontWeight: 600, alignItems: 'center', gap: 4 }}><Plus size={12} /> Add to Home Screen</span>.
                 </p>
               </div>
 

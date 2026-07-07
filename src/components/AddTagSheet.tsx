@@ -103,7 +103,7 @@ export function AddTagSheet({ open, onClose }: AddTagSheetProps) {
               position: 'absolute',
               right: 12,
               bottom: 10,
-              fontSize: '9px',
+              fontSize: '12px',
               color: inputVal.length >= MAX_TAG_LENGTH ? 'var(--status-warning)' : 'var(--text-muted)',
               fontWeight: 600,
             }}
@@ -219,7 +219,7 @@ export function AddTagSheet({ open, onClose }: AddTagSheetProps) {
           style={{
             width: '100%',
             padding: '12px',
-            fontSize: '14px',
+            fontSize: '15px',
             fontWeight: 600,
             color: canSubmit ? '#000' : 'var(--text-muted)',
             background: canSubmit ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.05)',

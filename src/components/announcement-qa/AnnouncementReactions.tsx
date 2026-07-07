@@ -229,7 +229,7 @@ export function AnnouncementReactions({ announcementId }: AnnouncementReactionsP
                   borderRadius: '8px',
                   padding: '6px',
                   cursor: 'pointer',
-                  fontSize: '18px',
+                  fontSize: '21px',
                   transition: 'transform var(--transition-fast)',
                   display: 'flex',
                   alignItems: 'center',

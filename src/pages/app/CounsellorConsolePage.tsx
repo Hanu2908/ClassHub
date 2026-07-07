@@ -249,7 +249,7 @@ export default function CounsellorConsolePage() {
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <p className="t-mono" style={{ color: 'var(--accent-primary)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0, fontSize: 11 }}>
+            <p className="t-mono" style={{ color: 'var(--accent-primary)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0, fontSize: 12 }}>
               Counsellor Console
             </p>
             <span className="t-mono-sm" style={{
@@ -257,7 +257,7 @@ export default function CounsellorConsolePage() {
               color: 'rgb(99, 102, 241)',
               padding: '1px 6px',
               borderRadius: 4,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 700
             }}>
               [Batch Counsellor-A{counsellorBatch}]
@@ -284,8 +284,8 @@ export default function CounsellorConsolePage() {
               <Users size={20} color="rgb(99, 102, 241)" />
             </div>
             <div>
-              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>Batch Size</span>
-              <p className="t-feature" style={{ color: 'var(--text-primary)', margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{batchMetrics.totalStudents}</p>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase' }}>Batch Size</span>
+              <p className="t-feature" style={{ color: 'var(--text-primary)', margin: '4px 0 0', fontSize: 21, fontWeight: 800 }}>{batchMetrics.totalStudents}</p>
             </div>
           </div>
 
@@ -295,8 +295,8 @@ export default function CounsellorConsolePage() {
               <BarChart3 size={20} color={batchMetrics.classAverage >= 75 ? 'var(--status-safe)' : 'var(--status-critical)'} />
             </div>
             <div>
-              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>Class Average</span>
-              <p className="t-feature" style={{ color: batchMetrics.classAverage >= 75 ? 'var(--status-safe)' : 'var(--status-critical)', margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{batchMetrics.classAverage}%</p>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase' }}>Class Average</span>
+              <p className="t-feature" style={{ color: batchMetrics.classAverage >= 75 ? 'var(--status-safe)' : 'var(--status-critical)', margin: '4px 0 0', fontSize: 21, fontWeight: 800 }}>{batchMetrics.classAverage}%</p>
             </div>
           </div>
 
@@ -306,8 +306,8 @@ export default function CounsellorConsolePage() {
               <AlertTriangle size={20} color={batchMetrics.lowAttendanceCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)'} />
             </div>
             <div>
-              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>At Risk (&lt;75%)</span>
-              <p className="t-feature" style={{ color: batchMetrics.lowAttendanceCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)', margin: '4px 0 0', fontSize: 22, fontWeight: 800 }}>{batchMetrics.lowAttendanceCount}</p>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase' }}>At Risk (&lt;75%)</span>
+              <p className="t-feature" style={{ color: batchMetrics.lowAttendanceCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)', margin: '4px 0 0', fontSize: 21, fontWeight: 800 }}>{batchMetrics.lowAttendanceCount}</p>
             </div>
           </div>
         </div>
@@ -429,10 +429,10 @@ export default function CounsellorConsolePage() {
                               }} title="Student responded" />
                             )}
                           </p>
-                          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span>Roll: {student.section_roll || '—'}</span>
                             {student.studentResponse && (
-                              <span style={{ fontSize: 9, color: 'var(--status-announcement)', fontWeight: 600 }}>Responded</span>
+                              <span style={{ fontSize: 12, color: 'var(--status-announcement)', fontWeight: 600 }}>Responded</span>
                             )}
                           </p>
                         </div>
@@ -440,7 +440,7 @@ export default function CounsellorConsolePage() {
                         {/* Metrics Indicator */}
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <span className="t-mono-sm" style={{
-                            padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                            padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700,
                             color: badgeColor, background: badgeBg
                           }}>
                             {student.overallPercent !== null ? `${student.overallPercent}%` : '—'}
@@ -467,10 +467,10 @@ export default function CounsellorConsolePage() {
                       style={{ width: 56, height: 56, borderRadius: '50%', border: '2px solid var(--border-default)', objectFit: 'cover' }}
                     />
                     <div>
-                      <h3 className="t-card-title" style={{ color: 'var(--text-primary)', fontSize: 16, fontWeight: 700 }}>
+                      <h3 className="t-card-title" style={{ color: 'var(--text-primary)', fontSize: 17, fontWeight: 700 }}>
                         {selectedStudent.name}
                       </h3>
-                      <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Mail size={12} /> {selectedStudent.email}
                       </p>
                     </div>
@@ -483,13 +483,13 @@ export default function CounsellorConsolePage() {
                     border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)'
                   }}>
                     <div>
-                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>CLASS ROLL</span>
+                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>CLASS ROLL</span>
                       <p className="t-mono" style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 700, marginTop: 2 }}>
                         {selectedStudent.section_roll || '—'}
                       </p>
                     </div>
                     <div>
-                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>UNIVERSITY ROLL</span>
+                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>UNIVERSITY ROLL</span>
                       <p className="t-mono" style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 700, marginTop: 2 }}>
                         {selectedStudent.university_roll || '—'}
                       </p>
@@ -541,7 +541,7 @@ export default function CounsellorConsolePage() {
                                 <span className="t-mono-sm" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                                   {r.subjects?.name}
                                 </span>
-                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, marginLeft: 8 }}>
+                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 8 }}>
                                   ({r.subjects?.code})
                                 </span>
                               </div>
@@ -586,9 +586,9 @@ export default function CounsellorConsolePage() {
                       marginTop: 4
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--status-announcement)', letterSpacing: '0.04em' }}>STUDENT RESPONSE</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--status-announcement)', letterSpacing: '0.04em' }}>STUDENT RESPONSE</span>
                         {selectedStudent.studentResponseUpdatedAt && (
-                          <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                          <span className="t-mono-sm" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                             {new Date(selectedStudent.studentResponseUpdatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
@@ -606,7 +606,7 @@ export default function CounsellorConsolePage() {
                       textAlign: 'center',
                       marginTop: 4
                     }}>
-                      <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0, fontSize: 11 }}>
+                      <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>
                         No response submitted by student yet.
                       </p>
                     </div>

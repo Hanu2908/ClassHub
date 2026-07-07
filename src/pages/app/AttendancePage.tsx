@@ -594,7 +594,7 @@ export default function AttendancePage() {
                   color: 'var(--text-secondary)',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
-                  fontSize: '9px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   marginBottom: 8
                 }}>
@@ -602,11 +602,11 @@ export default function AttendancePage() {
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <UserCheck size={16} style={{ color: 'var(--accent-primary)' }} />
-                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '21px', lineHeight: 1 }}>
                     {safeOverall.toFixed(1)}%
                   </span>
                 </div>
-                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '9px' }}>
+                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                   Current Overall
                 </span>
               </div>
@@ -617,7 +617,7 @@ export default function AttendancePage() {
                   color: 'var(--text-secondary)',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
-                  fontSize: '9px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   marginBottom: 8
                 }}>
@@ -625,11 +625,11 @@ export default function AttendancePage() {
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <BookOpen size={16} style={{ color: 'var(--accent-primary)' }} />
-                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '21px', lineHeight: 1 }}>
                     {overallAttended}
                   </span>
                 </div>
-                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '9px' }}>
+                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                   Attended
                 </span>
               </div>
@@ -640,7 +640,7 @@ export default function AttendancePage() {
                   color: 'var(--text-secondary)',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
-                  fontSize: '9px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   marginBottom: 8
                 }}>
@@ -648,11 +648,11 @@ export default function AttendancePage() {
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <Clock size={16} style={{ color: 'var(--status-info)' }} />
-                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '21px', lineHeight: 1 }}>
                     {overallTotal}
                   </span>
                 </div>
-                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '9px' }}>
+                <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                   Total Held
                 </span>
               </div>
@@ -663,7 +663,7 @@ export default function AttendancePage() {
                   color: 'var(--tier-color)',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
-                  fontSize: '9px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   marginBottom: 8,
                   opacity: 0.9
@@ -672,7 +672,7 @@ export default function AttendancePage() {
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <TierIcon size={16} style={{ color: 'var(--tier-color)' }} />
-                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '18px', lineHeight: 1 }}>
+                  <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '21px', lineHeight: 1 }}>
                     {(() => {
                       const activeTierName = tierStyleClass.replace('attendance-', '');
                       return activeTierName.charAt(0).toUpperCase() + activeTierName.slice(1);
@@ -681,7 +681,7 @@ export default function AttendancePage() {
                 </div>
                 <span className="t-badge" style={{
                   color: 'var(--tier-color)',
-                  fontSize: '8px',
+                  fontSize: '12px',
                   fontWeight: 800,
                   letterSpacing: '0.5px',
                   padding: '2px 6px',
@@ -879,7 +879,7 @@ export default function AttendancePage() {
                       <span style={{ color: STATUS_COLOR(subjects[hoveredBarIndex].percentage) }}>
                         {subjects[hoveredBarIndex].percentage.toFixed(1)}%
                       </span>
-                      <span style={{ opacity: 0.6, fontSize: 9 }}>
+                      <span style={{ opacity: 0.6, fontSize: 12 }}>
                         {` (${subjects[hoveredBarIndex].present}/${subjects[hoveredBarIndex].total} present)`}
                       </span>
                     </div>
@@ -947,7 +947,7 @@ export default function AttendancePage() {
                     <div style={{ padding: '12px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Projected Overall:</span>
                       <span className="t-mono" style={{ color: '#3b82f6' }}>
-                        {boostSimResult.percent.toFixed(2)}% <span style={{ fontSize: 10, fontWeight: 600 }}>({boostSimResult.delta >= 0 ? '+' : ''}{boostSimResult.delta.toFixed(2)}%)</span>
+                        {boostSimResult.percent.toFixed(2)}% <span style={{ fontSize: 12, fontWeight: 600 }}>({boostSimResult.delta >= 0 ? '+' : ''}{boostSimResult.delta.toFixed(2)}%)</span>
                       </span>
                     </div>
                   </div>
@@ -976,7 +976,7 @@ export default function AttendancePage() {
                     }}>
                       <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Projected Overall:</span>
                       <span className="t-mono" style={{ color: bunkSimResult.remainsSafe ? '#10b981' : '#ef4444' }}>
-                        {bunkSimResult.percent.toFixed(2)}% <span style={{ fontSize: 10, fontWeight: 600 }}>(-{bunkSimResult.delta.toFixed(2)}%)</span>
+                        {bunkSimResult.percent.toFixed(2)}% <span style={{ fontSize: 12, fontWeight: 600 }}>(-{bunkSimResult.delta.toFixed(2)}%)</span>
                       </span>
                     </div>
                   </div>
@@ -1021,7 +1021,7 @@ export default function AttendancePage() {
                     <div style={{ padding: '12px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Projected Overall:</span>
                       <span className="t-mono" style={{ color: '#3b82f6' }}>
-                        {odSimResult.percent.toFixed(2)}% <span style={{ fontSize: 10, fontWeight: 600 }}>({odSimResult.delta >= 0 ? '+' : ''}{odSimResult.delta.toFixed(2)}%)</span>
+                        {odSimResult.percent.toFixed(2)}% <span style={{ fontSize: 12, fontWeight: 600 }}>({odSimResult.delta >= 0 ? '+' : ''}{odSimResult.delta.toFixed(2)}%)</span>
                       </span>
                     </div>
                   </div>
@@ -1050,7 +1050,7 @@ export default function AttendancePage() {
                     <div style={{ padding: '12px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="t-label" style={{ color: 'var(--text-secondary)' }}>Projected Overall:</span>
                       <span className="t-mono" style={{ color: '#3b82f6' }}>
-                        {mixSimResult.percent.toFixed(2)}% <span style={{ fontSize: 10, fontWeight: 600 }}>({mixSimResult.delta >= 0 ? '+' : ''}{mixSimResult.delta.toFixed(2)}%)</span>
+                        {mixSimResult.percent.toFixed(2)}% <span style={{ fontSize: 12, fontWeight: 600 }}>({mixSimResult.delta >= 0 ? '+' : ''}{mixSimResult.delta.toFixed(2)}%)</span>
                       </span>
                     </div>
                   </div>
@@ -1374,7 +1374,7 @@ export default function AttendancePage() {
                 gap: 14,
                 marginBottom: 4
               }}>
-                <span className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                <span className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                   Quick Import Guide
                 </span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1384,7 +1384,7 @@ export default function AttendancePage() {
                       width: 22, height: 22, borderRadius: '50%',
                       background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                      fontSize: '12px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
                     }}>1</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                       <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Open Student Portal</span>
@@ -1406,7 +1406,7 @@ export default function AttendancePage() {
                           border: '1px solid rgba(99, 102, 241, 0.2)',
                           borderRadius: 'var(--radius-sm)',
                           color: 'var(--accent-primary)',
-                          fontSize: '11px',
+                          fontSize: '12px',
                           fontWeight: 600,
                           textDecoration: 'none',
                           transition: 'all 0.2s'
@@ -1423,7 +1423,7 @@ export default function AttendancePage() {
                       width: 22, height: 22, borderRadius: '50%',
                       background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                      fontSize: '12px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
                     }}>2</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Copy Attendance Table</span>
@@ -1439,7 +1439,7 @@ export default function AttendancePage() {
                       width: 22, height: 22, borderRadius: '50%',
                       background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
+                      fontSize: '12px', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1
                     }}>3</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>Paste & Preview</span>
@@ -1493,7 +1493,7 @@ export default function AttendancePage() {
                       background: 'none',
                       border: 'none',
                       color: 'var(--accent-primary)',
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 600,
                       cursor: 'pointer',
                       display: 'flex',
@@ -1511,7 +1511,7 @@ export default function AttendancePage() {
                         background: 'none',
                         border: 'none',
                         color: 'var(--status-critical)',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 600,
                         cursor: 'pointer'
                       }}

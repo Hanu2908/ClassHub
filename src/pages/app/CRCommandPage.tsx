@@ -352,7 +352,7 @@ function SubmissionTracker() {
                                     background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
                                     borderRadius: 6, padding: '3px 8px', cursor: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 'not-allowed' : 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: '#f59e0b', fontSize: 11, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
+                                    color: '#f59e0b', fontSize: 12, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
                                   }}
                                   title={`Unmark ${st.name} as submitted`}
                                 >
@@ -411,7 +411,7 @@ function SubmissionTracker() {
                                     background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.25)',
                                     borderRadius: 6, padding: '3px 8px', cursor: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 'not-allowed' : 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
+                                    color: 'var(--accent-primary)', fontSize: 12, fontWeight: 600, gap: 4, opacity: (crToggle.isPending && crToggle.variables?.studentId === st.id) ? 0.6 : 1
                                   }}
                                   title={`Mark ${st.name} as submitted`}
                                 >
@@ -712,7 +712,7 @@ function ClassAttendance() {
                   border: commuteFilter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
                   background: commuteFilter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
                   color: commuteFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all var(--transition-fast)'
@@ -729,7 +729,7 @@ function ClassAttendance() {
                   border: commuteFilter === 'ds' ? '1px solid #60A5FA' : '1px solid var(--border-default)',
                   background: commuteFilter === 'ds' ? 'rgba(96, 165, 250, 0.15)' : 'transparent',
                   color: commuteFilter === 'ds' ? '#60A5FA' : 'var(--text-secondary)',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all var(--transition-fast)'
@@ -746,7 +746,7 @@ function ClassAttendance() {
                   border: commuteFilter === 'hostel' ? '1px solid #8B5CF6' : '1px solid var(--border-default)',
                   background: commuteFilter === 'hostel' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
                   color: commuteFilter === 'hostel' ? '#8B5CF6' : 'var(--text-secondary)',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all var(--transition-fast)'
@@ -830,7 +830,7 @@ function ClassAttendance() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{st.name}</p>
                             <span style={{
-                              fontSize: '9px',
+                              fontSize: '12px',
                               fontWeight: 600,
                               padding: '1.5px 5px',
                               borderRadius: 4,
@@ -1310,7 +1310,7 @@ function InviteCodeCard() {
               gap: 10,
               alignItems: 'flex-start',
             }}>
-              <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
+              <span style={{ fontSize: 21, lineHeight: 1 }}>⚠️</span>
               <div>
                 <p className="t-subtitle" style={{ color: 'var(--status-critical)', marginBottom: 3 }}>
                   WARNING: Permanent Invalidation
@@ -1512,7 +1512,7 @@ function TeacherInviteCodeCard() {
               gap: 10,
               alignItems: 'flex-start',
             }}>
-              <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
+              <span style={{ fontSize: 21, lineHeight: 1 }}>⚠️</span>
               <div>
                 <p className="t-subtitle" style={{ color: 'var(--status-critical)', marginBottom: 3 }}>
                   WARNING: Permanent Invalidation
@@ -1682,7 +1682,7 @@ function ManageCRs() {
                   }}>
                     <span className="t-badge" style={{
                       color: cr.crRank === 'primary' ? '#c084fc' : 'var(--text-muted)',
-                      fontSize: 10,
+                      fontSize: 12,
                     }}>
                       {cr.classRoll ?? '—'}
                     </span>
@@ -1701,7 +1701,7 @@ function ManageCRs() {
 
                   {/* Rank badge */}
                   <span style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                    fontSize: 12, fontWeight: 700, letterSpacing: '0.04em',
                     padding: '3px 8px', borderRadius: 'var(--radius-pill)',
                     background: cr.crRank === 'primary' ? 'rgba(192,132,252,0.15)' : 'rgba(74,158,255,0.1)',
                     color: cr.crRank === 'primary' ? '#c084fc' : 'var(--accent-primary)',
@@ -1720,7 +1720,7 @@ function ManageCRs() {
                       style={{
                         background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
                         borderRadius: 6, padding: '4px 8px', cursor: 'pointer',
-                        color: 'var(--status-critical)', fontSize: 11, fontWeight: 600,
+                        color: 'var(--status-critical)', fontSize: 12, fontWeight: 600,
                         display: 'flex', alignItems: 'center', gap: 4,
                       }}
                       title={`Remove ${cr.name} from CR role`}
@@ -1816,7 +1816,7 @@ function ManageCRs() {
                   style={{
                     background: 'rgba(74,158,255,0.1)', border: '1px solid rgba(74,158,255,0.25)',
                     borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
-                    color: 'var(--accent-primary)', fontSize: 11, fontWeight: 600,
+                    color: 'var(--accent-primary)', fontSize: 12, fontWeight: 600,
                     display: 'flex', alignItems: 'center', gap: 4,
                   }}
                 >
@@ -2067,7 +2067,7 @@ function ManageTeachers() {
                     border: '1px solid var(--border-default)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}>
-                    <span className="t-badge" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+                    <span className="t-badge" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
                       {st.users?.name ? st.users.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'T'}
                     </span>
                   </div>
@@ -2077,11 +2077,11 @@ function ManageTeachers() {
                     <p className="t-body-medium" style={{ color: 'var(--text-primary)' }}>
                       {st.users?.name || 'Unnamed Teacher'}
                     </p>
-                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+                    <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
                       {st.users?.email}
                     </p>
                     {st.subjects && (
-                      <p className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontSize: 10, marginTop: 2 }}>
+                      <p className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontSize: 12, marginTop: 2 }}>
                         Subject: {st.subjects.name} ({st.subjects.code})
                       </p>
                     )}
@@ -2090,7 +2090,7 @@ function ManageTeachers() {
                   {/* Controls */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
+                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
                         Counsellor
                       </span>
                       <select
@@ -2100,7 +2100,7 @@ function ManageTeachers() {
                           assignCounsellorMutation.mutate({ mappingId: st.id, batch: val });
                         }}
                         className="input"
-                        style={{ fontSize: 11, padding: '2px 6px', height: 24, width: 90 }}
+                        style={{ fontSize: 12, padding: '2px 6px', height: 24, width: 90 }}
                       >
                         <option value="">None</option>
                         <option value="1">{sectionName || 'B'}1</option>
@@ -2117,7 +2117,7 @@ function ManageTeachers() {
                       style={{
                         background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
                         borderRadius: 6, padding: '4px 8px', cursor: 'pointer',
-                        color: 'var(--status-critical)', fontSize: 11, fontWeight: 600,
+                        color: 'var(--status-critical)', fontSize: 12, fontWeight: 600,
                         display: 'flex', alignItems: 'center', gap: 4, height: 24, marginTop: 12
                       }}
                       title={`Revoke ${st.users?.name || 'teacher'}'s access`}
@@ -2305,7 +2305,7 @@ export default function CRCommandPage() {
                 <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                   This action is permanent and cannot be undone. It will completely delete:
                 </p>
-                <ul style={{ color: 'var(--text-secondary)', fontSize: '11px', margin: '6px 0 0 16px', padding: 0, lineHeight: 1.5 }}>
+                <ul style={{ color: 'var(--text-secondary)', fontSize: '12px', margin: '6px 0 0 16px', padding: 0, lineHeight: 1.5 }}>
                   <li>All subjects and academic slots</li>
                   <li>All assignments, sets, and student submissions</li>
                   <li>All announcements and attendance logs</li>

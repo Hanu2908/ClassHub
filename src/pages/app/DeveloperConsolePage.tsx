@@ -445,13 +445,13 @@ export default function DeveloperConsolePage() {
           {/* Active Users */}
           <div className="card" style={{ padding: '16px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', minHeight: 110 }}>
             <Users size={18} color="#8B5CF6" style={{ marginBottom: 6 }} />
-            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               ONLINE USERS
             </span>
             <span className="t-mono" style={{ font: '600 24px var(--font-mono)', color: 'var(--text-primary)', margin: '4px 0' }}>
               {onlineCount}
             </span>
-            <span className="t-helper" style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+            <span className="t-helper" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               Realtime Presence
             </span>
           </div>
@@ -466,13 +466,13 @@ export default function DeveloperConsolePage() {
               <RefreshCw size={11} className={pinging ? 'animate-spin' : ''} />
             </button>
             <Activity size={18} color="#EC4899" style={{ marginBottom: 6 }} />
-            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               DB LATENCY
             </span>
             <span className="t-mono" style={{ font: '600 24px var(--font-mono)', color: getLatencyColor(dbLatency), margin: '4px 0' }}>
               {dbLatency === '—' ? '—' : `${dbLatency}ms`}
             </span>
-            <span className="t-helper" style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+            <span className="t-helper" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               Supabase Roundtrip
             </span>
           </div>
@@ -480,13 +480,13 @@ export default function DeveloperConsolePage() {
           {/* PWA SW integrity */}
           <div className="card" style={{ padding: '16px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', minHeight: 110 }}>
             <HardDrive size={18} color="#10B981" style={{ marginBottom: 6 }} />
-            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               PWA SW CACHE
             </span>
             <span className="t-mono" style={{ font: '600 18px var(--font-mono)', color: 'var(--text-primary)', margin: '6px 0' }}>
               {pwaStatus.active ? `${pwaStatus.cacheCount} FILES` : 'OFFLINE'}
             </span>
-            <span className="t-helper" style={{ fontSize: 9, color: pwaStatus.active ? '#10B981' : 'var(--status-critical)' }}>
+            <span className="t-helper" style={{ fontSize: 12, color: pwaStatus.active ? '#10B981' : 'var(--status-critical)' }}>
               {pwaStatus.active ? 'INTEGRITY: ACTIVE' : 'INTEGRITY: ERROR'}
             </span>
           </div>
@@ -499,12 +499,12 @@ export default function DeveloperConsolePage() {
             <h3 style={{ margin: 0, font: '600 14px var(--font-display)', color: 'var(--text-primary)' }}>
               Web Push Notification Diagnostics
             </h3>
-            <span style={{ fontSize: 9, background: 'rgba(139, 92, 246, 0.1)', color: '#A78BFA', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: 12, background: 'rgba(139, 92, 246, 0.1)', color: '#A78BFA', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)' }}>
               DEV ONLY
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 16, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 16, fontSize: 12, fontFamily: 'var(--font-mono)' }}>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>SUPPORTED:</span>{' '}
               <span style={{ color: pushSupported ? '#10B981' : 'var(--status-critical)' }}>
@@ -533,7 +533,7 @@ export default function DeveloperConsolePage() {
 
           {activeEndpoint && (
             <div style={{ marginBottom: 16 }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: 10, fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 4 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 12, fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 4 }}>
                 ACTIVE DEVICE ENDPOINT:
               </span>
               <div style={{
@@ -541,7 +541,7 @@ export default function DeveloperConsolePage() {
                 border: '1px solid var(--border-default)',
                 borderRadius: 6,
                 padding: '6px 10px',
-                fontSize: 9,
+                fontSize: 12,
                 fontFamily: 'var(--font-mono)',
                 color: '#38BDF8',
                 wordBreak: 'break-all'
@@ -608,7 +608,7 @@ export default function DeveloperConsolePage() {
           {!dbSubscribed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
               <ShieldAlert size={12} color="var(--status-warning)" />
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 You must subscribe this device before triggering a test push broadcast.
               </span>
             </div>
@@ -643,7 +643,7 @@ export default function DeveloperConsolePage() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 9, background: 'rgba(16, 185, 129, 0.1)', color: '#34D399', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)' }}>
+              <span style={{ fontSize: 12, background: 'rgba(16, 185, 129, 0.1)', color: '#34D399', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)' }}>
                 BETA
               </span>
               {analyticsExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
@@ -1027,10 +1027,10 @@ export default function DeveloperConsolePage() {
                     </div>
 
                     <div>
-                      <h3 className="t-subtitle" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 14, marginBottom: 2 }}>
+                      <h3 className="t-subtitle" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 15, marginBottom: 2 }}>
                         {report.title}
                       </h3>
-                      <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Clock size={10} />
                         {new Date(report.created_at).toLocaleDateString('en-IN', { dateStyle: 'medium' })} · {new Date(report.created_at).toLocaleTimeString('en-IN', { timeStyle: 'short' })}
                       </p>
@@ -1038,7 +1038,7 @@ export default function DeveloperConsolePage() {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <User size={11} color="var(--text-muted)" />
-                      <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+                      <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                         {submitterName} ({submitterSection})
                       </span>
                     </div>
@@ -1166,7 +1166,7 @@ export default function DeveloperConsolePage() {
                               <button
                                 onClick={() => setEditingNotesId(null)}
                                 className="btn-secondary"
-                                style={{ padding: '4px 10px', fontSize: 11, minHeight: 'fit-content' }}
+                                style={{ padding: '4px 10px', fontSize: 12, minHeight: 'fit-content' }}
                               >
                                 Cancel
                               </button>

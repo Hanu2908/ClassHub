@@ -66,7 +66,7 @@ const notificationBadgeStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   border: '1.5px solid var(--bg-base)',
-  fontSize: '9px',
+  fontSize: '12px',
   fontWeight: 'bold',
   fontFamily: 'var(--font-mono)',
   lineHeight: 1,
@@ -419,7 +419,7 @@ export default function DashboardPage() {
               {/* Top Row: Info */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
                 <div>
-                  <div className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '10px', marginBottom: 2 }}>
+                  <div className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '12px', marginBottom: 2 }}>
                     Attendance
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -437,7 +437,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '10px', marginBottom: 6 }}>
+                  <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '12px', marginBottom: 6 }}>
                     Current standing
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -473,7 +473,7 @@ export default function DashboardPage() {
                   left: '75%', 
                   top: -16, 
                   transform: 'translateX(-50%)',
-                  fontSize: '8px',
+                  fontSize: '12px',
                   fontFamily: 'var(--font-mono)',
                   color: 'var(--text-muted)',
                   letterSpacing: '0.05em',
@@ -536,7 +536,7 @@ export default function DashboardPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', width: '100%', gap: 14 }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                        <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '11px' }}>
+                        <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '12px' }}>
                           Next Deadline
                         </span>
                         <span
@@ -591,7 +591,7 @@ export default function DashboardPage() {
 
                     <div style={{ marginTop: 2 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <span className="t-mono-sm" style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                           Type: <strong style={{ color: 'var(--text-secondary)' }}>{primaryDeadline.type}</strong>
                         </span>
                       </div>
@@ -719,7 +719,7 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
     >
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '11px' }}>
+          <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '12px' }}>
             Next Exam
           </span>
           <span
@@ -747,7 +747,7 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
             boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)',
             flexShrink: 0
           }}>
-            <span className="t-mono" style={{ color: '#fff', fontSize: 10, fontWeight: 700 }}>
+            <span className="t-mono" style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>
               {exam.subjectCode.slice(0, 2).toUpperCase()}
             </span>
           </div>
@@ -755,7 +755,7 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
             <h4 className="t-card-title truncate" style={{ color: 'var(--text-primary)', margin: 0, fontSize: 15, fontWeight: 700 }}>
               {exam.subjectName}
             </h4>
-            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
               {exam.examType} • {exam.subjectCode}
             </span>
           </div>
@@ -878,10 +878,10 @@ function CounsellorAlertCard({ note, refetch }: CounsellorAlertCardProps) {
             <ShieldAlert size={16} color="var(--status-warning)" />
           </div>
           <div>
-            <h4 className="t-card-title" style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <h4 className="t-card-title" style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
               Counsellor Remark Received
             </h4>
-            <p className="t-caption" style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+            <p className="t-caption" style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
               From {counsellorName} • {new Date(note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </p>
           </div>
@@ -891,7 +891,7 @@ function CounsellorAlertCard({ note, refetch }: CounsellorAlertCardProps) {
           <span style={{
             padding: '2px 8px',
             borderRadius: 'var(--radius-pill)',
-            fontSize: '10px',
+            fontSize: '12px',
             fontWeight: 600,
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
@@ -929,7 +929,7 @@ function CounsellorAlertCard({ note, refetch }: CounsellorAlertCardProps) {
             borderRadius: 'var(--radius-md)',
             border: '1px solid var(--border-default)',
           }}>
-            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', marginBottom: 4 }}>
+            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase', marginBottom: 4 }}>
               Counsellor's Remark:
             </p>
             <p className="t-body" style={{ color: 'var(--text-primary)', margin: 0, fontSize: '13px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
@@ -939,7 +939,7 @@ function CounsellorAlertCard({ note, refetch }: CounsellorAlertCardProps) {
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
-              <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: '10px', textTransform: 'uppercase' }}>
+              <label className="t-mono-sm" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: '12px', textTransform: 'uppercase' }}>
                 Your Explanation / Response:
               </label>
               <textarea
@@ -965,7 +965,7 @@ function CounsellorAlertCard({ note, refetch }: CounsellorAlertCardProps) {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                 {note.student_response_updated_at && `Last updated: ${new Date(note.student_response_updated_at).toLocaleString()}`}
               </span>
               <button

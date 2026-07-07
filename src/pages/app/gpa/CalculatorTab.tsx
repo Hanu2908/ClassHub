@@ -56,11 +56,11 @@ function useAnimatedNumber(target: number, duration = 400): number {
 
 function GradeBadge({ marks, stats }: { marks: number | null; stats?: SubjectStats }) {
   if (marks === null) return (
-    <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-mono)', color: N.text, padding: '3px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, whiteSpace: 'nowrap' }}>—</span>
+    <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)', color: N.text, padding: '3px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, whiteSpace: 'nowrap' }}>—</span>
   );
   const g = marksToGradeRelative(marks, stats);
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-mono)', color: g.color, padding: '3px 8px', background: `${g.color}18`, border: `1px solid ${g.color}44`, borderRadius: 6, whiteSpace: 'nowrap', transition: 'all 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: g.color, padding: '3px 8px', background: `${g.color}18`, border: `1px solid ${g.color}44`, borderRadius: 6, whiteSpace: 'nowrap', transition: 'all 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: g.color, flexShrink: 0, boxShadow: `0 0 4px ${g.color}` }} />
       {g.label}
     </span>
@@ -132,15 +132,15 @@ function GradeScaleBar() {
       border: `1px solid ${T.cardBdr}`, borderTop: `1px solid ${T.topBdr}`,
       borderRadius: 'var(--radius-lg)', padding: '12px 14px',
     }}>
-      <p style={{ fontSize: 9, fontWeight: 600, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+      <p style={{ fontSize: 12, fontWeight: 600, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
         Marks → Grade · SKIT Autonomous
       </p>
       <div style={{ height: 5, borderRadius: 99, background: `linear-gradient(90deg, #F87171 0%, #F97316 15%, #FCD34D 28%, #34D399 40%, #67E8F9 52%, #60A5FA 65%, #818CF8 80%, #4ADE80 100%)`, marginBottom: 8, opacity: 0.8 }} />
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         {GRADE_SCALE.slice().reverse().map(g => (
           <div key={g.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: T.body, fontFamily: 'var(--font-mono)' }}>{g.label}</span>
-            <span style={{ fontSize: 8, color: T.label, fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: T.body, fontFamily: 'var(--font-mono)' }}>{g.label}</span>
+            <span style={{ fontSize: 12, color: T.label, fontFamily: 'var(--font-mono)' }}>
               {g.label === 'O' ? '90+' : g.label === 'F' ? '<40' : `${g.minMark}`}
             </span>
           </div>
@@ -196,7 +196,7 @@ function RowSubjectNameInput({ value, onChange, disabled, idx }: { value: string
         borderRadius: 6,
         outline: 'none',
         color: 'var(--text-primary)',
-        fontSize: 11,
+        fontSize: 12,
         lineHeight: 1.3,
         fontFamily: 'var(--font-body)',
         width: '100%',
@@ -886,13 +886,13 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
               width: '50%', animation: 'pulse 1.2s infinite'
             }} />
           </div>
-          <span style={{ fontSize: 11, color: T.body, fontFamily: 'var(--font-mono)' }}>{scanProgress}</span>
+          <span style={{ fontSize: 12, color: T.body, fontFamily: 'var(--font-mono)' }}>{scanProgress}</span>
         </div>
       )}
 
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ color: N.text, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+        <span style={{ color: N.text, fontSize: 12, fontFamily: 'var(--font-mono)' }}>
           {subjects.length} subject{subjects.length !== 1 ? 's' : ''}
           {avgMarks > 0 && <span style={{ color: marksToColor(avgMarks), marginLeft: 8 }}>· avg {avgMarks.toFixed(1)}</span>}
         </span>
@@ -909,7 +909,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
             style={{
               display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8,
               background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.25)',
-              color: '#FBBF24', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-mono)',
+              color: '#FBBF24', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-mono)',
               transition: 'all 0.15s', outline: 'none'
             }}
             onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px #FBBF24'; }}
@@ -924,7 +924,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
             { icon: <RefreshCw size={11} />, label: 'Reset', onClick: () => resetSemester(sem), active: false },
             { icon: locked ? <Lock size={11} /> : <Unlock size={11} />, label: locked ? 'Locked' : 'Lock', onClick: () => lockSemester(sem, !locked), active: locked },
           ].map(b => (
-            <button key={b.label} onClick={b.onClick} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, background: b.active ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${b.active ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.07)'}`, color: b.active ? '#818CF8' : N.text, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-mono)', transition: 'all 0.15s' }}>
+            <button key={b.label} onClick={b.onClick} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, background: b.active ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${b.active ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.07)'}`, color: b.active ? '#818CF8' : N.text, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-mono)', transition: 'all 0.15s' }}>
               {b.icon} {b.label}
             </button>
           ))}
@@ -936,7 +936,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
         {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 40px 68px 48px 18px', gap: 6, padding: '9px 14px', background: 'rgba(255,255,255,0.025)', borderBottom: `1px solid ${N.border}` }}>
           {['Subject', 'Cr', 'Marks', 'Grade', ''].map(h => (
-            <span key={h} style={{ fontSize: 9, fontWeight: 600, color: N.text, fontFamily: 'var(--font-mono)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{h}</span>
+            <span key={h} style={{ fontSize: 12, fontWeight: 600, color: N.text, fontFamily: 'var(--font-mono)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{h}</span>
           ))}
         </div>
 
@@ -968,7 +968,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
                 <MarksInput value={sub.marks} onChange={v => updateSubject(sem, sub.id, { marks: v })} disabled={locked} subjectName={sub.name} subjectIndex={idx} />
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                   <GradeBadge marks={sub.marks} stats={stats} />
-                  {gp !== null && <span style={{ fontSize: 8, color: N.text, fontFamily: 'var(--font-mono)' }}>{gp}pt</span>}
+                  {gp !== null && <span style={{ fontSize: 12, color: N.text, fontFamily: 'var(--font-mono)' }}>{gp}pt</span>}
                 </div>
                 <button onClick={() => removeSubject(sem, sub.id)} disabled={locked}
                   aria-label={`Remove subject ${sub.name || idx + 1}`}
@@ -993,11 +993,11 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
       {/* SGPA footer */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: T.card, border: `1px solid ${T.cardBdr}`, borderTop: `2px solid ${T.topBdr}`, borderRadius: 'var(--radius-lg)' }}>
         <div>
-          <div style={{ fontSize: 9, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Total Credits Earned</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: T.heading, fontFamily: 'var(--font-display)' }}>{totalCredits}</div>
+          <div style={{ fontSize: 12, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Total Credits Earned</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: T.heading, fontFamily: 'var(--font-display)' }}>{totalCredits}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 9, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>S{sem} SGPA</div>
+          <div style={{ fontSize: 12, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>S{sem} SGPA</div>
           <div style={{ fontSize: 32, fontWeight: 800, color: T.cgpa, fontFamily: 'var(--font-display)', letterSpacing: '-0.04em', lineHeight: 1 }}>{animSGPA.toFixed(2)}</div>
         </div>
       </div>
@@ -1020,7 +1020,7 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
-              <span id="review-modal-header" style={{ fontSize: 14, fontWeight: 700, color: T.heading }}>Review Scanned Grades</span>
+              <span id="review-modal-header" style={{ fontSize: 15, fontWeight: 700, color: T.heading }}>Review Scanned Grades</span>
               <button onClick={() => setShowReviewModal(false)} aria-label="Close review modal" style={{ background: 'none', border: 'none', color: T.body, cursor: 'pointer', display: 'flex' }}>
                 <X size={16} />
               </button>
@@ -1031,10 +1031,10 @@ export default function CalculatorTab({ sem }: CalculatorTabProps) {
                 <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, padding: '10px 14px' }}>
                   <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
                     <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: T.heading, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                    <span style={{ fontSize: 10, color: T.label, fontFamily: 'var(--font-mono)' }}>Extracted: {m.marks} Marks</span>
+                    <span style={{ fontSize: 12, color: T.label, fontFamily: 'var(--font-mono)' }}>Extracted: {m.marks} Marks</span>
                   </div>
                   <span style={{
-                    fontSize: 11, fontWeight: 700, color: marksToGrade(m.marks).color,
+                    fontSize: 12, fontWeight: 700, color: marksToGrade(m.marks).color,
                     padding: '3px 8px', background: `${marksToGrade(m.marks).color}18`,
                     border: `1px solid ${marksToGrade(m.marks).color}44`, borderRadius: 6,
                     fontFamily: 'var(--font-mono)'

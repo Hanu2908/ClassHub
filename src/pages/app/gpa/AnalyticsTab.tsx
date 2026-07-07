@@ -70,7 +70,7 @@ function GlassCard({ children }: { children: React.ReactNode }) {
 
 function ChartTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 style={{ fontSize: 10, fontWeight: 600, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+    <h3 style={{ fontSize: 12, fontWeight: 600, color: T.label, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
       {children}
     </h3>
   );
@@ -81,7 +81,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: '#161824', border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-      {label !== undefined && <p style={{ color: T.label, fontSize: 10, marginBottom: 6, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>{label}</p>}
+      {label !== undefined && <p style={{ color: T.label, fontSize: 12, marginBottom: 6, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>{label}</p>}
       {payload.map((p: any, i: number) => {
         const color = p.color ?? p.payload?.color ?? T.heading;
         return (
@@ -100,8 +100,8 @@ function CustomBarTooltip({ active, payload }: { active?: boolean; payload?: any
   const datum = payload[0].payload;
   return (
     <div style={{ background: '#161824', border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 10, padding: '8px 12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-      <div style={{ fontSize: 11, color: T.label, marginBottom: 4 }}>{datum.fullName}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: T.heading }}>
+      <div style={{ fontSize: 12, color: T.label, marginBottom: 4 }}>{datum.fullName}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: T.heading }}>
         {datum.Marks}/100 · {datum.grade}
       </div>
     </div>
@@ -114,8 +114,8 @@ function CustomPieTooltip({ active, payload }: { active?: boolean; payload?: any
   const datum = payload[0].payload;
   return (
     <div style={{ background: '#161824', border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 10, padding: '8px 12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: T.heading, marginBottom: 3 }}>{datum.id}</div>
-      <div style={{ fontSize: 11, color: T.label }}>{datum.count} subject{datum.count !== 1 ? 's' : ''} · {datum.value} credits</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: T.heading, marginBottom: 3 }}>{datum.id}</div>
+      <div style={{ fontSize: 12, color: T.label }}>{datum.count} subject{datum.count !== 1 ? 's' : ''} · {datum.value} credits</div>
     </div>
   );
 }
@@ -169,7 +169,7 @@ export default function AnalyticsTab() {
             {[{ v: 90, c: T.gradeO, l: 'O' }, { v: 80, c: T.gradeAp, l: 'A+' }, { v: 70, c: T.gradeA, l: 'A' }, { v: 60, c: T.gradeBp, l: 'B+' }, { v: 40, c: T.gradeP, l: 'Pass' }].map(d => (
               <div key={d.l} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 10, height: 1.5, background: d.c, display: 'inline-block', borderRadius: 1, opacity: 0.6 }} />
-                <span style={{ fontSize: 9, color: T.label, fontFamily: 'var(--font-mono)', fontWeight: 500 }}>≥{d.v} {d.l}</span>
+                <span style={{ fontSize: 12, color: T.label, fontFamily: 'var(--font-mono)', fontWeight: 500 }}>≥{d.v} {d.l}</span>
               </div>
             ))}
           </div>
@@ -179,7 +179,7 @@ export default function AnalyticsTab() {
                 <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 42, bottom: 0, left: 10 }}>
                   <CartesianGrid stroke="transparent" />
                   <XAxis type="number" domain={[0, 100]} hide />
-                  <YAxis dataKey="subject" type="category" tick={{ fill: T.body, fontSize: 10 }} axisLine={false} tickLine={false} width={120} />
+                  <YAxis dataKey="subject" type="category" tick={{ fill: T.body, fontSize: 12 }} axisLine={false} tickLine={false} width={120} />
                   <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
                   <ReferenceLine x={90} stroke={`${T.gradeO}44`} strokeDasharray="4 3" />
                   <ReferenceLine x={80} stroke={`${T.gradeAp}44`} strokeDasharray="4 3" />
@@ -190,7 +190,7 @@ export default function AnalyticsTab() {
                     {barData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
-                    <LabelList dataKey="Marks" position="right" fill={T.heading} style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600 }} />
+                    <LabelList dataKey="Marks" position="right" fill={T.heading} style={{ fontSize: 12, fontFamily: 'var(--font-mono)', fontWeight: 600 }} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -227,15 +227,15 @@ export default function AnalyticsTab() {
               </ResponsiveContainer>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                 <span style={{ fontSize: 24, fontWeight: 800, color: T.heading, fontFamily: 'var(--font-display)', letterSpacing: '-0.04em', lineHeight: 1 }}>{sgpa.toFixed(2)}</span>
-                <span style={{ fontSize: 9, color: T.label, fontFamily: 'var(--font-mono)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>SGPA</span>
+                <span style={{ fontSize: 12, color: T.label, fontFamily: 'var(--font-mono)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>SGPA</span>
               </div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 8px', justifyContent: 'center', marginTop: 8 }}>
               {pieData.map(d => (
                 <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.04)', border: `1px solid rgba(255, 255, 255, 0.08)`, borderRadius: 20, padding: '3px 8px' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, color: T.body, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{d.id}</span>
-                  <span style={{ fontSize: 10, color: T.label }}>{d.value}cr</span>
+                  <span style={{ fontSize: 12, color: T.body, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{d.id}</span>
+                  <span style={{ fontSize: 12, color: T.label }}>{d.value}cr</span>
                 </div>
               ))}
             </div>
@@ -261,11 +261,11 @@ export default function AnalyticsTab() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke={T.grid} vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: T.label, fontSize: 10, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 10]} tick={{ fill: T.label, fontSize: 9 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: T.label, fontSize: 12, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 10]} tick={{ fill: T.label, fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine y={8} stroke={`${T.cgpa}44`} strokeDasharray="4 4" label={{ value: 'First', fill: T.label, fontSize: 9, fontFamily: 'var(--font-mono)' }} />
-                <ReferenceLine y={6} stroke="rgba(248,113,113,0.25)" strokeDasharray="4 4" label={{ value: 'Pass', fill: T.label, fontSize: 9, fontFamily: 'var(--font-mono)' }} />
+                <ReferenceLine y={8} stroke={`${T.cgpa}44`} strokeDasharray="4 4" label={{ value: 'First', fill: T.label, fontSize: 12, fontFamily: 'var(--font-mono)' }} />
+                <ReferenceLine y={6} stroke="rgba(248,113,113,0.25)" strokeDasharray="4 4" label={{ value: 'Pass', fill: T.label, fontSize: 12, fontFamily: 'var(--font-mono)' }} />
                 <Area type="monotone" dataKey="CGPA" stroke={T.cgpa} strokeWidth={2} fill="url(#gCGPA)"
                   dot={{ r: 4, fill: T.cgpa, stroke: '#0F1018', strokeWidth: 2 }}
                   activeDot={{ r: 6, fill: T.cgpa, stroke: '#fff', strokeWidth: 1.5 }} isAnimationActive />
@@ -278,7 +278,7 @@ export default function AnalyticsTab() {
             {[{ c: T.cgpa, l: 'CGPA', dash: false }, { c: T.sgpa, l: 'SGPA', dash: true }].map(d => (
               <div key={d.l} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <svg width={20} height={6}><line x1="0" y1="3" x2="20" y2="3" stroke={d.c} strokeWidth={d.dash ? 1.5 : 2} strokeDasharray={d.dash ? '5 3' : undefined} strokeLinecap="round" /></svg>
-                <span style={{ fontSize: 10, color: T.label, fontFamily: 'var(--font-mono)' }}>{d.l}</span>
+                <span style={{ fontSize: 12, color: T.label, fontFamily: 'var(--font-mono)' }}>{d.l}</span>
               </div>
             ))}
           </div>
@@ -294,8 +294,8 @@ export default function AnalyticsTab() {
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                   <PolarGrid stroke={T.grid} />
-                  <PolarAngleAxis dataKey="semester" tick={{ fill: T.body, fontSize: 10, fontFamily: 'var(--font-mono)' }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: T.label, fontSize: 8 }} axisLine={false} />
+                  <PolarAngleAxis dataKey="semester" tick={{ fill: T.body, fontSize: 12, fontFamily: 'var(--font-mono)' }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: T.label, fontSize: 12 }} axisLine={false} />
                   <Radar name="SGPA" dataKey="SGPA" stroke={T.cgpa} fill={T.cgpa} fillOpacity={0.12} strokeWidth={1.5} dot={{ r: 3, fill: T.cgpa, stroke: '#0F1018', strokeWidth: 1.5 }} />
                   <Tooltip content={<CustomTooltip />} />
                 </RadarChart>

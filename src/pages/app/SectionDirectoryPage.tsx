@@ -287,7 +287,7 @@ export default function SectionDirectoryPage() {
                             color: 'rgb(99, 102, 241)',
                             padding: '1px 6px',
                             borderRadius: 4,
-                            fontSize: '9px',
+                            fontSize: '12px',
                             fontWeight: 700,
                             letterSpacing: '0.05em',
                           }}>
@@ -297,13 +297,13 @@ export default function SectionDirectoryPage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                         <Mail size={12} color="var(--text-muted)" />
-                        <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                        <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
                           {teacher.email}
                         </span>
                       </div>
                       {teacher.phone && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                             +91 {teacher.phone}
                           </span>
                           <button
@@ -352,7 +352,7 @@ export default function SectionDirectoryPage() {
                           }}
                         >
                           <BookOpen size={10} color="var(--accent-primary)" />
-                          <span className="t-mono-sm" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                          <span className="t-mono-sm" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                             {sub.name} ({sub.code})
                           </span>
                         </div>
@@ -406,7 +406,7 @@ export default function SectionDirectoryPage() {
                   color: 'var(--text-secondary)',
                   borderRadius: '50%',
                   cursor: 'pointer',
-                  fontSize: '10px',
+                  fontSize: '12px',
                   fontWeight: 700,
                 }}
                 aria-label="Clear tag filter"
@@ -521,7 +521,7 @@ export default function SectionDirectoryPage() {
                           background: 'rgba(255, 255, 255, 0.05)',
                           padding: '1px 5px',
                           borderRadius: 4,
-                          fontSize: '10px',
+                          fontSize: '12px',
                           color: 'var(--text-secondary)',
                         }}>
                           {member.classRoll}
@@ -533,7 +533,7 @@ export default function SectionDirectoryPage() {
                           color: 'var(--status-announcement)',
                           padding: '1px 5px',
                           borderRadius: 4,
-                          fontSize: '9px',
+                          fontSize: '12px',
                           fontWeight: 700,
                           letterSpacing: '0.05em',
                         }}>
@@ -544,7 +544,7 @@ export default function SectionDirectoryPage() {
 
                     {member.phone && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                           +91 {member.phone}
                         </span>
                         <button

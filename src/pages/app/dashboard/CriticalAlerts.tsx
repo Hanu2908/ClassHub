@@ -53,7 +53,7 @@ function CountdownTimer({ expiresAt, onExpire }: CountdownTimerProps) {
       color: '#ef4444',
       fontFamily: 'var(--font-mono)',
       fontVariantNumeric: 'tabular-nums',
-      fontSize: '10px',
+      fontSize: '12px',
       fontWeight: 600,
     }}>
       <Clock size={11} className="animate-pulse" style={{ animation: 'pulse 1.5s infinite' }} />

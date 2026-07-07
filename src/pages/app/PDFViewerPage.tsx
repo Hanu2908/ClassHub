@@ -354,7 +354,7 @@ const PDFPageContainer = memo(function PDFPageContainer({
           zIndex: 20,
           background: 'var(--status-warning)',
           color: '#000',
-          fontSize: '9px',
+          fontSize: '12px',
           fontWeight: 700,
           fontFamily: 'var(--font-mono)',
           padding: '2px 6px',
@@ -408,7 +408,7 @@ const PDFPageContainer = memo(function PDFPageContainer({
           color: 'var(--text-muted)'
         }}>
           <Loader2 className="animate-spin" size={24} />
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Page {pageLayout.pageNumber}</span>
+          <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)' }}>Page {pageLayout.pageNumber}</span>
         </div>
       )}
 
@@ -439,7 +439,7 @@ const PDFPageContainer = memo(function PDFPageContainer({
               border: '1px solid var(--status-critical)',
               borderRadius: '6px',
               color: 'var(--text-primary)',
-              fontSize: '11px',
+              fontSize: '12px',
               fontWeight: 600,
               fontFamily: 'var(--font-body)',
               cursor: 'pointer',
@@ -1090,7 +1090,7 @@ export default function PDFViewerPage() {
             {range && (
               <span className="t-mono-sm" style={{
                 color: 'var(--status-warning)',
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 500,
                 marginTop: '2px',
                 display: 'block'
@@ -1298,7 +1298,7 @@ export default function PDFViewerPage() {
                 border: 'none',
                 outline: 'none',
                 color: 'var(--text-primary)',
-                fontSize: '14px',
+                fontSize: '15px',
                 flex: 1
               }}
               autoFocus
@@ -1419,7 +1419,7 @@ export default function PDFViewerPage() {
             gap: '12px'
           }}>
             <AlertCircle size={32} color="var(--status-critical)" />
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Error loading document</h3>
+            <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 600 }}>Error loading document</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0, lineHeight: 1.5 }}>{loadError}</p>
             <button
               className="btn-secondary"

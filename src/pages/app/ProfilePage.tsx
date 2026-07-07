@@ -582,9 +582,9 @@ export default function ProfilePage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{
                               padding: '1px 5px', borderRadius: 4, background: `${sub.accent}20`,
-                              color: sub.accent, fontSize: 10, fontWeight: 600, fontFamily: 'monospace'
+                              color: sub.accent, fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)'
                             }}>{sub.code}</span>
-                            <span className="badge badge-info" style={{ fontSize: 9, padding: '1px 6px' }}>{sec?.name || 'Unknown Section'}</span>
+                            <span className="badge badge-info" style={{ fontSize: 12, padding: '1px 6px' }}>{sec?.name || 'Unknown Section'}</span>
                           </div>
                           <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 4 }}>{sub.name}</p>
                         </div>
@@ -1153,9 +1153,9 @@ function LinkSubjectsSheet({ open, onClose, teacherId, sectionId, linkedSubjects
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{
                           padding: '1px 5px', borderRadius: 4, background: `${subject.accent}20`,
-                          color: subject.accent, fontSize: 10, fontWeight: 600, fontFamily: 'monospace'
+                          color: subject.accent, fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)'
                         }}>{subject.code}</span>
-                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11 }}>Sem {subject.semester}</span>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>Sem {subject.semester}</span>
                       </div>
                       <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 2 }}>{subject.name}</p>
                     </div>
@@ -1176,7 +1176,7 @@ function LinkSubjectsSheet({ open, onClose, teacherId, sectionId, linkedSubjects
                           onChange={() => setGlobalChecked(prev => ({ ...prev, [subject.id]: !prev[subject.id] }))}
                           style={{ width: 13, height: 13, accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
                         />
-                        <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>Apply globally to all my sections</span>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Apply globally to all my sections</span>
                       </label>
                     </div>
                   )}

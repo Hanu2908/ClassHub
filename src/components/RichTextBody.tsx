@@ -200,7 +200,7 @@ export function YouTubePlayer({ videoId }: YouTubePlayerProps) {
             >
               {title}
             </h4>
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
               YouTube Video • Watch Inline
             </span>
           </>

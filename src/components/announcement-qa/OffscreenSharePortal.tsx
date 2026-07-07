@@ -155,7 +155,7 @@ function BentoGridCollage({ images }: { images: any[] }) {
               }}>
                 <span style={{
                   color: '#ffffff',
-                  fontSize: '22px',
+                  fontSize: '21px',
                   fontWeight: 700,
                   letterSpacing: '0.05em'
                 }}>
@@ -278,11 +278,11 @@ export function OffscreenSharePortal({ announcement, domRef }: OffscreenSharePor
           <span style={{ fontWeight: 600, fontSize: '13px', letterSpacing: '0.05em', color: 'var(--text-secondary, rgba(255,255,255,0.6))' }}>ClassHub</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-          <span style={{ fontWeight: 700, fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', color: category.color }}>
+          <span style={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: category.color }}>
             {category.name}
           </span>
           {watermarkText && (
-            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10px', color: 'var(--text-secondary, rgba(255,255,255,0.6))' }}>
+            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '12px', color: 'var(--text-secondary, rgba(255,255,255,0.6))' }}>
               {watermarkText}
             </span>
           )}
@@ -334,7 +334,7 @@ export function OffscreenSharePortal({ announcement, domRef }: OffscreenSharePor
 
       {/* 5. TIMESTAMP AT THE BOTTOM */}
       <div style={{ display: 'flex', justifyContent: 'flex-start', borderTop: '1px solid var(--border-default, rgba(255,255,255,0.04))', paddingTop: '12px', marginTop: '4px' }}>
-        <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', color: 'var(--text-muted, rgba(255,255,255,0.4))' }}>
+        <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '12px', color: 'var(--text-muted, rgba(255,255,255,0.4))' }}>
           {getAbsoluteTimestamp(announcement.postedAt)}
         </span>
       </div>

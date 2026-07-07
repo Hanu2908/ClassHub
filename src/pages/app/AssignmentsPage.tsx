@@ -1120,7 +1120,7 @@ export default function AssignmentsPage() {
                   >
                     <span>All Subjects</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '11px' }}>
+                      <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '12px' }}>
                         {statusFiltered.length}
                       </span>
                       {selectedSubject === 'all' && <Check size={14} />}
@@ -1150,7 +1150,7 @@ export default function AssignmentsPage() {
                           {subj}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                          <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '11px' }}>
+                          <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '12px' }}>
                             {count}
                           </span>
                           {isSelected && <Check size={14} />}
@@ -1294,7 +1294,7 @@ export default function AssignmentsPage() {
                       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)',
                     }}
                   >
-                    <span className="t-mono" style={{ color: '#fff', fontSize: 14, fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                    <span className="t-mono" style={{ color: '#fff', fontSize: 15, fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
                       {getSubjectAcronym(a.subject)}
                     </span>
                   </div>

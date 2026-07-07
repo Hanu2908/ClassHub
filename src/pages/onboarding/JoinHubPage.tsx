@@ -432,7 +432,7 @@ export default function JoinHubPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{
                             padding: '2px 6px', borderRadius: 4, background: `${subject.accent}20`,
-                            color: subject.accent, fontSize: 11, fontWeight: 600, fontFamily: 'monospace'
+                            color: subject.accent, fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)'
                           }}>{subject.code}</span>
                           <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Sem {subject.semester}</span>
                         </div>
@@ -557,7 +557,7 @@ export default function JoinHubPage() {
             value={hubCode}
             onChange={e => setHubCode(e.target.value.toUpperCase())}
             onBlur={() => validate(['hubCode'])}
-            style={{ letterSpacing: '0.2em', fontSize: 18, textAlign: 'center' }}
+            style={{ letterSpacing: '0.2em', fontSize: 21, textAlign: 'center' }}
           />
           <FieldError msg={errors.hubCode} />
         </div>
@@ -598,7 +598,7 @@ export default function JoinHubPage() {
                   value={universityRoll}
                   onChange={e => setUniversityRoll(e.target.value.toUpperCase())}
                   onBlur={() => validate(['universityRoll'])}
-                  style={{ fontSize: 14 }}
+                  style={{ fontSize: 15 }}
                 />
                 <FieldError msg={errors.universityRoll} />
               </div>
@@ -613,7 +613,7 @@ export default function JoinHubPage() {
                 <span style={{
                   background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', 
                   justifyContent: 'center', padding: '0 12px', color: 'var(--text-muted)',
-                  fontFamily: 'monospace', borderRight: '1px solid var(--border-default)', fontSize: 14
+                  fontFamily: 'var(--font-mono)', borderRight: '1px solid var(--border-default)', fontSize: 15
                 }}>+91</span>
                 <input
                   id="phone-input"
@@ -643,14 +643,14 @@ export default function JoinHubPage() {
                   <button type="button" onClick={() => setDayScholar(true)} style={{
                     flex: 1, padding: '6px', background: dayScholar ? 'var(--accent-primary)' : 'transparent',
                     color: dayScholar ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer', fontSize: 11, fontWeight: 600
+                    cursor: 'pointer', fontSize: 12, fontWeight: 600
                   }}>
                     Day
                   </button>
                   <button type="button" onClick={() => setDayScholar(false)} style={{
                     flex: 1, padding: '6px', background: !dayScholar ? 'var(--accent-primary)' : 'transparent',
                     color: !dayScholar ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer', fontSize: 11, fontWeight: 600
+                    cursor: 'pointer', fontSize: 12, fontWeight: 600
                   }}>
                     Hostel
                   </button>
@@ -666,14 +666,14 @@ export default function JoinHubPage() {
                   <button type="button" onClick={() => setBatch('1')} style={{
                     flex: 1, padding: '6px', background: batch === '1' ? 'var(--accent-primary)' : 'transparent',
                     color: batch === '1' ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer', fontSize: 11, fontWeight: 600
+                    cursor: 'pointer', fontSize: 12, fontWeight: 600
                   }}>
                     B1
                   </button>
                   <button type="button" onClick={() => setBatch('2')} style={{
                     flex: 1, padding: '6px', background: batch === '2' ? 'var(--accent-primary)' : 'transparent',
                     color: batch === '2' ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer', fontSize: 11, fontWeight: 600
+                    cursor: 'pointer', fontSize: 12, fontWeight: 600
                   }}>
                     B2
                   </button>
@@ -692,7 +692,7 @@ export default function JoinHubPage() {
               <span style={{
                 background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', 
                 justifyContent: 'center', padding: '0 12px', color: 'var(--text-muted)',
-                fontFamily: 'monospace', borderRight: '1px solid var(--border-default)', fontSize: 14
+                fontFamily: 'var(--font-mono)', borderRight: '1px solid var(--border-default)', fontSize: 15
               }}>+91</span>
               <input
                 id="teacher-phone-input"

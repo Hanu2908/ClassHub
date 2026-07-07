@@ -323,7 +323,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '9px',
+                            fontSize: '12px',
                             fontWeight: 600
                           }}>
                             {member.name.charAt(0)}
@@ -336,7 +336,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
                             color: 'var(--status-announcement)',
                             padding: '1px 4px',
                             borderRadius: '4px',
-                            fontSize: '8px',
+                            fontSize: '12px',
                             fontWeight: 700,
                           }}>
                             CR
@@ -345,7 +345,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
 
                       </div>
                       {member.classRoll && (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)' }}>
                           {member.classRoll}
                         </span>
                       )}
@@ -562,7 +562,7 @@ function TimelineSection({ title, count }: { title: string; count: number }) {
         color: 'var(--text-primary)', 
         fontWeight: 600, 
         letterSpacing: '0.05em',
-        fontSize: '11px',
+        fontSize: '12px',
         textTransform: 'uppercase'
       }}>
         {title}
@@ -572,7 +572,7 @@ function TimelineSection({ title, count }: { title: string; count: number }) {
         color: 'var(--text-muted)',
         padding: '2px 8px',
         borderRadius: '10px',
-        fontSize: '10px',
+        fontSize: '12px',
         fontWeight: 500,
       }}>
         {count} {count === 1 ? 'announcement' : 'announcements'}
@@ -622,7 +622,7 @@ function CountdownTimer({ expiresAt, onExpire }: { expiresAt: string; onExpire: 
       color: '#ef4444',
       fontFamily: 'var(--font-mono)',
       fontVariantNumeric: 'tabular-nums',
-      fontSize: '10px',
+      fontSize: '12px',
       fontWeight: 600,
     }}>
       <Clock size={11} className="animate-pulse" style={{ animation: 'pulse 1.5s infinite' }} />
@@ -735,7 +735,7 @@ export function AnnouncementCardComponent({
             border: `1px solid ${category.borderColor}`,
           }}>
             {category.icon}
-            <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '10px' }}>
+            <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
               {category.name}
             </span>
           </div>
@@ -745,7 +745,7 @@ export function AnnouncementCardComponent({
               background: isExpiredAlert ? 'rgba(255,255,255,0.06)' : 'rgba(239, 68, 68, 0.15)',
               color: isExpiredAlert ? 'var(--text-muted)' : '#ef4444',
               border: isExpiredAlert ? '1px solid var(--border-default)' : '1px solid rgba(239, 68, 68, 0.3)',
-              fontSize: '10px',
+              fontSize: '12px',
               fontWeight: 600,
               padding: '2px 8px',
               borderRadius: 'var(--radius-pill)',
@@ -771,7 +771,7 @@ export function AnnouncementCardComponent({
                 background: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid var(--border-default)',
                 color: 'var(--text-secondary)',
-                fontSize: '11px',
+                fontSize: '12px',
                 cursor: 'pointer',
                 fontWeight: 500,
                 outline: 'none',
@@ -812,7 +812,7 @@ export function AnnouncementCardComponent({
       <h2 className="t-card-title" style={{ 
         color: 'var(--text-primary)', 
         lineHeight: 1.3,
-        fontSize: '16px',
+        fontSize: '17px',
         fontWeight: 700,
         margin: 0,
         display: 'flex',
@@ -826,7 +826,7 @@ export function AnnouncementCardComponent({
             alignItems: 'center',
             padding: '2px 8px',
             borderRadius: '6px',
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 700,
             textTransform: 'uppercase',
             backgroundColor: `${ann.matchedSubject.accent}15`,
@@ -889,7 +889,7 @@ export function AnnouncementCardComponent({
             border: '1px solid var(--border-default)',
             color: 'var(--text-accent)',
             cursor: 'pointer',
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 600,
             alignSelf: 'flex-start',
             padding: '4px 10px',
@@ -965,7 +965,7 @@ export function AnnouncementCardComponent({
               boxSizing: 'border-box'
             }}>
               <Clock size={16} color="var(--text-muted)" />
-              <span className="t-label" style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 600 }}>Expired</span>
+              <span className="t-label" style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 600 }}>Expired</span>
             </div>
           ) : !isAcked ? (
             <button
@@ -1015,7 +1015,7 @@ export function AnnouncementCardComponent({
               boxSizing: 'border-box'
             }}>
               <CheckCircle2 size={16} color="var(--status-safe)" />
-              <span className="t-label" style={{ color: 'var(--status-safe)', fontSize: '11px', fontWeight: 600 }}>Acked</span>
+              <span className="t-label" style={{ color: 'var(--status-safe)', fontSize: '12px', fontWeight: 600 }}>Acked</span>
             </div>
           )}
         </div>
@@ -1184,7 +1184,7 @@ function ShareOptionsContent({
                   justifyContent: 'center',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                   color: '#fff',
-                  fontSize: '10px',
+                  fontSize: '12px',
                   fontWeight: 'bold'
                 }}>
                   {isSelected && '✓'}
@@ -1206,7 +1206,7 @@ function ShareOptionsContent({
             color: selectedPhotos.length === 0 ? 'var(--text-muted)' : '#fff',
             cursor: selectedPhotos.length === 0 ? 'default' : 'pointer',
             fontWeight: 600,
-            fontSize: '14px',
+            fontSize: '15px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1925,7 +1925,7 @@ export default function AnnouncementsPage() {
                           <span style={{ 
                             background: 'var(--status-critical)', 
                             color: '#fff', 
-                            fontSize: '9px', 
+                            fontSize: '12px', 
                             fontWeight: 700, 
                             padding: '1px 5px', 
                             borderRadius: '8px',
@@ -2164,7 +2164,7 @@ export default function AnnouncementsPage() {
               {/* 1. Recent Searches Row */}
               {recentSearches.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     Recent:
                   </span>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -2178,7 +2178,7 @@ export default function AnnouncementsPage() {
                           border: '1px solid var(--border-default)',
                           borderRadius: 'var(--radius-sm)',
                           padding: '3px 8px',
-                          fontSize: '11px',
+                          fontSize: '12px',
                           color: 'var(--text-secondary)',
                           cursor: 'pointer',
                           display: 'flex',
@@ -2200,7 +2200,7 @@ export default function AnnouncementsPage() {
                         background: 'none',
                         border: 'none',
                         color: 'var(--status-critical)',
-                        fontSize: '10px',
+                        fontSize: '12px',
                         cursor: 'pointer',
                         fontWeight: 600,
                         padding: '2px 4px',
@@ -2229,7 +2229,7 @@ export default function AnnouncementsPage() {
                         borderRadius: 'var(--radius-pill)',
                         padding: '0 12px',
                         color: selectedSubjectFilter === 'all' ? 'var(--text-secondary)' : subjects.find(s => s.id === selectedSubjectFilter)?.accent ?? 'var(--text-primary)',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 500,
                         cursor: 'pointer',
                         height: '30px',
@@ -2314,7 +2314,7 @@ export default function AnnouncementsPage() {
                     borderRadius: 'var(--radius-pill)',
                     padding: '0 12px',
                     height: '30px',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     color: filterHasAttachment ? 'var(--accent-primary)' : 'var(--text-secondary)',
                     fontWeight: filterHasAttachment ? 600 : 400,
                     cursor: 'pointer',
@@ -2338,7 +2338,7 @@ export default function AnnouncementsPage() {
                     borderRadius: 'var(--radius-pill)',
                     padding: '0 12px',
                     height: '30px',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     color: filterUnacknowledgedOnly ? '#fbbf24' : 'var(--text-secondary)',
                     fontWeight: filterUnacknowledgedOnly ? 600 : 400,
                     cursor: 'pointer',
@@ -2357,7 +2357,7 @@ export default function AnnouncementsPage() {
       <main ref={parentRef} className="page-content" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
         {activeFlashPosts.length > 0 && (
           <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className="t-mono" style={{ color: 'var(--status-critical)', margin: '0 0 4px', letterSpacing: '0.04em', fontSize: '11px', fontWeight: 700 }}>
+            <p className="t-mono" style={{ color: 'var(--status-critical)', margin: '0 0 4px', letterSpacing: '0.04em', fontSize: '12px', fontWeight: 700 }}>
               URGENT ALERTS
             </p>
             {activeFlashPosts.map(fp => (
@@ -2418,7 +2418,7 @@ export default function AnnouncementsPage() {
                       borderRadius: 'var(--radius-md)',
                       cursor: 'pointer',
                       color: 'var(--status-safe)',
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 700,
                       outline: 'none',
                     }}
@@ -2439,7 +2439,7 @@ export default function AnnouncementsPage() {
                         borderRadius: 'var(--radius-md)', 
                         color: 'var(--status-critical)', 
                         cursor: 'pointer',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 600,
                         outline: 'none',
                       }}

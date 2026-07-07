@@ -86,7 +86,7 @@ export default function CRDashboardStation() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-              <span className="badge badge-info t-badge" style={{ fontSize: 9, padding: '2px 8px', letterSpacing: '0.04em' }}>
+              <span className="badge badge-info t-badge" style={{ fontSize: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
                 CR HUB
               </span>
             </div>
@@ -100,7 +100,7 @@ export default function CRDashboardStation() {
             style={{ 
               padding: '6px 12px', 
               minHeight: 'fit-content', 
-              fontSize: 11, 
+              fontSize: 12, 
               fontFamily: 'var(--font-mono)',
               fontWeight: 600,
               borderColor: 'rgba(96, 165, 250, 0.35)',

@@ -60,7 +60,7 @@ const inputStyle: React.CSSProperties = {
   outline: 'none', fontSize: 13,
 };
 const labelStyle: React.CSSProperties = {
-  color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: 11,
+  color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontSize: 12,
 };
 
 const LECTURE_PRESETS = [
@@ -417,7 +417,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
                 }}
                 style={{
                   padding: '6px 12px',
-                  fontSize: 11,
+                  fontSize: 12,
                   borderRadius: '9999px',
                   background: startTime === p.start && endTime === p.end ? '#ffffff' : '#27272a',
                   border: '1px solid transparent',
@@ -517,7 +517,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
                 borderRadius: 'var(--radius-sm)',
                 color: 'var(--status-warning)',
                 padding: '4px 8px',
-                fontSize: 10,
+                fontSize: 12,
                 cursor: 'pointer',
                 fontFamily: 'var(--font-mono)',
                 whiteSpace: 'nowrap',
@@ -778,7 +778,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
                 {cls.subject}
               </span>
               {cls.targetBatch && (
-                <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(96, 165, 250, 0.15)', color: 'var(--accent-primary)', fontWeight: 700, flexShrink: 0 }}>
+                <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(96, 165, 250, 0.15)', color: 'var(--accent-primary)', fontWeight: 700, flexShrink: 0 }}>
                   {(sectionName || 'B') + cls.targetBatch}
                 </span>
               )}
@@ -810,16 +810,16 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
             </div>
 
             {/* Time & Category */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               <Clock size={10} style={{ opacity: 0.6 }} aria-hidden="true" />
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTimeRange(cls.startTime, cls.endTime).replace(/\s/g, '\u00A0')}</span>
               <span>·</span>
-              <span style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color }}>{CATEGORY_LABELS[cat] || cls.type}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color }}>{CATEGORY_LABELS[cat] || cls.type}</span>
             </div>
           </div>
 
           {/* Bottom metadata section with Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: 6, marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: 6, marginTop: 4 }}>
             {/* Room */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               <MapPin size={10} style={{ opacity: 0.6 }} aria-hidden="true" />
@@ -1303,7 +1303,7 @@ function StudentSchedulePage() {
             <div style={{ display: 'flex', gap: 4 }}>
               <button
                 onClick={() => setShowCopySheet(true)}
-                style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'var(--font-mono)' }}
+                style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontFamily: 'var(--font-mono)' }}
                 aria-label="Copy day"
               >
                 <Copy size={12} /> Copy
@@ -1311,7 +1311,7 @@ function StudentSchedulePage() {
               {classes.length > 0 && (
                 <button
                   onClick={() => setConfirmClearDay(true)}
-                  style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--status-critical)', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'var(--font-mono)' }}
+                  style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--status-critical)', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontFamily: 'var(--font-mono)' }}
                   aria-label="Clear day"
                 >
                   <Trash2 size={12} /> Clear
@@ -1343,11 +1343,11 @@ function StudentSchedulePage() {
                 aria-selected={isActive}
                 aria-controls={`schedule-panel-${day}`}
               >
-                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>{day}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>{day}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
                   {isDayToday && <span style={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: isActive ? 'var(--accent-primary)' : 'var(--text-muted)' }} />}
                   {count > 0 && (
-                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 700, color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', fontWeight: 700, color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                       {count}
                     </span>
                   )}
@@ -1402,7 +1402,7 @@ function StudentSchedulePage() {
                   borderRadius: 'var(--radius-pill)',
                   cursor: 'pointer',
                   fontWeight: 600,
-                  fontSize: 11,
+                  fontSize: 12,
                   transition: 'all 0.2s',
                   fontFamily: 'var(--font-mono)'
                 }}
@@ -1419,7 +1419,7 @@ function StudentSchedulePage() {
                   borderRadius: 'var(--radius-pill)',
                   cursor: 'pointer',
                   fontWeight: 600,
-                  fontSize: 11,
+                  fontSize: 12,
                   transition: 'all 0.2s',
                   fontFamily: 'var(--font-mono)'
                 }}
@@ -1523,15 +1523,15 @@ function StudentSchedulePage() {
                             <div className="week-grid-cell-accent-strip" style={{ backgroundColor: catStyle.color }} />
                             {isStartHour ? (
                               <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', boxSizing: 'border-box', paddingLeft: 4 }}>
-                                <span style={{ fontWeight: 700, color: '#fff', fontSize: 7, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <span style={{ fontWeight: 700, color: '#fff', fontSize: 12, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {getSubjectAcronym(firstSlot.subject)}{cellSlots.length > 1 ? `+${cellSlots.length - 1}` : ''}
                                 </span>
-                                <span style={{ fontSize: 6, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+                                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
                                   {cellSlots.map(s => s.room).filter(Boolean).join('/')}
                                 </span>
                               </div>
                             ) : (
-                              <div style={{ fontSize: 6, color: 'rgba(255, 255, 255, 0.15)', fontFamily: 'var(--font-mono)', textAlign: 'center', marginTop: 12 }}>CONT.</div>
+                              <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.15)', fontFamily: 'var(--font-mono)', textAlign: 'center', marginTop: 12 }}>CONT.</div>
                             )}
                           </div>
                         );
@@ -1697,26 +1697,26 @@ function StudentSchedulePage() {
                 >
                   <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, backgroundColor: catStyle.color }} />
                   <div style={{ paddingLeft: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color, letterSpacing: '0.05em' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color, letterSpacing: '0.05em' }}>
                       {CATEGORY_LABELS[cat]}
                     </span>
-                    <h2 style={{ fontSize: 16, fontWeight: 700, margin: '4px 0', color: 'var(--text-primary)' }}>
+                    <h2 style={{ fontSize: 17, fontWeight: 700, margin: '4px 0', color: 'var(--text-primary)' }}>
                       {slot.subject}
                     </h2>
-                    <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)' }}>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
                       Code: {slot.code}
                     </p>
                   </div>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingLeft: 8 }}>
                     <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6, border: '1px solid var(--border-default)' }}>
-                      <span style={{ fontSize: 9, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>TIME</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>TIME</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
                         {formatTime(slot.startTime).replace(/\s/g, '\u00A0')} – {formatTime(slot.endTime).replace(/\s/g, '\u00A0')}
                       </span>
                     </div>
                     <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6, border: '1px solid var(--border-default)' }}>
-                      <span style={{ fontSize: 9, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>ROOM</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>ROOM</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
                         {slot.room || 'No Room'}
                       </span>
@@ -1725,13 +1725,13 @@ function StudentSchedulePage() {
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingLeft: 8 }}>
                     <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6, border: '1px solid var(--border-default)' }}>
-                      <span style={{ fontSize: 9, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>INSTRUCTOR</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>INSTRUCTOR</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
                         {slot.teacher || 'Not Assigned'}
                       </span>
                     </div>
                     <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 6, border: '1px solid var(--border-default)' }}>
-                      <span style={{ fontSize: 9, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>BATCH SCOPING</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>BATCH SCOPING</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
                         {slot.targetBatch ? `Batch B${slot.targetBatch}` : 'Full Section'}
                       </span>

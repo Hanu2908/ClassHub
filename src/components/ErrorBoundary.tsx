@@ -80,7 +80,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
               <h3 className="t-subtitle" style={{
                 color: '#F0F0FF',
                 fontWeight: 600,
-                fontSize: '14px',
+                fontSize: '15px',
                 margin: '0 0 6px',
               }}>
                 View Render Anomaly
@@ -88,7 +88,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
 
               <p className="t-mono-sm" style={{
                 color: '#9090B8',
-                fontSize: '11px',
+                fontSize: '12px',
                 lineHeight: 1.5,
                 margin: '0 0 18px',
               }}>
@@ -105,7 +105,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
                   justifyContent: 'center',
                   gap: 6,
                   minHeight: 40,
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer',
                 }}
@@ -157,7 +157,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
 
             <h2 className="t-feature" style={{
               color: '#F0F0FF',
-              fontSize: '18px',
+              fontSize: '21px',
               fontWeight: 600,
               margin: '0 0 10px',
               letterSpacing: '-0.02em',

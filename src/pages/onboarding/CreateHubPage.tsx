@@ -194,7 +194,7 @@ export default function CreateHubPage() {
           background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)',
           padding: '16px 20px', marginBottom: 24
         }}>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
             Class Invite Code
           </span>
           <span className="t-page-title mono" style={{ letterSpacing: '0.08em', color: 'var(--text-primary)' }}>
@@ -300,7 +300,7 @@ export default function CreateHubPage() {
             <span style={{
               background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', 
               justifyContent: 'center', padding: '0 12px', color: 'var(--text-muted)',
-              fontFamily: 'monospace', borderRight: '1px solid var(--border-default)', fontSize: 14
+              fontFamily: 'var(--font-mono)', borderRight: '1px solid var(--border-default)', fontSize: 15
             }}>+91</span>
             <input
               id="phone-input"

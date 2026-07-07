@@ -532,7 +532,7 @@ export default function ExamsPage() {
         >
           <ChevronLeft size={20} />
         </button>
-        <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1, margin: 0, fontSize: 16, fontWeight: 600 }}>Exams Hub</h1>
+        <h1 className="t-page-title" style={{ color: 'var(--text-primary)', flex: 1, margin: 0, fontSize: 17, fontWeight: 600 }}>Exams Hub</h1>
       </header>
 
       <main className="page-content">
@@ -661,7 +661,7 @@ export default function ExamsPage() {
                               flexShrink: 0
                             }}>
                               <span className="t-mono" style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>{dayString}</span>
-                              <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{weekday}</span>
+                              <span className="t-mono-sm" style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{weekday}</span>
                             </div>
 
                             {/* Subject Avatar */}
@@ -694,7 +694,7 @@ export default function ExamsPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             {/* Room Info */}
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 9 }}>ROOM</span>
+                              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>ROOM</span>
                               <span className="t-mono" style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: 13 }}>{exam.activeRoom || 'N/A'}</span>
                             </div>
                             {isExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
@@ -714,13 +714,13 @@ export default function ExamsPage() {
                             {/* Details meta mapping */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, paddingBottom: 14, borderBottom: '1px solid var(--border-default)' }}>
                               <div>
-                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 9, display: 'block', marginBottom: 2 }}>TIMINGS</span>
+                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginBottom: 2 }}>TIMINGS</span>
                                 <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>
                                   {exam.startTime.substring(0, 5)} - {exam.endTime.substring(0, 5)}
                                 </span>
                               </div>
                               <div>
-                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 9, display: 'block', marginBottom: 2 }}>MAX MARKS</span>
+                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginBottom: 2 }}>MAX MARKS</span>
                                 <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>
                                   {exam.maxMarks ? `${exam.maxMarks} Marks` : 'N/A'}
                                 </span>
@@ -753,7 +753,7 @@ export default function ExamsPage() {
 
                             {/* Preparation Syllabus Checklist block */}
                             <div>
-                              <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: 10, display: 'block', marginBottom: 6 }}>
+                              <span className="t-mono-sm" style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12, display: 'block', marginBottom: 6 }}>
                                 SYLLABUS PREPARATION TRACKER
                               </span>
                               <SyllabusChecklist examId={exam.id} syllabusUnits={exam.syllabusUnits} />
@@ -843,7 +843,7 @@ export default function ExamsPage() {
                               flexShrink: 0
                             }}>
                               <span className="t-mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{dayString}</span>
-                              <span className="t-mono-sm" style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{weekday}</span>
+                              <span className="t-mono-sm" style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{weekday}</span>
                             </div>
 
                             {/* Subject Avatar */}
@@ -889,11 +889,11 @@ export default function ExamsPage() {
                           }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                               <div>
-                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 8, display: 'block', marginBottom: 2 }}>TIMINGS</span>
+                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginBottom: 2 }}>TIMINGS</span>
                                 <span className="t-body-medium" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{exam.startTime.substring(0, 5)} - {exam.endTime.substring(0, 5)}</span>
                               </div>
                               <div>
-                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 8, display: 'block', marginBottom: 2 }}>ROOM</span>
+                                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginBottom: 2 }}>ROOM</span>
                                 <span className="t-body-medium" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{exam.activeRoom || 'N/A'}</span>
                               </div>
                             </div>
@@ -980,12 +980,12 @@ export default function ExamsPage() {
                   </label>
                 </div>
                 {seatingFile && (
-                  <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 11 }}>
+                  <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 12 }}>
                     📎 {seatingFile.name}
                   </span>
                 )}
                 {overrideSeatingPlanVal && !seatingFile && (
-                  <span className="t-caption truncate" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                  <span className="t-caption truncate" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
                     Active Override: {overrideSeatingPlanVal.split('/').pop()}
                   </span>
                 )}
@@ -1122,7 +1122,7 @@ export default function ExamsPage() {
                       onChange={e => setRoomVal(e.target.value)}
                     />
                   </div>
-                  <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 2 }}>
+                  <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
                     Where printouts are physically pasted in college. Overridable later.
                   </span>
                 </div>
@@ -1156,7 +1156,7 @@ export default function ExamsPage() {
                     </label>
                   </div>
                   {syllabusFile && (
-                    <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 11 }}>
+                    <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 12 }}>
                       📎 {syllabusFile.name}
                     </span>
                   )}
@@ -1188,7 +1188,7 @@ export default function ExamsPage() {
                     </label>
                   </div>
                   {seatingFile && (
-                    <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 11 }}>
+                    <span className="t-caption truncate" style={{ color: 'var(--accent-primary)', fontSize: 12 }}>
                       📎 {seatingFile.name}
                     </span>
                   )}
@@ -1198,7 +1198,7 @@ export default function ExamsPage() {
               {isExtracting && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(167, 139, 250, 0.06)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(167, 139, 250, 0.15)' }}>
                   <Loader2 className="spin" size={14} color="var(--accent-primary)" />
-                  <span className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontSize: 11 }}>
+                  <span className="t-mono-sm" style={{ color: 'var(--accent-primary)', fontSize: 12 }}>
                     Extracting units & topics dynamically from PDF...
                   </span>
                 </div>
