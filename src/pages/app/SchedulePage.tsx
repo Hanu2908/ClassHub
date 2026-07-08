@@ -1277,7 +1277,7 @@ function StudentSchedulePage() {
               aria-label="Timeline view"
             >
               <Layout size={11} aria-hidden="true" />
-              Timeline
+              Day
             </button>
             <button
               onClick={() => setViewLayout('week')}
