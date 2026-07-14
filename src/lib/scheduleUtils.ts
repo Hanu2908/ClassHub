@@ -8,9 +8,9 @@ export function getCategory(_code: string, type: string): SubjectCategory {
 }
 
 export const CATEGORY_COLORS: Record<SubjectCategory, { color: string; bg: string; border: string }> = {
-  lecture:  { color: '#60A5FA', bg: 'rgba(96,165,250,0.15)',  border: 'rgba(96,165,250,0.3)' },  // Blue
-  lab:     { color: '#FFB547', bg: 'rgba(255,181,71,0.15)',   border: 'rgba(255,181,71,0.3)' },   // Orange
-  tutorial:{ color: '#A78BFA', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },  // Purple
+  lecture:  { color: '#60A5FA', bg: '#1B222E',  border: '#2C394F' },  // Blue
+  lab:     { color: '#FFB547', bg: '#251F19',   border: '#3D3325' },   // Orange
+  tutorial:{ color: '#A78BFA', bg: '#211E2D', border: '#362E4A' },  // Purple
 };
 
 export const CATEGORY_LABELS: Record<SubjectCategory, string> = {

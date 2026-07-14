@@ -735,7 +735,7 @@ export function AnnouncementCardComponent({
             border: `1px solid ${category.borderColor}`,
           }}>
             {category.icon}
-            <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
+            <span className="t-mono-sm ann-category-tag" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
               {category.name}
             </span>
           </div>
@@ -851,13 +851,8 @@ export function AnnouncementCardComponent({
             lineHeight: 1.625, 
             fontSize: '14.5px',
             margin: 0,
-            display: isExpanded ? 'block' : '-webkit-box',
-            WebkitLineClamp: isExpanded ? undefined : 3,
-            WebkitBoxOrient: isExpanded ? undefined : 'vertical',
-            overflow: isExpanded ? 'visible' : 'hidden',
-            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
           }}>
-            <RichTextBody text={ann.body} search={searchQuery} />
+            <RichTextBody text={ann.body} search={searchQuery} collapsed={!isExpanded} />
           </div>
           {!isExpanded && isLongText && (
             <div style={{

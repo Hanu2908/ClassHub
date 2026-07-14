@@ -554,6 +554,8 @@ export default function JoinHubPage() {
             className={`input mono${errors.hubCode ? ' input-error' : ''}`}
             placeholder={isTeacherFlow ? "T-P2WXYZ" : "P2WXYZ"}
             maxLength={isTeacherFlow ? 10 : 6}
+            autoComplete="off"
+            spellCheck={false}
             value={hubCode}
             onChange={e => setHubCode(e.target.value.toUpperCase())}
             onBlur={() => validate(['hubCode'])}
@@ -576,7 +578,8 @@ export default function JoinHubPage() {
                   placeholder="17"
                   maxLength={2}
                   inputMode="numeric"
-                  autoComplete="on"
+                  autoComplete="off"
+                  spellCheck={false}
                   value={classRoll}
                   onChange={e => setClassRoll(e.target.value.replace(/\D/g, ''))}
                   onBlur={() => validate(['classRoll'])}
@@ -594,7 +597,10 @@ export default function JoinHubPage() {
                   className={`input mono${errors.universityRoll ? ' input-error' : ''}`}
                   placeholder="25ESKCX089"
                   maxLength={12}
-                  autoCapitalize="characters" autoCorrect="off" autoComplete="on" spellCheck="false"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  autoComplete="off"
+                  spellCheck={false}
                   value={universityRoll}
                   onChange={e => setUniversityRoll(e.target.value.toUpperCase())}
                   onBlur={() => validate(['universityRoll'])}

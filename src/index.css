@@ -1,57 +1,69 @@
-/* ── Design Tokens ── */
-:root {
-  --bg-base: #0A0C14;
-  --bg-surface: rgba(20, 24, 38, 0.45);
-  --bg-elevated: rgba(28, 34, 54, 0.65);
-  --bg-overlay: rgba(28, 34, 54, 0.85);
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* ── Design Tokens ── */
+/* ClassHub V2 — Warm Dark, Lavender Accent, Arc/Linear-inspired */
+:root {
+  /* ── Surfaces — warm charcoal, solid (no glassmorphism) ── */
+  --bg-base: #0F0F11;
+  --bg-surface: #17171A;
+  --bg-elevated: #1F1F24;
+  --bg-overlay: #28282E;
+
+  /* Glass kept only for navbar — use sparingly */
   --glass-blur: blur(24px) saturate(180%);
   --glass-blur-heavy: blur(32px) saturate(200%);
 
-  --accent-primary: #60A5FA;
-  /* Upgraded to tailwind blue-400 for high accessibility contrast (7.6:1) */
-  --accent-primary-glow: rgba(96, 165, 250, 0.15);
-  --accent-primary-muted: rgba(96, 165, 250, 0.25);
+  /* ── Accent — Royal Indigo-Lavender ── */
+  --accent-primary: #818CF8;
+  --accent-primary-glow: rgba(129, 140, 248, 0.10);
+  --accent-primary-muted: rgba(129, 140, 248, 0.15);
+  --accent-secondary: #6EE7B7; /* Emerald secondary for contrast */
 
+  /* ── Status colors ── */
   --status-critical: #F87171;
-  /* Upgraded from #EF4444 to red-400 for high-contrast accessibility (7.6:1) */
   --status-critical-bg: rgba(248, 113, 113, 0.09);
   --status-warning: #FBBF24;
-  /* Upgraded from #F59E0B to amber-400 (9.7:1) */
   --status-warning-bg: rgba(251, 191, 36, 0.09);
   --status-safe: #34D399;
-  /* Upgraded from #10B981 to emerald-400 (9.2:1) */
   --status-safe-bg: rgba(52, 211, 153, 0.09);
-  --status-info: #22D3EE;
-  /* Upgraded from #06B6D4 to cyan-400 (9.4:1) */
-  --status-info-bg: rgba(34, 211, 238, 0.09);
+  --status-info: #60A5FA;
+  /* Shifted from cyan to blue-400 to avoid confusion with accent */
+  --status-info-bg: rgba(96, 165, 250, 0.09);
   --status-announcement: #a78bfa;
   --status-announcement-bg: rgba(167, 139, 250, 0.09);
 
-  --text-primary: #F0F2F8;
-  --text-secondary: #8B93A8;
-  --text-muted: #747C90;
-  --text-tertiary: #747C90;
-  --text-accent: #60A5FA;
+  /* ── Text — warm neutrals ── */
+  --text-primary: #E8E8EA;
+  --text-secondary: #9CA3AF;
+  --text-muted: #8E939E; /* Refined to meet WCAG AA contrast against card surfaces */
+  --text-tertiary: #6B7280;
+  --text-accent: #818CF8;
 
-  --border-default: rgba(255, 255, 255, 0.08);
-  --border-active: rgba(96, 165, 250, 0.45);
+  /* ── Borders — neutral, not blue-tinted ── */
+  --border-default: rgba(255, 255, 255, 0.04);
+  --border-active: rgba(129, 140, 248, 0.40);
 
-  --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  --shadow-glow-blue: 0 0 0 1.5px rgba(96, 165, 250, 0.25), 0 0 20px rgba(96, 165, 250, 0.14);
-  --shadow-glow-red: 0 0 0 1.5px rgba(248, 113, 113, 0.25), 0 0 20px rgba(248, 113, 113, 0.14);
-  --shadow-glow-green: 0 0 0 1.5px rgba(52, 211, 153, 0.25), 0 0 20px rgba(52, 211, 153, 0.14);
-  --shadow-elevated: 0 16px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  /* ── Shadows — subtle elevation, no neon glows ── */
+  --shadow-card: none;
+  --shadow-glow-blue: 0 0 0 2px rgba(196, 181, 253, 0.25);
+  /* Repurposed as focus ring — no spread glow */
+  --shadow-glow-red: 0 0 0 2px rgba(248, 113, 113, 0.25);
+  --shadow-glow-green: 0 0 0 2px rgba(52, 211, 153, 0.25);
+  --shadow-elevated: 0 10px 30px rgba(0, 0, 0, 0.4);
 
+  /* ── Radii ── */
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
   --radius-xl: 24px;
   --radius-pill: 100px;
   --radius: 12px;
 
-  --font-display: 'Outfit', sans-serif;
-  --font-body: 'Outfit', sans-serif;
+  /* ── Typography — Plus Jakarta Sans + Inter ── */
+  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* ── Type Scale (6-step, 12px floor) ── */
@@ -78,13 +90,16 @@
   --tracking-normal: 0;       /* body */
   --tracking-wide: 0.04em;    /* uppercase labels, mono */
 
+  /* ── Transitions ── */
   --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-base: 200ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-slow: 280ms cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Legacy compat aliases */
   --bg-card: var(--bg-surface);
+  --bg-input: var(--bg-elevated);
   --accent: var(--accent-primary);
+  --accent-dim: var(--accent-primary-glow);
   --green: var(--status-safe);
   --red: var(--status-critical);
   --border: var(--border-default);
@@ -92,6 +107,53 @@
 
   /* Mobile frame width */
   --frame-w: 480px;
+}
+
+/* ── Global Focus Indicators (Accessibility Upgrade) ── */
+:focus-visible {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: 2px;
+}
+
+/* ── Standard CSS Transition Utilities (Performance Upgrade) ── */
+.t-transition-transform-opacity {
+  transition: transform var(--transition-base), opacity var(--transition-base);
+}
+.t-transition-colors {
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base);
+}
+
+/* ── Global Custom Scrollbars (Accessibility Upgrade — Desktop & Mobile) ── */
+::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 3px !important;
+  transition: background-color var(--transition-fast);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Slimmer horizontal carousel scrollbars specifically */
+.carousel::-webkit-scrollbar {
+  height: 4px !important;
+  display: block !important;
+}
+.carousel::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.carousel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 2px !important;
+}
+.carousel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
 }
 
 /* ── Reset ── */
@@ -165,7 +227,7 @@ a {
 
 /* ── Root layout — desktop shows phone frame ── */
 html {
-  background: #080A0E;
+  background: var(--bg-base);
   font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
@@ -177,14 +239,9 @@ html {
 
 body {
   min-height: 100%;
-  background: #080A0E;
+  background: var(--bg-base);
   display: flex;
   justify-content: center;
-  /* subtle desktop background pattern */
-  background-image:
-    linear-gradient(rgba(74, 158, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 158, 255, 0.015) 1px, transparent 1px);
-  background-size: 48px 48px;
 }
 
 #root {
@@ -194,7 +251,7 @@ body {
   background: var(--bg-base);
   position: relative;
   overflow-x: clip;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 80px rgba(0, 0, 0, 0.85), 0 0 120px rgba(74, 158, 255, 0.04);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 /* Desktop: show a subtle frame around the phone */
@@ -233,12 +290,12 @@ body {
 }
 
 .t-card-title {
-  font: var(--weight-subheading) var(--text-md)/var(--leading-compact) var(--font-display);
+  font: var(--weight-subheading) var(--text-md)/var(--leading-tight) var(--font-display);
   letter-spacing: var(--tracking-tight);
 }
 
 .t-subtitle {
-  font: var(--weight-subheading) var(--text-base)/var(--leading-compact) var(--font-display);
+  font: var(--weight-subheading) var(--text-base)/var(--leading-tight) var(--font-display);
   letter-spacing: var(--tracking-tight);
 }
 
@@ -270,20 +327,25 @@ body {
   font: var(--weight-body) var(--text-base)/var(--leading-compact) var(--font-body);
 }
 
-/* Mono — JetBrains Mono */
+/* Labels — Body font (mono restricted to numerical data) */
 .t-badge {
-  font: var(--weight-subheading) var(--text-xs)/var(--leading-compact) var(--font-mono);
+  font: var(--weight-subheading) var(--text-xs)/var(--leading-compact) var(--font-body);
   letter-spacing: var(--tracking-wide);
 }
 
 .t-mono {
   font: var(--weight-body) var(--text-sm)/var(--leading-compact) var(--font-mono);
   letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .t-mono-sm {
   font: var(--weight-body) var(--text-xs)/var(--leading-compact) var(--font-mono);
   letter-spacing: 0.02em;
+}
+
+.ann-category-tag {
+  letter-spacing: 0.05em;
 }
 
 .t-helper {
@@ -318,49 +380,29 @@ body {
 
 /* ── Card — solid/opaque ── */
 .card {
-  background: #121520;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-lg);
   padding: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
-  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-base), background var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .card:hover {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: #171B27;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(96, 165, 250, 0.1);
-  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--bg-elevated);
 }
 
 .card:active {
-  transform: scale(0.99) translateY(0);
+  transform: scale(0.99);
 }
 
-.card-glare {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, 0.04) 0%, transparent 60%);
-  z-index: 1;
-}
-
+/* Decorative effects — disabled in V2 warm dark theme */
+.card-glare,
 .card-shimmer {
-  position: absolute;
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.35), transparent);
-  animation: shimmerPulse 3s ease-in-out infinite;
+  display: none;
 }
 
 /* ── Badges ── */
@@ -374,6 +416,7 @@ body {
   font-weight: 600;
   font-family: var(--font-body);
   white-space: nowrap;
+  letter-spacing: 0.05em;
 }
 
 .badge-critical {
@@ -401,28 +444,23 @@ body {
   width: 100%;
   padding: 13px 16px;
   min-height: 48px;
-  background: rgba(28, 32, 48, 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font: 400 15px var(--font-body);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-base), background var(--transition-fast), transform var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
   outline: none;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .input:hover:not(:focus):not(.input-error) {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(28, 32, 48, 0.6);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .input:focus {
   border-color: var(--accent-primary);
-  background: rgba(10, 12, 20, 0.85);
-  box-shadow: var(--shadow-glow-blue);
-  transform: translateY(-0.5px);
+  background: var(--bg-base);
+  box-shadow: 0 0 0 2px var(--accent-primary-glow);
 }
 
 .input::placeholder {
@@ -437,7 +475,7 @@ body {
 
 .input-error {
   border-color: var(--status-critical) !important;
-  box-shadow: var(--shadow-glow-red) !important;
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.2) !important;
 }
 
 /* ── Buttons ── */
@@ -445,13 +483,13 @@ body {
   width: 100%;
   padding: 14px;
   min-height: 48px;
-  background: linear-gradient(180deg, #60A5FA 0%, #2563EB 100%);
-  color: #fff;
+  background: var(--accent-primary);
+  color: #1E1B4B;
   border: none;
   border-radius: var(--radius-md);
   font: 600 15px var(--font-body);
-  transition: opacity var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
-  box-shadow: 0 4px 16px rgba(96, 165, 250, 0.30), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -459,13 +497,12 @@ body {
 }
 
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 6px 20px rgba(96, 165, 250, 0.35), 0 1px 0 rgba(255, 255, 255, 0.30) inset;
+  opacity: 0.9;
 }
 
 .btn-primary:active:not(:disabled) {
   opacity: 0.95;
   transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.2);
 }
 
 .btn-primary:disabled {
@@ -509,25 +546,22 @@ body {
   gap: 10px;
   width: 100%;
   height: 52px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 13px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
   padding: 0 18px;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  transition: transform var(--transition-fast), opacity var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
   overflow: hidden;
+  cursor: pointer;
 }
 
 .google-btn:hover:not(.loading) {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: var(--bg-elevated);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .google-btn:active:not(.loading) {
@@ -590,8 +624,7 @@ body {
 }
 
 .navbar-tab.active .nav-icon {
-  transform: scale(1.12);
-  filter: drop-shadow(0 0 8px var(--accent-primary));
+  transform: scale(1.08);
 }
 
 .nav-icon {
@@ -859,7 +892,7 @@ body {
   border: 1px solid var(--border-default);
   background: transparent;
   color: var(--text-secondary);
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .filter-tab.active {
@@ -926,14 +959,14 @@ body {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
-  color: #fff;
+  background: var(--accent-primary);
+  color: #1E1B4B;
   border: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
   z-index: 90;
   font-size: 22px;
 }
@@ -1065,7 +1098,7 @@ body {
 .schedule-hour-line {
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .schedule-card {
@@ -1252,7 +1285,7 @@ body {
   border: 1px solid transparent;
   background: none;
   color: var(--text-secondary);
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1410,41 +1443,15 @@ body {
   padding: 10px 14px;
 }
 
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  pointer-events: none;
-  z-index: 0;
-  animation: breathe 10s ease-in-out infinite;
-}
-
-.orb-1 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.12) 0%, transparent 70%);
-  top: -120px;
-  left: -100px;
-}
-
-.orb-2 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(52, 211, 153, 0.07) 0%, transparent 70%);
-  bottom: -80px;
-  right: -60px;
-  animation-delay: -5s;
-}
-
-.scan-line {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.2) 40%, rgba(96, 165, 250, 0.2) 60%, transparent);
-  z-index: 1;
-  pointer-events: none;
-  animation: scanDown 8s linear infinite;
+.auth-bg {
+  position: relative;
+  background-color: var(--bg-base) !important;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(196, 181, 253, 0.05) 0%, transparent 70%),
+    linear-gradient(rgba(196, 181, 253, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(196, 181, 253, 0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 36px 36px, 36px 36px;
+  background-position: center;
 }
 
 .stagger-1 {
@@ -1504,6 +1511,15 @@ body {
 @keyframes spin         { to { transform:rotate(360deg); } }
 .animate-spin { animation: spin 1s linear infinite; }
 
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ── Segmented Control Switcher ── */
 .segment-switcher {
   display: flex;
@@ -1523,7 +1539,7 @@ body {
   font: 600 10px var(--font-body);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1603,7 +1619,7 @@ body {
   padding: 18px;
   position: relative;
   overflow: hidden;
-  transition: all var(--transition-base);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), background-color var(--transition-base);
 }
 
 /* ── Interactive Sandbox & Sliders ── */
@@ -1721,7 +1737,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   color: rgba(255, 255, 255, 0.65);
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1780,7 +1796,7 @@ body {
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
-  transition: all var(--transition-slow);
+  transition: transform var(--transition-slow), border-color var(--transition-slow), box-shadow var(--transition-slow);
 }
 
 .glass-bento:hover {
@@ -1820,7 +1836,7 @@ body {
   color: var(--text-secondary);
   font: 600 12px var(--font-display);
   letter-spacing: -0.01em;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
   box-shadow:
@@ -1937,7 +1953,7 @@ body {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: max-height 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms cubic-bezier(0.16, 1, 0.3, 1), margin-top 300ms cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .search-bar-container.open {
@@ -1955,7 +1971,7 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: 0 12px;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .search-input-wrapper:focus-within {
@@ -1976,7 +1992,7 @@ body {
 
 /* Adaptive focus styling for forms */
 .input-adaptive {
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .input-adaptive.focus-violet:focus {
@@ -1996,7 +2012,7 @@ body {
 
 /* Action button smooth hover classes */
 .btn-ack-btn {
-  transition: all 300ms ease !important;
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, box-shadow 300ms ease !important;
 }
 
 /* Responsive mobile styles for tactile CR buttons */
@@ -2045,7 +2061,7 @@ body {
 }
 
 .btn-del-ann {
-  transition: all 300ms ease !important;
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, box-shadow 300ms ease !important;
 }
 
 .btn-del-ann:hover {
@@ -2092,7 +2108,7 @@ body {
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
   user-select: none;
 }
 
@@ -2144,7 +2160,7 @@ body {
   border-radius: var(--radius-sm);
   text-align: left;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .sort-dropdown-item:hover {
@@ -2201,7 +2217,7 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   margin-bottom: 8px;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .student-ack-row:hover {
@@ -2220,7 +2236,7 @@ body {
   border: 1px solid rgba(167, 139, 250, 0.15);
   color: var(--status-announcement);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .btn-nudge-single:hover {
@@ -2251,20 +2267,16 @@ body {
   padding: 14px 18px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-default);
-  background: #121520; /* Solid opaque card background */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: var(--bg-surface);
   position: relative;
   overflow: hidden;
-  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-base), background var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .hero-panel-left:hover,
 .hero-panel-right:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.16);
-  background: #171B27; /* Solid hover background */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(96, 165, 250, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--bg-elevated);
 }
 
 .hero-arrow-btn {
@@ -2278,7 +2290,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 
 .hero-arrow-btn:hover {
@@ -2327,7 +2339,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .hurdle-shortcut-btn:hover {
@@ -2416,7 +2428,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
   width: 36px;
   height: 36px;
   outline: none;
@@ -2485,7 +2497,7 @@ body {
   border: 1px solid rgba(248, 113, 113, 0.25) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(248, 113, 113, 0.06) !important;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
 }
 .card-solid-critical:hover {
   background: #1E161B !important;
@@ -2495,18 +2507,18 @@ body {
 }
 
 .card-solid-cr {
-  background: #111624 !important; /* Solid dark blue/cyan tint */
+  background: #151829 !important; /* Indigo-tinted background */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(96, 165, 250, 0.25) !important;
+  border: 1px solid rgba(129, 140, 248, 0.15) !important;
   border-radius: var(--radius-lg) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(96, 165, 250, 0.06) !important;
-  transition: all var(--transition-base);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(129, 140, 248, 0.04) !important;
+  transition: transform var(--transition-base), border-color var(--transition-base), background-color var(--transition-base), box-shadow var(--transition-base);
 }
 .card-solid-cr:hover {
-  background: #141C31 !important;
-  border-color: rgba(96, 165, 250, 0.45) !important;
-  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.12), inset 0 0 14px rgba(96, 165, 250, 0.1) !important;
+  background: #191E35 !important;
+  border-color: rgba(129, 140, 248, 0.3) !important;
+  box-shadow: 0 8px 24px rgba(129, 140, 248, 0.08), inset 0 0 14px rgba(129, 140, 248, 0.06) !important;
   transform: translateY(-2px);
 }
 
@@ -2517,7 +2529,7 @@ body {
   border: 1px solid rgba(74, 158, 255, 0.25) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(74, 158, 255, 0.06) !important;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
 }
 .card-solid-push:hover {
   background: #13202E !important;
@@ -2566,7 +2578,7 @@ body {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  transition: all var(--transition-base);
+  transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .zenith-stat-cell:hover {
@@ -2652,37 +2664,39 @@ body {
 
 /* Opaque Solid Charcoal Theming */
 .card-solid-charcoal {
-  background: #121520 !important; /* Solid dark charcoal matching base card */
+  background: var(--bg-surface) !important; /* Solid dark charcoal matching base card */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
 .card-critical-solid {
-  background: #181316 !important; /* Solid red tint background */
+  background: #151112 !important; /* Extremely subtle warm tint */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(248, 113, 113, 0.25) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(248, 113, 113, 0.06) !important;
+  border: 1px solid var(--border-default) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+  transition: transform var(--transition-base), border-color var(--transition-base), background-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .card-critical-solid:hover {
-  background: #1E161B !important;
-  border-color: rgba(248, 113, 113, 0.45) !important;
-  box-shadow: 0 8px 24px rgba(248, 113, 113, 0.12), inset 0 0 14px rgba(248, 113, 113, 0.1) !important;
+  background: #1B1517 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
 }
 
 .card-general-solid {
-  background: #121520 !important; /* Solid base background */
+  background: var(--bg-surface) !important; /* Solid base background */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(96, 165, 250, 0.25) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(96, 165, 250, 0.06) !important;
+  border: 1px solid var(--border-default) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+  transition: transform var(--transition-base), border-color var(--transition-base), background-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .card-general-solid:hover {
-  background: #171B27 !important;
-  border-color: rgba(96, 165, 250, 0.45) !important;
-  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.12), inset 0 0 14px rgba(96, 165, 250, 0.1) !important;
+  background: var(--bg-elevated) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Deletion Reveal behind Class Cards */
@@ -2886,7 +2900,7 @@ body {
   border: 1px solid var(--border-default);
   background: var(--bg-elevated);
   color: var(--text-secondary);
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .rdp-custom-nav-btn:hover {
@@ -2936,7 +2950,7 @@ body {
   font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast);
 }
 
 .rdp-custom-day-button:hover:not(.rdp-custom-day-disabled) {
@@ -3017,7 +3031,7 @@ body {
   display: flex;
   padding: 4px;
   border-radius: 50%;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .dialog-close-btn:hover {
@@ -3072,7 +3086,7 @@ body {
   cursor: pointer;
   outline: none;
   user-select: none;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .dropdown-item:hover, .dropdown-item:focus {
@@ -3197,7 +3211,7 @@ body {
   font: 600 11px var(--font-body);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3228,7 +3242,7 @@ body {
   background-color: rgba(96, 165, 250, 0.12);
   border: 1px solid rgba(96, 165, 250, 0.3);
   border-radius: 8px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   width: calc(16.66% - 8px);
   pointer-events: none;
 }

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, BookOpen, Bus, Home } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/appStore';
 import { toast } from 'sonner';
@@ -252,8 +252,16 @@ export default function CreateHubPage() {
           <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Section Code <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
-          <input id="section-code-input" className={`input mono${errors.sectionCode ? ' input-error' : ''}`} placeholder="P" maxLength={3}
-            value={sectionCode} onChange={e => setSectionCode(e.target.value.toUpperCase())} />
+          <input 
+            id="section-code-input" 
+            className={`input mono${errors.sectionCode ? ' input-error' : ''}`} 
+            placeholder="P" 
+            maxLength={3}
+            autoComplete="off"
+            spellCheck={false}
+            value={sectionCode} 
+            onChange={e => setSectionCode(e.target.value.toUpperCase())} 
+          />
           <FieldError msg={errors.sectionCode} />
           <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
             e.g. P, S, A (Enter the full section code. Batches like P1, P2 are generated automatically)
@@ -264,8 +272,15 @@ export default function CreateHubPage() {
           <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Hub Name <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
-          <input id="hub-name-input" className={`input${errors.hubName ? ' input-error' : ''}`} placeholder="Section P — SKIT"
-            value={hubName} onChange={e => setHubName(e.target.value)} />
+          <input 
+            id="hub-name-input" 
+            className={`input${errors.hubName ? ' input-error' : ''}`} 
+            placeholder="Section P — SKIT"
+            autoComplete="off"
+            spellCheck={false}
+            value={hubName} 
+            onChange={e => setHubName(e.target.value)} 
+          />
           <FieldError msg={errors.hubName} />
         </div>
 
@@ -308,6 +323,7 @@ export default function CreateHubPage() {
               type="tel"
               inputMode="numeric"
               autoComplete="tel"
+              spellCheck={false}
               className={`input${errors.phone ? ' input-error' : ''}`}
               placeholder="9914293931"
               value={phone}
@@ -322,9 +338,17 @@ export default function CreateHubPage() {
           <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             Class Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
-          <input id="cr-class-roll-input" className={`input${errors.classRoll ? ' input-error' : ''}`} placeholder="01" maxLength={2} inputMode="numeric"
-            autoComplete="on"
-            value={classRoll} onChange={e => setClassRoll(e.target.value.replace(/\D/g, ''))} />
+          <input 
+            id="cr-class-roll-input" 
+            className={`input${errors.classRoll ? ' input-error' : ''}`} 
+            placeholder="01" 
+            maxLength={2} 
+            inputMode="numeric"
+            autoComplete="off"
+            spellCheck={false}
+            value={classRoll} 
+            onChange={e => setClassRoll(e.target.value.replace(/\D/g, ''))} 
+          />
           <FieldError msg={errors.classRoll} />
         </div>
 
@@ -332,9 +356,18 @@ export default function CreateHubPage() {
           <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
             University Roll Number <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
-          <input id="cr-uni-roll-input" className={`input mono${errors.universityRoll ? ' input-error' : ''}`} placeholder="25ESKCX089" maxLength={12}
-            autoCapitalize="characters" autoCorrect="off" autoComplete="on" spellCheck="false"
-            value={universityRoll} onChange={e => setUniversityRoll(e.target.value.toUpperCase())} />
+          <input 
+            id="cr-uni-roll-input" 
+            className={`input mono${errors.universityRoll ? ' input-error' : ''}`} 
+            placeholder="25ESKCX089" 
+            maxLength={12}
+            autoCapitalize="characters" 
+            autoCorrect="off" 
+            autoComplete="off" 
+            spellCheck={false}
+            value={universityRoll} 
+            onChange={e => setUniversityRoll(e.target.value.toUpperCase())} 
+          />
           <FieldError msg={errors.universityRoll} />
         </div>
 
@@ -370,7 +403,7 @@ export default function CreateHubPage() {
                 transition: 'all 0.2s ease'
               }}
             >
-              <span>🚌</span> Day Scholar
+              <Bus size={14} /> Day Scholar
             </button>
             <button
               type="button"
@@ -391,7 +424,7 @@ export default function CreateHubPage() {
                 transition: 'all 0.2s ease'
               }}
             >
-              <span>🏠</span> Hosteler
+              <Home size={14} /> Hosteler
             </button>
           </div>
         </div>

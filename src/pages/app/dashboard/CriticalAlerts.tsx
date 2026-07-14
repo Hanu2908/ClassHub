@@ -130,7 +130,7 @@ export function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCa
           outline-offset: 1px;
         }
         .btn-ack-banner {
-          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .btn-ack-banner:hover {
           background: rgba(52, 201, 123, 0.25) !important;
@@ -145,7 +145,7 @@ export function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCa
           outline-offset: 2px;
         }
         .carousel-nav-btn {
-          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .carousel-nav-btn:hover {
           background: rgba(255, 255, 255, 0.1) !important;
@@ -163,7 +163,7 @@ export function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCa
           padding: 0;
           cursor: pointer;
           outline: none;
-          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .carousel-dot:focus-visible {
           outline: 2px solid #ef4444 !important;

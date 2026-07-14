@@ -22,8 +22,8 @@ function parseSyllabusText(rawText: string): string {
   const lines = rawText.split('\n');
   const extractedUnits: string[] = [];
   
-  // Heuristic Regex to match units, parts, or chapters
-  const unitRegex = /^\s*(unit|module|chapter|part)\s*[-:–—\dIIVX]+\s*[:–—\s]?/i;
+  // Heuristic Regex to match units, parts, or chapters (concatenated to bypass Tailwind static class scanner)
+  const unitRegex = new RegExp('^\\s*(unit|module|chapter|part)\\s*[' + '-:–—\\dIIVX' + ']+\\s*[:–—\\s]?', 'i');
   
   lines.forEach((line) => {
     const trimmed = line.trim();

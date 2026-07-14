@@ -32,7 +32,7 @@ const pageHeaderStyle: CSSProperties = {
   position: 'sticky',
   top: 0,
   zIndex: 50,
-  background: 'rgba(13,15,20,0.95)',
+  background: 'rgba(11,12,14,0.95)',
   backdropFilter: 'blur(16px)',
   borderBottom: '1px solid var(--border-default)',
   padding: '16px 20px',
@@ -359,7 +359,7 @@ export default function DashboardPage() {
       <header style={pageHeaderStyle}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <p className="t-mono" style={{ color: 'var(--accent-primary)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+            <p className="t-badge" style={{ color: 'var(--accent-primary)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
               ClassHub
             </p>
           </div>
@@ -428,7 +428,6 @@ export default function DashboardPage() {
                       fontWeight: 800, 
                       color: 'var(--text-primary)',
                       letterSpacing: '-0.03em',
-                      textShadow: `0 0 24px ${statusColor}33`,
                       lineHeight: 1
                     }}>
                       {Math.round(animatedPercent)}%
@@ -444,7 +443,6 @@ export default function DashboardPage() {
                     <span className="attendance-mobile-scale-dot" style={{ 
                       width: 8, height: 8, borderRadius: '50%', 
                       background: statusColor, 
-                      boxShadow: `0 0 10px ${statusColor}`,
                       animation: isLowAttendance ? 'nowPulse 1s infinite alternate' : 'none'
                     }} />
                     <span className="t-card-title attendance-mobile-scale-title" style={{ color: statusColor, fontWeight: 700, fontSize: '15px', letterSpacing: '0.02em', margin: 0 }}>
@@ -474,7 +472,7 @@ export default function DashboardPage() {
                   top: -16, 
                   transform: 'translateX(-50%)',
                   fontSize: '12px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-body)',
                   color: 'var(--text-muted)',
                   letterSpacing: '0.05em',
                   pointerEvents: 'none'
@@ -492,10 +490,12 @@ export default function DashboardPage() {
                 }}>
                   <div style={{ 
                     height: '100%', 
-                    width: `${Math.min(100, Math.max(0, animatedPercent))}%`, 
+                    width: '100%', 
                     background: statusColor, 
                     borderRadius: 3,
-                    boxShadow: `0 0 10px ${statusColor}40`
+                    transform: `scaleX(${Math.min(100, Math.max(0, animatedPercent)) / 100})`,
+                    transformOrigin: 'left',
+                    transition: 'transform 0.3s ease',
                   }} />
                 </div>
               </div>
@@ -591,12 +591,20 @@ export default function DashboardPage() {
 
                     <div style={{ marginTop: 2 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span className="t-mono-sm" style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <span className="t-caption" style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                           Type: <strong style={{ color: 'var(--text-secondary)' }}>{primaryDeadline.type}</strong>
                         </span>
                       </div>
                       <div style={{ height: 3, borderRadius: 1.5, border: 'none', background: 'rgba(255,255,255,0.03)', width: '100%', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${animatedDeadlinePercent}%`, background: barColor, boxShadow: `0 0 10px ${urgencyColor}40`, borderRadius: 1.5 }} />
+                        <div style={{ 
+                          height: '100%', 
+                          width: '100%', 
+                          background: barColor, 
+                          borderRadius: 1.5,
+                          transform: `scaleX(${animatedDeadlinePercent / 100})`,
+                          transformOrigin: 'left',
+                          transition: 'transform 0.3s ease',
+                        }} />
                       </div>
                     </div>
                   </div>
@@ -630,7 +638,7 @@ export default function DashboardPage() {
             onClick={() => setShowFeedbackSheet(true)}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              font: '10px var(--font-mono)', color: 'var(--text-muted)',
+              font: '10px var(--font-body)', color: 'var(--text-muted)',
               letterSpacing: '0.05em',
             }}
           >
@@ -755,7 +763,7 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
             <h4 className="t-card-title truncate" style={{ color: 'var(--text-primary)', margin: 0, fontSize: 15, fontWeight: 700 }}>
               {exam.subjectName}
             </h4>
-            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+            <span className="t-caption" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
               {exam.examType} • {exam.subjectCode}
             </span>
           </div>
@@ -765,7 +773,7 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
       <div style={{ marginTop: 2 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <span className="t-caption" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-            Room <strong style={{ color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>{exam.activeRoom || 'N/A'}</strong>
+            Room <strong style={{ color: 'var(--accent-primary)', fontFamily: 'var(--font-body)' }}>{exam.activeRoom || 'N/A'}</strong>
             {' '}•{' '}
             <span style={{ color: 'var(--text-muted)' }}>{preparedCount} of {totalUnits} units</span>
           </span>
@@ -776,11 +784,12 @@ function NextExamHeroCard({ exam, navigate }: { exam: any; navigate: (path: stri
             <div
               style={{
                 height: '100%',
-                width: `${progressPercent}%`,
+                width: '100%',
                 background: 'linear-gradient(90deg, var(--accent-primary) 0%, var(--status-safe) 100%)',
-                boxShadow: '0 0 10px rgba(16, 185, 129, 0.2)',
                 borderRadius: 1.5,
-                transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                transform: `scaleX(${progressPercent / 100})`,
+                transformOrigin: 'left',
+                transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
               }}
             />
           </div>

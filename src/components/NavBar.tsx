@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
 import { Home, Calendar, Megaphone, User, ShieldCheck, ClipboardCheck, Users } from 'lucide-react';
 
@@ -35,7 +35,6 @@ function prefetchRoute(path: string) {
 }
 
 export function NavBar() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { setActiveTab, role, authUser } = useAppStore();
 
@@ -67,11 +66,12 @@ export function NavBar() {
         const isActive = active === tab.id;
         const Icon = tab.icon;
         return (
-          <button
+          <Link
             key={tab.id}
             id={`nav-${tab.id}`}
-            className={`navbar-tab${isActive ? ' active' : ''}`}
-            onClick={() => { setActiveTab(tab.id as any); navigate(tab.path); }}
+            to={tab.path}
+            className={`navbar-tab${isActive ? ' active' : ''} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-inset`}
+            onClick={() => setActiveTab(tab.id as any)}
             onMouseEnter={() => prefetchRoute(tab.path)}
             onTouchStart={() => prefetchRoute(tab.path)}
             aria-label={tab.label}
@@ -79,8 +79,8 @@ export function NavBar() {
           >
             {isActive && <div className="navbar-active-pill" />}
             <span className="nav-icon"><Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} /></span>
-            {isActive && <span className="t-mono-sm">{tab.label}</span>}
-          </button>
+            {isActive && <span className="t-caption">{tab.label}</span>}
+          </Link>
         );
       })}
     </nav>

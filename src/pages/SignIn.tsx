@@ -5,43 +5,6 @@ import { signInWithGoogle } from '../components/AuthProvider';
 
 type StateMode = 'idle' | 'loading' | 'error' | 'success';
 
-/* ── Floating particles ── */
-function Particles() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    let raf: number;
-    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
-    resize();
-    const dots = Array.from({ length: 24 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      r: Math.random() * 1.4 + 0.4,
-      dx: (Math.random() - 0.5) * 0.22,
-      dy: (Math.random() - 0.5) * 0.22,
-      alpha: Math.random() * 0.35 + 0.08,
-    }));
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      dots.forEach(d => {
-        d.x += d.dx; d.y += d.dy;
-        if (d.x < 0) d.x = canvas.width; if (d.x > canvas.width) d.x = 0;
-        if (d.y < 0) d.y = canvas.height; if (d.y > canvas.height) d.y = 0;
-        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(74,158,255,${d.alpha})`; ctx.fill();
-      });
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return (
-    <canvas ref={canvasRef} aria-hidden style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }} />
-  );
-}
 
 /* ── 3-D tilt card ── */
 function TiltCard({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -66,8 +29,8 @@ function TiltCard({ children, className }: { children: React.ReactNode; classNam
   const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = ref.current; if (!el) return;
     const { left, top, width, height } = el.getBoundingClientRect();
-    target.current.rx = (0.5 - (e.clientY - top) / height) * 10;
-    target.current.ry = ((e.clientX - left) / width - 0.5) * 12;
+    target.current.rx = (0.5 - (e.clientY - top) / height) * 4;
+    target.current.ry = ((e.clientX - left) / width - 0.5) * 5;
     target.current.gx = ((e.clientX - left) / width) * 100;
     target.current.gy = ((e.clientY - top) / height) * 100;
     if (!animRef.current) animRef.current = requestAnimationFrame(animate);
@@ -163,79 +126,73 @@ export default function SignIn() {
   };
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', position: 'relative', overflow: 'hidden' }}>
-      <Particles />
-      <div className="orb orb-1" />
-      <div className="orb orb-2" />
-      <div className="scan-line" aria-hidden />
+    <div className="auth-bg min-h-[100dvh] flex flex-col items-center justify-center py-8 px-6 relative overflow-hidden">
 
       {/* Success overlay */}
       {state === 'success' && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.35s ease both' }}>
-          <div className="success-ring" style={{ marginBottom: 24 }}>
+        <div className="fixed inset-0 z-50 bg-[var(--bg-base)] flex flex-col items-center justify-center animate-[fadeIn_0.35s_ease_both]">
+          <div className="success-ring mb-6">
             <CheckCircle2 size={30} color="var(--status-safe)" strokeWidth={2} />
           </div>
-          <p className="t-feature" style={{ color: 'var(--text-primary)', marginBottom: 8 }}>You're in.</p>
-          <p className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>Taking you to your dashboard…</p>
+          <p className="t-feature text-[var(--text-primary)] mb-2">You're in.</p>
+          <p className="t-mono-sm text-[var(--text-muted)]">Taking you to your dashboard…</p>
         </div>
       )}
 
       {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 360 }}>
+      <div className="relative z-10 w-full max-w-[360px]">
         {/* Logo — tap 5× for demo mode */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <div className="logo-wrap" onClick={handleDemoBypass} style={{ cursor: 'default' }}>
-            <img src="/app_icon.svg" alt="ClassHub" width="88" height="88" fetchPriority="high" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        <div className="flex justify-center mb-4">
+          <div className="logo-wrap cursor-default" onClick={handleDemoBypass}>
+            <img src="/app_icon.svg" alt="ClassHub" width="88" height="88" fetchPriority="high" className="w-full h-full object-contain" />
           </div>
         </div>
 
-        <h1 className="stagger-1 t-hero" style={{ color: 'var(--text-primary)', textAlign: 'center', letterSpacing: '-0.6px', marginBottom: 6 }}>
+        <h1 className="stagger-1 t-hero text-[var(--text-primary)] text-center tracking-[-0.6px] mb-1.5">
           ClassHub
         </h1>
-        <p className="stagger-2 t-mono-sm" style={{ color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.06em', marginBottom: 32 }}>
+        <p className="stagger-2 t-caption text-[var(--text-muted)] text-center tracking-wide mb-8">
           Your academic workspace
         </p>
 
         <TiltCard className="stagger-3">
-          <div className="card-shimmer" />
-          <div className="card-glare" />
 
           {state === 'error' && (
             <div className="error-banner">
-              <AlertCircle size={14} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 1 }} />
-              <div className="t-mono-sm" style={{ color: '#FCEBEB', lineHeight: 1.7 }}>
-                <strong style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Access denied.</strong>{' '}
-                Only <strong style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>@skit.ac.in</strong>{' '}
+              <AlertCircle size={14} color="var(--status-critical)" className="flex-shrink-0 mt-0.5" />
+              <div className="t-caption text-[#FCEBEB] leading-[1.7]">
+                <strong className="font-medium text-[var(--text-secondary)]">Access denied.</strong>{' '}
+                Only <strong className="font-medium text-[var(--text-secondary)]">@skit.ac.in</strong>{' '}
                 accounts are permitted.
               </div>
             </div>
           )}
 
-          <p className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
+          <p className="t-card-title text-[var(--text-primary)] mb-1">
             Sign in to continue
           </p>
-          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 24 }}>
-            Restricted to <span style={{ color: 'var(--accent-primary)' }}>@skit.ac.in</span> accounts.
+          <p className="t-caption text-[var(--text-muted)] leading-[1.7] mb-6">
+            Restricted to <span className="text-[var(--accent-primary)]">@skit.ac.in</span> accounts.
           </p>
 
-          <div className="divider" style={{ marginBottom: 20 }}>
+          <div className="divider mb-5">
             <div className="divider-line" />
-            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em', padding: '0 8px', whiteSpace: 'nowrap' }}>continue with</span>
+            <span className="t-caption text-[var(--text-muted)] tracking-wider px-2 whitespace-nowrap">continue with</span>
             <div className="divider-line" />
           </div>
 
           <GoogleButton onClick={handleGoogleClick} disabled={state === 'loading'} isLoading={state === 'loading'} />
 
-          <div className="domain-badge" style={{ marginTop: 4 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--status-safe)', flexShrink: 0 }} />
-            <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="domain-badge mt-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--status-safe)] flex-shrink-0" />
+            <span className="t-caption text-[var(--text-secondary)]">
               SKIT Jaipur · Institutional Login
             </span>
           </div>
         </TiltCard>
 
-        <p className="stagger-4 t-mono-sm" style={{ marginTop: 24, color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.04em' }}>
-          v1.0 &nbsp;·&nbsp; <Link to="/legal" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'rgba(116,124,144,0.4)' }}>Terms &amp; Privacy</Link>
+        <p className="stagger-4 t-caption mt-6 text-[var(--text-muted)] text-center tracking-wide">
+          v1.0 &nbsp;·&nbsp; <Link to="/legal" className="text-inherit underline underline-offset-[3px] decoration-[rgba(116,124,144,0.4)]">Terms &amp; Privacy</Link>
         </p>
       </div>
     </div>

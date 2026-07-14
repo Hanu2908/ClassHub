@@ -204,7 +204,7 @@ export default function App() {
             closeButton
             toastOptions={{
               style: {
-                background: '#121520',
+                background: '#131518',
                 border: '1px solid var(--border-default)',
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-display)',
@@ -216,7 +216,7 @@ export default function App() {
             }}
             offset={80}
           />
-          <SkeletonTheme baseColor="#121520" highlightColor="rgba(255, 255, 255, 0.05)">
+          <SkeletonTheme baseColor="#131518" highlightColor="rgba(255, 255, 255, 0.05)">
             <Suspense fallback={<PageSkeleton />}>
               <Routes>
                 {/* Public */}

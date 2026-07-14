@@ -118,7 +118,7 @@ function ShareOptionsContent({
           gap: '12px',
           cursor: 'pointer',
           textAlign: 'left',
-          transition: 'all 0.2s',
+          transition: 'border-color 0.2s, background-color 0.2s, transform 0.2s',
           color: '#fff',
           outline: 'none'
         }}
@@ -239,7 +239,7 @@ function ShareOptionsContent({
             justifyContent: 'center',
             gap: '8px',
             boxShadow: selectedPhotos.length === 0 ? 'none' : '0 4px 14px rgba(74, 158, 255, 0.3)',
-            transition: 'all 0.2s',
+            transition: 'background-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s',
             outline: 'none'
           }}
         >
@@ -664,7 +664,7 @@ export default function AnnouncementsScroll() {
                                     border: `1px solid ${category.borderColor}`,
                                   }}>
                                     {category.icon}
-                                    <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
+                                    <span className="t-mono-sm ann-category-tag" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
                                       {category.name}
                                     </span>
                                   </div>
@@ -858,7 +858,7 @@ export default function AnnouncementsScroll() {
                         border: `1px solid ${category.borderColor}`,
                       }}>
                         {category.icon}
-                        <span className="t-mono-sm" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
+                        <span className="t-mono-sm ann-category-tag" style={{ color: category.color, fontWeight: 600, fontSize: '12px' }}>
                           {category.name}
                         </span>
                       </div>

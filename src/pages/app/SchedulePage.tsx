@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar, Layout, Table, Clock, MapPin, User } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar, Layout, Table, User } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
@@ -748,8 +748,8 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
           height: '100%',
           transform: `translate3d(${swipeX}px, 0, 0)`,
           transition: isSwiping ? 'none' : 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
-          background: `linear-gradient(135deg, ${catStyle.bg} 0%, #121520 100%)`,
-          borderColor: catStyle.border,
+          background: isNow ? 'var(--bg-elevated)' : catStyle.bg,
+          borderColor: isNow ? 'var(--accent-primary)' : catStyle.border,
           touchAction: 'pan-y',
         }}
         onPointerDown={handlePointerDown}
@@ -757,7 +757,6 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       >
-        <div className="schedule-card-accent" style={{ background: catStyle.color }} />
         <div 
           className="schedule-card-body" 
           style={{ 
@@ -811,18 +810,16 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
 
             {/* Time & Category */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              <Clock size={10} style={{ opacity: 0.6 }} aria-hidden="true" />
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTimeRange(cls.startTime, cls.endTime).replace(/\s/g, '\u00A0')}</span>
               <span>·</span>
               <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color }}>{CATEGORY_LABELS[cat] || cls.type}</span>
             </div>
           </div>
 
-          {/* Bottom metadata section with Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: 6, marginTop: 4 }}>
+          {/* Bottom metadata section */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
             {/* Room */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <MapPin size={10} style={{ opacity: 0.6 }} aria-hidden="true" />
               <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cls.room || 'No Room'}</span>
             </div>
 
@@ -841,7 +838,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
                 }}
                 title={cls.teacher}
               >
-                <User size={10} style={{ opacity: 0.6 }} aria-hidden="true" />
+                <User size={12} className="text-[var(--text-muted)]" aria-hidden="true" />
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cls.teacher}</span>
               </div>
             )}

@@ -215,9 +215,10 @@ import { HighlightText } from './HighlightText';
 interface RichTextBodyProps {
   text: string;
   search?: string;
+  collapsed?: boolean;
 }
 
-export default function RichTextBody({ text, search }: RichTextBodyProps) {
+export default function RichTextBody({ text, search, collapsed }: RichTextBodyProps) {
   if (!text) return null;
 
   // Extract all unique YouTube Video IDs
@@ -233,7 +234,14 @@ export default function RichTextBody({ text, search }: RichTextBodyProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', textAlign: 'left' }}>
       {/* 1. Body Text with Clickable Links */}
-      <span style={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+      <span style={{ 
+        display: collapsed ? '-webkit-box' : 'block', 
+        WebkitLineClamp: collapsed ? 3 : undefined,
+        WebkitBoxOrient: collapsed ? 'vertical' : undefined,
+        overflow: collapsed ? 'hidden' : 'visible',
+        whiteSpace: 'pre-wrap', 
+        wordBreak: 'break-word' 
+      }}>
         {parts.map((part, index) => {
           if (urlRegex.test(part) || part.startsWith('http://') || part.startsWith('https://')) {
             return (
@@ -259,7 +267,7 @@ export default function RichTextBody({ text, search }: RichTextBodyProps) {
       </span>
 
       {/* 2. On-demand YouTube embed cards */}
-      {youtubeVideoIds.length > 0 && (
+      {!collapsed && youtubeVideoIds.length > 0 && (
         <div 
           style={{ 
             display: 'flex', 

@@ -63,7 +63,7 @@ export default function ScheduleWidget() {
               alignItems: 'center',
               padding: '14px 16px',
               borderBottom: i < display.length - 1 ? '1px solid var(--border-default)' : 'none',
-              background: isNow ? 'rgba(74, 158, 255, 0.05)' : 'transparent',
+              background: isNow ? 'var(--bg-elevated)' : catStyle.bg,
               position: 'relative',
               gap: 12,
             }}>
@@ -78,15 +78,6 @@ export default function ScheduleWidget() {
                 </span>
               </div>
               
-              {/* Vertical Category Indicator Line */}
-              <div style={{
-                width: 3,
-                alignSelf: 'stretch',
-                background: isNow ? 'var(--status-safe)' : catStyle.color,
-                borderRadius: 1.5,
-                flexShrink: 0,
-              }} />
-
               {/* Middle Column: Subject Info */}
               <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
                 <p className="truncate t-button" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>
