@@ -175,10 +175,12 @@ export default function SignIn() {
             Restricted to <span className="text-[var(--accent-primary)]">@skit.ac.in</span> accounts.
           </p>
 
-          <div className="divider mb-5">
-            <div className="divider-line" />
-            <span className="t-caption text-[var(--text-muted)] tracking-wider px-2 whitespace-nowrap">continue with</span>
-            <div className="divider-line" />
+          <div className="flex items-center w-full my-5 gap-3">
+            <div className="flex-1 h-[1px] bg-white/10" />
+            <span className="text-[12px] font-medium text-[var(--text-muted)] tracking-wider uppercase whitespace-nowrap">
+              continue with
+            </span>
+            <div className="flex-1 h-[1px] bg-white/10" />
           </div>
 
           <GoogleButton onClick={handleGoogleClick} disabled={state === 'loading'} isLoading={state === 'loading'} />

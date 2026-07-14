@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
   XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, BookOpen,
-  CheckCircle2, ExternalLink, Copy, Share2, RefreshCw, Lock, Unlock, Loader2,
+  CheckCircle2, ExternalLink, Copy, Share2, RefreshCw, Lock, Unlock, Eye, EyeOff, Loader2,
   AlertTriangle, Trash2
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
@@ -1263,7 +1263,7 @@ function InviteCodeCard() {
             }}
             title={obscured ? "Show Invite Code" : "Hide Invite Code"}
           >
-            {obscured ? <Unlock size={16} /> : <Lock size={16} />}
+            {obscured ? <Eye size={16} /> : <EyeOff size={16} />}
           </button>
         </div>
 
@@ -1465,7 +1465,7 @@ function TeacherInviteCodeCard() {
             }}
             title={obscured ? "Show Invite Code" : "Hide Invite Code"}
           >
-            {obscured ? <Unlock size={16} /> : <Lock size={16} />}
+            {obscured ? <Eye size={16} /> : <EyeOff size={16} />}
           </button>
         </div>
 

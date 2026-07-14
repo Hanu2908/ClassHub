@@ -57,7 +57,14 @@ export default function NotificationSheet({ open, onClose }: NotificationSheetPr
     <BottomSheet open={open} onClose={onClose} title="Notifications">
       <div style={{ paddingBottom: 20 }}>
         {visibleNotifications.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '40px 20px',
+            color: 'var(--text-muted)'
+          }}>
             <Bell size={36} style={{ marginBottom: 12, opacity: 0.4 }} />
             <p className="t-body-medium" style={{ color: 'var(--text-secondary)' }}>No notifications yet</p>
           </div>

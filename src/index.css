@@ -1066,8 +1066,8 @@ body {
 
 .divider-line {
   flex: 1;
-  height: 0.5px;
-  background: var(--border-default);
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ── Schedule timeline (proportional calendar-style) ── */
