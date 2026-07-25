@@ -17,11 +17,14 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   
   const offsetY = useMotionValue(0);
 
+  const openTimeRef = useRef<number>(0);
+
   // Synchronize document scroll locking and animate entry
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
       offsetY.set(0);
+      openTimeRef.current = Date.now();
     } else {
       document.body.style.overflow = '';
     }
@@ -29,6 +32,14 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
       document.body.style.overflow = '';
     };
   }, [open, offsetY]);
+
+  const handleBackdropClick = () => {
+    // Prevent trailing synthesized tap click from instantly closing sheet
+    if (Date.now() - openTimeRef.current < 300) {
+      return;
+    }
+    onClose();
+  };
 
   // Dismiss on Escape key press (keyboard accessibility)
   useEffect(() => {
@@ -116,7 +127,7 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          onClick={onClose} 
+          onClick={handleBackdropClick} 
         />
       )}
       {open && (
