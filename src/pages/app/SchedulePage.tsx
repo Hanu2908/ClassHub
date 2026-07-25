@@ -771,12 +771,24 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
   };
 
   return (
-    <div style={{ ...style, position: 'absolute', overflow: 'hidden', borderRadius: 'var(--radius-md)' }}>
+    <div 
+      className="schedule-card-wrapper schedule-card"
+      style={{ ...style, position: 'absolute', overflow: 'hidden', borderRadius: 'var(--radius-md)' }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!hasMovedRef.current && !isSnappedRef.current && onSelect) {
+          onSelect(cls);
+        }
+      }}
+    >
       {/* Delete zone behind */}
       {isCR && (
         <div 
           className="swipe-delete-zone" 
-          onClick={() => onDelete(cls)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(cls);
+          }}
           style={{
             opacity: swipeX < 0 ? 1 : 0,
             transition: 'opacity 0.25s ease',
@@ -798,7 +810,8 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
           touchAction: 'pan-y',
           cursor: 'pointer',
         }}
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
           if (!hasMovedRef.current && !isSnappedRef.current && onSelect) {
             onSelect(cls);
           }
@@ -1184,7 +1197,14 @@ function StudentSchedulePage() {
   const handleTimelinePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (viewLayout === 'week') return;
     const target = e.target as HTMLElement;
-    if (target.closest('.schedule-card') || target.closest('.swipe-delete-zone') || target.closest('.t-button') || target.closest('button')) {
+    if (
+      target.closest('.schedule-card') ||
+      target.closest('.schedule-card-wrapper') ||
+      target.closest('.swipe-delete-zone') ||
+      target.closest('.attendance-pill') ||
+      target.closest('.t-button') ||
+      target.closest('button')
+    ) {
       return;
     }
     
