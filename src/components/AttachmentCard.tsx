@@ -37,13 +37,18 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
   // GPU animation tracking state
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
+  // Reset loaded state when qualityMode changes to trigger fresh image load
+  useEffect(() => {
+    setIsImageLoaded(false);
+  }, [qualityMode]);
+
   // Option D: downscaled object URL for legacy images (no thumbnail)
   const downscaledUrlRef = useRef<string | null>(null);
   const [cardDisplayUrl, setCardDisplayUrl] = useState<string | null>(null);
 
   // Intersection Observer elements
   const cardRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   const isImage = isPreviewableImage(attachment.fileType, attachment.filename);
   const isPdf = attachment.fileType.toLowerCase().includes('pdf') || attachment.filename.toLowerCase().endsWith('.pdf');
@@ -386,7 +391,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
               </div>
             )}
 
-            {/* Always visible SD / HD Toggle Badge on unzoomed image card */}
+            {/* Minimal SD / HD Quality Toggle Badge */}
             <button
               type="button"
               onClick={(e) => {
@@ -394,58 +399,72 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
                 e.preventDefault();
                 setQualityMode(prev => prev === 'SD' ? 'HD' : 'SD');
               }}
-              title="Toggle SD (Fast Thumbnail) vs HD (1600px Compressed WebP)"
+              title="Toggle SD vs HD quality"
               style={{
                 position: 'absolute',
                 top: 8,
                 right: 8,
-                zIndex: 10,
-                padding: '4px 10px',
-                borderRadius: '14px',
-                background: 'rgba(15, 18, 28, 0.85)',
+                zIndex: 50,
+                padding: '3px 8px',
+                borderRadius: '10px',
+                background: qualityMode === 'HD' 
+                  ? 'rgba(56, 189, 248, 0.25)' 
+                  : 'rgba(15, 23, 42, 0.8)',
                 backdropFilter: 'blur(8px)',
-                border: `1px solid ${qualityMode === 'HD' ? 'rgba(56, 189, 248, 0.6)' : 'rgba(255, 255, 255, 0.2)'}`,
-                color: qualityMode === 'HD' ? '#38bdf8' : '#e2e8f0',
-                fontSize: '11px',
-                fontWeight: 800,
+                WebkitBackdropFilter: 'blur(8px)',
+                border: qualityMode === 'HD' 
+                  ? '1px solid rgba(56, 189, 248, 0.5)' 
+                  : '1px solid rgba(255, 255, 255, 0.2)',
+                color: qualityMode === 'HD' ? '#38bdf8' : 'rgba(255, 255, 255, 0.85)',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
                 cursor: 'pointer',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: 4,
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+                justifyContent: 'center',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
                 userSelect: 'none',
+                WebkitUserSelect: 'none',
               }}
             >
-              <span>{qualityMode}</span>
-              <span style={{ fontSize: '9px', opacity: 0.8 }}>
-                {qualityMode === 'SD' ? 'Fast' : 'Sharp'}
-              </span>
+              {qualityMode}
             </button>
 
-            {(qualityMode === 'HD' ? (previewState.fullUrl || cardDisplayUrl) : (cardDisplayUrl || previewState.thumbUrl || previewState.fullUrl)) && !previewState.error ? (
-              <img 
-                src={(qualityMode === 'HD' ? (previewState.fullUrl || cardDisplayUrl) : (cardDisplayUrl || previewState.thumbUrl || previewState.fullUrl))!} 
-                alt={attachment.filename} 
-                loading="lazy"
-                decoding="async"
-                fetchPriority="low"
-                onLoad={() => setIsImageLoaded(true)}
-                onError={() => setPreviewState(prev => ({ ...prev, error: true }))}
-                style={{
-                  ...getImagePreviewStyle(),
-                  opacity: isImageLoaded ? 1 : 0,
-                  transition: 'opacity 0.22s ease-in-out',
-                  filter: qualityMode === 'SD' && previewState.thumbUrl === previewState.fullUrl ? 'blur(0.5px)' : 'none',
-                }}
-              />
-            ) : (
-              !previewState.loading && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
-                  <ImageOff size={22} />
-                  <span className="t-mono-sm">Preview unavailable</span>
-                </div>
-              )
-            )}
+            {(() => {
+              const activeImageUrl = qualityMode === 'HD'
+                ? (previewState.fullUrl || previewState.thumbUrl || cardDisplayUrl)
+                : (previewState.thumbUrl || cardDisplayUrl || previewState.fullUrl);
+
+              if (activeImageUrl && !previewState.error) {
+                return (
+                  <img 
+                    src={activeImageUrl} 
+                    alt={attachment.filename} 
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
+                    onLoad={() => setIsImageLoaded(true)}
+                    onError={() => setPreviewState(prev => ({ ...prev, error: true }))}
+                    style={{
+                      ...getImagePreviewStyle(),
+                      opacity: isImageLoaded ? 1 : 0,
+                      transition: 'opacity 0.22s ease-in-out',
+                      filter: qualityMode === 'SD' && previewState.thumbUrl === previewState.fullUrl ? 'blur(0.5px)' : 'none',
+                    }}
+                  />
+                );
+              }
+
+              return (
+                !previewState.loading && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
+                    <ImageOff size={22} />
+                    <span className="t-mono-sm">Preview unavailable</span>
+                  </div>
+                )
+              );
+            })()}
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', minWidth: 0, padding: '2px 0' }}>

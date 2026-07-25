@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar, Layout, Table, User } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar, Layout, Table, User, MoreVertical, Pencil } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore, type ScheduleSlot } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { toast } from 'sonner';
 import { useSchedule, useUpsertScheduleSlot, useDeleteScheduleSlot, useClearDaySlots, useCopyDaySlots } from '../../hooks/useSchedule';
@@ -79,10 +80,11 @@ interface AddSlotSheetProps {
   open: boolean;
   day: string;
   existingSlots: { subject: string; code: string; startTime: string; endTime: string; type: string }[];
+  slotToEdit?: ScheduleSlot | null;
   onClose: () => void;
 }
 
-function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) {
+function AddSlotSheet({ open, day, existingSlots, slotToEdit, onClose }: AddSlotSheetProps) {
   const role = useAppStore(s => s.role);
   const globalSelectedSectionId = useAppStore(s => s.selectedSectionId);
   const authUser = useAppStore(s => s.authUser);
@@ -255,6 +257,25 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
   }, [startTime]);
 
   const isEarlyAM = startHour >= 0 && startHour < 8;
+  useEffect(() => {
+    if (slotToEdit) {
+      if (slotToEdit.subjectId) {
+        setSubjectId(slotToEdit.subjectId);
+      } else {
+        const found = subjects.find(s => s.code === slotToEdit.code || s.name === slotToEdit.subject);
+        if (found) setSubjectId(found.id);
+      }
+      setStartTime(slotToEdit.startTime);
+      setEndTime(slotToEdit.endTime);
+      setRoom(slotToEdit.room || '');
+      setType(slotToEdit.type || 'Lecture');
+      setTargetBatch((slotToEdit.targetBatch as any) || 'all');
+      if (slotToEdit.teacher) {
+        setCustomTeacher(slotToEdit.teacher);
+        setSelectedTeacherOption(teacherNames.includes(slotToEdit.teacher) ? slotToEdit.teacher : 'custom');
+      }
+    }
+  }, [slotToEdit, subjects, teacherNames]);
 
   const handleSave = async () => {
     if (!subjectId || !startTime || !endTime) {
@@ -270,6 +291,7 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
 
     try {
       const payload: any = {
+        ...(slotToEdit?.id ? { id: slotToEdit.id } : {}),
         subjectId,
         dayOfWeek: DAY_MAP[day] ?? 1,
         startTime,
@@ -292,7 +314,8 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
 
       await upsertSlot.mutateAsync(payload);
       setAddedCount(c => c + 1);
-      toast.success(`Slot added (${addedCount + 1})`);
+      toast.success(slotToEdit ? 'Schedule slot updated ✓' : `Slot added (${addedCount + 1})`);
+      if (slotToEdit) onClose();
 
       // Auto-advance: start time = this slot's end time
       const nextStart = endTime;
@@ -302,11 +325,11 @@ function AddSlotSheet({ open, day, existingSlots, onClose }: AddSlotSheetProps) 
       setSubjectId('');
       setTargetBatch('all');
       setNotifyClass(false);
-    } catch (err: any) { toast.error(`Failed to add slot: ${err.message || 'Unknown'}`); }
+    } catch (err: any) { toast.error(`Failed to save slot: ${err.message || 'Unknown'}`); }
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={`Add Classes — ${DAY_FULL[day] ?? day}`}>
+    <BottomSheet open={open} onClose={onClose} title={slotToEdit ? `Edit Class — ${DAY_FULL[day] ?? day}` : `Add Classes — ${DAY_FULL[day] ?? day}`}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
         {/* Mini timeline preview */}
         {existingSlots.length > 0 && (
@@ -655,12 +678,13 @@ interface SwipeableCardSlot {
 
 // ── Swipeable schedule card ──────────────────────────────────────────────────
 
-function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName, attendancePct }: {
+function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, sectionName, attendancePct }: {
   cls: SwipeableCardSlot;
   isNow: boolean;
   isPast: boolean;
   isCR: boolean;
   onDelete: (cls: SwipeableCardSlot) => void;
+  onSelect?: (cls: SwipeableCardSlot) => void;
   style: React.CSSProperties;
   sectionName?: string;
   attendancePct?: number;
@@ -669,21 +693,30 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
   const [swipeX, setSwipeX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const hasMovedRef = useRef(false);
   const isSnappedRef = useRef(false);
 
   const cat = getCategory(cls.code, cls.type);
   const catStyle = CATEGORY_COLORS[cat];
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    hasMovedRef.current = false;
+    startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
     if (!isCR) return;
     setIsSwiping(true);
-    startXRef.current = e.clientX;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isSwiping || !isCR) return;
     const diffX = e.clientX - startXRef.current;
+    const diffY = e.clientY - startYRef.current;
+    if (Math.abs(diffX) > 6 || Math.abs(diffY) > 6) {
+      hasMovedRef.current = true;
+    }
+    if (!isSwiping || !isCR) return;
+
     let targetX = isSnappedRef.current ? -80 + diffX : diffX;
 
     // Premium elastic rubber-band cap
@@ -697,9 +730,10 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isSwiping) return;
-    setIsSwiping(false);
-    e.currentTarget.releasePointerCapture(e.pointerId);
+    if (isSwiping) {
+      setIsSwiping(false);
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
 
     if (swipeX < -70) {
       // Swipe deep to delete
@@ -714,6 +748,9 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
       // Snap shut
       setSwipeX(0);
       isSnappedRef.current = false;
+      if (!hasMovedRef.current && onSelect) {
+        onSelect(cls);
+      }
     }
   };
 
@@ -803,7 +840,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, style, sectionName,
                     }
                   }}
                 >
-                  {attendancePct.toFixed(0)}%
+                  <span>{attendancePct.toFixed(0)}%</span>
                 </button>
               )}
             </div>
@@ -935,6 +972,7 @@ function StudentSchedulePage() {
   const authUser = useAppStore(s => s.authUser);
   const subBatch = authUser?.subBatch;
   const [viewMode, setViewMode] = useState<'my-batch' | 'full'>('my-batch');
+  const [slotToEdit, setSlotToEdit] = useState<ScheduleSlot | null>(null);
 
   // Attendance data for badge overlay on schedule cards
   const { data: attendanceData } = useAttendance();
@@ -1615,6 +1653,7 @@ function StudentSchedulePage() {
                     isPast={isPastClass}
                     isCR={isCR}
                     onDelete={setSlotToDelete}
+                    onSelect={(slot) => setSelectedCellSlots([slot as any])}
                     style={{
                       top: y + 2,
                       height: h - 2,
@@ -1661,7 +1700,11 @@ function StudentSchedulePage() {
         open={showAddSheet}
         day={selectedDay}
         existingSlots={classes.map(c => ({ subject: c.subject, code: c.code, startTime: c.startTime, endTime: c.endTime, type: c.type }))}
-        onClose={() => setShowAddSheet(false)}
+        slotToEdit={slotToEdit}
+        onClose={() => {
+          setShowAddSheet(false);
+          setSlotToEdit(null);
+        }}
       />
 
       <CopyDaySheet
@@ -1693,16 +1736,104 @@ function StudentSchedulePage() {
                   }}
                 >
                   <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, backgroundColor: catStyle.color }} />
-                  <div style={{ paddingLeft: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color, letterSpacing: '0.05em' }}>
-                      {CATEGORY_LABELS[cat]}
-                    </span>
-                    <h2 style={{ fontSize: 17, fontWeight: 700, margin: '4px 0', color: 'var(--text-primary)' }}>
-                      {slot.subject}
-                    </h2>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
-                      Code: {slot.code}
-                    </p>
+                  <div style={{ paddingLeft: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: catStyle.color, letterSpacing: '0.05em' }}>
+                        {CATEGORY_LABELS[cat]}
+                      </span>
+                      <h2 style={{ fontSize: 17, fontWeight: 700, margin: '4px 0', color: 'var(--text-primary)' }}>
+                        {slot.subject}
+                      </h2>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
+                        Code: {slot.code}
+                      </p>
+                    </div>
+
+                    {isCR && (
+                      <DropdownMenu.Root>
+                        <DropdownMenu.Trigger asChild>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              border: '1px solid var(--border-default)',
+                              borderRadius: 8,
+                              padding: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              outline: 'none',
+                              color: 'var(--text-secondary)',
+                            }}
+                            aria-label="More actions"
+                            title="More actions"
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.Content
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              minWidth: 140,
+                              backgroundColor: 'var(--bg-surface-elevated, #1e293b)',
+                              borderRadius: 8,
+                              padding: 4,
+                              boxShadow: '0px 10px 38px -10px rgba(22, 23, 24, 0.35), 0px 10px 20px -15px rgba(22, 23, 24, 0.2)',
+                              border: '1px solid var(--border-default, rgba(255, 255, 255, 0.1))',
+                              zIndex: 1000,
+                            }}
+                            sideOffset={5}
+                            align="end"
+                          >
+                            <DropdownMenu.Item
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCellSlots(null);
+                                setSlotToEdit(slot as any);
+                                setShowAddSheet(true);
+                              }}
+                              style={{
+                                fontSize: '13px',
+                                color: 'var(--text-primary)',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 10px',
+                                cursor: 'pointer',
+                                outline: 'none',
+                              }}
+                            >
+                              <Pencil size={13} color="var(--accent-primary, #6366f1)" />
+                              <span>Edit Slot</span>
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCellSlots(null);
+                                setSlotToDelete(slot);
+                              }}
+                              style={{
+                                fontSize: '13px',
+                                color: '#ef4444',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 10px',
+                                cursor: 'pointer',
+                                outline: 'none',
+                              }}
+                            >
+                              <Trash2 size={13} color="#ef4444" />
+                              <span>Delete Slot</span>
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Root>
+                    )}
                   </div>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingLeft: 8 }}>

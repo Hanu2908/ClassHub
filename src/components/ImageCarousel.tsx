@@ -14,6 +14,7 @@ export const ImageCarousel = React.memo(function ImageCarousel({ images, onImage
   const [activeIndex, setActiveIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [qualityMode, setQualityMode] = useState<'SD' | 'HD'>('SD');
 
   // States to keep track of loaded URLs and loading/error status per image
   const [urls, setUrls] = useState<Record<string, { thumbUrl: string; fullUrl: string }>>({});
@@ -217,7 +218,9 @@ export const ImageCarousel = React.memo(function ImageCarousel({ images, onImage
       >
         {images.map((img, idx) => {
           const path = img.storagePath;
-          const displayUrl = urls[path]?.thumbUrl;
+          const displayUrl = qualityMode === 'HD' 
+            ? (urls[path]?.fullUrl || urls[path]?.thumbUrl) 
+            : (urls[path]?.thumbUrl || urls[path]?.fullUrl);
           const isImgLoading = loading[path];
           const isError = errors[path];
 
@@ -284,6 +287,46 @@ export const ImageCarousel = React.memo(function ImageCarousel({ images, onImage
           );
         })}
       </div>
+
+      {/* Minimal SD / HD Quality Toggle Badge */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setQualityMode((prev) => (prev === 'SD' ? 'HD' : 'SD'));
+        }}
+        title="Toggle SD vs HD quality"
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          zIndex: 50,
+          padding: '3px 8px',
+          borderRadius: '10px',
+          background: qualityMode === 'HD' 
+            ? 'rgba(56, 189, 248, 0.25)' 
+            : 'rgba(15, 23, 42, 0.8)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          border: qualityMode === 'HD' 
+            ? '1px solid rgba(56, 189, 248, 0.5)' 
+            : '1px solid rgba(255, 255, 255, 0.2)',
+          color: qualityMode === 'HD' ? '#38bdf8' : 'rgba(255, 255, 255, 0.85)',
+          fontSize: '10px',
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+        }}
+      >
+        {qualityMode}
+      </button>
 
       {/* Edge Chevron Navigation controls */}
       {images.length > 1 && (

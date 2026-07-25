@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2, ChevronDown, Check } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2, ChevronDown, Check, MoreVertical, Pencil } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import Skeleton from 'react-loading-skeleton';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
+import { parseSharedText } from '../../lib/utils/smartTextParser';
 import { generateGradient } from '../../lib/utils';
 import { logEvent } from '../../lib/analytics';
 
@@ -120,9 +121,14 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
     getShare(shareInboxId).then((entry) => {
       if (!entry) return;
       setFiles(entry.files);
-      setDescription(entry.caption);
+
+      const parsed = parseSharedText(entry.caption, subjectsList);
+      if (parsed.title) setTitle(parsed.title);
+      if (parsed.subjectId) setSubjectId(parsed.subjectId);
+      if (parsed.dueDate) setDueDate(parsed.dueDate.slice(0, 10));
+      setDescription(parsed.body || entry.caption);
     }).catch(() => toast.error('Failed to restore shared files'));
-  }, [open, shareInboxId]);
+  }, [open, shareInboxId, subjectsList]);
 
   const draftLoadedRef = useRef(false);
 
@@ -859,6 +865,12 @@ export default function AssignmentsPage() {
   const [sortBy, setSortBy] = useState<'due' | 'created'>('due');
   const [openingSet, setOpeningSet] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(() => Boolean(location.state?.openCreate));
+
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setCreateOpen(true);
+    }
+  }, [location.state?.openCreate]);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [now] = useState(() => Date.now());
@@ -1307,39 +1319,95 @@ export default function AssignmentsPage() {
                         <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>{a.title}</p>
                       </div>
                       {role === 'cr' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                          <button
-                            id={`edit-assign-${a.id}`}
-                            onClick={() => {
-                              setSelectedAssignment(a);
-                              setEditOpen(true);
-                            }}
-                            style={{
-                              background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.2)',
-                              borderRadius: 10, width: 40, height: 40, cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                            title="Edit assignment"
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                          </button>
-                          <button
-                            id={`del-assign-${a.id}`}
-                            onClick={async () => {
-                              if (confirm('Are you sure you want to delete this assignment?')) {
-                                try { await deleteAssignmentMutation.mutateAsync(a.id); toast.info('Assignment deleted'); } catch { toast.error('Failed to delete'); }
-                              }
-                            }}
-                            style={{
-                              background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
-                              borderRadius: 10, width: 40, height: 40, cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                            title="Delete assignment"
-                          >
-                            <Trash2 size={15} color="var(--status-critical)" />
-                          </button>
-                        </div>
+                        <DropdownMenu.Root>
+                          <DropdownMenu.Trigger asChild>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                border: '1px solid var(--border-default)',
+                                borderRadius: 8,
+                                padding: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                outline: 'none',
+                                color: 'var(--text-secondary)',
+                              }}
+                              aria-label="More actions"
+                              title="More actions"
+                            >
+                              <MoreVertical size={14} />
+                            </button>
+                          </DropdownMenu.Trigger>
+                          <DropdownMenu.Portal>
+                            <DropdownMenu.Content
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                minWidth: 150,
+                                backgroundColor: 'var(--bg-surface-elevated, #1e293b)',
+                                borderRadius: 8,
+                                padding: 4,
+                                boxShadow: '0px 10px 38px -10px rgba(22, 23, 24, 0.35), 0px 10px 20px -15px rgba(22, 23, 24, 0.2)',
+                                border: '1px solid var(--border-default, rgba(255, 255, 255, 0.1))',
+                                zIndex: 1000,
+                              }}
+                              sideOffset={5}
+                              align="end"
+                            >
+                              <DropdownMenu.Item
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedAssignment(a);
+                                  setEditOpen(true);
+                                }}
+                                style={{
+                                  fontSize: '13px',
+                                  color: 'var(--text-primary)',
+                                  borderRadius: 6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8,
+                                  padding: '8px 10px',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                }}
+                              >
+                                <Pencil size={13} color="var(--accent-primary, #6366f1)" />
+                                <span>Edit</span>
+                              </DropdownMenu.Item>
+                              <DropdownMenu.Item
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (confirm('Are you sure you want to delete this assignment?')) {
+                                    try {
+                                      await deleteAssignmentMutation.mutateAsync(a.id);
+                                      toast.info('Assignment deleted');
+                                    } catch {
+                                      toast.error('Failed to delete');
+                                    }
+                                  }
+                                }}
+                                style={{
+                                  fontSize: '13px',
+                                  color: '#ef4444',
+                                  borderRadius: 6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8,
+                                  padding: '8px 10px',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                }}
+                              >
+                                <Trash2 size={13} color="#ef4444" />
+                                <span>Delete</span>
+                              </DropdownMenu.Item>
+                            </DropdownMenu.Content>
+                          </DropdownMenu.Portal>
+                        </DropdownMenu.Root>
                       ) : null}
                     </div>
                     <p className="t-caption" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{a.subjectCode}</p>

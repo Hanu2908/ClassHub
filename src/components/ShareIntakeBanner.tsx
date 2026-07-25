@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Megaphone, ClipboardList, Trash2, FileText, Send, HelpCircle } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Megaphone, ClipboardList, Trash2, FileText, Send, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Clock, AlertTriangle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
 import { useSubjects } from '../hooks/useSubjects';
 import { listPendingShares, deleteShare, type ShareInboxEntry } from '../lib/shareInbox';
 import { parseSharedText } from '../lib/utils/smartTextParser';
 import { toast } from 'sonner';
+import { haptics } from '../lib/haptics';
 
 export function ShareIntakeBanner() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ export function ShareIntakeBanner() {
   const [pendingShares, setPendingShares] = useState<ShareInboxEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const fetchShares = async () => {
+  const fetchShares = useCallback(async () => {
     try {
       const shares = await listPendingShares();
       setPendingShares(shares);
@@ -26,13 +27,13 @@ export function ShareIntakeBanner() {
     } catch (e) {
       console.error('[ShareIntakeBanner] Failed to list pending shares:', e);
     }
-  };
+  }, [currentIndex]);
 
   useEffect(() => {
     fetchShares();
-    const interval = setInterval(fetchShares, 3000); // Check every 3s
+    const interval = setInterval(fetchShares, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchShares]);
 
   // Listen to URL search param ?share_id=
   useEffect(() => {
@@ -54,6 +55,7 @@ export function ShareIntakeBanner() {
   const fileCount = currentShare.files.length;
 
   const handleDiscard = async () => {
+    haptics.lightClick();
     try {
       await deleteShare(currentShare.id);
       toast.info('Shared item discarded');
@@ -64,18 +66,21 @@ export function ShareIntakeBanner() {
   };
 
   const handleOpenAnnouncement = () => {
+    haptics.lightClick();
     navigate('/app/announcements', {
       state: { openCreate: true, shareInboxId: currentShare.id }
     });
   };
 
   const handleOpenAssignment = () => {
+    haptics.lightClick();
     navigate('/app/assignments', {
       state: { openCreate: true, shareInboxId: currentShare.id }
     });
   };
 
   const handleStudentQueue = async () => {
+    haptics.heavyClick();
     toast.success('Draft submitted to CR review queue ✓', {
       description: 'Your CR will review and publish this to the section feed.'
     });
@@ -83,81 +88,170 @@ export function ShareIntakeBanner() {
     await fetchShares();
   };
 
+  const handleNext = () => {
+    if (currentIndex < pendingShares.length - 1) {
+      haptics.lightClick();
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      haptics.lightClick();
+      setCurrentIndex(prev => prev - 1);
+    }
+  };
+
   return (
     <div
       style={{
         position: 'fixed',
-        bottom: 'calc(68px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
         left: 16,
         right: 16,
         maxWidth: 480,
         margin: '0 auto',
         zIndex: 1000,
-        background: 'rgba(18, 21, 34, 0.95)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid rgba(99, 102, 241, 0.35)',
+        background: 'rgba(18, 21, 34, 0.94)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        border: '1px solid rgba(99, 102, 241, 0.4)',
         borderRadius: 'var(--radius-lg, 16px)',
-        padding: '14px 16px',
-        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(99, 102, 241, 0.15)',
+        padding: '12px 14px',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45), 0 0 20px rgba(99, 102, 241, 0.2)',
         animation: 'fadeSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
       }}
     >
-      {/* Header Row */}
+      {/* Header Bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            📥 SHARED TO CLASSHUB
-          </span>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 12,
+            background: 'rgba(99, 102, 241, 0.15)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            color: 'var(--accent-primary, #6366f1)',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.04em'
+          }}>
+            <Sparkles size={12} /> SHARED INTAKE
+          </div>
           {pendingShares.length > 1 && (
-            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-primary)', padding: '1px 6px', borderRadius: 10 }}>
-              {currentIndex + 1} of {pendingShares.length}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <button
+                onClick={handlePrev}
+                disabled={currentIndex === 0}
+                style={{
+                  background: 'none', border: 'none', color: 'var(--text-secondary)',
+                  cursor: currentIndex === 0 ? 'default' : 'pointer', opacity: currentIndex === 0 ? 0.3 : 0.9,
+                  padding: 2, display: 'flex', alignItems: 'center', outline: 'none',
+                }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', padding: '0 2px' }}>
+                {currentIndex + 1}/{pendingShares.length}
+              </span>
+              <button
+                onClick={handleNext}
+                disabled={currentIndex === pendingShares.length - 1}
+                style={{
+                  background: 'none', border: 'none', color: 'var(--text-secondary)',
+                  cursor: currentIndex === pendingShares.length - 1 ? 'default' : 'pointer', opacity: currentIndex === pendingShares.length - 1 ? 0.3 : 0.9,
+                  padding: 2, display: 'flex', alignItems: 'center', outline: 'none',
+                }}
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
           )}
         </div>
+
         <button
           onClick={handleDiscard}
           style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--status-critical)',
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            borderRadius: 6,
+            color: 'var(--status-critical, #ef4444)',
             cursor: 'pointer',
-            padding: 4,
+            padding: '3px 8px',
             display: 'flex',
             alignItems: 'center',
-            opacity: 0.8,
+            gap: 4,
+            fontSize: 11,
+            fontWeight: 600,
             outline: 'none',
           }}
           title="Discard shared item"
           aria-label="Discard shared item"
         >
-          <Trash2 size={15} />
+          <Trash2 size={13} />
+          <span>Discard</span>
         </button>
       </div>
 
-      {/* Item Summary Content */}
+      {/* Item Details Content */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-        {firstFile ? (
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255, 255, 255, 0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <FileText size={18} color="var(--accent-primary)" />
-          </div>
-        ) : null}
+        <div style={{
+          width: 38, height: 38, borderRadius: 10,
+          background: 'rgba(99, 102, 241, 0.12)',
+          border: '1px solid rgba(99, 102, 241, 0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+        }}>
+          {firstFile ? <FileText size={18} color="var(--accent-primary, #6366f1)" /> : <Megaphone size={18} color="var(--accent-primary, #6366f1)" />}
+        </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {parsed.title || firstFile?.name || 'Shared Content'}
           </p>
           <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {firstFile ? `${firstFile.name} ${fileCount > 1 ? `(+${fileCount - 1} more)` : ''}` : parsed.body}
+            {firstFile ? `${firstFile.name} ${fileCount > 1 ? `(+${fileCount - 1} files)` : ''}` : parsed.body}
           </p>
         </div>
+      </div>
 
+      {/* Smart Auto-Detection Badges Row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         {parsed.matchedSubjectName && (
-          <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(52, 201, 123, 0.15)', color: 'var(--status-safe)', border: '1px solid rgba(52, 201, 123, 0.3)', padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            background: 'rgba(52, 201, 123, 0.15)',
+            color: 'var(--status-safe, #10b981)',
+            border: '1px solid rgba(52, 201, 123, 0.3)',
+            padding: '2px 6px', borderRadius: 5,
+            display: 'flex', alignItems: 'center', gap: 3
+          }}>
             {parsed.matchedSubjectName} ✨
+          </span>
+        )}
+
+        {parsed.dueDate && (
+          <span style={{
+            fontSize: 10, fontWeight: 600,
+            background: 'rgba(56, 189, 248, 0.12)',
+            color: '#38bdf8',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            padding: '2px 6px', borderRadius: 5,
+            display: 'flex', alignItems: 'center', gap: 3
+          }}>
+            <Clock size={10} /> Due: {new Date(parsed.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+          </span>
+        )}
+
+        {parsed.priority === 'critical' && (
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#ef4444',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            padding: '2px 6px', borderRadius: 5,
+            display: 'flex', alignItems: 'center', gap: 3
+          }}>
+            <AlertTriangle size={10} /> Urgent
           </span>
         )}
       </div>
@@ -168,9 +262,9 @@ export function ShareIntakeBanner() {
           <button
             onClick={handleOpenAnnouncement}
             style={{
-              padding: '8px 12px',
+              padding: '9px 12px',
               borderRadius: 'var(--radius-md, 8px)',
-              background: 'var(--accent-primary)',
+              background: 'var(--accent-primary, #6366f1)',
               border: 'none',
               color: '#fff',
               fontSize: 12,
@@ -181,6 +275,7 @@ export function ShareIntakeBanner() {
               justifyContent: 'center',
               gap: 6,
               outline: 'none',
+              boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
             }}
           >
             <Megaphone size={14} /> Announcement
@@ -188,10 +283,10 @@ export function ShareIntakeBanner() {
           <button
             onClick={handleOpenAssignment}
             style={{
-              padding: '8px 12px',
+              padding: '9px 12px',
               borderRadius: 'var(--radius-md, 8px)',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid var(--border-default)',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--border-default, rgba(255, 255, 255, 0.12))',
               color: 'var(--text-primary)',
               fontSize: 12,
               fontWeight: 600,
@@ -211,9 +306,9 @@ export function ShareIntakeBanner() {
           <button
             onClick={handleStudentQueue}
             style={{
-              padding: '8px 12px',
+              padding: '9px 12px',
               borderRadius: 'var(--radius-md, 8px)',
-              background: 'var(--accent-primary)',
+              background: 'var(--accent-primary, #6366f1)',
               border: 'none',
               color: '#fff',
               fontSize: 12,
@@ -231,10 +326,10 @@ export function ShareIntakeBanner() {
           <button
             onClick={handleOpenAnnouncement}
             style={{
-              padding: '8px 12px',
+              padding: '9px 12px',
               borderRadius: 'var(--radius-md, 8px)',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid var(--border-default)',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--border-default, rgba(255, 255, 255, 0.12))',
               color: 'var(--text-primary)',
               fontSize: 12,
               fontWeight: 600,

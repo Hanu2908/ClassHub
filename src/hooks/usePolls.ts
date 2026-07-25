@@ -522,3 +522,28 @@ export function useVotePoll() {
     },
   });
 }
+
+export function useUpdatePoll() {
+  const qc = useQueryClient();
+  const { sectionId } = useAuthContext();
+
+  return useMutation({
+    mutationFn: async (input: { id: string; question: string; closesAt?: string | null; isActive?: boolean }) => {
+      const { error } = await supabase
+        .from('polls')
+        .update({
+          question_text: input.question,
+          ...(input.closesAt !== undefined ? { expires_at: input.closesAt } : {}),
+          ...(input.isActive !== undefined ? { is_active: input.isActive } : {}),
+        })
+        .eq('id', input.id)
+        .eq('section_id', sectionId!);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['polls'] });
+    },
+  });
+}
+

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, AlertTriangle, BarChart2, Trash2, X, Circle, CircleDot, Square, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Plus, AlertTriangle, BarChart2, Trash2, X, Circle, CircleDot, Square, CheckSquare, MoreVertical, Pencil } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { useAppStore } from '../../store/appStore';
 import type { Poll } from '../../store/appStore';
 import { toast } from 'sonner';
-import { usePolls, useActionablePollVotes, usePollsRealtime, useDeletePoll, useVotePoll, useCreatePoll } from '../../hooks/usePolls';
+import { usePolls, useActionablePollVotes, usePollsRealtime, useDeletePoll, useVotePoll, useCreatePoll, useUpdatePoll } from '../../hooks/usePolls';
 import { useSchedule } from '../../hooks/useSchedule';
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -49,7 +50,7 @@ function timeLeft(iso: string): string {
   return days > 0 ? `Closes in ${days}d ${hrs}h` : `Closes in ${hrs}h`;
 }
 
-function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id: string) => void; totalStudents: number }) {
+function PollCard({ poll, onDelete, onEdit, totalStudents }: { poll: Poll; onDelete: (id: string) => void; onEdit?: (poll: Poll) => void; totalStudents: number }) {
   const role = useAppStore(s => s.role);
   const authUser = useAppStore(s => s.authUser);
   const voteMutation = useVotePoll();
@@ -128,19 +129,14 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
         `}</style>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-          {poll.type === 'actionable' && (
-            <span className="badge badge-warning">
-              <AlertTriangle size={10} /> CR-Visible
-            </span>
-          )}
-          <span className="badge badge-info">
-            {poll.type === 'anonymous' ? 'Anonymous' : 'Actionable'}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span className={`badge ${poll.type === 'anonymous' ? 'badge-info' : 'badge-warning'}`}>
+            {poll.type === 'anonymous' ? 'Anonymous Poll' : 'Actionable Poll'}
           </span>
-          {poll.allowMultiple && (
-            <span className="badge badge-safe" style={{ background: 'rgba(52,201,123,0.1)', border: '1px solid rgba(52,201,123,0.2)', color: 'var(--status-safe)' }}>
-              Multiple Choice
+          {poll.type === 'actionable' && role === 'cr' && (
+            <span className="badge badge-critical" style={{ fontSize: '10px' }}>
+              CR Viewable
             </span>
           )}
         </div>
@@ -149,19 +145,88 @@ function PollCard({ poll, onDelete, totalStudents }: { poll: Poll; onDelete: (id
             {isClosed ? 'Closed' : timeLeft(poll.closesAt)}
           </span>
           {role === 'cr' && (
-            <button
-              id={`del-poll-${poll.id}`}
-              onClick={() => onDelete(poll.id)}
-              style={{
-                background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
-                borderRadius: 8, padding: '5px', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s',
-              }}
-              title="Delete poll"
-            >
-              <Trash2 size={13} color="var(--status-critical)" />
-            </button>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 8,
+                    padding: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    outline: 'none',
+                    color: 'var(--text-secondary)',
+                  }}
+                  aria-label="More actions"
+                  title="More actions"
+                >
+                  <MoreVertical size={14} />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    minWidth: 140,
+                    backgroundColor: 'var(--bg-surface-elevated, #1e293b)',
+                    borderRadius: 8,
+                    padding: 4,
+                    boxShadow: '0px 10px 38px -10px rgba(22, 23, 24, 0.35), 0px 10px 20px -15px rgba(22, 23, 24, 0.2)',
+                    border: '1px solid var(--border-default, rgba(255, 255, 255, 0.1))',
+                    zIndex: 1000,
+                  }}
+                  sideOffset={5}
+                  align="end"
+                >
+                  {onEdit && (
+                    <DropdownMenu.Item
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(poll);
+                      }}
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--text-primary)',
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '8px 10px',
+                        cursor: 'pointer',
+                        outline: 'none',
+                      }}
+                    >
+                      <Pencil size={13} color="var(--accent-primary, #6366f1)" />
+                      <span>Edit Poll</span>
+                    </DropdownMenu.Item>
+                  )}
+                  <DropdownMenu.Item
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(poll.id);
+                    }}
+                    style={{
+                      fontSize: '13px',
+                      color: '#ef4444',
+                      borderRadius: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px 10px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <Trash2 size={13} color="#ef4444" />
+                    <span>Delete Poll</span>
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           )}
         </div>
       </div>
@@ -796,6 +861,7 @@ export default function PollsPage() {
   const location = useLocation();
   const [tab, setTab] = useState<PollTab>('active');
   const [showCreateSheet, setShowCreateSheet] = useState(() => Boolean(location.state?.openCreate));
+  const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   
   const authUser = useAppStore(s => s.authUser);
   const sectionId = authUser?.sectionId ?? null;
@@ -1052,7 +1118,7 @@ export default function PollsPage() {
                     transition: 'box-shadow 0.5s ease-out'
                   } : {}}
                 >
-                  <PollCard poll={p} onDelete={handleDelete} totalStudents={totalStudents} />
+                  <PollCard poll={p} onDelete={handleDelete} onEdit={(poll) => setEditingPoll(poll)} totalStudents={totalStudents} />
                 </div>
               );
             })
@@ -1067,7 +1133,139 @@ export default function PollsPage() {
 
       <CreatePollSheet open={showCreateSheet} onClose={() => setShowCreateSheet(false)} />
 
+      <EditPollSheet open={!!editingPoll} poll={editingPoll} onClose={() => setEditingPoll(null)} />
+
       <NavBar />
     </div>
+  );
+}
+
+// ── Edit Poll Sheet ──────────────────────────────────────────────────────────
+
+function EditPollSheet({ open, poll, onClose }: { open: boolean; poll: Poll | null; onClose: () => void }) {
+  const updatePoll = useUpdatePoll();
+  const [question, setQuestion] = useState('');
+  const [closesAt, setClosesAt] = useState('');
+  const [isActive, setIsActive] = useState(true);
+
+  const formatIsoForInput = (isoStr?: string | null) => {
+    if (!isoStr) return '';
+    const date = new Date(isoStr);
+    if (isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  useEffect(() => {
+    if (poll) {
+      setQuestion(poll.question || '');
+      setClosesAt(formatIsoForInput(poll.closesAt));
+      setIsActive(poll.status !== 'closed');
+    }
+  }, [poll]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!poll || !question.trim()) return;
+    try {
+      await updatePoll.mutateAsync({
+        id: poll.id,
+        question: question.trim(),
+        closesAt: closesAt ? new Date(closesAt).toISOString() : null,
+        isActive,
+      });
+      toast.success('Poll updated successfully! ✓');
+      onClose();
+    } catch {
+      toast.error('Failed to update poll');
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', boxSizing: 'border-box',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+    outline: 'none', fontSize: 13,
+  };
+  const labelStyle: React.CSSProperties = {
+    color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600,
+  };
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Edit Poll">
+      <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
+        <div>
+          <label style={labelStyle}>Question *</label>
+          <input
+            style={inputStyle}
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            placeholder="Poll question"
+            required
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Closing Date-Time</label>
+          <input
+            type="datetime-local"
+            style={inputStyle}
+            value={closesAt}
+            onChange={e => setClosesAt(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Poll Status</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => setIsActive(true)}
+              style={{
+                flex: 1, padding: '8px 4px', fontSize: 12, fontWeight: 600, borderRadius: 8,
+                border: isActive ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
+                background: isActive ? 'rgba(52, 201, 123, 0.15)' : 'var(--bg-elevated)',
+                color: isActive ? 'var(--status-safe)' : 'var(--text-secondary)',
+                cursor: 'pointer', outline: 'none',
+              }}
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsActive(false)}
+              style={{
+                flex: 1, padding: '8px 4px', fontSize: 12, fontWeight: 600, borderRadius: 8,
+                border: !isActive ? '1px solid #ef4444' : '1px solid var(--border-default)',
+                background: !isActive ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-elevated)',
+                color: !isActive ? '#ef4444' : 'var(--text-secondary)',
+                cursor: 'pointer', outline: 'none',
+              }}
+            >
+              Closed
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={updatePoll.isPending}
+          className="t-button"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '13px', background: updatePoll.isPending ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+            border: 'none', borderRadius: 'var(--radius-md)', cursor: updatePoll.isPending ? 'not-allowed' : 'pointer',
+            color: updatePoll.isPending ? 'var(--text-muted)' : '#fff',
+            transition: 'all 0.2s', marginTop: 8, fontWeight: 600,
+          }}
+        >
+          {updatePoll.isPending ? 'Saving...' : 'Save Changes'}
+        </button>
+      </form>
+    </BottomSheet>
   );
 }

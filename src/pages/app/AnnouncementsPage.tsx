@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2, Filter as FilterIcon, Image } from 'lucide-react';
+import { ArrowLeft, Plus, Check, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2, Filter as FilterIcon, Image, MoreVertical, Pencil } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -11,7 +11,7 @@ import { useAppStore, isExpired, type Announcement, type Attachment } from '../.
 import { toast } from 'sonner';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import Skeleton from 'react-loading-skeleton';
-import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useAcknowledge } from '../../hooks/useAnnouncements';
+import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useUpdateAnnouncement, useAcknowledge } from '../../hooks/useAnnouncements';
 import { useSubjects, type SubjectInfo } from '../../hooks/useSubjects';
 import { useSectionMembers, useSection } from '../../hooks/useSectionMembers';
 import { AnnouncementQAFooter, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
@@ -23,6 +23,7 @@ const ImageZoomModal = lazy(() => import('../../components/ImageZoomModal'));
 import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
+import { parseSharedText } from '../../lib/utils/smartTextParser';
 import RichTextBody from '../../components/RichTextBody';
 import { matchSubject, getSubjectAbbreviation } from '../../lib/utils/announcements';
 import { HighlightText } from '../../components/HighlightText';
@@ -152,9 +153,18 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
     getShare(shareInboxId).then((entry) => {
       if (!entry) return;
       setFiles(entry.files);
-      setBody(entry.caption);
+
+      const parsed = parseSharedText(entry.caption, subjects);
+      if (parsed.title) setTitle(parsed.title);
+      if (parsed.subjectId) setSelectedSubjectId(parsed.subjectId);
+      if (parsed.priority === 'critical') setPriority('critical');
+      if (parsed.dueDate) {
+        setHasDeadline(true);
+        setDeadlineDate(parsed.dueDate.slice(0, 10));
+      }
+      setBody(parsed.body || entry.caption);
     }).catch(() => toast.error('Failed to restore shared files'));
-  }, [shareInboxId]);
+  }, [shareInboxId, subjects]);
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', boxSizing: 'border-box',
@@ -661,6 +671,7 @@ interface AnnouncementCardComponentProps {
   setTrackingAnnouncement: (ann: Announcement | null) => void;
   setOpenCommentsAnnId: (id: string | null) => void;
   onShare: (ann: Announcement) => void;
+  onEdit?: (ann: Announcement) => void;
   searchQuery: string;
 }
 
@@ -676,6 +687,7 @@ export function AnnouncementCardComponent({
   setTrackingAnnouncement,
   setOpenCommentsAnnId,
   onShare,
+  onEdit,
   searchQuery
 }: AnnouncementCardComponentProps) {
   const authUser = useAppStore(s => s.authUser);
@@ -801,27 +813,89 @@ export function AnnouncementCardComponent({
               <span>{ackCountsMap[ann.id] || 0}/{totalStudentsCount} ✓</span>
             </button>
 
-            <button
-              id={`del-ann-${ann.id}`}
-              onClick={() => setPendingDeleteId(ann.id)}
-              className="btn-del-ann"
-              style={{
-                background: 'rgba(255,68,68,0.08)', 
-                border: '1px solid rgba(255,68,68,0.2)',
-                borderRadius: 8, 
-                padding: '6px', 
-                cursor: 'pointer',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                flexShrink: 0,
-                outline: 'none',
-              }}
-              aria-label="Delete announcement"
-              title="Delete announcement"
-            >
-              <Trash2 size={13} color="var(--status-critical)" />
-            </button>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 8,
+                    padding: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    outline: 'none',
+                    color: 'var(--text-secondary)',
+                  }}
+                  aria-label="More actions"
+                  title="More actions"
+                >
+                  <MoreVertical size={14} />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    minWidth: 150,
+                    backgroundColor: 'var(--bg-surface-elevated, #1e293b)',
+                    borderRadius: 8,
+                    padding: 4,
+                    boxShadow: '0px 10px 38px -10px rgba(22, 23, 24, 0.35), 0px 10px 20px -15px rgba(22, 23, 24, 0.2)',
+                    border: '1px solid var(--border-default, rgba(255, 255, 255, 0.1))',
+                    zIndex: 1000,
+                  }}
+                  sideOffset={5}
+                  align="end"
+                >
+                  {onEdit && (
+                    <DropdownMenu.Item
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(ann);
+                      }}
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--text-primary)',
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '8px 10px',
+                        cursor: 'pointer',
+                        outline: 'none',
+                      }}
+                    >
+                      <Pencil size={13} color="var(--accent-primary, #6366f1)" />
+                      <span>Edit</span>
+                    </DropdownMenu.Item>
+                  )}
+                  <DropdownMenu.Item
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPendingDeleteId(ann.id);
+                    }}
+                    style={{
+                      fontSize: '13px',
+                      color: '#ef4444',
+                      borderRadius: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px 10px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <Trash2 size={13} color="#ef4444" />
+                    <span>Delete</span>
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </div>
         )}
       </div>
@@ -1272,6 +1346,12 @@ export default function AnnouncementsPage() {
   };
 
   const [showCreate, setShowCreate] = useState(location.state?.openCreate || false);
+
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setShowCreate(true);
+    }
+  }, [location.state?.openCreate]);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { data: subjects = [] } = useSubjects({
@@ -1317,6 +1397,8 @@ export default function AnnouncementsPage() {
   }, [trackingAnnouncement]);
   // Pending delete target state for confirmation dialog
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  // Editing announcement state for inline edit sheet
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [highlightId] = useState<string | null>(() => new URLSearchParams(location.search).get('highlight'));
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
@@ -2524,6 +2606,7 @@ export default function AnnouncementsPage() {
                         setTrackingAnnouncement={setTrackingAnnouncement}
                         setOpenCommentsAnnId={setOpenCommentsAnnId}
                         onShare={handleShareClick}
+                        onEdit={(ann) => setEditingAnnouncement(ann)}
                         searchQuery={searchQuery}
                       />
                     )}
@@ -2615,7 +2698,189 @@ export default function AnnouncementsPage() {
         )}
       </BottomSheet>
 
+      {/* Edit Announcement Sheet */}
+      <EditAnnouncementSheet
+        open={!!editingAnnouncement}
+        announcement={editingAnnouncement}
+        onClose={() => setEditingAnnouncement(null)}
+      />
+
       <NavBar />
     </div>
+  );
+}
+
+function EditAnnouncementSheet({ open, announcement, onClose }: { open: boolean; announcement: Announcement | null; onClose: () => void }) {
+  const updateAnn = useUpdateAnnouncement();
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [priority, setPriority] = useState<'general' | 'critical'>('general');
+  const [targetBatch, setTargetBatch] = useState<'all' | '1' | '2'>('all');
+  const [deadline, setDeadline] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+
+  const formatIsoForInput = (isoStr?: string | null) => {
+    if (!isoStr) return '';
+    const date = new Date(isoStr);
+    if (isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  useEffect(() => {
+    if (announcement) {
+      setTitle(announcement.title || '');
+      setBody(announcement.body || '');
+      setPriority(announcement.priority === 'critical' ? 'critical' : 'general');
+      setTargetBatch((announcement.targetBatch as any) || 'all');
+      setDeadline(formatIsoForInput(announcement.deadline));
+      setExpiresAt(formatIsoForInput(announcement.expiresAt));
+    }
+  }, [announcement]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!announcement || !title.trim()) return;
+    try {
+      await updateAnn.mutateAsync({
+        id: announcement.id,
+        title: title.trim(),
+        message: body.trim(),
+        priority,
+        targetBatch: targetBatch === 'all' ? null : targetBatch,
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+      });
+      toast.success('Announcement updated successfully! ✓');
+      onClose();
+    } catch {
+      toast.error('Failed to update announcement');
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', boxSizing: 'border-box',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+    outline: 'none', fontSize: 13,
+  };
+  const labelStyle: React.CSSProperties = {
+    color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600,
+  };
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Edit Announcement">
+      <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
+        <div>
+          <label style={labelStyle}>Title *</label>
+          <input
+            style={inputStyle}
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Announcement title"
+            required
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Body / Content</label>
+          <textarea
+            style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }}
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            placeholder="Announcement details & instructions..."
+          />
+        </div>
+
+        {/* Priority & Target Batch */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={labelStyle}>Priority</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => setPriority('general')}
+                style={{
+                  flex: 1, padding: '8px 4px', fontSize: 12, fontWeight: 600, borderRadius: 8,
+                  border: priority === 'general' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                  background: priority === 'general' ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-elevated)',
+                  color: priority === 'general' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer', outline: 'none',
+                }}
+              >
+                General
+              </button>
+              <button
+                type="button"
+                onClick={() => setPriority('critical')}
+                style={{
+                  flex: 1, padding: '8px 4px', fontSize: 12, fontWeight: 600, borderRadius: 8,
+                  border: priority === 'critical' ? '1px solid #ef4444' : '1px solid var(--border-default)',
+                  background: priority === 'critical' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-elevated)',
+                  color: priority === 'critical' ? '#ef4444' : 'var(--text-secondary)',
+                  cursor: 'pointer', outline: 'none',
+                }}
+              >
+                Critical 🚨
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Target Batch</label>
+            <select
+              style={inputStyle}
+              value={targetBatch}
+              onChange={e => setTargetBatch(e.target.value as any)}
+            >
+              <option value="all">Full Section (All)</option>
+              <option value="1">Batch B1</option>
+              <option value="2">Batch B2</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Deadline & Expiration */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={labelStyle}>Deadline Date-Time</label>
+            <input
+              type="datetime-local"
+              style={inputStyle}
+              value={deadline}
+              onChange={e => setDeadline(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Expiration Date-Time</label>
+            <input
+              type="datetime-local"
+              style={inputStyle}
+              value={expiresAt}
+              onChange={e => setExpiresAt(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={updateAnn.isPending}
+          className="t-button"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '13px', background: updateAnn.isPending ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+            border: 'none', borderRadius: 'var(--radius-md)', cursor: updateAnn.isPending ? 'not-allowed' : 'pointer',
+            color: updateAnn.isPending ? 'var(--text-muted)' : '#fff',
+            transition: 'all 0.2s', marginTop: 8, fontWeight: 600,
+          }}
+        >
+          {updateAnn.isPending ? 'Saving...' : 'Save Changes'}
+        </button>
+      </form>
+    </BottomSheet>
   );
 }

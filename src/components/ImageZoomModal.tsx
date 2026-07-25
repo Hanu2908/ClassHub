@@ -58,6 +58,7 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
     setDisplayUrl(targetUrl);
 
     if (qualityMode === 'HD') {
+      setIsFullLoaded(activeImage.thumbUrl === activeImage.fullUrl);
       const img = new Image();
       img.onload = () => {
         if (images[currentIndex] === activeImage) {
@@ -65,6 +66,8 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
         }
       };
       img.src = activeImage.fullUrl;
+    } else {
+      setIsFullLoaded(true);
     }
   }, [currentIndex, images, qualityMode]);
 
@@ -517,29 +520,27 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
           <ZoomIn size={18} />
         </button>
 
-        {/* Explicit SD / HD Quality Toggle */}
+        {/* Minimal SD / HD Quality Toggle */}
         <button
           onClick={() => setQualityMode(prev => prev === 'SD' ? 'HD' : 'SD')}
-          title="Toggle SD (Fast Thumbnail) vs HD (1600px Compressed WebP)"
+          title="Toggle SD vs HD quality"
           style={{
-            background: qualityMode === 'HD' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.08)',
-            border: `1px solid ${qualityMode === 'HD' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.15)'}`,
-            color: qualityMode === 'HD' ? '#38bdf8' : '#94a3b8',
+            background: qualityMode === 'HD' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+            border: `1px solid ${qualityMode === 'HD' ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
+            color: qualityMode === 'HD' ? '#38bdf8' : 'rgba(255, 255, 255, 0.85)',
             cursor: 'pointer',
-            fontSize: 11,
-            fontWeight: 800,
-            padding: '3px 10px',
-            borderRadius: 12,
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            padding: '3px 8px',
+            borderRadius: 10,
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
+            justifyContent: 'center',
             transition: 'all var(--transition-fast)'
           }}
         >
-          <span>{qualityMode}</span>
-          <span style={{ fontSize: 9, opacity: 0.75 }}>
-            {qualityMode === 'HD' ? 'Sharp' : 'Fast'}
-          </span>
+          {qualityMode}
         </button>
 
         {/* HD loading indicator */}
