@@ -794,7 +794,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
           touchAction: 'pan-y',
           cursor: 'pointer',
         }}
-        onClick={(e) => {
+        onClick={() => {
           if (!hasMovedRef.current && !isSnappedRef.current && onSelect) {
             onSelect(cls);
           }
