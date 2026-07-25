@@ -2632,6 +2632,9 @@ export default function AnnouncementsPage() {
         onClose={() => {
           setShowCreate(false);
           setActiveTab('active');
+          if (location.state?.openCreate || location.state?.shareInboxId) {
+            navigate(location.pathname, { replace: true, state: {} });
+          }
         }} 
       />
       

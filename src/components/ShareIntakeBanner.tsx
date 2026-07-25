@@ -45,7 +45,14 @@ export function ShareIntakeBanner() {
     }
   }, [location.search, pendingShares]);
 
-  if (pendingShares.length === 0) return null;
+  if (
+    pendingShares.length === 0 ||
+    location.pathname.includes('/share-intake') ||
+    Boolean(location.state?.openCreate) ||
+    Boolean(location.state?.shareInboxId)
+  ) {
+    return null;
+  }
 
   const currentShare = pendingShares[currentIndex] || pendingShares[0];
   if (!currentShare) return null;

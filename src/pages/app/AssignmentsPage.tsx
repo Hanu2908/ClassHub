@@ -1520,7 +1520,16 @@ export default function AssignmentsPage() {
       </main>
 
       {/* Create assignment sheet (CR only) */}
-      <CreateAssignmentSheet open={createOpen} shareInboxId={location.state?.shareInboxId} onClose={() => setCreateOpen(false)} />
+      <CreateAssignmentSheet 
+        open={createOpen} 
+        shareInboxId={location.state?.shareInboxId} 
+        onClose={() => {
+          setCreateOpen(false);
+          if (location.state?.openCreate || location.state?.shareInboxId) {
+            navigate(location.pathname, { replace: true, state: {} });
+          }
+        }} 
+      />
 
       {/* Edit assignment sheet (CR only) */}
       {editOpen && selectedAssignment && (
