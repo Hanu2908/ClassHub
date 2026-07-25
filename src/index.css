@@ -647,13 +647,12 @@ body {
 /* ── Bottom Sheet — glassmorphism ── */
 /* ── Bottom Sheet Backdrop ── */
 .sheet-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
-  z-index: 200;
+  z-index: 1000;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  opacity: 0;
 }
 
 /* ── Bottom Sheet Panel ── */
@@ -670,7 +669,7 @@ body {
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
   max-height: 85vh;
   overflow-y: auto;
-  z-index: 201;
+  z-index: 1001;
   padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 

@@ -21,10 +21,7 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
-      // Set the initial position of offsetY to the screen height to start from the bottom,
-      // then animate it back to 0 for a smooth slide-up effect.
-      offsetY.set(window.innerHeight);
-      animate(offsetY, 0, { type: 'spring', stiffness: 220, damping: 25 });
+      offsetY.set(0);
     } else {
       document.body.style.overflow = '';
     }
@@ -127,6 +124,8 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
           key="sheet-panel"
           ref={panelRef}
           className="sheet-panel"
+          initial={{ y: '100%', x: '-50%' }}
+          animate={{ y: 0, x: '-50%' }}
           exit={{ y: '100%', x: '-50%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 220 }}
           style={{
