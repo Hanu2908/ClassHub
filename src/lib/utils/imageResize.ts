@@ -11,9 +11,69 @@ export const THUMB_MAX_WIDTH = 800;
 export const THUMB_QUALITY = 0.75;
 export const THUMB_SUFFIX = '.thumb.webp';
 
+export const COMPRESSED_MAX_WIDTH = 1600;
+export const COMPRESSED_QUALITY = 0.8;
+
 /** Derive the thumbnail storage path from the original path. */
 export function getThumbPath(storagePath: string): string {
   return `${storagePath}${THUMB_SUFFIX}`;
+}
+
+/**
+ * Auto-compress an image File down to WebP format (max width 1600px, quality 0.8)
+ * before upload. Reduces 5MB–10MB photos to ~150KB–300KB.
+ * Returns the compressed File object, or the original File if non-image/error.
+ */
+export async function compressImage(
+  file: File,
+  maxWidth: number = COMPRESSED_MAX_WIDTH,
+  quality: number = COMPRESSED_QUALITY
+): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  
+  try {
+    const bitmap = await createImageBitmap(file);
+    const { width: natW, height: natH } = bitmap;
+
+    // Calculate target width/height
+    const targetW = natW > maxWidth ? maxWidth : natW;
+    const targetH = natW > maxWidth ? Math.round((natH / natW) * maxWidth) : natH;
+
+    let blob: Blob | null = null;
+
+    if (typeof OffscreenCanvas !== 'undefined') {
+      const oc = new OffscreenCanvas(targetW, targetH);
+      const ctx = oc.getContext('2d');
+      if (!ctx) { bitmap.close(); return file; }
+      ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+      blob = await oc.convertToBlob({ type: 'image/webp', quality });
+    } else {
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { bitmap.close(); return file; }
+      ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+      blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/webp', quality);
+      });
+    }
+
+    bitmap.close();
+
+    if (!blob) return file;
+
+    const baseName = file.name.replace(/\.[^/.]+$/, '');
+    const compressedFileName = `${baseName}.webp`;
+
+    return new File([blob], compressedFileName, {
+      type: 'image/webp',
+      lastModified: Date.now(),
+    });
+  } catch (err) {
+    console.warn('[imageResize] Client-side image compression failed, falling back to original:', err);
+    return file;
+  }
 }
 
 // ── Option C: Upload-time thumbnail generation ─────────────────────────────────

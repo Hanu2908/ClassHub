@@ -27,15 +27,18 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
   // Sync state just for rendering controls (e.g. enabling/disabling zoom buttons)
   const [currentScale, setCurrentScale] = useState(1);
 
+  // SD / HD Quality Mode State
+  const [qualityMode, setQualityMode] = useState<'SD' | 'HD'>('HD');
+
   // Progressive loading: start with thumb, swap to full when ready
-  const [displayUrl, setDisplayUrl] = useState(currentImage.thumbUrl);
+  const [displayUrl, setDisplayUrl] = useState(qualityMode === 'SD' ? currentImage.thumbUrl : currentImage.fullUrl);
   const [isFullLoaded, setIsFullLoaded] = useState(currentImage.thumbUrl === currentImage.fullUrl);
 
   // Swipe gesture refs
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
-  // When active slide changes, reset zoom state and start preloading the HD image
+  // When active slide or quality mode changes, update display URL
   useEffect(() => {
     // Reset transforms
     scaleRef.current = 1;
@@ -44,7 +47,6 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
     if (imgRef.current) {
       imgRef.current.style.transition = 'none';
       imgRef.current.style.transform = 'translate3d(0, 0, 0) scale(1)';
-      // Trigger reflow to apply 'none' transition immediately
       void imgRef.current.offsetHeight;
       imgRef.current.style.transition = 'transform 0.16s cubic-bezier(0.25, 1, 0.5, 1)';
     }
@@ -52,29 +54,19 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
     const activeImage = images[currentIndex];
     if (!activeImage) return;
 
-    if (activeImage.thumbUrl === activeImage.fullUrl) {
-      setDisplayUrl(activeImage.fullUrl);
-      setIsFullLoaded(true);
-      return;
+    const targetUrl = qualityMode === 'SD' ? activeImage.thumbUrl : activeImage.fullUrl;
+    setDisplayUrl(targetUrl);
+
+    if (qualityMode === 'HD') {
+      const img = new Image();
+      img.onload = () => {
+        if (images[currentIndex] === activeImage) {
+          setIsFullLoaded(true);
+        }
+      };
+      img.src = activeImage.fullUrl;
     }
-
-    setDisplayUrl(activeImage.thumbUrl);
-    setIsFullLoaded(false);
-
-    const img = new Image();
-    img.onload = () => {
-      // Only swap if this request is still relevant for the active index
-      if (images[currentIndex] === activeImage) {
-        setDisplayUrl(activeImage.fullUrl);
-        setIsFullLoaded(true);
-      }
-    };
-    img.src = activeImage.fullUrl;
-
-    return () => {
-      img.onload = null;
-    };
-  }, [currentIndex, images]);
+  }, [currentIndex, images, qualityMode]);
 
   // Lock scrolling on document.body
   useEffect(() => {
@@ -525,6 +517,31 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
           <ZoomIn size={18} />
         </button>
 
+        {/* Explicit SD / HD Quality Toggle */}
+        <button
+          onClick={() => setQualityMode(prev => prev === 'SD' ? 'HD' : 'SD')}
+          title="Toggle SD (Fast Thumbnail) vs HD (1600px Compressed WebP)"
+          style={{
+            background: qualityMode === 'HD' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+            border: `1px solid ${qualityMode === 'HD' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.15)'}`,
+            color: qualityMode === 'HD' ? '#38bdf8' : '#94a3b8',
+            cursor: 'pointer',
+            fontSize: 11,
+            fontWeight: 800,
+            padding: '3px 10px',
+            borderRadius: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            transition: 'all var(--transition-fast)'
+          }}
+        >
+          <span>{qualityMode}</span>
+          <span style={{ fontSize: 9, opacity: 0.75 }}>
+            {qualityMode === 'HD' ? 'Sharp' : 'Fast'}
+          </span>
+        </button>
+
         {/* HD loading indicator */}
         {!isFullLoaded && currentImage.thumbUrl !== currentImage.fullUrl && (
           <span style={{
@@ -535,7 +552,7 @@ export default function ImageZoomModal({ images, initialIndex, onClose }: ImageZ
             letterSpacing: '0.05em',
             textTransform: 'uppercase',
           }}>
-            HD…
+            Loading HD…
           </span>
         )}
       </div>

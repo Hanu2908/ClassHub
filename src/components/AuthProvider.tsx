@@ -370,7 +370,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!sectionId) return;
 
     const unsubscribe = subscribeToSection(sectionId, {
-      onAnnouncement: () => queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] }),
+      onAnnouncement: (payload) => {
+        if (!payload) {
+          queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
+          return;
+        }
+
+        const { eventType, new: newRow, old: oldRow } = payload;
+
+        if (eventType === 'INSERT' && newRow) {
+          const incomingId = newRow.id;
+          const formattedNewAnn = {
+            id: incomingId,
+            authorId: newRow.author_id,
+            title: newRow.title,
+            body: newRow.message_content,
+            priority: newRow.priority,
+            deadline: newRow.deadline_at,
+            postedAt: newRow.created_at,
+            expiresAt: newRow.expires_at ?? null,
+            attachmentUrl: null,
+            isAcknowledged: false,
+            targetBatch: newRow.target_batch ?? null,
+            attachments: [],
+          };
+
+          queryClient.setQueriesData(
+            { queryKey: ['announcements', sectionId] },
+            (oldData: any) => {
+              if (!Array.isArray(oldData)) return oldData;
+              // Check if announcement already exists (e.g. optimistic or already prepended)
+              const existingIdx = oldData.findIndex(a => a.id === incomingId);
+              if (existingIdx !== -1) {
+                const updated = [...oldData];
+                updated[existingIdx] = { ...updated[existingIdx], ...formattedNewAnn };
+                return updated;
+              }
+              // Prepend new announcement live without network refetch
+              return [formattedNewAnn, ...oldData];
+            }
+          );
+        } else if (eventType === 'DELETE' && oldRow?.id) {
+          queryClient.setQueriesData(
+            { queryKey: ['announcements', sectionId] },
+            (oldData: any) => {
+              if (!Array.isArray(oldData)) return oldData;
+              return oldData.filter(a => a.id !== oldRow.id);
+            }
+          );
+        } else {
+          // For updates or complex events, invalidate query softly
+          queryClient.invalidateQueries({ queryKey: ['announcements', sectionId] });
+        }
+      },
       onAssignment: () => queryClient.invalidateQueries({ queryKey: ['assignments', sectionId] }),
       onPoll: () => queryClient.invalidateQueries({ queryKey: ['polls', sectionId] }),
       onVote: () => queryClient.invalidateQueries({ queryKey: ['polls', sectionId] }),

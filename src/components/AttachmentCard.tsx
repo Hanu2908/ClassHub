@@ -31,6 +31,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     error: false,
     loading: false
   });
+  const [qualityMode, setQualityMode] = useState<'SD' | 'HD'>('SD');
   const [showZoomModal, setShowZoomModal] = useState(false);
   
   // GPU animation tracking state
@@ -45,10 +46,33 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
   const [isVisible, setIsVisible] = useState(false);
 
   const isImage = isPreviewableImage(attachment.fileType, attachment.filename);
+  const isPdf = attachment.fileType.toLowerCase().includes('pdf') || attachment.filename.toLowerCase().endsWith('.pdf');
+  const isPreviewable = isImage || isPdf;
+
+  const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [hasPdfThumb, setHasPdfThumb] = useState(false);
+  const [cachedThumbDataUrl, setCachedThumbDataUrl] = useState<string | null>(null);
+
+  // Check 0ms IndexedDB & Memory thumbnail cache on mount
+  useEffect(() => {
+    if (!isPdf) return;
+    let cancelled = false;
+    import('../lib/utils/thumbnailCache').then(({ getCachedThumbnail }) => {
+      getCachedThumbnail(attachment.storagePath).then((cached) => {
+        if (!cancelled && cached) {
+          setCachedThumbDataUrl(cached);
+          setHasPdfThumb(true);
+        }
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [attachment.storagePath, isPdf]);
 
   // 1. Intersection Observer hook to observe when card enters viewport
   useEffect(() => {
-    if (!isImage) return;
+    if (!isPreviewable) return;
 
     const currentEl = cardRef.current;
     if (!currentEl) return;
@@ -71,11 +95,11 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
         observer.unobserve(currentEl);
       }
     };
-  }, [isImage]);
+  }, [isPreviewable]);
 
-  // 2. Two-tier signed URL fetcher: thumbnail first, fallback to original
+  // 2. Signed URL fetcher & PDF 1st page thumbnail renderer
   useEffect(() => {
-    if (!isImage || !isVisible) return;
+    if (!isPreviewable || !isVisible) return;
 
     let cancelled = false;
 
@@ -98,15 +122,6 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     const fetchUrls = async () => {
       const expiresAt = Date.now() + 3500 * 1000; // Slightly before 3600s token expiry
 
-      // Step 1: Try to get thumbnail signed URL
-      const thumbPath = getThumbPath(attachment.storagePath);
-      const { data: thumbData, error: thumbError } = await supabase.storage
-        .from('attachments')
-        .createSignedUrl(thumbPath, 3600);
-
-      if (cancelled) return;
-
-      // Step 2: Get the original URL (always needed for modal / fallback)
       const { data: fullData, error: fullError } = await supabase.storage
         .from('attachments')
         .createSignedUrl(attachment.storagePath, 3600);
@@ -114,20 +129,30 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
       if (cancelled) return;
 
       if (fullError || !fullData?.signedUrl) {
-        // Can't even get the original — error state
         setPreviewState({ thumbUrl: null, fullUrl: null, hasThumb: false, error: true, loading: false });
         return;
       }
 
       const fullUrl = fullData.signedUrl;
-      const hasThumb = !thumbError && !!thumbData?.signedUrl;
-      const thumbUrl = hasThumb ? thumbData!.signedUrl : fullUrl;
 
-      // Cache result
-      signedUrlCache.set(attachment.storagePath, { thumbUrl, fullUrl, hasThumb, expiresAt });
+      if (isImage) {
+        const thumbPath = getThumbPath(attachment.storagePath);
+        const { data: thumbData, error: thumbError } = await supabase.storage
+          .from('attachments')
+          .createSignedUrl(thumbPath, 3600);
 
-      setPreviewState({ thumbUrl, fullUrl, hasThumb, error: false, loading: false });
-      setCardDisplayUrl(thumbUrl);
+        if (cancelled) return;
+
+        const hasThumb = !thumbError && !!thumbData?.signedUrl;
+        const thumbUrl = hasThumb ? thumbData!.signedUrl : fullUrl;
+
+        signedUrlCache.set(attachment.storagePath, { thumbUrl, fullUrl, hasThumb, expiresAt });
+        setPreviewState({ thumbUrl, fullUrl, hasThumb, error: false, loading: false });
+        setCardDisplayUrl(thumbUrl);
+      } else {
+        signedUrlCache.set(attachment.storagePath, { thumbUrl: fullUrl, fullUrl, hasThumb: false, expiresAt });
+        setPreviewState({ thumbUrl: fullUrl, fullUrl, hasThumb: false, error: false, loading: false });
+      }
     };
 
     fetchUrls().catch(() => {
@@ -139,7 +164,39 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     return () => {
       cancelled = true;
     };
-  }, [attachment.storagePath, isImage, isVisible]);
+  }, [attachment.storagePath, isImage, isPdf, isPreviewable, isVisible]);
+
+  // 3. Render PDF 1st-page thumbnail onto canvas (50ms execution delay to preserve 60fps scroll)
+  useEffect(() => {
+    if (!isPdf || cachedThumbDataUrl || !previewState.fullUrl || !pdfCanvasRef.current) return;
+    let cancelled = false;
+
+    const timer = setTimeout(() => {
+      import('../lib/utils/pdfThumbnail').then(({ renderPDFThumbnail }) => {
+        if (cancelled || !pdfCanvasRef.current || !previewState.fullUrl) return;
+        renderPDFThumbnail(previewState.fullUrl, pdfCanvasRef.current, 180).then((success) => {
+          if (!cancelled && success) {
+            setHasPdfThumb(true);
+            try {
+              const dataUrl = pdfCanvasRef.current?.toDataURL('image/webp', 0.85);
+              if (dataUrl) {
+                import('../lib/utils/thumbnailCache').then(({ setCachedThumbnail }) => {
+                  setCachedThumbnail(attachment.storagePath, dataUrl);
+                });
+              }
+            } catch {
+              // ignore cross-origin canvas security errors
+            }
+          }
+        });
+      });
+    }, 50);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [attachment.storagePath, cachedThumbDataUrl, isPdf, previewState.fullUrl]);
 
   // 3. Option D: decode-time downscale for legacy images (no thumbnail found)
   useEffect(() => {
@@ -329,9 +386,45 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
               </div>
             )}
 
-            {cardDisplayUrl && !previewState.error ? (
+            {/* Always visible SD / HD Toggle Badge on unzoomed image card */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setQualityMode(prev => prev === 'SD' ? 'HD' : 'SD');
+              }}
+              title="Toggle SD (Fast Thumbnail) vs HD (1600px Compressed WebP)"
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 10,
+                padding: '4px 10px',
+                borderRadius: '14px',
+                background: 'rgba(15, 18, 28, 0.85)',
+                backdropFilter: 'blur(8px)',
+                border: `1px solid ${qualityMode === 'HD' ? 'rgba(56, 189, 248, 0.6)' : 'rgba(255, 255, 255, 0.2)'}`,
+                color: qualityMode === 'HD' ? '#38bdf8' : '#e2e8f0',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+                userSelect: 'none',
+              }}
+            >
+              <span>{qualityMode}</span>
+              <span style={{ fontSize: '9px', opacity: 0.8 }}>
+                {qualityMode === 'SD' ? 'Fast' : 'Sharp'}
+              </span>
+            </button>
+
+            {(qualityMode === 'HD' ? (previewState.fullUrl || cardDisplayUrl) : (cardDisplayUrl || previewState.thumbUrl || previewState.fullUrl)) && !previewState.error ? (
               <img 
-                src={cardDisplayUrl} 
+                src={(qualityMode === 'HD' ? (previewState.fullUrl || cardDisplayUrl) : (cardDisplayUrl || previewState.thumbUrl || previewState.fullUrl))!} 
                 alt={attachment.filename} 
                 loading="lazy"
                 decoding="async"
@@ -341,7 +434,8 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
                 style={{
                   ...getImagePreviewStyle(),
                   opacity: isImageLoaded ? 1 : 0,
-                  transition: 'opacity 0.22s ease-in-out'
+                  transition: 'opacity 0.22s ease-in-out',
+                  filter: qualityMode === 'SD' && previewState.thumbUrl === previewState.fullUrl ? 'blur(0.5px)' : 'none',
                 }}
               />
             ) : (
@@ -354,14 +448,50 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
             )}
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-              {getFileIcon(attachment.fileType)}
-              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                <span className="t-body-medium" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', minWidth: 0, padding: '2px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+              {isPdf ? (
+                <div style={{ position: 'relative', width: 68, height: 90, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#0f131d', border: '1px solid rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {cachedThumbDataUrl ? (
+                    <img
+                      src={cachedThumbDataUrl}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  ) : (
+                    <canvas
+                      ref={pdfCanvasRef}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: hasPdfThumb ? 'block' : 'none',
+                      }}
+                    />
+                  )}
+                  {!hasPdfThumb && !cachedThumbDataUrl && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: '#ef4444' }}>
+                      <FileText size={24} />
+                      <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>PDF</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {getFileIcon(attachment.fileType)}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1, textAlign: 'left' }}>
+                {isPdf && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 6px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', fontSize: '10px', fontWeight: 700, width: 'fit-content' }}>
+                    PDF DOCUMENT
+                  </div>
+                )}
+                <span className="t-body-medium" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, fontSize: '13.5px' }}>
                   {attachment.filename}
                 </span>
-                <span className="t-mono-sm" style={{ color: 'var(--text-secondary)' }}>
+                <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 500 }}>
                   {formatSize(attachment.fileSize)}
                 </span>
               </div>
@@ -372,22 +502,25 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
               onClick={handleDownload}
               aria-label={`Download ${attachment.filename}`}
               style={{
-                background: 'none',
-                border: 'none',
-                padding: '6px',
-                color: 'var(--text-secondary)',
+                background: 'rgba(99, 102, 241, 0.15)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                padding: '8px 12px',
+                color: 'var(--accent-primary, #818cf8)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: 6,
                 cursor: 'pointer',
-                borderRadius: '50%',
-                transition: 'background-color var(--transition-fast), color var(--transition-fast)',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 600,
+                transition: 'all var(--transition-fast)',
                 flexShrink: 0,
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.25)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.15)'; }}
             >
-              {downloading ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
+              {downloading ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />}
+              <span>{isPdf ? 'Open' : 'Save'}</span>
             </button>
           </div>
         )}

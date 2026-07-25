@@ -19,7 +19,7 @@
       "files": [
         {
           "name": "files",
-          "accept": ["image/*", "application/pdf", ".pdf"]
+          "accept": ["image/*", "application/pdf", ".pdf", ".docx", ".pptx", ".xlsx", "text/plain", ".txt"]
         }
       ]
     }

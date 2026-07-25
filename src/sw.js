@@ -44,10 +44,10 @@ registerRoute(
       }
       
       const entry = await stageShare(files, typeof caption === 'string' ? caption : '');
-      return Response.redirect(new URL(`/share-intake?id=${encodeURIComponent(entry.id)}`, self.location.origin).toString(), 303);
+      return Response.redirect(new URL(`/app/home?share_id=${encodeURIComponent(entry.id)}`, self.location.origin).toString(), 303);
     } catch (error) {
       const code = error instanceof Error ? error.message : 'invalid-share';
-      return Response.redirect(new URL(`/share-intake?error=${encodeURIComponent(code)}`, self.location.origin).toString(), 303);
+      return Response.redirect(new URL(`/app/home?share_error=${encodeURIComponent(code)}`, self.location.origin).toString(), 303);
     }
   },
   'POST'

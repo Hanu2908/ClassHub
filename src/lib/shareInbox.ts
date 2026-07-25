@@ -91,3 +91,13 @@ export async function pruneExpiredShares(): Promise<void> {
   });
   await Promise.all(entries.filter((entry) => entry.expiresAt <= Date.now()).map((entry) => deleteShare(entry.id)));
 }
+
+export async function listPendingShares(): Promise<ShareInboxEntry[]> {
+  await pruneExpiredShares();
+  const db = await openDB();
+  return new Promise<ShareInboxEntry[]>((resolve, reject) => {
+    const request = db.transaction('share-inbox', 'readonly').objectStore('share-inbox').getAll();
+    request.onsuccess = () => resolve((request.result as ShareInboxEntry[]) ?? []);
+    request.onerror = () => reject(request.error);
+  });
+}

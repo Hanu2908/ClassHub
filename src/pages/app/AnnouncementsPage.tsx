@@ -166,69 +166,87 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
   const handlePost = async () => {
     if (!title.trim()) { toast.error('Title is required'); return; }
     
-    setIsPosting(true);
-    try {
-      const finalBody = selectedSubjectId
-        ? `${body.trim()}\n<!-- subject_id:${selectedSubjectId} -->`
-        : body.trim();
+    // Capture state snapshot for background worker
+    const currentTitle = title.trim();
+    const currentBody = body.trim();
+    const currentSubjectId = selectedSubjectId;
+    const currentPriority = priority;
+    const currentDeadline = hasDeadline && deadlineDate ? new Date(deadlineDate).toISOString() : null;
+    const currentTargetBatch = targetBatch === 'all' ? null : targetBatch;
+    const currentFiles = [...files];
+    const currentShareInboxId = shareInboxId;
 
-      const parentId = await createAnn.mutateAsync({
-        title: title.trim(),
-        message: finalBody,
-        priority,
-        deadline: hasDeadline && deadlineDate ? new Date(deadlineDate).toISOString() : null,
-        targetBatch: targetBatch === 'all' ? null : targetBatch,
-      });
+    // Reset form & close modal instantly (0ms perceived delay)
+    setTitle('');
+    setBody('');
+    setTargetBatch('all');
+    setSelectedSubjectId('');
+    setHasDeadline(false);
+    setDeadlineDate('');
+    setFiles([]);
+    onClose();
 
-      if (parentId && files.length > 0) {
-        if (!sectionId || !userId) throw new Error('Missing section context or user context');
-        
-        const uploadResult = await uploadAttachments(files, {
-          sectionId,
-          parentType: 'announcement',
-          parentId,
-          userId,
-          onProgress: () => setUploadProgress(prev => prev + 1),
+    if (currentFiles.length > 0) {
+      toast.info('Posting announcement and uploading attachments in background...');
+    }
+
+    // Run creation and compressed upload asynchronously in background
+    (async () => {
+      try {
+        const finalBody = currentSubjectId
+          ? `${currentBody}\n<!-- subject_id:${currentSubjectId} -->`
+          : currentBody;
+
+        const parentId = await createAnn.mutateAsync({
+          title: currentTitle,
+          message: finalBody,
+          priority: currentPriority,
+          deadline: currentDeadline,
+          targetBatch: currentTargetBatch,
         });
 
-        if (uploadResult.failed.length > 0) {
-          toast.warning(`${uploadResult.failed.length} file(s) failed to upload`);
-          if (shareInboxId) {
-            const entry = await getShare(shareInboxId);
-            if (entry) {
-              await updateShare({
-                ...entry,
-                files: retainFailedShareFiles(files, uploadResult.failed),
-                state: 'attachment-retry',
-                destination: 'announcement',
-                parentId,
-              });
-              navigate(`/share-intake?id=${encodeURIComponent(shareInboxId)}`, { replace: true });
-              return;
-            }
-          }
-        } else if (shareInboxId) {
-          await deleteShare(shareInboxId);
-        }
-      } else if (shareInboxId) {
-        await deleteShare(shareInboxId);
-      }
+        if (parentId && currentFiles.length > 0) {
+          if (!sectionId || !userId) throw new Error('Missing section context or user context');
+          
+          const uploadResult = await uploadAttachments(currentFiles, {
+            sectionId,
+            parentType: 'announcement',
+            parentId,
+            userId,
+            onProgress: () => setUploadProgress(prev => prev + 1),
+          });
 
-      toast.success('Announcement posted');
-      setTitle('');
-      setBody('');
-      setTargetBatch('all');
-      setSelectedSubjectId('');
-      setHasDeadline(false);
-      setDeadlineDate('');
-      setFiles([]);
-      onClose();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to post');
-    } finally {
-      setIsPosting(false);
-      setUploadProgress(0);
-    }
+          if (uploadResult.failed.length > 0) {
+            toast.warning(`${uploadResult.failed.length} file(s) failed to upload`);
+            if (currentShareInboxId) {
+              const entry = await getShare(currentShareInboxId);
+              if (entry) {
+                await updateShare({
+                  ...entry,
+                  files: retainFailedShareFiles(currentFiles, uploadResult.failed),
+                  state: 'attachment-retry',
+                  destination: 'announcement',
+                  parentId,
+                });
+                navigate(`/share-intake?id=${encodeURIComponent(currentShareInboxId)}`, { replace: true });
+                return;
+              }
+            }
+          } else if (currentShareInboxId) {
+            await deleteShare(currentShareInboxId);
+          }
+        } else if (currentShareInboxId) {
+          await deleteShare(currentShareInboxId);
+        }
+
+        toast.success('Announcement posted');
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Failed to post announcement');
+      } finally {
+        setIsPosting(false);
+        setUploadProgress(0);
+      }
+    })();
   };
 
   const pending = createAnn.isPending || isPosting;

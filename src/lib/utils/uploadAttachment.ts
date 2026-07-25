@@ -6,7 +6,7 @@
  */
 import { supabase } from '../supabase';
 import { buildStoragePath, isPreviewableImage } from './attachments';
-import { generateThumbnail, getThumbPath } from './imageResize';
+import { generateThumbnail, getThumbPath, compressImage } from './imageResize';
 
 export interface UploadAttachmentParams {
   file: File;
@@ -66,13 +66,18 @@ async function uploadWithRetry(
  * @throws on original upload failure or DB insert failure.
  */
 export async function uploadAttachment({
-  file,
+  file: originalFile,
   sectionId,
   parentType,
   parentId,
   userId,
   onProgress,
 }: UploadAttachmentParams): Promise<void> {
+  // Auto-compress image before uploading to reduce network payload by 80-90%
+  const file = isPreviewableImage(originalFile.type, originalFile.name)
+    ? await compressImage(originalFile)
+    : originalFile;
+
   // 1. Build storage path
   const path = buildStoragePath(sectionId, parentType, parentId, file.name);
 
@@ -84,6 +89,7 @@ export async function uploadAttachment({
     {
       cacheControl: '3600',
       upsert: parentType === 'assignment', // Assignments use upsert: true
+      contentType: file.type,
     }
   );
 

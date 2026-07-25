@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Upload, X, Paperclip, Camera, Image, FileText } from 'lucide-react';
+import { Upload, X, Camera, Image, FileText } from 'lucide-react';
 import { isPreviewableImage } from '../lib/utils/attachments';
 import { BottomSheet } from './BottomSheet';
 
@@ -411,30 +411,128 @@ export function FileUploader({
 function SelectedFilePreview({ file }: { file: File }) {
   const [previewFailed, setPreviewFailed] = useState(false);
   const isImage = isPreviewableImage(file.type, file.name);
+  const isPdf = file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf');
   const previewUrl = useMemo(() => (isImage ? URL.createObjectURL(file) : null), [file, isImage]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hasPdfThumb, setHasPdfThumb] = useState(false);
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
-  if (!isImage || !previewUrl || previewFailed) {
-    return <Paperclip size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />;
+  useEffect(() => {
+    if (!isPdf || !canvasRef.current) return;
+    let cancelled = false;
+
+    file.arrayBuffer().then(async (buffer) => {
+      if (cancelled || !canvasRef.current || !window.pdfjsLib) return;
+      try {
+        const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 0.3 });
+        const canvas = canvasRef.current;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          if (!cancelled) setHasPdfThumb(true);
+        }
+      } catch {
+        // Fallback badge
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [file, isPdf]);
+
+  if (isImage && previewUrl && !previewFailed) {
+    return (
+      <img
+        src={previewUrl}
+        alt=""
+        onError={() => setPreviewFailed(true)}
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 'var(--radius-sm, 6px)',
+          objectFit: 'cover',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'rgba(255, 255, 255, 0.04)',
+          flexShrink: 0,
+        }}
+      />
+    );
   }
 
+  if (isPdf) {
+    return (
+      <div style={{ position: 'relative', width: 34, height: 34, flexShrink: 0 }}>
+        <canvas
+          ref={canvasRef}
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 'var(--radius-sm, 6px)',
+            objectFit: 'cover',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            background: '#1e1b2e',
+            display: hasPdfThumb ? 'block' : 'none',
+          }}
+        />
+        {!hasPdfThumb && (
+          <div
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 'var(--radius-sm, 6px)',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '9px',
+              fontWeight: 800,
+            }}
+          >
+            PDF
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const ext = file.name.split('.').pop()?.toUpperCase() || 'DOC';
+  const getBadgeColor = () => {
+    if (['DOC', 'DOCX'].includes(ext)) return { bg: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' };
+    if (['XLS', 'XLSX', 'CSV'].includes(ext)) return { bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
+    if (['PPT', 'PPTX'].includes(ext)) return { bg: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' };
+    return { bg: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' };
+  };
+
+  const badgeStyle = getBadgeColor();
+
   return (
-    <img
-      src={previewUrl}
-      alt=""
-      onError={() => setPreviewFailed(true)}
+    <div
       style={{
         width: 34,
         height: 34,
-        borderRadius: 'var(--radius-sm)',
-        objectFit: 'cover',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        background: 'rgba(255, 255, 255, 0.04)',
+        borderRadius: 'var(--radius-sm, 6px)',
+        background: badgeStyle.bg,
+        border: `1px solid ${badgeStyle.border}`,
+        color: badgeStyle.color,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '9px',
+        fontWeight: 800,
         flexShrink: 0,
       }}
-    />
+    >
+      {ext.slice(0, 4)}
+    </div>
   );
 }

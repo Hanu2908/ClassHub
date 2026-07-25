@@ -181,6 +181,40 @@ export function useDeleteAnnouncement() {
   });
 }
 
+// ── Update Announcement Mutation ─────────────────────────────────────────────
+
+export function useUpdateAnnouncement() {
+  const qc = useQueryClient();
+  const { sectionId } = useAuthContext();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      title: string;
+      message: string;
+      priority: 'general' | 'critical';
+      deadline?: string | null;
+      expiresAt?: string | null;
+      targetBatch?: '1' | '2' | null;
+    }) => {
+      const { error } = await supabase
+        .from('announcements')
+        .update({
+          title: input.title,
+          message_content: input.message,
+          priority: input.priority,
+          deadline_at: input.deadline ?? null,
+          expires_at: input.expiresAt ?? null,
+          target_batch: input.targetBatch ?? null,
+        })
+        .eq('id', input.id)
+        .eq('section_id', sectionId!);
+
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
+  });
+}
+
 // ── Acknowledge Announcement Mutation ────────────────────────────────────────
 
 const inFlightAcks = new Set<string>();

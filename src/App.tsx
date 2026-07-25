@@ -125,6 +125,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 // ── Share intake route ──
+import { ShareIntakeBanner } from './components/ShareIntakeBanner';
+
 function ShareIntakeRoute() {
   const session = useAppStore(s => s.session);
   const authUser = useAppStore(s => s.authUser);
@@ -216,6 +218,7 @@ export default function App() {
             }}
             offset={80}
           />
+          <ShareIntakeBanner />
           <SkeletonTheme baseColor="#131518" highlightColor="rgba(255, 255, 255, 0.05)">
             <Suspense fallback={<PageSkeleton />}>
               <Routes>
