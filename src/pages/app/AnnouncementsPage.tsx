@@ -846,7 +846,7 @@ export function AnnouncementCardComponent({
                     padding: 4,
                     boxShadow: '0px 10px 38px -10px rgba(22, 23, 24, 0.35), 0px 10px 20px -15px rgba(22, 23, 24, 0.2)',
                     border: '1px solid var(--border-default, rgba(255, 255, 255, 0.1))',
-                    zIndex: 1000,
+                    zIndex: 10000,
                   }}
                   sideOffset={5}
                   align="end"
