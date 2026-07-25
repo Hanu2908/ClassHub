@@ -712,7 +712,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
   const handlePointerMove = (e: React.PointerEvent) => {
     const diffX = e.clientX - startXRef.current;
     const diffY = e.clientY - startYRef.current;
-    if (Math.abs(diffX) > 6 || Math.abs(diffY) > 6) {
+    if (Math.abs(diffX) > 12 && Math.abs(diffX) > Math.abs(diffY)) {
       hasMovedRef.current = true;
     }
     if (!isSwiping || !isCR) return;
@@ -732,7 +732,9 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
   const handlePointerUp = (e: React.PointerEvent) => {
     if (isSwiping) {
       setIsSwiping(false);
-      e.currentTarget.releasePointerCapture(e.pointerId);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
     }
 
     if (swipeX < -70) {
@@ -757,7 +759,9 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
   const handlePointerCancel = (e: React.PointerEvent) => {
     if (!isSwiping) return;
     setIsSwiping(false);
-    e.currentTarget.releasePointerCapture(e.pointerId);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
     setSwipeX(0);
     isSnappedRef.current = false;
   };
@@ -788,6 +792,12 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
           background: isNow ? 'var(--bg-elevated)' : catStyle.bg,
           borderColor: isNow ? 'var(--accent-primary)' : catStyle.border,
           touchAction: 'pan-y',
+          cursor: 'pointer',
+        }}
+        onClick={(e) => {
+          if (!hasMovedRef.current && !isSnappedRef.current && onSelect) {
+            onSelect(cls);
+          }
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
