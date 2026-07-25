@@ -734,7 +734,9 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
       setIsSwiping(false);
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {}
+      } catch {
+        // Ignore pointer capture release error if already uncaptured
+      }
     }
 
     if (swipeX < -70) {
@@ -761,7 +763,9 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
     setIsSwiping(false);
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {}
+    } catch {
+      // Ignore pointer capture release error if already uncaptured
+    }
     setSwipeX(0);
     isSnappedRef.current = false;
   };
