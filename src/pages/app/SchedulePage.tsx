@@ -772,7 +772,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
 
   return (
     <div 
-      className="schedule-card-wrapper schedule-card"
+      className="schedule-card-wrapper"
       style={{ ...style, position: 'absolute', overflow: 'hidden', borderRadius: 'var(--radius-md)' }}
       onClick={(e) => {
         e.stopPropagation();
@@ -802,6 +802,7 @@ function SwipeableCard({ cls, isNow, isPast, isCR, onDelete, onSelect, style, se
         style={{
           position: 'relative',
           left: 0, right: 0, top: 0, bottom: 0,
+          width: '100%',
           height: '100%',
           transform: `translate3d(${swipeX}px, 0, 0)`,
           transition: isSwiping ? 'none' : 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
