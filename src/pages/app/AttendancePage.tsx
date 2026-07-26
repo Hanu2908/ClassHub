@@ -22,6 +22,7 @@ import { logEvent } from '../../lib/analytics';
 
 import { parseERPAttendance } from '../../lib/utils/attendance';
 import type { ParsedSubject } from '../../lib/utils/attendance';
+import { NumberTicker } from '../../components/ui/NumberTicker';
 import {
   linkAttendanceToSchedule,
   predictOverallRecoveryDate,
@@ -603,7 +604,7 @@ export default function AttendancePage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <UserCheck size={16} style={{ color: 'var(--accent-primary)' }} />
                   <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '21px', lineHeight: 1 }}>
-                    {safeOverall.toFixed(1)}%
+                    <NumberTicker value={safeOverall} decimalPlaces={1} suffix="%" />
                   </span>
                 </div>
                 <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
@@ -626,7 +627,7 @@ export default function AttendancePage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <BookOpen size={16} style={{ color: 'var(--accent-primary)' }} />
                   <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '21px', lineHeight: 1 }}>
-                    {overallAttended}
+                    <NumberTicker value={overallAttended} decimalPlaces={0} />
                   </span>
                 </div>
                 <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
@@ -649,7 +650,7 @@ export default function AttendancePage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <Clock size={16} style={{ color: 'var(--status-info)' }} />
                   <span className="t-feature" style={{ color: 'var(--text-primary)', fontSize: '21px', lineHeight: 1 }}>
-                    {overallTotal}
+                    <NumberTicker value={overallTotal} decimalPlaces={0} />
                   </span>
                 </div>
                 <span className="t-helper" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>

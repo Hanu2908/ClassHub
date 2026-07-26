@@ -18,6 +18,8 @@ import { supabase } from '../../lib/supabase';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import Skeleton from 'react-loading-skeleton';
 import { haptics } from '../../lib/haptics';
+import { NumberTicker } from '../../components/ui/NumberTicker';
+import { SectionHealthChart } from '../../components/ui/charts/SectionHealthChart';
 
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
@@ -207,7 +209,7 @@ function SubmissionTracker() {
                   }}
                 >
                   <p className="t-feature" style={{ color: 'var(--status-safe)', transition: 'transform 0.2s' }}>
-                    {submittedCount}
+                    <NumberTicker value={submittedCount} decimalPlaces={0} />
                   </p>
                   <p className="t-label" style={{ color: subFilter === 'submitted' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                     ✓ Submitted
@@ -238,13 +240,20 @@ function SubmissionTracker() {
                   }}
                 >
                   <p className="t-feature" style={{ color: 'var(--status-critical)', transition: 'transform 0.2s' }}>
-                    {pendingMembers.length}
+                    <NumberTicker value={pendingMembers.length} decimalPlaces={0} />
                   </p>
                   <p className="t-label" style={{ color: subFilter === 'not_submitted' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                     ✗ Pending
                   </p>
                 </div>
               </div>
+
+              <SectionHealthChart
+                safeCount={submittedCount}
+                warningCount={0}
+                criticalCount={pendingMembers.length}
+                totalStudents={studentMembers.length}
+              />
 
               {subFilter === 'not_submitted' && pendingMembers.length > 0 ? (
                 <button

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
 import { signInWithGoogle } from '../components/AuthProvider';
+import { DotField } from '../components/ui/DotField';
 
 type StateMode = 'idle' | 'loading' | 'error' | 'success';
 
@@ -127,6 +128,20 @@ export default function SignIn() {
 
   return (
     <div className="auth-bg min-h-[100dvh] flex flex-col items-center justify-center py-8 px-6 relative overflow-hidden">
+      {/* Interactive DotField Background Canvas */}
+      <div className="fixed inset-0 z-0 pointer-events-auto opacity-70">
+        <DotField
+          dotRadius={1.5}
+          dotSpacing={16}
+          bulgeStrength={60}
+          glowRadius={160}
+          cursorRadius={450}
+          cursorForce={0.12}
+          gradientFrom="#A855F7"
+          gradientTo="#8B5CF6"
+          glowColor="#0A0A0F"
+        />
+      </div>
 
       {/* Success overlay */}
       {state === 'success' && (

@@ -1397,6 +1397,7 @@ function StudentSchedulePage() {
             className="schedule-day-tab-sliding-pill"
             style={{
               left: `calc(${(DAYS.indexOf(selectedDay) * 16.66)}% + 4px)`,
+              transition: 'left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           />
           {DAYS.map(day => {
@@ -1459,42 +1460,50 @@ function StudentSchedulePage() {
               display: 'flex',
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-pill)',
+              borderRadius: '9999px',
               padding: 2,
+              height: 28,
+              alignItems: 'center',
             }}>
               <button
                 onClick={() => setViewMode('my-batch')}
                 style={{
-                  padding: '4px 12px',
+                  padding: '2px 10px',
                   background: viewMode === 'my-batch' ? 'var(--accent-primary)' : 'transparent',
                   color: viewMode === 'my-batch' ? '#fff' : 'var(--text-secondary)',
                   border: 'none',
-                  borderRadius: 'var(--radius-pill)',
+                  borderRadius: '9999px',
                   cursor: 'pointer',
                   fontWeight: 600,
-                  fontSize: 12,
-                  transition: 'all 0.2s',
-                  fontFamily: 'var(--font-mono)'
+                  fontSize: 11,
+                  transition: 'all 0.2s ease',
+                  fontFamily: 'var(--font-mono)',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
-                My Batch ({subBatch === '1' ? `${sectionName || 'B'}1` : `${sectionName || 'B'}2`})
+                Batch {subBatch === '1' ? '1' : '2'}
               </button>
               <button
                 onClick={() => setViewMode('full')}
                 style={{
-                  padding: '4px 12px',
+                  padding: '2px 10px',
                   background: viewMode === 'full' ? 'var(--accent-primary)' : 'transparent',
                   color: viewMode === 'full' ? '#fff' : 'var(--text-secondary)',
                   border: 'none',
-                  borderRadius: 'var(--radius-pill)',
+                  borderRadius: '9999px',
                   cursor: 'pointer',
                   fontWeight: 600,
-                  fontSize: 12,
-                  transition: 'all 0.2s',
-                  fontFamily: 'var(--font-mono)'
+                  fontSize: 11,
+                  transition: 'all 0.2s ease',
+                  fontFamily: 'var(--font-mono)',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
-                Full Section
+                All
               </button>
             </div>
           )}

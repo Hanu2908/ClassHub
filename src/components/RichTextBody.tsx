@@ -648,14 +648,48 @@ interface InteractiveTaskListProps {
   renderInline: (text: string, search?: string) => React.ReactNode;
 }
 
+function getTaskStorageKey(taskText: string): string {
+  let hash = 0;
+  for (let i = 0; i < taskText.length; i++) {
+    hash = (hash << 5) - hash + taskText.charCodeAt(i);
+    hash |= 0;
+  }
+  return `classhub_task_${Math.abs(hash)}`;
+}
+
 export function InteractiveTaskList({ items, search, renderInline }: InteractiveTaskListProps) {
-  const [checkedState, setCheckedState] = useState<boolean[]>(() => items.map((i) => i.initialChecked));
+  const [checkedState, setCheckedState] = useState<boolean[]>(() => {
+    return items.map((item) => {
+      try {
+        const key = getTaskStorageKey(item.text);
+        const saved = localStorage.getItem(key);
+        if (saved !== null) {
+          return saved === 'true';
+        }
+      } catch {
+        // Fallback
+      }
+      return item.initialChecked;
+    });
+  });
 
   const toggleTask = (index: number) => {
     haptics.lightClick();
     setCheckedState((prev) => {
       const next = [...prev];
-      next[index] = !next[index];
+      const newChecked = !next[index];
+      next[index] = newChecked;
+
+      try {
+        const item = items[index];
+        if (item) {
+          const key = getTaskStorageKey(item.text);
+          localStorage.setItem(key, String(newChecked));
+        }
+      } catch {
+        // Fallback
+      }
+
       return next;
     });
   };

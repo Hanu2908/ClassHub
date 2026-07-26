@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen } from 'lucide-react';
+import { Copy, Check, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
@@ -136,9 +137,13 @@ export default function ProfilePage() {
 
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
+  const [copied, setCopied] = useState(false);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(hubCode);
+    setCopied(true);
     toast.success('Hub code copied!');
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDeleteAccount = async () => {
@@ -416,20 +421,30 @@ export default function ProfilePage() {
               </p>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                {myTags.map(tag => (
-                  <TagPill
-                    key={tag.id}
-                    tagText={tag.tagText}
-                    expiresAt={tag.expiresAt}
-                    showExpiry
-                    onRemove={() => {
-                      deleteTag.mutate(tag.id, {
-                        onSuccess: () => toast.info('Tag removed'),
-                        onError: (err) => toast.error(`Failed: ${err.message}`),
-                      });
-                    }}
-                  />
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {myTags.map(tag => (
+                    <motion.div
+                      key={tag.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <TagPill
+                        tagText={tag.tagText}
+                        expiresAt={tag.expiresAt}
+                        showExpiry
+                        onRemove={() => {
+                          deleteTag.mutate(tag.id, {
+                            onSuccess: () => toast.info('Tag removed'),
+                            onError: (err) => toast.error(`Failed: ${err.message}`),
+                          });
+                        }}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
             <button
@@ -464,7 +479,21 @@ export default function ProfilePage() {
           <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>HUB INFO</p>
           <div className="card" style={{ padding: 0 }}>
             {[
-              { label: 'Hub Code', value: hubCode, action: <button id="copy-hub-code" onClick={handleCopy} className="t-label" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}><Copy size={13} /> Copy</button> },
+              { 
+                label: 'Hub Code', 
+                value: hubCode, 
+                action: (
+                  <button 
+                    id="copy-hub-code" 
+                    onClick={handleCopy} 
+                    className="t-label" 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? 'var(--status-safe)' : 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    {copied ? <Check size={13} style={{ color: 'var(--status-safe)' }} /> : <Copy size={13} />}
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                ) 
+              },
               { 
                 label: 'Section', 
                 value: sectionName,
@@ -531,14 +560,42 @@ export default function ProfilePage() {
                   label: 'Batch', 
                   value: subBatch ? `${sectionName}${subBatch}` : 'Not Selected', 
                   action: (
-                    <button 
-                      id="toggle-sub-batch" 
-                      onClick={handleToggleBatch} 
-                      className="t-label" 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      Change
-                    </button>
+                    <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: 14, padding: 2, border: '1px solid var(--border-default)' }}>
+                      <button 
+                        id="batch-g1-btn" 
+                        onClick={() => subBatch !== '1' && handleToggleBatch()}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: subBatch === '1' ? 'var(--accent-primary)' : 'transparent',
+                          color: subBatch === '1' ? '#fff' : 'var(--text-muted)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        G1
+                      </button>
+                      <button 
+                        id="batch-g2-btn" 
+                        onClick={() => subBatch !== '2' && handleToggleBatch()}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: subBatch === '2' ? 'var(--accent-primary)' : 'transparent',
+                          color: subBatch === '2' ? '#fff' : 'var(--text-muted)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        G2
+                      </button>
+                    </div>
                   )
                 }
               ] : [])
@@ -855,7 +912,7 @@ export default function ProfilePage() {
         {/* Danger zone */}
         <div>
           <p className="t-label" style={{ color: 'var(--status-critical)', marginBottom: 8, paddingLeft: 4 }}>DANGER ZONE</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="card" style={{ padding: 16, background: 'rgba(255, 68, 68, 0.04)', border: '1px solid rgba(255, 68, 68, 0.15)', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {!showLeaveConfirm ? (
               <button id="leave-hub-btn" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--status-warning)' }}
                 onClick={() => setShowLeaveConfirm(true)}>

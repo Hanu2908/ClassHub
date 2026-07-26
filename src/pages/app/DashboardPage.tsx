@@ -17,6 +17,7 @@ import { isPushSupported, getPushPermission } from '../../lib/pushNotifications'
 import { FeedbackSheet } from '../../components/FeedbackSheet';
 import { generateGradient } from '../../lib/utils';
 import { trackAppOpened } from '../../lib/analytics';
+import { NumberTicker } from '../../components/ui/NumberTicker';
 
 
 // Dashboard sub-components
@@ -261,41 +262,6 @@ export default function DashboardPage() {
   const overallPercent = attendance?.overall ?? 0;
   const isLowAttendance = overallPercent < 75;
 
-  const [animatedPercent, setAnimatedPercent] = useState(0);
-  const animatedPercentRef = useRef(0);
-
-  useEffect(() => {
-    let startTimestamp: number | null = null;
-    const duration = 800; // 800ms
-    const startVal = animatedPercentRef.current;
-    const endVal = overallPercent;
-
-    if (Math.abs(startVal - endVal) < 0.1) return;
-
-    let animationFrameId: number;
-
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      const easeProgress = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      const currentVal = startVal + easeProgress * (endVal - startVal);
-      
-      animatedPercentRef.current = currentVal;
-      setAnimatedPercent(currentVal);
-
-      if (progress < 1) {
-        animationFrameId = window.requestAnimationFrame(step);
-      }
-    };
-
-    animationFrameId = window.requestAnimationFrame(step);
-    return () => {
-      if (animationFrameId) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-    };
-  }, [overallPercent]);
-
   // Deadline progress bar animation
   const targetDeadlinePercent = useMemo(() => {
     if (shouldShowExam || !primaryDeadline) return 0;
@@ -430,7 +396,7 @@ export default function DashboardPage() {
                       letterSpacing: '-0.03em',
                       lineHeight: 1
                     }}>
-                      {Math.round(animatedPercent)}%
+                      <NumberTicker value={overallPercent} decimalPlaces={0} suffix="%" />
                     </span>
                   </div>
                 </div>
@@ -493,7 +459,7 @@ export default function DashboardPage() {
                     width: '100%', 
                     background: statusColor, 
                     borderRadius: 3,
-                    transform: `scaleX(${Math.min(100, Math.max(0, animatedPercent)) / 100})`,
+                    transform: `scaleX(${Math.min(100, Math.max(0, overallPercent)) / 100})`,
                     transformOrigin: 'left',
                     transition: 'transform 0.3s ease',
                   }} />
