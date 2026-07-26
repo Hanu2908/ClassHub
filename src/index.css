@@ -660,7 +660,6 @@ body {
   position: fixed;
   bottom: 0;
   left: 50%;
-  transform: translate3d(-50%, 100%, 0);
   width: 100%;
   max-width: var(--frame-w);
   background: linear-gradient(180deg, rgba(18, 18, 22, 0.98) 0%, rgba(10, 10, 12, 1) 100%);

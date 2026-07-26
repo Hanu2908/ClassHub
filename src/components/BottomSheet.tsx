@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 
 interface BottomSheetProps {
   open?: boolean;
@@ -9,21 +9,13 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ open = true, onClose, title, children }: BottomSheetProps) {
-  const startY = useRef(0);
-  const lastYRef = useRef(0);
-  const lastTimeRef = useRef(0);
-  const velocityRef = useRef(0);
-  const panelRef = useRef<HTMLDivElement>(null);
-  
-  const offsetY = useMotionValue(0);
-
   const openTimeRef = useRef<number>(0);
+  const dragControls = useDragControls();
 
-  // Synchronize document scroll locking and animate entry
+  // Synchronize document scroll locking
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
-      offsetY.set(0);
       openTimeRef.current = Date.now();
     } else {
       document.body.style.overflow = '';
@@ -31,7 +23,7 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
     return () => {
       document.body.style.overflow = '';
     };
-  }, [open, offsetY]);
+  }, [open]);
 
   const handleBackdropClick = () => {
     // Prevent trailing synthesized tap click from instantly closing sheet
@@ -57,66 +49,6 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
     };
   }, [open, onClose]);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
-    
-    startY.current = e.clientY;
-    lastYRef.current = e.clientY;
-    lastTimeRef.current = Date.now();
-    velocityRef.current = 0;
-    
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-    
-    const currentY = e.clientY;
-    const currentTime = Date.now();
-    const timeDelta = currentTime - lastTimeRef.current;
-    
-    if (timeDelta > 0) {
-      velocityRef.current = (currentY - lastYRef.current) / timeDelta;
-    }
-    
-    lastYRef.current = currentY;
-    lastTimeRef.current = currentTime;
-    
-    const delta = currentY - startY.current;
-    
-    // Premium elastic rubber-band stretch when dragging up
-    let targetOffsetY = delta;
-    if (targetOffsetY < 0) {
-      targetOffsetY = targetOffsetY * 0.15;
-    }
-    
-    offsetY.set(targetOffsetY);
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-    e.currentTarget.releasePointerCapture(e.pointerId);
-    
-    const delta = e.clientY - startY.current;
-    
-    // Dismiss if dragged down > 100px OR flicked down with velocity > 0.4px/ms and minimum displacement
-    const shouldDismiss = delta > 100 || (velocityRef.current > 0.4 && delta > 30);
-    
-    if (shouldDismiss) {
-      animate(offsetY, window.innerHeight, { duration: 0.2 }).then(() => {
-        onClose();
-      });
-    } else {
-      animate(offsetY, 0, { type: 'spring', stiffness: 300, damping: 30 });
-    }
-  };
-
-  const handlePointerCancel = (e: React.PointerEvent) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-    e.currentTarget.releasePointerCapture(e.pointerId);
-    animate(offsetY, 0, { type: 'spring', stiffness: 300, damping: 30 });
-  };
-
   return (
     <AnimatePresence>
       {open && (
@@ -133,14 +65,23 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
       {open && (
         <motion.div
           key="sheet-panel"
-          ref={panelRef}
           className="sheet-panel"
           initial={{ y: '100%', x: '-50%' }}
           animate={{ y: 0, x: '-50%' }}
           exit={{ y: '100%', x: '-50%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 240 }}
+          drag="y"
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0 }}
+          dragElastic={{ top: 0.05, bottom: 0.8 }}
+          dragSnapToOrigin
+          onDragEnd={(_e, info) => {
+            if (info.offset.y > 100 || (info.velocity.y > 300 && info.offset.y > 20)) {
+              onClose();
+            }
+          }}
           style={{
-            y: offsetY,
             x: '-50%'
           }}
         >
@@ -152,10 +93,7 @@ export function BottomSheet({ open = true, onClose, title, children }: BottomShe
               userSelect: 'none',
               WebkitUserSelect: 'none',
             }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerCancel}
+            onPointerDown={(e) => dragControls.start(e)}
           >
             <div className="sheet-handle" />
             {title && (
