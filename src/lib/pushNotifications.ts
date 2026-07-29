@@ -1,7 +1,9 @@
 import { supabase } from './supabase';
 import { useAppStore } from '../store/appStore';
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
+const VAPID_PUBLIC_KEY =
+  (import.meta.env.VITE_VAPID_PUBLIC_KEY as string) ||
+  'BGRy15iVelRrX3XTTHNTh2lmdAN_NdD05K4N3eKSFY_VS1krsA8M_cX4x4CgblDNoEazFvU8lV1G8edFOWY8iRc';
 
 /** Get serviceWorker registration with a 10-second timeout to prevent hangs on mobile cold boots */
 async function getSWRegistration(): Promise<ServiceWorkerRegistration | null> {
@@ -82,7 +84,7 @@ export async function subscribeToPush(): Promise<boolean> {
       return false;
     }
 
-    const { error: upsertError } = await supabase.rpc('upsert_push_subscription', {
+    let { error: upsertError } = await supabase.rpc('upsert_push_subscription', {
       sub_endpoint: json.endpoint,
       sub_p256dh: json.keys.p256dh,
       sub_auth: json.keys.auth,
@@ -90,8 +92,22 @@ export async function subscribeToPush(): Promise<boolean> {
     });
 
     if (upsertError) {
-      console.error('[Push] Failed to save subscription:', upsertError);
-      return false;
+      console.warn('[Push] RPC upsert_push_subscription failed, attempting direct table upsert:', upsertError);
+      const { error: directError } = await supabase
+        .from('push_subscriptions')
+        .upsert({
+          user_id: user.id,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth,
+          user_agent: navigator.userAgent,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'endpoint' });
+
+      if (directError) {
+        console.error('[Push] Direct push_subscriptions upsert also failed:', directError);
+        return false;
+      }
     }
 
     // Set notifications_enabled = true in DB

@@ -123,14 +123,9 @@ self.addEventListener('pushsubscriptionchange', (e) => {
         return;
       }
 
-      const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!VAPID_PUBLIC_KEY) {
-        console.warn('[SW PushChange] VITE_VAPID_PUBLIC_KEY env var is missing.');
-        return;
-      }
+      const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BGRy15iVelRrX3XTTHNTh2lmdAN_NdD05K4N3eKSFY_VS1krsA8M_cX4x4CgblDNoEazFvU8lV1G8edFOWY8iRc';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://kclkgikdygykcvpeokla.supabase.co';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjbGtnaWtkeWd5a2N2cGVva2xhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NTUxNTUsImV4cCI6MjA5NDMzMTE1NX0.dwoby1h15a0MQZ6HGWC2T9AQHzRGXdyeDGV6OS430bc';
 
       const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
       const newSub = await self.registration.pushManager.subscribe({
