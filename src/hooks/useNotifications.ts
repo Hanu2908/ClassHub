@@ -19,16 +19,15 @@ export function useNotifications() {
 
   // ── 2. Query to Fetch Notifications ──
   const query = useQuery<AppNotification[]>({
-    queryKey: ['notifications', userId, authUser?.sectionId],
-    enabled: !!userId && !!authUser?.sectionId,
-    staleTime: 60 * 1000, // 1 minute
+    queryKey: ['notifications', userId],
+    enabled: !!userId,
+    staleTime: 10 * 1000, // 10 seconds for snappy updates
     queryFn: async () => {
-      if (!userId || !authUser?.sectionId) return [];
+      if (!userId) return [];
       const { data, error } = await supabase
         .from('notification_events')
         .select('*')
         .eq('recipient_id', userId)
-        .or(`section_id.eq.${authUser.sectionId},section_id.is.null`)
         .order('created_at', { ascending: false })
         .limit(50); // Cap at 50 to keep it fast
 
@@ -65,13 +64,11 @@ export function useNotifications() {
           }
 
           // Force cache invalidation so React Query fetches the latest snapshot
-          queryClient.invalidateQueries({ queryKey: ['notifications', userId, authUser?.sectionId] });
+          queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
 
           if (payload.eventType === 'INSERT') {
             const newNotif = mapDbNotification(payload.new as DbNotification);
-            if (!newNotif.section_id || newNotif.section_id === authUser?.sectionId) {
-              toast.info(newNotif.title);
-            }
+            toast.info(newNotif.title);
           }
         }
       )
@@ -87,24 +84,23 @@ export function useNotifications() {
       }
       supabase.removeChannel(channel);
     };
-  }, [userId, queryClient, instanceId, authUser?.sectionId]);
+  }, [userId, queryClient, instanceId]);
 
   // ── 3. Mutation: Mark All Read ──
   const markAllRead = useMutation({
     mutationFn: async () => {
-      if (!userId || !authUser?.sectionId) return;
+      if (!userId) return;
       const nowStr = new Date().toISOString();
       const { error } = await supabase
         .from('notification_events')
         .update({ read_at: nowStr })
         .eq('recipient_id', userId)
-        .or(`section_id.eq.${authUser.sectionId},section_id.is.null`)
         .is('read_at', null);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', userId, authUser?.sectionId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
     },
   });
 
@@ -119,7 +115,7 @@ export function useNotifications() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', userId, authUser?.sectionId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
     },
   });
 
@@ -135,7 +131,7 @@ export function useNotifications() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', userId, authUser?.sectionId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
     },
   });
 

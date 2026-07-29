@@ -37,12 +37,28 @@ Deno.serve(async (req: Request) => {
 
     if (pollError || !poll) throw new Error("Poll not found");
 
-    // Get push subscriptions for section members with notifications_enabled = true (except creator)
+    // Step 1: Get user IDs in section with notifications_enabled = true
+    const { data: sectionUsers, error: userError } = await serviceClient
+      .from("users")
+      .select("id")
+      .eq("section_id", profile.section_id)
+      .eq("notifications_enabled", true);
+
+    if (userError) throw userError;
+
+    const userIds = (sectionUsers ?? []).map((u: { id: string }) => u.id);
+    if (userIds.length === 0) {
+      return new Response(
+        JSON.stringify({ ok: true, sent: 0, failed: 0, cleaned: 0 }),
+        { headers: { ...headers, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // Step 2: Get active push subscriptions for those users
     const { data: subscriptions, error: subError } = await serviceClient
       .from("push_subscriptions")
-      .select("user_id, endpoint, p256dh, auth, users!inner(section_id, notifications_enabled)")
-      .eq("users.section_id", profile.section_id)
-      .eq("users.notifications_enabled", true);
+      .select("user_id, endpoint, p256dh, auth")
+      .in("user_id", userIds);
 
     if (subError) throw subError;
 
