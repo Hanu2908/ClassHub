@@ -1,11 +1,11 @@
 // @ts-nocheck
-import { getFunctionContext, requireCr } from "../_shared/auth.ts";
+import { getFunctionContext, requireCrOrTeacher } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWebPush } from "../_shared/push.ts";
 import { processBatched } from "../_shared/batch.ts";
 import { isRateLimited } from "../_shared/rateLimit.ts";
 
-// ── Main handler: Send custom CR notification to all section members ──
+// ── Main handler: Send custom notification to all section members ──
 
 Deno.serve(async (req: Request) => {
   const headers = getCorsHeaders(req);
@@ -24,7 +24,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const ctx = getFunctionContext(req);
-    const { serviceClient, profile, user } = await requireCr(ctx);
+    const { serviceClient, profile, user } = await requireCrOrTeacher(ctx);
 
     // Enforce rate limiting: max 10 requests per 60 seconds per user
     const isLimited = await isRateLimited(user.id, 10, 60);
@@ -35,16 +35,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Verify CR owns this section
+    // Verify user belongs to this section
     if (profile.section_id !== sectionId) {
-      throw new Error("Only the CR of this section can send notifications");
+      throw new Error("Only an authorized CR or Teacher of this section can send notifications");
     }
 
-    // Fetch all subscriptions for users in this section
+    // Fetch all subscriptions for users in this section who have notifications_enabled = true
     const { data: subscriptions, error: subsError } = await serviceClient
       .from("push_subscriptions")
-      .select("endpoint, p256dh, auth, user_id, users!inner(section_id)")
-      .eq("users.section_id", sectionId);
+      .select("endpoint, p256dh, auth, user_id, users!inner(section_id, notifications_enabled)")
+      .eq("users.section_id", sectionId)
+      .eq("users.notifications_enabled", true);
 
     if (subsError) throw subsError;
 

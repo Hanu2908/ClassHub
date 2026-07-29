@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -17,18 +17,13 @@ export default function NotificationSheet({ open, onClose }: NotificationSheetPr
   const authUser = useAppStore(s => s.authUser);
   const { notifications, markAllRead, clear, clearAll } = useNotifications();
 
-  const [now] = useState(() => Date.now());
-  const visibleNotifications = useMemo(() => notifications.filter(n => {
-    if (!n.read || !n.readAt) return true;
-    const readTime = new Date(n.readAt).getTime();
-    return now - readTime < 48 * 60 * 60 * 1000;
-  }), [notifications, now]);
+  const visibleNotifications = notifications;
 
   useEffect(() => {
-    if (notifications.some(n => !n.read)) {
+    if (open && notifications.some(n => !n.read)) {
       markAllRead();
     }
-  }, [notifications, markAllRead]);
+  }, [open, notifications, markAllRead]);
 
   // Deep-link: map target_table + target_id to a URL
   function getNotificationUrl(n: AppNotification): string | null {

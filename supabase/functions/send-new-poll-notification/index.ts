@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { getFunctionContext, requireCr } from "../_shared/auth.ts";
+import { getFunctionContext, requireCrOrTeacher } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWebPush } from "../_shared/push.ts";
 import { processBatched } from "../_shared/batch.ts";
@@ -16,7 +16,7 @@ Deno.serve(async (req: Request) => {
     if (!pollId) throw new Error("pollId is required");
 
     const ctx = getFunctionContext(req);
-    const { serviceClient, profile, user } = await requireCr(ctx);
+    const { serviceClient, profile, user } = await requireCrOrTeacher(ctx);
 
     // Enforce rate limiting: max 10 requests per 60 seconds per user
     const isLimited = await isRateLimited(user.id, 10, 60);
@@ -27,7 +27,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch the poll — must belong to CR's section
+    // Fetch the poll — must belong to author's section
     const { data: poll, error: pollError } = await serviceClient
       .from("polls")
       .select("id, section_id, question_text")
@@ -37,11 +37,12 @@ Deno.serve(async (req: Request) => {
 
     if (pollError || !poll) throw new Error("Poll not found");
 
-    // Get push subscriptions for all section members (except CR who created it)
+    // Get push subscriptions for section members with notifications_enabled = true (except creator)
     const { data: subscriptions, error: subError } = await serviceClient
       .from("push_subscriptions")
-      .select("user_id, endpoint, p256dh, auth, users!inner(section_id)")
-      .eq("users.section_id", profile.section_id);
+      .select("user_id, endpoint, p256dh, auth, users!inner(section_id, notifications_enabled)")
+      .eq("users.section_id", profile.section_id)
+      .eq("users.notifications_enabled", true);
 
     if (subError) throw subError;
 

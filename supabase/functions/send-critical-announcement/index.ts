@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { getFunctionContext, requireCr } from "../_shared/auth.ts";
+import { getFunctionContext, requireCrOrTeacher } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWebPush } from "../_shared/push.ts";
 import { processBatched } from "../_shared/batch.ts";
@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     if (!announcementId) throw new Error("announcementId is required");
 
     const ctx = getFunctionContext(req);
-    const { serviceClient, profile, user } = await requireCr(ctx);
+    const { serviceClient, profile, user } = await requireCrOrTeacher(ctx);
 
     // Enforce rate limiting: max 10 requests per 60 seconds per user
     const isLimited = await isRateLimited(user.id, 10, 60);
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch announcement — must be in CR's section and critical
+    // Fetch announcement — must be in author's section
     const { data: announcement, error: announcementError } = await serviceClient
       .from("announcements")
       .select("id, section_id, title, message_content, priority")
@@ -37,11 +37,12 @@ Deno.serve(async (req) => {
 
     if (announcementError || !announcement) throw new Error("Announcement not found");
 
-    // Get all push subscriptions for users in this section using single joined query
+    // Get push subscriptions for users in this section who have notifications_enabled = true
     const { data: subscriptions, error: subError } = await serviceClient
       .from("push_subscriptions")
-      .select("user_id, endpoint, p256dh, auth, users!inner(section_id)")
-      .eq("users.section_id", profile.section_id);
+      .select("user_id, endpoint, p256dh, auth, users!inner(section_id, notifications_enabled)")
+      .eq("users.section_id", profile.section_id)
+      .eq("users.notifications_enabled", true);
 
     if (subError) throw subError;
 
@@ -49,60 +50,65 @@ Deno.serve(async (req) => {
     let sent = 0;
     let failed = 0;
     const staleEndpoints: string[] = [];
-    const successfulUserIds: string[] = [];
-    const failedUserIds: string[] = [];
+    const successfulUserIds = new Set<string>();
+    const failedUserIds = new Set<string>();
 
     await processBatched(subscriptions ?? [], async (sub) => {
       const truncatedBody = announcement.message_content.length > 200
         ? announcement.message_content.substring(0, 197) + "..."
         : announcement.message_content;
 
+      const isCritical = announcement.priority === 'critical';
+
       const result = await sendWebPush(sub, {
-        title: announcement.title,
+        title: isCritical ? `🚨 CRITICAL: ${announcement.title}` : `Announcement: ${announcement.title}`,
         body: truncatedBody,
         url: `/app/announcements?highlight=${announcement.id}`,
         tag: "announcements",
         type: "announcement",
         announcementId: announcement.id,
-        actions: [
+        actions: isCritical ? [
           { action: "ack", title: "👍 Acknowledge" }
-        ]
+        ] : []
       });
 
       if (result.ok) {
         sent++;
-        successfulUserIds.push(sub.user_id);
+        successfulUserIds.add(sub.user_id);
       } else {
         failed++;
         staleEndpoints.push(sub.endpoint);
-        failedUserIds.push(sub.user_id);
+        failedUserIds.add(sub.user_id);
       }
 
       return result;
     });
 
-    // Batch update successful push notification events (no duplicates, updates trigger-created records)
-    if (successfulUserIds.length > 0) {
+    // If a user succeeded on at least one device, remove them from failedUserIds
+    successfulUserIds.forEach(id => failedUserIds.delete(id));
+
+    // Batch update successful push notification events
+    if (successfulUserIds.size > 0) {
       await serviceClient
         .from("notification_events")
         .update({
           status: "sent",
           sent_at: new Date().toISOString(),
         })
-        .in("recipient_id", successfulUserIds)
+        .in("recipient_id", Array.from(successfulUserIds))
         .eq("target_table", "announcements")
         .eq("target_id", announcement.id);
     }
 
     // Batch update failed push notification events
-    if (failedUserIds.length > 0) {
+    if (failedUserIds.size > 0) {
       await serviceClient
         .from("notification_events")
         .update({
           status: "failed",
           error_message: "Push notification delivery failed",
         })
-        .in("recipient_id", failedUserIds)
+        .in("recipient_id", Array.from(failedUserIds))
         .eq("target_table", "announcements")
         .eq("target_id", announcement.id);
     }
@@ -120,7 +126,7 @@ Deno.serve(async (req) => {
     return Response.json({ sent, failed, cleaned: staleEndpoints.length }, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    const status = message.includes("CR role required") ? 403 : 400;
+    const status = message.includes("CR or Teacher role required") ? 403 : 400;
     return Response.json({ error: message }, { status, headers });
   }
 });

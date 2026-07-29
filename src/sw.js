@@ -140,19 +140,18 @@ self.addEventListener('pushsubscriptionchange', (e) => {
 
       const json = newSub.toJSON();
 
-      const res = await fetch(`${supabaseUrl}/rest/v1/push_subscriptions`, {
+      const res = await fetch(`${supabaseUrl}/rest/v1/rpc/upsert_push_subscription`, {
         method: 'POST',
         headers: {
           'apikey': supabaseAnonKey,
           'Authorization': `Bearer ${session.token}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          user_id: session.userId,
-          endpoint: json.endpoint,
-          p256dh: json.keys.p256dh,
-          auth: json.keys.auth
+          sub_endpoint: json.endpoint,
+          sub_p256dh: json.keys ? json.keys.p256dh : '',
+          sub_auth: json.keys ? json.keys.auth : '',
+          sub_user_agent: navigator.userAgent
         })
       });
 
@@ -170,7 +169,15 @@ self.addEventListener('pushsubscriptionchange', (e) => {
 // ── Push Notifications ──
 
 self.addEventListener("push", (e) => {
-  const data = e.data ? e.data.json() : {};
+  let data = {};
+  if (e.data) {
+    try {
+      data = e.data.json();
+    } catch {
+      data = { title: "ClassHub", body: e.data.text() };
+    }
+  }
+
   const title = data.title || "ClassHub";
   const options = {
     body: data.body || "",

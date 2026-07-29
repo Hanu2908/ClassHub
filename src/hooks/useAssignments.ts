@@ -223,6 +223,21 @@ export function useCreateAssignment() {
           .single();
         if (error) throw error;
 
+        if (assignment?.id && sectionId) {
+          try {
+            await supabase.functions.invoke('send-custom-notification', {
+              body: {
+                title: `📝 New Assignment: ${validated.title}`,
+                body: `Due ${new Date(validated.dueDate).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}`,
+                sectionId: sectionId,
+                skipDbInsert: true,
+              },
+            });
+          } catch (pushErr) {
+            console.warn('[useCreateAssignment] Push notification dispatch failed:', pushErr);
+          }
+        }
+
         // Insert sets if provided
         if (input.sets && input.sets.length > 0) {
           const { error: setErr } = await supabase.from('assignment_sets').insert(

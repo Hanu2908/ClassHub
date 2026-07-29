@@ -3,13 +3,13 @@ import { useAppStore } from '../store/appStore';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
 
-/** Get serviceWorker registration with a 3-second timeout to prevent hangs in Dev mode */
+/** Get serviceWorker registration with a 10-second timeout to prevent hangs on mobile cold boots */
 async function getSWRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!isPushSupported()) return null;
   try {
     const reg = await Promise.race([
       navigator.serviceWorker.ready,
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Service Worker ready timeout')), 3000))
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Service Worker ready timeout')), 10000))
     ]);
     return reg;
   } catch (err) {
@@ -30,8 +30,13 @@ export function getPushPermission(): NotificationPermission {
   return Notification.permission;
 }
 
-/** Check if user has active subscription in DB */
+/** Check if current browser or account has an active subscription */
 export async function hasActiveSubscription(): Promise<boolean> {
+  const reg = await getSWRegistration();
+  if (reg) {
+    const sub = await reg.pushManager.getSubscription().catch(() => null);
+    if (sub) return true;
+  }
   const { count } = await supabase
     .from('push_subscriptions')
     .select('id', { count: 'exact', head: true });
@@ -51,6 +56,13 @@ export async function subscribeToPush(): Promise<boolean> {
 
     const reg = await getSWRegistration();
     if (!reg) return false;
+
+    // Safely unsubscribe any stale/mismatched existing subscription first
+    const existingSub = await reg.pushManager.getSubscription().catch(() => null);
+    if (existingSub) {
+      await existingSub.unsubscribe().catch(() => {});
+    }
+
     const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
@@ -146,8 +158,8 @@ export async function ensurePushSubscription(): Promise<void> {
     if (!isPushSupported()) return;
     if (!VAPID_PUBLIC_KEY) return;
 
-    if (Notification.permission !== 'granted') {
-      // Permission has been revoked or reset. Sync this to the database.
+    if (Notification.permission === 'denied') {
+      // Permission has been explicitly denied by user. Sync this to the database.
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
@@ -157,7 +169,7 @@ export async function ensurePushSubscription(): Promise<void> {
           .maybeSingle();
 
         if (profile?.notifications_enabled) {
-          console.warn('[Push] Permission revoked/not granted but profile indicates enabled. Cleaning up...');
+          console.warn('[Push] Permission explicitly denied. Cleaning up...');
           
           const reg = await getSWRegistration();
           if (reg) {
@@ -178,6 +190,11 @@ export async function ensurePushSubscription(): Promise<void> {
           useAppStore.getState().refreshProfile();
         }
       }
+      return;
+    }
+
+    if (Notification.permission !== 'granted') {
+      // Permission is 'default' (not granted yet). Do NOT delete subscriptions on boot.
       return;
     }
 
