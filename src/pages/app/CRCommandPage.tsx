@@ -4,10 +4,11 @@ import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
   XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, BookOpen,
   CheckCircle2, ExternalLink, Copy, Share2, RefreshCw, Lock, Unlock, Eye, EyeOff, Loader2,
-  AlertTriangle, Trash2
+  AlertTriangle, Trash2, UserCheck
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
+import { CRAttendanceRegisterModal } from '../../components/CRAttendanceRegisterModal';
 import { useAppStore, isExpired } from '../../store/appStore';
 import { toast } from 'sonner';
 import { useAssignments, useAssignmentSubmissions, useCRToggleSubmission } from '../../hooks/useAssignments';
@@ -2151,6 +2152,7 @@ export default function CRCommandPage() {
   const role = useAppStore(s => s.role);
   const [showNotifSheet, setShowNotifSheet] = useState(!!location.state?.openBroadcast);
   const [showFlashPostSheet, setShowFlashPostSheet] = useState(!!location.state?.openFlashPost);
+  const [showAttendanceSheet, setShowAttendanceSheet] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [deletingHub, setDeletingHub] = useState(false);
   const { data: section } = useSection();
@@ -2226,6 +2228,10 @@ export default function CRCommandPage() {
         <section>
           <p className="t-mono" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>QUICK ACTIONS</p>
           <div className="carousel" style={{ paddingBottom: 4 }}>
+            <button className="card" onClick={() => setShowAttendanceSheet(true)} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content', background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
+              <UserCheck size={16} color="var(--status-safe)" />
+              <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Take Attendance</span>
+            </button>
             <button className="card" onClick={() => navigate('/app/polls', { state: { openCreate: true } })} style={{ flex: '0 0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 'fit-content' }}>
               <BarChart2 size={16} color="var(--status-info)" />
               <span className="t-body-medium" style={{ color: 'var(--text-primary)' }}>Create Poll</span>
@@ -2294,6 +2300,7 @@ export default function CRCommandPage() {
 
       <SendNotificationSheet open={showNotifSheet} onClose={() => setShowNotifSheet(false)} />
       <FlashPostSheet open={showFlashPostSheet} onClose={() => setShowFlashPostSheet(false)} />
+      <CRAttendanceRegisterModal open={showAttendanceSheet} onClose={() => setShowAttendanceSheet(false)} />
 
       <BottomSheet open={showDeleteSheet} onClose={() => setShowDeleteSheet(false)} title="Delete Section Hub?">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>

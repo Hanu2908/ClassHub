@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar, Layout, Table, User, MoreVertical, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader, Info, ChevronDown, CalendarCheck, Copy, AlertTriangle, Calendar, Layout, Table, User, MoreVertical, Pencil, UserCheck } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavBar } from '../../components/NavBar';
 import { CROnly } from '../../components/Shared';
+import { CRAttendanceRegisterModal } from '../../components/CRAttendanceRegisterModal';
 import { useAppStore, type ScheduleSlot } from '../../store/appStore';
 import { BottomSheet } from '../../components/BottomSheet';
 import { toast } from 'sonner';
@@ -953,6 +954,7 @@ function StudentSchedulePage() {
   );
   const [viewLayout, setViewLayout] = useState<'timeline' | 'week'>('timeline');
   const [selectedCellSlots, setSelectedCellSlots] = useState<SwipeableCardSlot[] | null>(null);
+  const [attendanceModalSlot, setAttendanceModalSlot] = useState<{ subjectId?: string; timetableSlotId?: string; targetBatch?: '1' | '2' | 'all' } | null>(null);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [showCopySheet, setShowCopySheet] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
@@ -991,6 +993,7 @@ function StudentSchedulePage() {
   const { data: section } = useSection({
     sectionId: role === 'teacher' ? (globalSelectedSectionId || undefined) : undefined
   });
+  const { data: subjects = [] } = useSubjects();
   const sectionName = section?.name || '';
   const deleteSlotMutation = useDeleteScheduleSlot();
   const clearDayMutation = useClearDaySlots({
@@ -1912,6 +1915,37 @@ function StudentSchedulePage() {
                 </div>
               );
             })}
+            {isCR && selectedCellSlots && selectedCellSlots.length > 0 && (
+              <button
+                onClick={() => {
+                  const firstSlot = selectedCellSlots[0];
+                  const foundSubject = subjects.find((s: any) => s.code === firstSlot.code || s.name === firstSlot.subject);
+                  setAttendanceModalSlot({
+                    subjectId: (firstSlot as any).subjectId || foundSubject?.id,
+                    timetableSlotId: firstSlot.id,
+                    targetBatch: (firstSlot.targetBatch as any) || 'all',
+                  });
+                  setSelectedCellSlots(null);
+                }}
+                className="t-button"
+                style={{
+                  marginTop: 6,
+                  padding: '12px 14px',
+                  background: 'rgba(52, 211, 153, 0.12)',
+                  border: '1px solid rgba(52, 211, 153, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  color: 'var(--status-safe)',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                <UserCheck size={16} /> Take Class Attendance
+              </button>
+            )}
             <button
               onClick={() => setSelectedCellSlots(null)}
               className="t-button"
@@ -2108,6 +2142,14 @@ function StudentSchedulePage() {
           </div>
         </div>
       </BottomSheet>
+
+      <CRAttendanceRegisterModal
+        open={Boolean(attendanceModalSlot)}
+        onClose={() => setAttendanceModalSlot(null)}
+        initialSubjectId={attendanceModalSlot?.subjectId}
+        initialTimetableSlotId={attendanceModalSlot?.timetableSlotId}
+        initialTargetBatch={attendanceModalSlot?.targetBatch}
+      />
 
       <NavBar />
     </div>
