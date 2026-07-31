@@ -47,6 +47,7 @@ export function CRAttendanceRegisterModal({
   const [targetBatch, setTargetBatch] = useState<'all' | '1' | '2'>(initialTargetBatch);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccessSheet, setShowSuccessSheet] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Markings state: Map studentId -> status ('present' | 'absent' | 'od' | 'makeup')
@@ -56,6 +57,7 @@ export function CRAttendanceRegisterModal({
   useEffect(() => {
     if (open) {
       setShowSuccessSheet(false);
+      setIsSaved(false);
       if (initialSubjectId) setSubjectId(initialSubjectId);
       else if (subjects.length > 0 && !subjectId) setSubjectId(subjects[0].id);
       if (initialTargetBatch) setTargetBatch(initialTargetBatch);
@@ -201,6 +203,7 @@ export function CRAttendanceRegisterModal({
       toast.success(
         `Attendance recorded for ${selectedSubject?.code || 'Subject'}! (${counts.present} Present, ${counts.absent} Absent)`
       );
+      setIsSaved(true);
       setShowSuccessSheet(true);
     } catch (err: any) {
       console.error('Failed to log CR attendance:', err);
@@ -209,22 +212,23 @@ export function CRAttendanceRegisterModal({
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={showSuccessSheet ? 'Share Attendance Report' : 'Take Class Attendance Register'}>
+    <BottomSheet open={open} onClose={onClose} title={showSuccessSheet ? (isSaved ? 'Share Attendance Report' : 'Pre-Save Report Share') : 'Take Class Attendance Register'}>
       {showSuccessSheet ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
-          {/* Success Banner */}
+          {/* Status Banner */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '12px 14px', borderRadius: 'var(--radius-md)',
-            background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.25)',
+            background: isSaved ? 'rgba(52, 211, 153, 0.1)' : 'rgba(251, 191, 36, 0.1)',
+            border: isSaved ? '1px solid rgba(52, 211, 153, 0.25)' : '1px solid rgba(251, 191, 36, 0.3)',
           }}>
-            <CheckCircle2 size={20} color="var(--status-safe)" style={{ flexShrink: 0 }} />
+            <CheckCircle2 size={20} color={isSaved ? 'var(--status-safe)' : '#fbbf24'} style={{ flexShrink: 0 }} />
             <div>
-              <p className="t-subtitle" style={{ color: 'var(--status-safe)', fontWeight: 600, margin: 0 }}>
-                Attendance Register Recorded!
+              <p className="t-subtitle" style={{ color: isSaved ? 'var(--status-safe)' : '#fbbf24', fontWeight: 600, margin: 0 }}>
+                {isSaved ? 'Attendance Register Recorded!' : 'Pre-Save Attendance Report'}
               </p>
               <p className="t-caption" style={{ color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-                {counts.present} Present · {counts.absent} Absent · {counts.od} OD
+                {counts.present} Present · {counts.absent} Absent · {counts.od} OD {!isSaved && '(Unsaved Draft)'}
               </p>
             </div>
           </div>
@@ -322,17 +326,48 @@ export function CRAttendanceRegisterModal({
             </pre>
           </div>
 
-          <button
-            onClick={onClose}
-            className="t-button"
-            style={{
-              width: '100%', padding: '12px', background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
-              color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, marginTop: 6,
-            }}
-          >
-            Done
-          </button>
+          {isSaved ? (
+            <button
+              onClick={onClose}
+              className="t-button"
+              style={{
+                width: '100%', padding: '12px', background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
+                color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, marginTop: 6,
+              }}
+            >
+              Done
+            </button>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+              <button
+                onClick={() => setShowSuccessSheet(false)}
+                className="t-button"
+                style={{
+                  padding: '12px 14px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)',
+                }}
+              >
+                Back to Register
+              </button>
+
+              <button
+                onClick={handleSaveAttendance}
+                disabled={logAttendanceMutation.isPending}
+                className="t-button"
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '12px', background: 'var(--accent-primary)',
+                  border: 'none', borderRadius: 'var(--radius-md)',
+                  cursor: logAttendanceMutation.isPending ? 'not-allowed' : 'pointer',
+                  color: '#fff', fontWeight: 600,
+                }}
+              >
+                {logAttendanceMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                Save Register to ClassHub
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
@@ -639,11 +674,32 @@ export function CRAttendanceRegisterModal({
               onClick={onClose}
               className="t-button"
               style={{
-                padding: '12px 18px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                padding: '12px 14px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
                 borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)',
               }}
             >
               Cancel
+            </button>
+
+            <button
+              onClick={() => {
+                if (!subjectId) {
+                  toast.error('Please select a subject first');
+                  return;
+                }
+                setShowSuccessSheet(true);
+              }}
+              disabled={!subjectId}
+              className="t-button"
+              style={{
+                padding: '12px 14px', background: 'rgba(37, 211, 102, 0.12)',
+                border: '1px solid rgba(37, 211, 102, 0.3)', borderRadius: 'var(--radius-md)',
+                cursor: !subjectId ? 'not-allowed' : 'pointer', color: !subjectId ? 'var(--text-muted)' : '#25D366',
+                fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+              }}
+              title="Share attendance report without saving"
+            >
+              <MessageSquare size={16} /> Share
             </button>
 
             <button
@@ -665,7 +721,7 @@ export function CRAttendanceRegisterModal({
               ) : (
                 <Check size={16} />
               )}
-              {logAttendanceMutation.isPending ? 'Saving Register…' : `Save Attendance (${counts.present}/${counts.total} Present)`}
+              {logAttendanceMutation.isPending ? 'Saving Register…' : `Save (${counts.present}/${counts.total})`}
             </button>
           </div>
         </div>
