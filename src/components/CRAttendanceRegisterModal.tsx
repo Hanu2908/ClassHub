@@ -782,15 +782,8 @@ export function CRAttendanceRegisterModal({
             </button>
           </div>
 
-          {/* PDF iFrame Container */}
-          <iframe
-            src={pdfPreviewData.blobUrl}
-            title="Attendance PDF Document Preview"
-            style={{
-              width: '100%', flex: 1, border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)', background: '#ffffff',
-            }}
-          />
+          {/* PDF Canvas Renderer Container */}
+          <PDFCanvasViewer blobUrl={pdfPreviewData.blobUrl} />
 
           {/* Action Bar */}
           <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
@@ -823,5 +816,102 @@ export function CRAttendanceRegisterModal({
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Robust canvas-based PDF renderer for cross-platform mobile and desktop PWA support
+ */
+function PDFCanvasViewer({ blobUrl }: { blobUrl: string }) {
+  const wrapperRef = useState<{ current: HTMLDivElement | null }>({ current: null })[0];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function renderPdf() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { ensurePdfJsLoaded } = await import('../lib/utils/pdfThumbnail');
+        const pdfjs = await ensurePdfJsLoaded();
+        if (!pdfjs) {
+          throw new Error('PDF rendering engine could not be initialized.');
+        }
+
+        const loadingTask = pdfjs.getDocument(blobUrl);
+        const pdf = await loadingTask.promise;
+
+        if (isCancelled || !wrapperRef.current) return;
+        wrapperRef.current.innerHTML = ''; // Clear container
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1.5 });
+
+          const canvas = document.createElement('canvas');
+          canvas.style.width = '100%';
+          canvas.style.height = 'auto';
+          canvas.style.marginBottom = '12px';
+          canvas.style.borderRadius = '8px';
+          canvas.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)';
+          canvas.style.background = '#ffffff';
+
+          const context = canvas.getContext('2d');
+          if (context) {
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({
+              canvasContext: context,
+              viewport: viewport,
+            }).promise;
+          }
+
+          if (!isCancelled && wrapperRef.current) {
+            wrapperRef.current.appendChild(canvas);
+          }
+        }
+        setLoading(false);
+      } catch (err: any) {
+        console.error('Canvas PDF render error:', err);
+        if (!isCancelled) {
+          setError(err.message || 'Failed to render PDF preview');
+          setLoading(false);
+        }
+      }
+    }
+
+    renderPdf();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [blobUrl, wrapperRef]);
+
+  return (
+    <div style={{
+      width: '100%', flex: 1, overflowY: 'auto',
+      border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
+      background: 'rgba(255, 255, 255, 0.03)', padding: 12, boxSizing: 'border-box',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+    }}>
+      {loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 12, color: 'var(--text-muted)' }}>
+          <Loader2 size={32} className="animate-spin" color="var(--accent-primary)" />
+          <span className="t-body-medium">Rendering PDF Pages…</span>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--status-critical)' }}>
+          <p className="t-body">{error}</p>
+        </div>
+      )}
+
+      <div ref={el => { wrapperRef.current = el; }} style={{ width: '100%', display: loading ? 'none' : 'block' }} />
+    </div>
   );
 }
