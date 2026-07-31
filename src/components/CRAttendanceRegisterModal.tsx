@@ -6,8 +6,16 @@ import { useAppStore } from '../store/appStore';
 import { toast } from 'sonner';
 import { haptics } from '../lib/haptics';
 import {
-  Check, Search, Loader2, Calendar, BookOpen, Clock, UserCheck, Filter, RotateCcw
+  Check, Search, Loader2, Calendar, BookOpen, Clock, UserCheck, Filter, RotateCcw,
+  FileText, Download, Copy, CheckCircle2, MessageSquare
 } from 'lucide-react';
+import {
+  generateWhatsAppAttendanceReport,
+  generateAttendancePDF,
+  shareOrCopyReport,
+  downloadAttendanceCSV,
+  type ReportStudent,
+} from '../lib/utils/attendanceReport';
 
 export interface CRAttendanceRegisterModalProps {
   open: boolean;
@@ -38,6 +46,8 @@ export function CRAttendanceRegisterModal({
   const [lectureCount, setLectureCount] = useState<number>(1);
   const [targetBatch, setTargetBatch] = useState<'all' | '1' | '2'>(initialTargetBatch);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuccessSheet, setShowSuccessSheet] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Markings state: Map studentId -> status ('present' | 'absent' | 'od' | 'makeup')
   const [markings, setMarkings] = useState<Record<string, AttendanceStatus>>({});
@@ -45,11 +55,34 @@ export function CRAttendanceRegisterModal({
   // Sync state when modal opens or initial values change
   useEffect(() => {
     if (open) {
+      setShowSuccessSheet(false);
       if (initialSubjectId) setSubjectId(initialSubjectId);
       else if (subjects.length > 0 && !subjectId) setSubjectId(subjects[0].id);
       if (initialTargetBatch) setTargetBatch(initialTargetBatch);
     }
   }, [open, initialSubjectId, initialTargetBatch, subjects]);
+
+  const getReportInputData = () => {
+    const selectedSubject = subjects.find(s => s.id === subjectId);
+    const reportStudents: ReportStudent[] = targetStudents.map(s => ({
+      id: s.id,
+      name: s.name,
+      classRoll: s.classRoll,
+      universityRoll: s.universityRoll,
+      subBatch: s.subBatch,
+      status: markings[s.id] || 'present',
+    }));
+
+    return {
+      sectionName: 'P2',
+      subjectCode: selectedSubject?.code || 'SUBJECT',
+      subjectName: selectedSubject?.name || 'Class Subject',
+      date,
+      lectureCount,
+      targetBatch,
+      students: reportStudents,
+    };
+  };
 
   // Initialize markings with 'present' default whenever roster updates
   useEffect(() => {
@@ -168,7 +201,7 @@ export function CRAttendanceRegisterModal({
       toast.success(
         `Attendance recorded for ${selectedSubject?.code || 'Subject'}! (${counts.present} Present, ${counts.absent} Absent)`
       );
-      onClose();
+      setShowSuccessSheet(true);
     } catch (err: any) {
       console.error('Failed to log CR attendance:', err);
       toast.error(err.message || 'Failed to save attendance register');
@@ -176,341 +209,467 @@ export function CRAttendanceRegisterModal({
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Take Class Attendance Register">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
-        {/* Controls Bar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Subject & Date Selection */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+    <BottomSheet open={open} onClose={onClose} title={showSuccessSheet ? 'Share Attendance Report' : 'Take Class Attendance Register'}>
+      {showSuccessSheet ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
+          {/* Success Banner */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '12px 14px', borderRadius: 'var(--radius-md)',
+            background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.25)',
+          }}>
+            <CheckCircle2 size={20} color="var(--status-safe)" style={{ flexShrink: 0 }} />
             <div>
-              <label htmlFor="cr-att-subject-select" className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, color: 'var(--text-muted)' }}>
-                <BookOpen size={13} color="var(--accent-primary)" /> Subject *
-              </label>
-              <select
-                id="cr-att-subject-select"
-                value={subjectId}
-                onChange={e => setSubjectId(e.target.value)}
-                style={{
-                  width: '100%', padding: '9px 12px',
-                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-                  fontSize: 13, outline: 'none',
-                }}
-              >
-                <option value="">Select subject…</option>
-                {subjects.map(s => (
-                  <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="cr-att-date-input" className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, color: 'var(--text-muted)' }}>
-                <Calendar size={13} color="var(--accent-primary)" /> Date *
-              </label>
-              <input
-                id="cr-att-date-input"
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                style={{
-                  width: '100%', padding: '9px 12px', boxSizing: 'border-box',
-                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-                  fontSize: 13, outline: 'none',
-                }}
-              />
+              <p className="t-subtitle" style={{ color: 'var(--status-safe)', fontWeight: 600, margin: 0 }}>
+                Attendance Register Recorded!
+              </p>
+              <p className="t-caption" style={{ color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                {counts.present} Present · {counts.absent} Absent · {counts.od} OD
+              </p>
             </div>
           </div>
 
-          {/* Batch & Lecture Count */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <label htmlFor="cr-att-batch-select" className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, color: 'var(--text-muted)' }}>
-                <Filter size={13} color="var(--accent-primary)" /> Target Batch
-              </label>
-              <select
-                id="cr-att-batch-select"
-                value={targetBatch}
-                onChange={e => setTargetBatch(e.target.value as 'all' | '1' | '2')}
-                style={{
-                  width: '100%', padding: '9px 12px',
-                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-                  fontSize: 13, outline: 'none',
-                }}
-              >
-                <option value="all">Full Section (All)</option>
-                <option value="1">Batch 1 Only</option>
-                <option value="2">Batch 2 Only</option>
-              </select>
-            </div>
+          {/* Share Format Options */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11 }}>EXPORT & SHARE FORMATS</p>
 
-            <div>
-              <label htmlFor="cr-att-count-select" className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, color: 'var(--text-muted)' }}>
-                <Clock size={13} color="var(--accent-primary)" /> Lecture Count
-              </label>
-              <select
-                id="cr-att-count-select"
-                value={lectureCount}
-                onChange={e => setLectureCount(Number(e.target.value))}
-                style={{
-                  width: '100%', padding: '9px 12px',
-                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-                  fontSize: 13, outline: 'none',
-                }}
-              >
-                <option value={1}>1 Lecture (Standard)</option>
-                <option value={2}>2 Lectures (Double / Lab)</option>
-                <option value={3}>3 Lectures (Triple Lab)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Live Counters Summary Strip */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 14px', borderRadius: 'var(--radius-md)',
-          background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-default)',
-          gap: 8,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span className="t-mono-sm" style={{ color: 'var(--status-safe)', fontWeight: 700 }}>
-                {counts.present}
-              </span>
-              <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>Present</span>
-            </div>
-
-            <div style={{ width: 1, height: 14, background: 'var(--border-default)' }} />
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span className="t-mono-sm" style={{ color: 'var(--status-critical)', fontWeight: 700 }}>
-                {counts.absent}
-              </span>
-              <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>Absent</span>
-            </div>
-
-            {counts.od > 0 && (
-              <>
-                <div style={{ width: 1, height: 14, background: 'var(--border-default)' }} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span className="t-mono-sm" style={{ color: '#60a5fa', fontWeight: 700 }}>
-                    {counts.od}
-                  </span>
-                  <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>OD</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: 6 }}>
+            {/* WhatsApp Share Button */}
             <button
-              onClick={handleMarkAllPresent}
-              style={{
-                padding: '4px 8px', fontSize: 11, fontWeight: 600,
-                background: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.25)',
-                color: 'var(--status-safe)', borderRadius: 6, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 4,
+              onClick={() => {
+                const report = generateWhatsAppAttendanceReport(getReportInputData());
+                shareOrCopyReport(report, `Attendance Report - ${getReportInputData().subjectCode}`);
               }}
-              title="Set all to Present"
+              className="t-button"
+              style={{
+                width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
+                background: '#25D366', border: 'none', color: '#fff',
+                fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: '0 4px 12px rgba(37, 211, 102, 0.25)',
+              }}
             >
-              <UserCheck size={12} /> All Present
+              <MessageSquare size={16} /> Share to WhatsApp / Copy Text
             </button>
 
-            {counts.absent > 0 && (
+            {/* PDF Export Button */}
+            <button
+              onClick={async () => {
+                setGeneratingPdf(true);
+                try {
+                  await generateAttendancePDF(getReportInputData());
+                  toast.success('Official PDF Report downloaded! 📄');
+                } catch (err) {
+                  console.error('PDF generation failed:', err);
+                  toast.error('Failed to generate PDF');
+                } finally {
+                  setGeneratingPdf(false);
+                }
+              }}
+              disabled={generatingPdf}
+              className="t-button"
+              style={{
+                width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
+                background: 'rgba(96, 165, 250, 0.12)', border: '1px solid rgba(96, 165, 250, 0.3)',
+                color: 'var(--accent-primary)', fontWeight: 600, cursor: generatingPdf ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {generatingPdf ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+              {generatingPdf ? 'Generating PDF…' : 'Export Official PDF Document'}
+            </button>
+
+            {/* CSV Export Button */}
+            <button
+              onClick={() => {
+                downloadAttendanceCSV(getReportInputData());
+              }}
+              className="t-button"
+              style={{
+                width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <Download size={16} color="var(--text-secondary)" /> Export CSV Spreadsheet
+            </button>
+          </div>
+
+          {/* Text Report Preview Box */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 11 }}>WHATSAPP REPORT PREVIEW</span>
               <button
-                onClick={handleClearAbsentees}
-                style={{
-                  padding: '4px 8px', fontSize: 11, fontWeight: 600,
-                  background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-default)',
-                  color: 'var(--text-muted)', borderRadius: 6, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 4,
+                onClick={() => {
+                  const report = generateWhatsAppAttendanceReport(getReportInputData());
+                  navigator.clipboard.writeText(report);
+                  toast.success('Text copied to clipboard!');
                 }}
-                title="Reset Absentees"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--accent-primary)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4,
+                }}
               >
-                <RotateCcw size={11} /> Reset
+                <Copy size={12} /> Copy
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* Search Input */}
-        <div style={{ position: 'relative' }}>
-          <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 10, top: 11 }} />
-          <input
-            type="text"
-            placeholder="Search student by name or roll number..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%', padding: '8px 12px 8px 32px', boxSizing: 'border-box',
+            </div>
+            <pre style={{
+              padding: '10px 12px', borderRadius: 'var(--radius-md)',
               background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
-              fontSize: 12, outline: 'none',
-            }}
-          />
-        </div>
-
-        {/* Student Roster List */}
-        {isRosterLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: 8, color: 'var(--text-muted)' }}>
-            <Loader2 size={18} className="animate-spin" />
-            <span className="t-body">Loading section roster…</span>
+              color: 'var(--text-secondary)', fontSize: 11, fontFamily: 'var(--font-mono)',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 150, overflowY: 'auto',
+            }}>
+              {generateWhatsAppAttendanceReport(getReportInputData())}
+            </pre>
           </div>
-        ) : filteredRoster.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
-            <p className="t-body">No students found matching filters.</p>
-          </div>
-        ) : (
-          <div style={{
-            maxHeight: 320, overflowY: 'auto',
-            display: 'flex', flexDirection: 'column', gap: 6,
-            paddingRight: 4,
-          }}>
-            {filteredRoster.map(student => {
-              const currentStatus = markings[student.id] || 'present';
-              const isAbsent = currentStatus === 'absent';
-              const isOD = currentStatus === 'od';
 
-              return (
-                <div
-                  key={student.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '8px 12px', borderRadius: 8,
-                    background: isAbsent
-                      ? 'rgba(248, 113, 113, 0.06)'
-                      : isOD
-                        ? 'rgba(96, 165, 250, 0.06)'
-                        : 'rgba(255, 255, 255, 0.02)',
-                    border: isAbsent
-                      ? '1px solid rgba(248, 113, 113, 0.2)'
-                      : isOD
-                        ? '1px solid rgba(96, 165, 250, 0.2)'
-                        : '1px solid var(--border-default)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                    {/* Roll Pill */}
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%',
-                      background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>
-                      <span className="t-mono-sm" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 11 }}>
-                        {student.classRoll || '—'}
-                      </span>
-                    </div>
-
-                    {/* Student Name */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {student.name}
-                      </p>
-                      {student.subBatch && (
-                        <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
-                          Batch B{student.subBatch}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status Toggle Button Group */}
-                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                    {/* Present Pill */}
-                    <button
-                      onClick={() => handleToggleStatus(student.id, 'present')}
-                      style={{
-                        padding: '4px 10px', fontSize: 12, fontWeight: 700,
-                        borderRadius: 6, cursor: 'pointer',
-                        background: currentStatus === 'present' ? 'var(--status-safe)' : 'transparent',
-                        color: currentStatus === 'present' ? '#fff' : 'var(--text-muted)',
-                        border: currentStatus === 'present' ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
-                        transition: 'all 0.15s ease',
-                      }}
-                      title="Mark Present"
-                    >
-                      P
-                    </button>
-
-                    {/* Absent Pill */}
-                    <button
-                      onClick={() => handleToggleStatus(student.id, 'absent')}
-                      style={{
-                        padding: '4px 10px', fontSize: 12, fontWeight: 700,
-                        borderRadius: 6, cursor: 'pointer',
-                        background: currentStatus === 'absent' ? 'var(--status-critical)' : 'transparent',
-                        color: currentStatus === 'absent' ? '#fff' : 'var(--text-muted)',
-                        border: currentStatus === 'absent' ? '1px solid var(--status-critical)' : '1px solid var(--border-default)',
-                        transition: 'all 0.15s ease',
-                      }}
-                      title="Mark Absent"
-                    >
-                      A
-                    </button>
-
-                    {/* OD Pill */}
-                    <button
-                      onClick={() => handleToggleStatus(student.id, 'od')}
-                      style={{
-                        padding: '4px 10px', fontSize: 12, fontWeight: 700,
-                        borderRadius: 6, cursor: 'pointer',
-                        background: currentStatus === 'od' ? '#3b82f6' : 'transparent',
-                        color: currentStatus === 'od' ? '#fff' : 'var(--text-muted)',
-                        border: currentStatus === 'od' ? '1px solid #3b82f6' : '1px solid var(--border-default)',
-                        transition: 'all 0.15s ease',
-                      }}
-                      title="Mark On-Duty (OD)"
-                    >
-                      OD
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
           <button
             onClick={onClose}
             className="t-button"
             style={{
-              padding: '12px 18px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)',
+              width: '100%', padding: '12px', background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
+              color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, marginTop: 6,
             }}
           >
-            Cancel
-          </button>
-
-          <button
-            onClick={handleSaveAttendance}
-            disabled={logAttendanceMutation.isPending || !subjectId}
-            className="t-button"
-            style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '12px',
-              background: logAttendanceMutation.isPending || !subjectId ? 'var(--bg-elevated)' : 'var(--accent-primary)',
-              border: 'none', borderRadius: 'var(--radius-md)',
-              cursor: logAttendanceMutation.isPending || !subjectId ? 'not-allowed' : 'pointer',
-              color: logAttendanceMutation.isPending || !subjectId ? 'var(--text-muted)' : '#fff',
-              fontWeight: 600,
-            }}
-          >
-            {logAttendanceMutation.isPending ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Check size={16} />
-            )}
-            {logAttendanceMutation.isPending ? 'Saving Register…' : `Save Attendance (${counts.present}/${counts.total} Present)`}
+            Done
           </button>
         </div>
-      </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0 20px' }}>
+          {/* Controls Bar */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Subject & Date Selection */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label htmlFor="cr-att-subject-select" className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, color: 'var(--text-muted)' }}>
+                  <BookOpen size={13} color="var(--accent-primary)" /> Subject *
+                </label>
+                <select
+                  id="cr-att-subject-select"
+                  value={subjectId}
+                  onChange={e => setSubjectId(e.target.value)}
+                  style={{
+                    width: '100%', padding: '9px 12px',
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                    fontSize: 13, outline: 'none',
+                  }}
+                >
+                  <option value="">Select subject…</option>
+                  {subjects.map(s => (
+                    <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="cr-att-date-input" className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, color: 'var(--text-muted)' }}>
+                  <Calendar size={13} color="var(--accent-primary)" /> Date *
+                </label>
+                <input
+                  id="cr-att-date-input"
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  style={{
+                    width: '100%', padding: '9px 12px', boxSizing: 'border-box',
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                    fontSize: 13, outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Batch & Lecture Count */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label htmlFor="cr-att-batch-select" className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, color: 'var(--text-muted)' }}>
+                  <Filter size={13} color="var(--accent-primary)" /> Target Batch
+                </label>
+                <select
+                  id="cr-att-batch-select"
+                  value={targetBatch}
+                  onChange={e => setTargetBatch(e.target.value as 'all' | '1' | '2')}
+                  style={{
+                    width: '100%', padding: '9px 12px',
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                    fontSize: 13, outline: 'none',
+                  }}
+                >
+                  <option value="all">Full Section (All)</option>
+                  <option value="1">Batch 1 Only</option>
+                  <option value="2">Batch 2 Only</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="cr-att-count-select" className="t-label" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, color: 'var(--text-muted)' }}>
+                  <Clock size={13} color="var(--accent-primary)" /> Lecture Count
+                </label>
+                <select
+                  id="cr-att-count-select"
+                  value={lectureCount}
+                  onChange={e => setLectureCount(Number(e.target.value))}
+                  style={{
+                    width: '100%', padding: '9px 12px',
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                    fontSize: 13, outline: 'none',
+                  }}
+                >
+                  <option value={1}>1 Lecture (Standard)</option>
+                  <option value={2}>2 Lectures (Double / Lab)</option>
+                  <option value={3}>3 Lectures (Triple Lab)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Counters Summary Strip */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 14px', borderRadius: 'var(--radius-md)',
+            background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-default)',
+            gap: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="t-mono-sm" style={{ color: 'var(--status-safe)', fontWeight: 700 }}>
+                  {counts.present}
+                </span>
+                <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>Present</span>
+              </div>
+
+              <div style={{ width: 1, height: 14, background: 'var(--border-default)' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="t-mono-sm" style={{ color: 'var(--status-critical)', fontWeight: 700 }}>
+                  {counts.absent}
+                </span>
+                <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>Absent</span>
+              </div>
+
+              {counts.od > 0 && (
+                <>
+                  <div style={{ width: 1, height: 14, background: 'var(--border-default)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span className="t-mono-sm" style={{ color: '#60a5fa', fontWeight: 700 }}>
+                      {counts.od}
+                    </span>
+                    <span className="t-caption" style={{ color: 'var(--text-secondary)' }}>OD</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={handleMarkAllPresent}
+                style={{
+                  padding: '4px 8px', fontSize: 11, fontWeight: 600,
+                  background: 'rgba(52, 211, 153, 0.12)', border: '1px solid rgba(52, 211, 153, 0.25)',
+                  color: 'var(--status-safe)', borderRadius: 6, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+                title="Set all to Present"
+              >
+                <UserCheck size={12} /> All Present
+              </button>
+
+              {counts.absent > 0 && (
+                <button
+                  onClick={handleClearAbsentees}
+                  style={{
+                    padding: '4px 8px', fontSize: 11, fontWeight: 600,
+                    background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-default)',
+                    color: 'var(--text-muted)', borderRadius: 6, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                  title="Reset Absentees"
+                >
+                  <RotateCcw size={11} /> Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Search Input */}
+          <div style={{ position: 'relative' }}>
+            <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 10, top: 11 }} />
+            <input
+              type="text"
+              placeholder="Search student by name or roll number..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%', padding: '8px 12px 8px 32px', boxSizing: 'border-box',
+                background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                fontSize: 12, outline: 'none',
+              }}
+            />
+          </div>
+
+          {/* Student Roster List */}
+          {isRosterLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: 8, color: 'var(--text-muted)' }}>
+              <Loader2 size={18} className="animate-spin" />
+              <span className="t-body">Loading section roster…</span>
+            </div>
+          ) : filteredRoster.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
+              <p className="t-body">No students found matching filters.</p>
+            </div>
+          ) : (
+            <div style={{
+              maxHeight: 320, overflowY: 'auto',
+              display: 'flex', flexDirection: 'column', gap: 6,
+              paddingRight: 4,
+            }}>
+              {filteredRoster.map(student => {
+                const currentStatus = markings[student.id] || 'present';
+                const isAbsent = currentStatus === 'absent';
+                const isOD = currentStatus === 'od';
+
+                return (
+                  <div
+                    key={student.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 12px', borderRadius: 8,
+                      background: isAbsent
+                        ? 'rgba(248, 113, 113, 0.06)'
+                        : isOD
+                          ? 'rgba(96, 165, 250, 0.06)'
+                          : 'rgba(255, 255, 255, 0.02)',
+                      border: isAbsent
+                        ? '1px solid rgba(248, 113, 113, 0.2)'
+                        : isOD
+                          ? '1px solid rgba(96, 165, 250, 0.2)'
+                          : '1px solid var(--border-default)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                      {/* Roll Pill */}
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}>
+                        <span className="t-mono-sm" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 11 }}>
+                          {student.classRoll || '—'}
+                        </span>
+                      </div>
+
+                      {/* Student Name */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {student.name}
+                        </p>
+                        {student.subBatch && (
+                          <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+                            Batch B{student.subBatch}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status Toggle Button Group */}
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      {/* Present Pill */}
+                      <button
+                        onClick={() => handleToggleStatus(student.id, 'present')}
+                        style={{
+                          padding: '4px 10px', fontSize: 12, fontWeight: 700,
+                          borderRadius: 6, cursor: 'pointer',
+                          background: currentStatus === 'present' ? 'var(--status-safe)' : 'transparent',
+                          color: currentStatus === 'present' ? '#fff' : 'var(--text-muted)',
+                          border: currentStatus === 'present' ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
+                          transition: 'all 0.15s ease',
+                        }}
+                        title="Mark Present"
+                      >
+                        P
+                      </button>
+
+                      {/* Absent Pill */}
+                      <button
+                        onClick={() => handleToggleStatus(student.id, 'absent')}
+                        style={{
+                          padding: '4px 10px', fontSize: 12, fontWeight: 700,
+                          borderRadius: 6, cursor: 'pointer',
+                          background: currentStatus === 'absent' ? 'var(--status-critical)' : 'transparent',
+                          color: currentStatus === 'absent' ? '#fff' : 'var(--text-muted)',
+                          border: currentStatus === 'absent' ? '1px solid var(--status-critical)' : '1px solid var(--border-default)',
+                          transition: 'all 0.15s ease',
+                        }}
+                        title="Mark Absent"
+                      >
+                        A
+                      </button>
+
+                      {/* OD Pill */}
+                      <button
+                        onClick={() => handleToggleStatus(student.id, 'od')}
+                        style={{
+                          padding: '4px 10px', fontSize: 12, fontWeight: 700,
+                          borderRadius: 6, cursor: 'pointer',
+                          background: currentStatus === 'od' ? '#3b82f6' : 'transparent',
+                          color: currentStatus === 'od' ? '#fff' : 'var(--text-muted)',
+                          border: currentStatus === 'od' ? '1px solid #3b82f6' : '1px solid var(--border-default)',
+                          transition: 'all 0.15s ease',
+                        }}
+                        title="Mark On-Duty (OD)"
+                      >
+                        OD
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+            <button
+              onClick={onClose}
+              className="t-button"
+              style={{
+                padding: '12px 18px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)',
+              }}
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleSaveAttendance}
+              disabled={logAttendanceMutation.isPending || !subjectId}
+              className="t-button"
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '12px',
+                background: logAttendanceMutation.isPending || !subjectId ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+                border: 'none', borderRadius: 'var(--radius-md)',
+                cursor: logAttendanceMutation.isPending || !subjectId ? 'not-allowed' : 'pointer',
+                color: logAttendanceMutation.isPending || !subjectId ? 'var(--text-muted)' : '#fff',
+                fontWeight: 600,
+              }}
+            >
+              {logAttendanceMutation.isPending ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Check size={16} />
+              )}
+              {logAttendanceMutation.isPending ? 'Saving Register…' : `Save Attendance (${counts.present}/${counts.total} Present)`}
+            </button>
+          </div>
+        </div>
+      )}
     </BottomSheet>
   );
 }
