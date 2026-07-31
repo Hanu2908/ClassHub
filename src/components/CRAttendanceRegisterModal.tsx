@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { haptics } from '../lib/haptics';
 import {
   Check, Search, Loader2, Calendar, BookOpen, Clock, UserCheck, Filter, RotateCcw,
-  FileText, Download, Copy, CheckCircle2, MessageSquare, Eye, X
+  FileText, Download, Copy, CheckCircle2, MessageSquare, X
 } from 'lucide-react';
 import {
   generateWhatsAppAttendanceReport,
@@ -257,70 +257,41 @@ export function CRAttendanceRegisterModal({
                 <MessageSquare size={16} /> Share to WhatsApp / Copy Text
               </button>
 
-              {/* PDF View & Export Buttons */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {/* View PDF in App Button */}
-                <button
-                  onClick={async () => {
-                    setGeneratingPdf(true);
-                    try {
-                      const result = await createAttendancePDFBlob(getReportInputData());
-                      setPdfPreviewData(result);
-                      toast.success('Viewing PDF report in ClassHub! 👁️');
-                    } catch (err) {
-                      console.error('PDF view failed:', err);
-                      toast.error('Failed to view PDF');
-                    } finally {
-                      setGeneratingPdf(false);
-                    }
-                  }}
-                  disabled={generatingPdf}
-                  className="t-button"
-                  style={{
-                    padding: '12px 10px', borderRadius: 'var(--radius-md)',
-                    background: 'rgba(96, 165, 250, 0.12)', border: '1px solid rgba(96, 165, 250, 0.3)',
-                    color: 'var(--accent-primary)', fontWeight: 600, cursor: generatingPdf ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13,
-                  }}
-                >
-                  {generatingPdf ? <Loader2 size={15} className="animate-spin" /> : <Eye size={15} />}
-                  {generatingPdf ? 'Loading…' : 'View PDF in App'}
-                </button>
-
-                {/* Download PDF Button */}
-                <button
-                  onClick={async () => {
-                    setGeneratingPdf(true);
-                    try {
-                      const result = await createAttendancePDFBlob(getReportInputData());
-                      result.download();
-                      toast.success(`Downloaded ${result.filename}! 📄`, {
-                        duration: 12000,
-                        description: 'Tap "Open PDF" to view directly in ClassHub without opening phone files.',
-                        action: {
-                          label: 'Open PDF 👁️',
-                          onClick: () => setPdfPreviewData(result),
-                        },
-                      });
-                    } catch (err) {
-                      console.error('PDF generation failed:', err);
-                      toast.error('Failed to download PDF');
-                    } finally {
-                      setGeneratingPdf(false);
-                    }
-                  }}
-                  disabled={generatingPdf}
-                  className="t-button"
-                  style={{
-                    padding: '12px 10px', borderRadius: 'var(--radius-md)',
-                    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                    color: 'var(--text-primary)', fontWeight: 600, cursor: generatingPdf ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13,
-                  }}
-                >
-                  <Download size={15} color="var(--text-secondary)" /> Download PDF
-                </button>
-              </div>
+            {/* Single Simplified PDF Export & View Button */}
+            <button
+              onClick={async () => {
+                setGeneratingPdf(true);
+                try {
+                  const result = await createAttendancePDFBlob(getReportInputData());
+                  result.download();
+                  setPdfPreviewData(result);
+                  toast.success(`Exported ${result.filename}! 📄`, {
+                    duration: 10000,
+                    description: 'Downloaded to device & opened in-app preview.',
+                    action: {
+                      label: 'Open PDF 👁️',
+                      onClick: () => setPdfPreviewData(result),
+                    },
+                  });
+                } catch (err) {
+                  console.error('PDF export failed:', err);
+                  toast.error('Failed to export PDF');
+                } finally {
+                  setGeneratingPdf(false);
+                }
+              }}
+              disabled={generatingPdf}
+              className="t-button"
+              style={{
+                width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
+                background: 'rgba(96, 165, 250, 0.12)', border: '1px solid rgba(96, 165, 250, 0.3)',
+                color: 'var(--accent-primary)', fontWeight: 600, cursor: generatingPdf ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {generatingPdf ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+              {generatingPdf ? 'Generating PDF…' : 'Export & View PDF Document'}
+            </button>
 
               {/* CSV Export Button */}
               <button
