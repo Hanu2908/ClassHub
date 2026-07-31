@@ -121,9 +121,9 @@ export function generateAttendanceCSV(input: AttendanceReportInput): string {
 }
 
 /**
- * Generates an official styled PDF Document using pdf-lib and triggers browser download
+ * Generates an official styled PDF Document using pdf-lib and returns the Blob & Object URL
  */
-export async function generateAttendancePDF(input: AttendanceReportInput): Promise<void> {
+export async function createAttendancePDFBlob(input: AttendanceReportInput): Promise<{ blob: Blob; blobUrl: string; filename: string; download: () => void }> {
   const pdfDoc = await PDFDocument.create();
   let page = pdfDoc.addPage([595.28, 841.89]); // A4 portrait in points (72 DPI)
   const fontHelvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -240,14 +240,27 @@ export async function generateAttendancePDF(input: AttendanceReportInput): Promi
 
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `Attendance_${input.subjectCode}_${input.date}.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  const blobUrl = URL.createObjectURL(blob);
+  const filename = `Attendance_${input.subjectCode}_${input.date}.pdf`;
+
+  const download = () => {
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return { blob, blobUrl, filename, download };
+}
+
+/**
+ * Generates and triggers download of the PDF report
+ */
+export async function generateAttendancePDF(input: AttendanceReportInput): Promise<void> {
+  const result = await createAttendancePDFBlob(input);
+  result.download();
 }
 
 /**
