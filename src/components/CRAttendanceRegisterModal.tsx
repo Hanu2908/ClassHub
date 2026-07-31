@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import {
   generateWhatsAppAttendanceReport,
-  generateAttendancePDF,
   createAttendancePDFBlob,
   shareOrCopyReport,
   downloadAttendanceCSV,
@@ -293,8 +292,16 @@ export function CRAttendanceRegisterModal({
                   onClick={async () => {
                     setGeneratingPdf(true);
                     try {
-                      await generateAttendancePDF(getReportInputData());
-                      toast.success('Official PDF downloaded! 📄');
+                      const result = await createAttendancePDFBlob(getReportInputData());
+                      result.download();
+                      toast.success(`Downloaded ${result.filename}! 📄`, {
+                        duration: 12000,
+                        description: 'Tap "Open PDF" to view directly in ClassHub without opening phone files.',
+                        action: {
+                          label: 'Open PDF 👁️',
+                          onClick: () => setPdfPreviewData(result),
+                        },
+                      });
                     } catch (err) {
                       console.error('PDF generation failed:', err);
                       toast.error('Failed to download PDF');
