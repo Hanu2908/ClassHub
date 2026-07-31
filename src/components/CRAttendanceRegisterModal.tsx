@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { BottomSheet } from './BottomSheet';
 import { useSubjects } from '../hooks/useSubjects';
 import { useSectionRosterForAttendance, useLogCRAttendanceMutation } from '../hooks/useCRAttendance';
@@ -64,7 +64,7 @@ export function CRAttendanceRegisterModal({
       else if (subjects.length > 0 && !subjectId) setSubjectId(subjects[0].id);
       if (initialTargetBatch) setTargetBatch(initialTargetBatch);
     }
-  }, [open, initialSubjectId, initialTargetBatch, subjects]);
+  }, [open, initialSubjectId, initialTargetBatch, subjects, subjectId]);
 
   const getReportInputData = () => {
     const selectedSubject = subjects.find(s => s.id === subjectId);
@@ -823,7 +823,7 @@ export function CRAttendanceRegisterModal({
  * Robust canvas-based PDF renderer for cross-platform mobile and desktop PWA support
  */
 function PDFCanvasViewer({ blobUrl }: { blobUrl: string }) {
-  const wrapperRef = useState<{ current: HTMLDivElement | null }>({ current: null })[0];
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -889,7 +889,7 @@ function PDFCanvasViewer({ blobUrl }: { blobUrl: string }) {
     return () => {
       isCancelled = true;
     };
-  }, [blobUrl, wrapperRef]);
+  }, [blobUrl]);
 
   return (
     <div style={{
@@ -911,7 +911,7 @@ function PDFCanvasViewer({ blobUrl }: { blobUrl: string }) {
         </div>
       )}
 
-      <div ref={el => { wrapperRef.current = el; }} style={{ width: '100%', display: loading ? 'none' : 'block' }} />
+      <div ref={wrapperRef} style={{ width: '100%', display: loading ? 'none' : 'block' }} />
     </div>
   );
 }

@@ -84,7 +84,7 @@ export async function subscribeToPush(): Promise<boolean> {
       return false;
     }
 
-    let { error: upsertError } = await supabase.rpc('upsert_push_subscription', {
+    const { error: upsertError } = await supabase.rpc('upsert_push_subscription', {
       sub_endpoint: json.endpoint,
       sub_p256dh: json.keys.p256dh,
       sub_auth: json.keys.auth,
