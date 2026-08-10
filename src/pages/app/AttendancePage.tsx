@@ -1463,7 +1463,7 @@ export default function AttendancePage() {
                         Navigate to Student Info → Attendance Report.
                       </span>
                       <a
-                        href="https://erp.skit.ac.in/reports/student_aggregate"
+                        href="https://erp.skit.ac.in/reports/student_attendance_all"
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
