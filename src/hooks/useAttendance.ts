@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
 import type { AttendanceSubject } from '../store/appStore';
 import type { Database } from '../types/database.types';
+import type { Json } from '../types/database.types';
 import { useAuthContext } from './useAuthContext';
 
 type AttendanceUpsertRow = Database['public']['Tables']['attendance_records']['Insert'];
@@ -12,11 +13,18 @@ type SubjectIdCode = { id: string; code: string };
 
 type SubjectRelation = { code: string; name: string; semester?: number } | null;
 
-// ── Attendance Query ─────────────────────────────────────────────────────────
+import { getOverallDayOfWeekRates, type AttendanceInsights } from '../lib/utils/attendance';
+
+type AttendanceQueryResult = {
+  subjects: AttendanceSubject[];
+  overall: number;
+  lastUpdated: string | null;
+  dayOfWeekRates?: Record<string, number>;
+};
 
 export function useAttendance(opts?: { placeholder?: boolean }) {
   const { userId, isAuthenticated } = useAuthContext();
-  return useQuery<{ subjects: AttendanceSubject[]; overall: number; lastUpdated: string | null }>({
+  return useQuery<AttendanceQueryResult>({
     queryKey: ['attendance', userId],
     enabled: !!userId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -28,11 +36,13 @@ export function useAttendance(opts?: { placeholder?: boolean }) {
         const { data, error } = await supabase
           .from('attendance_records')
           .select(`
-            present, od, makeup, absent, percentage, updated_at,
+            present, od, makeup, absent, percentage, updated_at, insights,
             subjects:subject_id (code, name, semester)
           `)
           .eq('user_id', userId!);
         if (error) throw error;
+
+        const insightsMap = new Map<string, AttendanceInsights>();
 
         const subjects: AttendanceSubject[] = (data ?? []).map(r => {
           const subj = r.subjects as SubjectRelation;
@@ -43,6 +53,12 @@ export function useAttendance(opts?: { placeholder?: boolean }) {
           const canSkip = total > 0 ? Math.floor((attended - 0.75 * total) / 0.75) : 0;
           // needToAttend: how many more to reach 75%
           const need = total > 0 ? Math.max(0, Math.ceil((0.75 * total - attended) / 0.25)) : 0;
+
+          const rawInsights = r.insights as unknown as AttendanceInsights | null;
+          if (rawInsights && subj?.code) {
+            insightsMap.set(subj.code, rawInsights);
+          }
+
           return {
             code: subj?.code ?? '???',
             name: subj?.name ?? 'Unknown',
@@ -54,6 +70,7 @@ export function useAttendance(opts?: { placeholder?: boolean }) {
             canSkip: Math.max(0, canSkip),
             needToAttend: need,
             semester: subj?.semester ?? 1,
+            insights: rawInsights,
           };
         });
 
@@ -72,7 +89,9 @@ export function useAttendance(opts?: { placeholder?: boolean }) {
           }
         }
 
-        const result = { subjects, overall, lastUpdated: maxUpdatedAt };
+        const dayOfWeekRates = insightsMap.size > 0 ? getOverallDayOfWeekRates(insightsMap) : undefined;
+
+        const result: AttendanceQueryResult = { subjects, overall, lastUpdated: maxUpdatedAt, dayOfWeekRates };
         useAppStore.getState().setOfflineCache('attendance', result);
         return result;
       } catch (err) {
@@ -134,12 +153,12 @@ export function useBulkUpsertAttendance() {
 
       return { previousAttendance };
     },
-    mutationFn: async (items: Array<{ code?: string; subjectId?: string; present: number; absent: number; od?: number; makeup?: number }>) => {
+    mutationFn: async (items: Array<{ code?: string; subjectId?: string; present: number; absent: number; od?: number; makeup?: number; insights?: Record<string, unknown> | null }>) => {
       if (!userId) throw new Error('Not authenticated');
       if (!sectionId) throw new Error('Missing section context');
 
       const rows: AttendanceUpsertRow[] = [];
-      const itemsNeedingCode = items.filter(i => !i.subjectId && i.code).map(i => i as { code: string; present: number; absent: number; od?: number; makeup?: number });
+      const itemsNeedingCode = items.filter(i => !i.subjectId && i.code).map(i => i as { code: string; present: number; absent: number; od?: number; makeup?: number; insights?: Record<string, unknown> | null });
 
       if (itemsNeedingCode.length > 0) {
         const codes = Array.from(new Set(itemsNeedingCode.map(i => i.code)));
@@ -150,13 +169,13 @@ export function useBulkUpsertAttendance() {
 
         itemsNeedingCode.forEach(i => {
           const sid = codeToId.get(i.code) ?? null;
-          if (sid) rows.push({ user_id: userId, subject_id: sid, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0 });
+          if (sid) rows.push({ user_id: userId, subject_id: sid, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0, ...(i.insights != null ? { insights: i.insights as unknown as Json } : {}) });
         });
       }
 
       items.forEach(i => {
         if (!i.subjectId) return;
-        rows.push({ user_id: userId, subject_id: i.subjectId, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0 });
+        rows.push({ user_id: userId, subject_id: i.subjectId, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0, ...(i.insights != null ? { insights: i.insights as unknown as Json } : {}) });
       });
 
       if (rows.length === 0) throw new Error('No matching subjects found for import');

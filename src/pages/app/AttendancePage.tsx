@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, Edit3,
@@ -20,8 +20,8 @@ import Skeleton from 'react-loading-skeleton';
 import { logEvent } from '../../lib/analytics';
 
 
-import { parseERPAttendance } from '../../lib/utils/attendance';
-import type { ParsedSubject } from '../../lib/utils/attendance';
+import { parseERPAttendance, parseERPClassLog, computeAggregatesFromClassLog, computeInsightsFromClassLog } from '../../lib/utils/attendance';
+import type { ParsedSubject, AttendanceInsights } from '../../lib/utils/attendance';
 import { NumberTicker } from '../../components/ui/NumberTicker';
 import {
   linkAttendanceToSchedule,
@@ -158,6 +158,8 @@ export default function AttendancePage() {
   const [erpText, setErpText] = useState('');
   const [parsed, setParsed] = useState<ParsedERPSubject[] | null>(null);
   const [selectedImportSemester, setSelectedImportSemester] = useState<number>(1);
+  // Holds computed insights from class-level ERP data (set during parse, used during confirm)
+  const classLogInsightsRef = useRef<Map<string, AttendanceInsights> | null>(null);
 
   useEffect(() => {
     if (erpOpen && !erpText) {
@@ -458,12 +460,73 @@ export default function AttendancePage() {
 
   // Date Prediction engine — now uses extracted util
   const runPredictionDateCalculation = () => {
-    const result = predictOverallRecoveryDate(overallAttended, overallTotal, scheduleOverrides);
+    const result = predictOverallRecoveryDate(overallAttended, overallTotal, scheduleOverrides, attendance?.dayOfWeekRates);
     setPredictedDate(result.predictedDate ?? result.message);
     setPredictedDaysCount(result.predictedDays);
   };
 
   const handleParse = async () => {
+    // Auto-detect: try class-level format first
+    const classLog = parseERPClassLog(erpText);
+
+    if (classLog && classLog.length > 0) {
+      // Class-level data detected — compute aggregates + insights
+      const aggregates = computeAggregatesFromClassLog(classLog);
+      const insights = computeInsightsFromClassLog(classLog);
+      classLogInsightsRef.current = insights;
+
+      // Convert aggregates to ParsedSubject format for the existing confirm flow
+      const result: ParsedSubject[] = aggregates.map(agg => {
+        const total = agg.present + agg.od + agg.absent;
+        const attended = agg.present + agg.od + agg.makeup;
+        const pct = total > 0 ? Number(((attended / total) * 100).toFixed(2)) : 0;
+        const canSkip = pct >= 75 ? Math.floor((attended - 0.75 * total) / 0.75) : 0;
+        const needToAttend = pct < 75 ? Math.ceil((0.75 * total - attended) / 0.25) : 0;
+        return {
+          code: agg.code,
+          name: agg.name,
+          type: 'Lecture',
+          present: agg.present,
+          od: agg.od,
+          makeup: agg.makeup,
+          absent: agg.absent,
+          total,
+          percentage: pct,
+          canSkip: Math.max(0, canSkip),
+          needToAttend,
+        };
+      });
+
+      if (result.length === 0) {
+        toast.error('Could not parse attendance from class log. Check format.');
+        return;
+      }
+
+      try {
+        const activeSemester = subjects.length === 0
+          ? selectedImportSemester
+          : Math.max(...subjects.map(s => s.semester ?? 1), 1);
+
+        const mapping = await ensureSubjects.mutateAsync(
+          result.map(r => ({
+            code: r.code,
+            name: r.name,
+            semester: activeSemester
+          }))
+        );
+        const enriched = result.map(r => ({ ...r, subjectId: mapping[r.code] ?? null }));
+        setParsed(enriched);
+        toast.info(`Parsed ${classLog.length} class entries across ${result.length} subjects. Review and confirm.`);
+      } catch (err: unknown) {
+        console.error('Error ensuring subjects from class log', err);
+        toast.error(err instanceof Error ? err.message : 'Failed to prepare subjects');
+        setParsed(result.map(r => ({ ...r, subjectId: null })));
+      }
+      return;
+    }
+
+    // Fallback: existing aggregate parser
+    classLogInsightsRef.current = null;
     const result = parseERPAttendance(erpText);
     if (result.length === 0) {
       toast.error('Could not parse attendance. Check format.');
@@ -495,22 +558,29 @@ export default function AttendancePage() {
   const handleConfirm = () => {
     if (!parsed) return;
     haptics.doublePulse();
+
+    const insightsMap = classLogInsightsRef.current;
     
     const importItems = parsed.map(p => ({ 
       code: p.code, 
       present: p.present, 
       absent: p.absent, 
       od: p.od, 
-      makeup: p.makeup 
+      makeup: p.makeup,
+      insights: insightsMap?.get(p.code) ? (insightsMap.get(p.code) as unknown as Record<string, unknown>) : undefined,
     }));
     
     setErpOpen(false);
     setParsed(null);
     setErpText('');
+    classLogInsightsRef.current = null;
 
     bulkUpsert.mutate(importItems, {
       onSuccess: () => {
-        toast.success('ERP attendance imported successfully');
+        const wasClassLog = importItems.some(i => i.insights != null);
+        toast.success(wasClassLog 
+          ? 'Attendance synced from class log — all subjects up to date' 
+          : 'ERP attendance imported successfully');
         if (authUser?.id && authUser?.sectionId) {
           logEvent('attendance_updated', authUser.id, authUser.sectionId);
         }

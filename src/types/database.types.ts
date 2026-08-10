@@ -449,6 +449,7 @@ export type Database = {
         Row: {
           absent: number
           id: string
+          insights: Json | null
           makeup: number
           od: number
           percentage: number | null
@@ -460,6 +461,7 @@ export type Database = {
         Insert: {
           absent?: number
           id?: string
+          insights?: Json | null
           makeup?: number
           od?: number
           percentage?: number | null
@@ -471,6 +473,7 @@ export type Database = {
         Update: {
           absent?: number
           id?: string
+          insights?: Json | null
           makeup?: number
           od?: number
           percentage?: number | null

@@ -150,17 +150,25 @@ export function getSubjectScheduleFrequency(
 
 // ── Overall Recovery Prediction ──────────────────────────────────────────────
 
+const DAY_ABBR_MAP = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
 /**
  * Predicts the date when overall attendance will reach 75%.
  *
  * Walks the calendar day-by-day from today, skipping holidays/Sundays,
  * subtracting classes-per-day from the "needed" count. Uses schedule slot
  * counts if available, falls back to manual overrides.
+ *
+ * When `dayOfWeekRates` is provided (from class-level ERP insights),
+ * multiplies each day's expected classes by the student's actual attendance
+ * rate for that day. This gives a realistic prediction instead of assuming
+ * the student will attend every future class.
  */
 export function predictOverallRecoveryDate(
   overallAttended: number,
   overallTotal: number,
-  scheduleOverrides: Record<string, number>
+  scheduleOverrides: Record<string, number>,
+  dayOfWeekRates?: Record<string, number>
 ): OverallPrediction {
   const currentPct = overallTotal > 0 ? (overallAttended / overallTotal) * 100 : 0;
 
@@ -193,7 +201,11 @@ export function predictOverallRecoveryDate(
     if (isHolidayOrSunday(cursor)) continue;
 
     const classesToday = dailySlots[cursor.getDay()] || 0;
-    needed -= classesToday;
+    // When dayOfWeekRates is available, use the student's actual attendance
+    // rate for this day. Otherwise assume 100% (existing behavior).
+    const dayName = DAY_ABBR_MAP[cursor.getDay()];
+    const attendRate = dayOfWeekRates?.[dayName] ?? 1.0;
+    needed -= Math.round(classesToday * attendRate);
 
     if (daysPassed > 365) {
       return {

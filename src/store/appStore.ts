@@ -46,6 +46,8 @@ export interface HubInfo {
   universityRoll: string;
 }
 
+import type { AttendanceInsights } from '../lib/utils/attendance';
+
 export interface AttendanceSubject {
   code: string;
   name: string;
@@ -57,6 +59,7 @@ export interface AttendanceSubject {
   canSkip: number;
   needToAttend: number;
   semester?: number;
+  insights?: AttendanceInsights | null;
 }
 
 export interface AssignmentSet {
