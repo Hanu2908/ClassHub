@@ -81,3 +81,10 @@ docs/project-understanding.md
 docs/architecture_understanding.md
 docs/superpowers/
 docs/wayfinder/
+
+# Chrome Extension (local only)
+extension/
+extension_*.png
+extension_*
+scripts/*extension*
+scripts/copy_official_icons.mjs
