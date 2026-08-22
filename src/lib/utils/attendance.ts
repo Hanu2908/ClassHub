@@ -12,6 +12,84 @@ export function calculateAttendance(total: number, attended: number): Attendance
   return { percentage: Number(pct.toFixed(2)), needToAttend, canSkip };
 }
 
+export type SimulationResult = {
+  percent: number;
+  delta: number;
+  remainsSafe?: boolean;
+};
+
+export function simulateBoost(total: number, attended: number, boostClasses: number): SimulationResult {
+  const safeTotal = total <= 0 ? 0 : total;
+  const currentPct = safeTotal > 0 ? (attended / safeTotal) * 100 : 0;
+  const nextAttended = attended + boostClasses;
+  const nextTotal = safeTotal + boostClasses;
+  const nextPercent = nextTotal > 0 ? (nextAttended / nextTotal) * 100 : 0;
+  return {
+    percent: Number(nextPercent.toFixed(2)),
+    delta: Number((nextPercent - currentPct).toFixed(2)),
+  };
+}
+
+export function simulateBunk(total: number, attended: number, bunkClasses: number): SimulationResult {
+  const safeTotal = total <= 0 ? 0 : total;
+  const currentPct = safeTotal > 0 ? (attended / safeTotal) * 100 : 0;
+  const nextTotal = safeTotal + bunkClasses;
+  const nextPercent = nextTotal > 0 ? (attended / nextTotal) * 100 : 0;
+  return {
+    percent: Number(nextPercent.toFixed(2)),
+    delta: Number((currentPct - nextPercent).toFixed(2)),
+    remainsSafe: nextPercent >= 75,
+  };
+}
+
+export function calculateTargetGoal(total: number, attended: number, targetPercentage: number): number {
+  const safeTotal = total <= 0 ? 0 : total;
+  const currentPct = safeTotal > 0 ? (attended / safeTotal) * 100 : 0;
+  if (targetPercentage <= currentPct || targetPercentage >= 100) return 0;
+  
+  // Exact integer formula: (P * T - 100 * A) / (100 - P)
+  // Eliminates IEEE 754 precision issues (e.g. 1 - 0.8 = 0.19999999999999996)
+  const numerator = targetPercentage * safeTotal - 100 * attended;
+  const denominator = 100 - targetPercentage;
+  return Math.max(0, Math.ceil(numerator / denominator));
+}
+
+export function simulateOD(total: number, attended: number, odClasses: number): SimulationResult {
+  const safeTotal = total <= 0 ? 0 : total;
+  const currentPct = safeTotal > 0 ? (attended / safeTotal) * 100 : 0;
+  const nextAttended = Math.min(safeTotal, attended + odClasses);
+  const nextPercent = safeTotal > 0 ? (nextAttended / safeTotal) * 100 : 0;
+  return {
+    percent: Number(nextPercent.toFixed(2)),
+    delta: Number((nextPercent - currentPct).toFixed(2)),
+  };
+}
+
+export function simulateMix(total: number, attended: number, attendClasses: number, bunkClasses: number): SimulationResult {
+  const safeTotal = total <= 0 ? 0 : total;
+  const currentPct = safeTotal > 0 ? (attended / safeTotal) * 100 : 0;
+  const nextAttended = attended + attendClasses;
+  const nextTotal = safeTotal + attendClasses + bunkClasses;
+  const nextPercent = nextTotal > 0 ? (nextAttended / nextTotal) * 100 : 0;
+  return {
+    percent: Number(nextPercent.toFixed(2)),
+    delta: Number((nextPercent - currentPct).toFixed(2)),
+    remainsSafe: nextPercent >= 75,
+  };
+}
+
+export function getAttendanceTier(percentage: number): {
+  tier: 'zenith' | 'gold' | 'silver' | 'warned';
+  tierClass: string;
+  label: string;
+} {
+  if (percentage >= 90) return { tier: 'zenith', tierClass: 'attendance-zenith', label: 'Zenith (≥90%)' };
+  if (percentage >= 80) return { tier: 'gold', tierClass: 'attendance-gold', label: 'Gold (≥80%)' };
+  if (percentage >= 75) return { tier: 'silver', tierClass: 'attendance-silver', label: 'Silver (≥75%)' };
+  return { tier: 'warned', tierClass: 'attendance-warned', label: 'Critical (<75%)' };
+}
+
+
 export type ParsedSubject = {
   code: string;
   name: string;

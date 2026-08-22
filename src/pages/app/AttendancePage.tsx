@@ -20,7 +20,18 @@ import Skeleton from 'react-loading-skeleton';
 import { logEvent } from '../../lib/analytics';
 
 
-import { parseERPAttendance, parseERPClassLog, computeAggregatesFromClassLog, computeInsightsFromClassLog } from '../../lib/utils/attendance';
+import {
+  parseERPAttendance,
+  parseERPClassLog,
+  computeAggregatesFromClassLog,
+  computeInsightsFromClassLog,
+  simulateBoost,
+  simulateBunk,
+  calculateTargetGoal,
+  simulateOD,
+  simulateMix,
+  getAttendanceTier,
+} from '../../lib/utils/attendance';
 import type { ParsedSubject, AttendanceInsights } from '../../lib/utils/attendance';
 import { NumberTicker } from '../../components/ui/NumberTicker';
 import {
@@ -390,10 +401,7 @@ export default function AttendancePage() {
   }, [subjects]);
 
   const tierStyleClass = useMemo(() => {
-    if (safeOverall >= 90) return 'attendance-zenith';
-    if (safeOverall >= 80) return 'attendance-gold';
-    if (safeOverall >= 75) return 'attendance-silver';
-    return 'attendance-warned';
+    return getAttendanceTier(safeOverall).tierClass;
   }, [safeOverall]);
 
   const tierMessage = useMemo(() => {
@@ -419,44 +427,26 @@ export default function AttendancePage() {
     return AlertTriangle;
   }, [safeOverall]);
 
-  // Dynamic simulation computations
+  // Dynamic simulation computations using centralized pure helpers
   const boostSimResult = useMemo(() => {
-    const nextAttended = overallAttended + boostVal;
-    const nextTotal = overallTotal + boostVal;
-    const nextPercent = nextTotal > 0 ? (nextAttended / nextTotal) * 100 : 0;
-    const delta = nextPercent - safeOverall;
-    return { percent: nextPercent, delta };
-  }, [overallAttended, overallTotal, safeOverall, boostVal]);
+    return simulateBoost(overallTotal, overallAttended, boostVal);
+  }, [overallAttended, overallTotal, boostVal]);
 
   const bunkSimResult = useMemo(() => {
-    const nextTotal = overallTotal + bunkVal;
-    const nextPercent = nextTotal > 0 ? (overallAttended / nextTotal) * 100 : 0;
-    const delta = safeOverall - nextPercent;
-    const remainsSafe = nextPercent >= 75;
-    return { percent: nextPercent, delta, remainsSafe };
-  }, [overallAttended, overallTotal, safeOverall, bunkVal]);
+    return simulateBunk(overallTotal, overallAttended, bunkVal);
+  }, [overallAttended, overallTotal, bunkVal]);
 
   const targetSimResult = useMemo(() => {
-    if (targetVal <= safeOverall) return 0;
-    const targetFraction = targetVal / 100;
-    if (targetFraction >= 1) return 0;
-    return Math.max(0, Math.ceil((targetFraction * overallTotal - overallAttended) / (1 - targetFraction)));
-  }, [overallAttended, overallTotal, safeOverall, targetVal]);
+    return calculateTargetGoal(overallTotal, overallAttended, targetVal);
+  }, [overallAttended, overallTotal, targetVal]);
 
   const odSimResult = useMemo(() => {
-    const nextAttended = overallAttended + odVal;
-    const nextPercent = overallTotal > 0 ? (nextAttended / overallTotal) * 100 : 0;
-    const delta = nextPercent - safeOverall;
-    return { percent: nextPercent, delta };
-  }, [overallAttended, overallTotal, safeOverall, odVal]);
+    return simulateOD(overallTotal, overallAttended, odVal);
+  }, [overallAttended, overallTotal, odVal]);
 
   const mixSimResult = useMemo(() => {
-    const nextAttended = overallAttended + mixAttendVal;
-    const nextTotal = overallTotal + mixAttendVal + mixBunkVal;
-    const nextPercent = nextTotal > 0 ? (nextAttended / nextTotal) * 100 : 0;
-    const delta = nextPercent - safeOverall;
-    return { percent: nextPercent, delta };
-  }, [overallAttended, overallTotal, safeOverall, mixAttendVal, mixBunkVal]);
+    return simulateMix(overallTotal, overallAttended, mixAttendVal, mixBunkVal);
+  }, [overallAttended, overallTotal, mixAttendVal, mixBunkVal]);
 
   // Date Prediction engine — now uses extracted util
   const runPredictionDateCalculation = () => {
