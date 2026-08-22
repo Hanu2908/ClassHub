@@ -21,6 +21,12 @@ import Skeleton from 'react-loading-skeleton';
 import { haptics } from '../../lib/haptics';
 import { NumberTicker } from '../../components/ui/NumberTicker';
 import { SectionHealthChart } from '../../components/ui/charts/SectionHealthChart';
+import { shareOrCopyPendingAssignmentReport } from '../../lib/utils/assignmentReport';
+
+
+
+
+
 
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHead({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) {
@@ -68,6 +74,7 @@ type SubFilter = 'submitted' | 'not_submitted';
 function SubmissionTracker() {
   const { data: assignments = [] } = useAssignments({ limit: 200 });
   const { data: members = [] } = useSectionMembers();
+  const { data: section } = useSection();
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>('not_submitted');
   const [hoveredCard, setHoveredCard] = useState<'submitted' | 'pending' | null>(null);
@@ -129,6 +136,26 @@ function SubmissionTracker() {
       toast.error('Failed to send reminders');
     }
   };
+
+  const handleSharePending = async () => {
+    if (!selected) return;
+    haptics.lightClick();
+    await shareOrCopyPendingAssignmentReport({
+      sectionName: section?.name,
+      subjectCode: selected.subjectCode || selected.subject,
+      subjectName: selected.subject,
+      assignmentTitle: selected.title,
+      dueDate: selected.dueDate,
+      totalStudents: studentMembers.length,
+      submittedCount,
+      pendingStudents: pendingMembers.map(m => ({
+        id: m.id,
+        name: m.name,
+        classRoll: m.classRoll,
+      })),
+    });
+  };
+
 
   return (
     <div className="card" style={{ padding: 0 }}>
@@ -257,15 +284,50 @@ function SubmissionTracker() {
               />
 
               {subFilter === 'not_submitted' && pendingMembers.length > 0 ? (
-                <button
-                  id="cr-btn-send-notif"
-                  onClick={handleBulkNotify} className="t-button" style={{ width: '100%', padding: '10px', marginBottom: 10,
-                    background: 'rgba(74,158,255,0.1)', border: '1px solid rgba(74,158,255,0.2)',
-                    borderRadius: 8, color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                >
-                  <Bell size={14} /> Notify Pending Students
-                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  <button
+                    id="cr-btn-send-notif"
+                    onClick={handleBulkNotify}
+                    className="t-button"
+                    style={{
+                      padding: '10px 8px',
+                      background: 'rgba(74,158,255,0.1)',
+                      border: '1px solid rgba(74,158,255,0.2)',
+                      borderRadius: 8,
+                      color: 'var(--accent-primary)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      fontSize: '13px',
+                    }}
+                  >
+                    <Bell size={14} /> Notify ({pendingMembers.length})
+                  </button>
+                  <button
+                    id="cr-btn-share-pending"
+                    onClick={handleSharePending}
+                    className="t-button"
+                    style={{
+                      padding: '10px 8px',
+                      background: 'rgba(255,68,68,0.1)',
+                      border: '1px solid rgba(255,68,68,0.2)',
+                      borderRadius: 8,
+                      color: 'var(--status-critical)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      fontSize: '13px',
+                    }}
+                  >
+                    <Share2 size={14} /> Share List ({pendingMembers.length})
+                  </button>
+                </div>
               ) : null}
+
 
               {/* Student list */}
               {isLoading ? (
