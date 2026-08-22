@@ -221,6 +221,9 @@ export type ClassLogEntry = {
   startTime: string;  // "12:00 PM"
   numHours: number;   // 1 or 3
   status: 'P' | 'A';
+  /** True when this entry is a makeup class. Makeup classes are excluded
+   *  from total_held in the ERP formula — they only inflate the attended count. */
+  isMakeup: boolean;
 };
 
 /** Date pattern: YYYY-MM-DD optionally followed by (DayName) */
@@ -228,6 +231,7 @@ const DATE_RE = /(\d{4}-\d{2}-\d{2})\s*\((\w+)\)/;
 /** Time pattern: H:MM AM/PM or HH:MM AM/PM */
 const TIME_RE = /^(\d{1,2}:\d{2}\s*[AaPp][Mm])$/;
 const CLASS_TYPES = new Set(['Lecture', 'Tutorial', 'Lab', 'Practical', 'Laboratory', 'Tut']);
+const MAKEUP_TOKEN = 'MAKEUP';
 const DAY_ABBR: Record<string, string> = {
   'Monday': 'Mon', 'Tuesday': 'Tue', 'Wednesday': 'Wed',
   'Thursday': 'Thu', 'Friday': 'Fri', 'Saturday': 'Sat', 'Sunday': 'Sun',
@@ -272,8 +276,24 @@ export function parseERPClassLog(rawText: string): ClassLogEntry[] | null {
       ? trimmed.split('\t').map(c => c.trim()).filter(Boolean)
       : trimmed.split(/\s+/).map(c => c.trim()).filter(Boolean);
 
-    // Find the subject type column
-    const typeColIdx = cols.findIndex(c => CLASS_TYPES.has(c));
+    // Find the subject type column — also detect MAKEUP prefix
+    let isMakeup = false;
+    let typeColIdx = cols.findIndex(c => CLASS_TYPES.has(c));
+    const makeupIdx = cols.findIndex(c => c.toUpperCase() === MAKEUP_TOKEN);
+
+    if (makeupIdx >= 0) {
+      isMakeup = true;
+      // The actual subject type (Lecture/Lab/etc.) is the next token after MAKEUP
+      if (typeColIdx < 0) {
+        // MAKEUP was the only type-like token; look at adjacent columns
+        for (let i = makeupIdx + 1; i < cols.length; i++) {
+          if (CLASS_TYPES.has(cols[i])) {
+            typeColIdx = i;
+            break;
+          }
+        }
+      }
+    }
     if (typeColIdx < 0) continue;
 
     // Find the status column (P or A, typically last column)
@@ -341,6 +361,7 @@ export function parseERPClassLog(rawText: string): ClassLogEntry[] | null {
       startTime: startTime || 'Unknown',
       numHours,
       status,
+      isMakeup,
     });
   }
 
@@ -385,10 +406,20 @@ export function computeAggregatesFromClassLog(
       map.set(entry.code, agg);
     }
 
-    if (entry.status === 'P') {
-      agg.present += entry.numHours;
+    if (entry.isMakeup) {
+      // Makeup classes: P adds to makeup count (inflates attended, not total).
+      // A is discarded — ERP doesn't count absent makeup in total_held.
+      if (entry.status === 'P') {
+        agg.makeup += entry.numHours;
+      }
+      // else: makeup-A → no-op (excluded from both numerator and denominator)
     } else {
-      agg.absent += entry.numHours;
+      // Regular classes
+      if (entry.status === 'P') {
+        agg.present += entry.numHours;
+      } else {
+        agg.absent += entry.numHours;
+      }
     }
   }
 

@@ -70,3 +70,69 @@ describe('parseERPClassLog & insights', () => {
     expect(overallRates['Sat']).toBe(0); // All Saturday classes in sample were absent
   });
 });
+
+// ── MAKEUP handling tests (TDD red phase) ────────────────────────────────────
+
+const MAKEUP_CLASS_LOG = `
+#\tSubject Code\tSubject\tSubject Type\tFaculty Name\tDate\tStarting Time\tNumber of Hours\tMarked
+1\tITUL301\tData Structures and Algorithms\tMAKEUP\tLecture\tAakansha Mitawa\t2026-08-22 (Saturday)\t1:00 PM\t1\tA
+2\tITUL301\tData Structures and Algorithms\tLecture\tAakansha Mitawa\t2026-08-21 (Friday)\t9:15 AM\t1\tP
+3\tITUL301\tData Structures and Algorithms\tLecture\tAakansha Mitawa\t2026-08-20 (Thursday)\t10:15 AM\t1\tP
+`;
+
+describe('MAKEUP class handling in parseERPClassLog', () => {
+  it('detects MAKEUP entries and sets isMakeup flag', () => {
+    const entries = parseERPClassLog(MAKEUP_CLASS_LOG);
+    expect(entries).not.toBeNull();
+    expect(entries).toHaveLength(3);
+
+    const makeupEntry = entries!.find(e => e.date === '2026-08-22');
+    expect(makeupEntry).toBeDefined();
+    expect(makeupEntry!.isMakeup).toBe(true);
+    expect(makeupEntry!.subjectType).toBe('Lecture'); // actual type parsed from token after MAKEUP
+    expect(makeupEntry!.status).toBe('A');
+  });
+
+  it('marks regular entries as isMakeup = false', () => {
+    const entries = parseERPClassLog(MAKEUP_CLASS_LOG);
+    const regularEntries = entries!.filter(e => e.date !== '2026-08-22');
+    expect(regularEntries).toHaveLength(2);
+    regularEntries.forEach(e => {
+      expect(e.isMakeup).toBe(false);
+    });
+  });
+});
+
+describe('MAKEUP aggregate routing in computeAggregatesFromClassLog', () => {
+  it('routes makeup-P to agg.makeup, not agg.present', () => {
+    const makeupPLog = `
+#\tSubject Code\tSubject\tSubject Type\tFaculty Name\tDate\tStarting Time\tNumber of Hours\tMarked
+1\tITUL301\tDSA\tMAKEUP\tLecture\tTeacher\t2026-08-22 (Saturday)\t1:00 PM\t1\tP
+2\tITUL301\tDSA\tLecture\tTeacher\t2026-08-21 (Friday)\t9:15 AM\t1\tP
+`;
+    const entries = parseERPClassLog(makeupPLog)!;
+    const aggs = computeAggregatesFromClassLog(entries);
+    const dsa = aggs.find(a => a.code === 'ITUL301')!;
+
+    expect(dsa.present).toBe(1);  // only the regular P
+    expect(dsa.makeup).toBe(1);   // the makeup P goes here
+    expect(dsa.absent).toBe(0);
+  });
+
+  it('does NOT count makeup-A in agg.absent (excluded from total)', () => {
+    const makeupALog = `
+#\tSubject Code\tSubject\tSubject Type\tFaculty Name\tDate\tStarting Time\tNumber of Hours\tMarked
+1\tITUL301\tDSA\tMAKEUP\tLecture\tTeacher\t2026-08-22 (Saturday)\t1:00 PM\t1\tA
+2\tITUL301\tDSA\tLecture\tTeacher\t2026-08-21 (Friday)\t9:15 AM\t1\tP
+3\tITUL301\tDSA\tLecture\tTeacher\t2026-08-20 (Thursday)\t10:15 AM\t1\tA
+`;
+    const entries = parseERPClassLog(makeupALog)!;
+    const aggs = computeAggregatesFromClassLog(entries);
+    const dsa = aggs.find(a => a.code === 'ITUL301')!;
+
+    expect(dsa.present).toBe(1);
+    expect(dsa.makeup).toBe(0);   // makeup-A doesn't count
+    expect(dsa.absent).toBe(1);   // only the regular A
+    // total = present + od + absent = 1 + 0 + 1 = 2 (makeup excluded)
+  });
+});
