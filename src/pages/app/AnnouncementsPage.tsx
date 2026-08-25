@@ -148,6 +148,57 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
     }, 50);
   };
 
+  const draftLoadedRef = useRef(false);
+
+  // Load draft from localStorage on mount (when sheet opens and no shareInboxId)
+  useEffect(() => {
+    if (open) {
+      if (draftLoadedRef.current || shareInboxId) return;
+      draftLoadedRef.current = true;
+      const saved = localStorage.getItem('classhub-draft-announcement');
+      if (saved) {
+        try {
+          const draft = JSON.parse(saved);
+          const hasDraftContent = !!(
+            draft.title?.trim() ||
+            draft.body?.trim() ||
+            draft.selectedSubjectId ||
+            draft.deadlineDate
+          );
+          const isStateEmpty = !title && !body && !selectedSubjectId && !deadlineDate;
+
+          if (draft.title) setTitle(draft.title);
+          if (draft.body) setBody(draft.body);
+          if (draft.selectedSubjectId) setSelectedSubjectId(draft.selectedSubjectId);
+          if (draft.priority) setPriority(draft.priority);
+          if (draft.targetBatch) setTargetBatch(draft.targetBatch);
+          if (draft.hasDeadline) setHasDeadline(draft.hasDeadline);
+          if (draft.deadlineDate) setDeadlineDate(draft.deadlineDate);
+
+          if (hasDraftContent && isStateEmpty) {
+            toast.success('Announcement draft restored ✓');
+          }
+        } catch (e) {
+          console.error('[AnnouncementsPage] Failed to parse announcement draft:', e);
+        }
+      }
+    } else {
+      draftLoadedRef.current = false;
+    }
+  }, [open, shareInboxId]);
+
+  // Save draft to localStorage on field changes
+  useEffect(() => {
+    if (open && !shareInboxId) {
+      const draft = { title, body, selectedSubjectId, priority, targetBatch, hasDeadline, deadlineDate };
+      if (title.trim() || body.trim() || selectedSubjectId || deadlineDate) {
+        localStorage.setItem('classhub-draft-announcement', JSON.stringify(draft));
+      } else {
+        localStorage.removeItem('classhub-draft-announcement');
+      }
+    }
+  }, [open, title, body, selectedSubjectId, priority, targetBatch, hasDeadline, deadlineDate, shareInboxId]);
+
   useEffect(() => {
     if (!shareInboxId) return;
     getShare(shareInboxId).then((entry) => {
@@ -200,9 +251,11 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
     setFiles([]);
     onClose();
 
-    if (currentFiles.length > 0) {
-      toast.info('Posting announcement and uploading attachments in background...');
-    }
+    const toastId = toast.loading(
+      currentFiles.length > 0 
+        ? `Posting announcement and uploading ${currentFiles.length} file(s)...` 
+        : 'Posting announcement...'
+    );
 
     // Run creation and compressed upload asynchronously in background
     (async () => {
@@ -222,16 +275,20 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
         if (parentId && currentFiles.length > 0) {
           if (!sectionId || !userId) throw new Error('Missing section context or user context');
           
+          let completedCount = 0;
           const uploadResult = await uploadAttachments(currentFiles, {
             sectionId,
             parentType: 'announcement',
             parentId,
             userId,
-            onProgress: () => setUploadProgress(prev => prev + 1),
+            onProgress: () => {
+              completedCount++;
+              toast.loading(`Uploading attachments (${completedCount}/${currentFiles.length})...`, { id: toastId });
+            },
           });
 
           if (uploadResult.failed.length > 0) {
-            toast.warning(`${uploadResult.failed.length} file(s) failed to upload`);
+            toast.warning(`${uploadResult.failed.length} file(s) failed to upload`, { id: toastId });
             if (currentShareInboxId) {
               const entry = await getShare(currentShareInboxId);
               if (entry) {
@@ -246,16 +303,44 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
                 return;
               }
             }
-          } else if (currentShareInboxId) {
+          } else {
+            if (currentShareInboxId) {
+              await deleteShare(currentShareInboxId);
+            }
+            toast.success('Announcement and attachments posted ✓', { id: toastId });
+          }
+        } else {
+          if (currentShareInboxId) {
             await deleteShare(currentShareInboxId);
           }
-        } else if (currentShareInboxId) {
-          await deleteShare(currentShareInboxId);
+          toast.success('Announcement posted ✓', { id: toastId });
         }
 
-        toast.success('Announcement posted');
+        // Clear saved draft on success
+        localStorage.removeItem('classhub-draft-announcement');
       } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Failed to post announcement');
+        console.error('[AnnouncementsPage] Failed to post announcement:', err);
+        // Recover draft to localStorage so the user can retrieve it
+        const draft = {
+          title: currentTitle,
+          body: currentBody,
+          selectedSubjectId: currentSubjectId,
+          priority: currentPriority,
+          targetBatch: currentTargetBatch,
+          hasDeadline: Boolean(currentDeadline),
+          deadlineDate: currentDeadline ? currentDeadline.slice(0, 10) : ''
+        };
+        localStorage.setItem('classhub-draft-announcement', JSON.stringify(draft));
+        
+        toast.error('Failed to post announcement. Draft preserved.', {
+          id: toastId,
+          action: {
+            label: 'Reopen Draft',
+            onClick: () => {
+              navigate('/app/announcements', { state: { openCreate: true } });
+            },
+          },
+        });
       } finally {
         setIsPosting(false);
         setUploadProgress(0);

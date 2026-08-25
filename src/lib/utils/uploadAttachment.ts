@@ -1,8 +1,7 @@
 /**
  * Centralized attachment upload utility.
  * Handles storage upload, optional thumbnail generation for images,
- * and DB record insertion. Replaces duplicate logic in
- * AnnouncementsPage and AssignmentsPage.
+ * and batched DB record insertion.
  */
 import { supabase } from '../supabase';
 import { buildStoragePath, isPreviewableImage } from './attachments';
@@ -20,6 +19,21 @@ export interface UploadAttachmentParams {
 export interface BatchUploadResult {
   succeeded: string[];
   failed: { filename: string; error: string }[];
+}
+
+export interface StagedUploadResult {
+  file: File;
+  storagePath: string;
+  insertRow: {
+    section_id: string;
+    storage_path: string;
+    filename: string;
+    file_size: number;
+    file_type: string;
+    uploaded_by: string;
+    announcement_id: string | null;
+    assignment_id: string | null;
+  };
 }
 
 /**
@@ -60,19 +74,16 @@ async function uploadWithRetry(
 }
 
 /**
- * Upload a file to Supabase Storage + insert the `attachments` DB record.
- * Runs original upload and thumbnail generation/upload concurrently.
- *
- * @throws on original upload failure or DB insert failure.
+ * Upload a single file to Supabase Storage and returns its metadata payload.
  */
-export async function uploadAttachment({
+export async function uploadSingleFileToStorage({
   file: originalFile,
   sectionId,
   parentType,
   parentId,
   userId,
   onProgress,
-}: UploadAttachmentParams): Promise<void> {
+}: UploadAttachmentParams): Promise<StagedUploadResult> {
   // Auto-compress image before uploading to reduce network payload by 80-90%
   const file = isPreviewableImage(originalFile.type, originalFile.name)
     ? await compressImage(originalFile)
@@ -81,15 +92,15 @@ export async function uploadAttachment({
   // 1. Build storage path
   const path = buildStoragePath(sectionId, parentType, parentId, file.name);
 
-  // 2. Setup parallel uploads (main file and thumbnail)
+  // 2. Setup parallel uploads (main file and optional thumbnail)
   const mainUploadPromise = uploadWithRetry(
     'attachments',
     path,
     file,
     {
-      cacheControl: '3600',
+      cacheControl: '31536000, immutable', // 1 Year immutable caching
       upsert: parentType === 'assignment', // Assignments use upsert: true
-      contentType: file.type,
+      contentType: file.type || 'application/octet-stream',
     }
   );
 
@@ -104,7 +115,7 @@ export async function uploadAttachment({
             thumbPath,
             thumbBlob,
             {
-              cacheControl: '86400', // Thumbs are immutable — cache aggressively
+              cacheControl: '31536000, immutable', // Thumbs are immutable — cache aggressively
               upsert: parentType === 'assignment',
               contentType: 'image/webp',
             }
@@ -120,31 +131,37 @@ export async function uploadAttachment({
   // Run main file upload and thumbnail processing in parallel
   await Promise.all([mainUploadPromise, thumbUploadPromise]);
 
-  // 3. Insert DB record
-  const insertRow = {
-    section_id: sectionId,
-    storage_path: path,
-    filename: file.name,
-    file_size: file.size,
-    file_type: file.type,
-    uploaded_by: userId,
-    announcement_id: parentType === 'announcement' ? parentId : null,
-    assignment_id: parentType === 'assignment' ? parentId : null,
-  };
-
-  const { error: dbErr } = await supabase
-    .from('attachments')
-    .insert(insertRow);
-  if (dbErr) throw dbErr;
-
-  // 4. Report completion progress
   if (onProgress) {
     onProgress(file.name, true);
   }
+
+  return {
+    file,
+    storagePath: path,
+    insertRow: {
+      section_id: sectionId,
+      storage_path: path,
+      filename: file.name,
+      file_size: file.size,
+      file_type: file.type || 'application/octet-stream',
+      uploaded_by: userId,
+      announcement_id: parentType === 'announcement' ? parentId : null,
+      assignment_id: parentType === 'assignment' ? parentId : null,
+    },
+  };
 }
 
 /**
- * Upload multiple files concurrently using Promise.allSettled.
+ * Upload a file to Supabase Storage + insert the `attachments` DB record.
+ */
+export async function uploadAttachment(params: UploadAttachmentParams): Promise<void> {
+  const staged = await uploadSingleFileToStorage(params);
+  const { error: dbErr } = await supabase.from('attachments').insert(staged.insertRow);
+  if (dbErr) throw dbErr;
+}
+
+/**
+ * Upload multiple files concurrently and batch insert DB records in a single roundtrip.
  * Aggregates results of successful and failed uploads.
  */
 export async function uploadAttachments(
@@ -153,8 +170,8 @@ export async function uploadAttachments(
 ): Promise<BatchUploadResult> {
   const uploadPromises = files.map(async (file) => {
     try {
-      await uploadAttachment({ ...params, file });
-      return { filename: file.name, success: true };
+      const staged = await uploadSingleFileToStorage({ ...params, file });
+      return { filename: file.name, success: true, staged };
     } catch (err: unknown) {
       const errorObj = err as { message?: string };
       return {
@@ -168,16 +185,18 @@ export async function uploadAttachments(
   const results = await Promise.allSettled(uploadPromises);
   const succeeded: string[] = [];
   const failed: { filename: string; error: string }[] = [];
+  const rowsToInsert: StagedUploadResult['insertRow'][] = [];
 
   results.forEach((res, index) => {
     const file = files[index];
     if (res.status === 'fulfilled') {
-      if (res.value.success) {
+      if (res.value.success && res.value.staged) {
         succeeded.push(res.value.filename);
+        rowsToInsert.push(res.value.staged.insertRow);
       } else {
         failed.push({
           filename: res.value.filename,
-          error: res.value.error || 'Unknown error',
+          error: res.value.error || 'Upload failed',
         });
       }
     } else {
@@ -188,6 +207,28 @@ export async function uploadAttachments(
     }
   });
 
+  // Batch insert all successful file rows in 1 single database roundtrip
+  if (rowsToInsert.length > 0) {
+    try {
+      const { error: dbErr } = await supabase.from('attachments').insert(rowsToInsert);
+      if (dbErr) {
+        console.error('[uploadAttachments] Batch database insert failed:', dbErr);
+        // Mark these as failed if DB row insertion failed
+        rowsToInsert.forEach((row) => {
+          const idx = succeeded.indexOf(row.filename);
+          if (idx !== -1) succeeded.splice(idx, 1);
+          failed.push({ filename: row.filename, error: dbErr.message || 'Database insert failed' });
+        });
+      }
+    } catch (err: any) {
+      console.error('[uploadAttachments] Batch database insert exception:', err);
+      rowsToInsert.forEach((row) => {
+        const idx = succeeded.indexOf(row.filename);
+        if (idx !== -1) succeeded.splice(idx, 1);
+        failed.push({ filename: row.filename, error: err?.message || 'Database insert failed' });
+      });
+    }
+  }
+
   return { succeeded, failed };
 }
-
