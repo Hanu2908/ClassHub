@@ -253,29 +253,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (error) {
             console.error('[Auth] Error fetching initial session:', error);
           }
-
-          const isNetworkError = error && (
-            error.message?.toLowerCase().includes('fetch') ||
-            error.message?.toLowerCase().includes('network') ||
-            error.message?.toLowerCase().includes('load failed') ||
-            error.status === 0 ||
-            error.status === 503 ||
-            error.status === 504
-          );
-
-          // If no active session while ONLINE and not a network error, clear stale persisted user profile.
-          // During network errors or OFFLINE, preserve the cached authUser to prevent accidental logouts.
-          const store = useAppStore.getState();
-          const isDemoBypass = import.meta.env.DEV && store.authUser?.sectionId === 'demo-section';
-          if (!isDemoBypass && navigator.onLine && !isNetworkError) {
-            if (import.meta.env.DEV) {
-              console.log('[Auth] No active session found (online). Clearing cached authUser to prevent guard bypass.');
-            }
-            store.setAuthUser(null);
-            store.setSession(null);
-          } else if (import.meta.env.DEV) {
-            console.log('[Auth] No active session found (offline/network error). Preserving cached authUser.');
-          }
+          // Do not wipe cached authUser here to prevent kicking mobile PWA users to login
+          // during background resumes or transient token refreshes.
+          // True logout is handled authoritatively by SIGNED_OUT event.
           store.setAuthLoading(false);
         } else {
           const store = useAppStore.getState();
@@ -296,16 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }, 0);
         }
       } catch (err: any) {
-        console.error('[Auth] getInitialSession failed with critical exception:', err);
-        const errMsg = err?.message?.toLowerCase() || '';
-        const isNetworkError = errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('load failed');
-        // Clear cached authUser on critical exception — but only when online and not a network failure.
-        const store = useAppStore.getState();
-        const isDemoBypass = import.meta.env.DEV && store.authUser?.sectionId === 'demo-section';
-        if (!isDemoBypass && navigator.onLine && !isNetworkError) {
-          store.setAuthUser(null);
-          store.setSession(null);
-        }
+        console.error('[Auth] getInitialSession failed with exception:', err);
         if (mounted) {
           store.setAuthLoading(false);
         }
@@ -315,26 +286,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Ignore INITIAL_SESSION because we handled it above explicitly to avoid strict-mode bugs
-      if (event === 'INITIAL_SESSION') return;
-      
       if (import.meta.env.DEV) {
         console.log('[Auth] AuthStateChange Event:', event, session?.user?.email ?? 'no-user');
       }
 
       try {
-        if (event === 'SIGNED_IN' && session?.user) {
+        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
           const currentStore = useAppStore.getState();
-          if (currentStore.session?.user?.id === session.user.id) {
+          if (currentStore.session?.user?.id === session.user.id && currentStore.authUser?.id === session.user.id) {
             if (import.meta.env.DEV) {
-              console.log('[Auth] Skipping duplicate SIGNED_IN event for user:', session.user.id);
+              console.log('[Auth] Skipping duplicate auth event for user:', session.user.id);
             }
             return;
           }
           
+          store.setSession(session);
+          saveSession(session.access_token, session.user.id);
+
           // Decouple to avoid deadlocking the Supabase client's auth state listener
           setTimeout(() => {
-            handleSession(session!.user, session!, _navigateFn ?? undefined).catch(err => {
+            handleSession(session.user, session, _navigateFn ?? undefined).catch(err => {
               console.error('[Auth] Error inside async handleSession background task:', err);
             });
           }, 0);
@@ -349,6 +320,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else if (event === 'TOKEN_REFRESHED' && session) {
           store.setSession(session);
           saveSession(session.access_token, session.user.id);
+        } else if (event === 'INITIAL_SESSION' && !session) {
+          store.setAuthLoading(false);
         }
       } catch (err) {
         console.error('[Auth] Error in onAuthStateChange callback for event:', event, err);
@@ -356,9 +329,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    // Handle Mobile PWA resume / tab visibility change
+    const handleVisibilityOrPageShow = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            const currentStore = useAppStore.getState();
+            if (!currentStore.session) {
+              currentStore.setSession(session);
+              saveSession(session.access_token, session.user.id);
+            }
+          }
+        }).catch((err) => {
+          if (import.meta.env.DEV) {
+            console.log('[Auth] Visibility change session refresh skipped:', err);
+          }
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrPageShow);
+    window.addEventListener('pageshow', handleVisibilityOrPageShow);
+
     return () => {
       mounted = false;
       clearTimeout(safetyTimeout);
+      document.removeEventListener('visibilitychange', handleVisibilityOrPageShow);
+      window.removeEventListener('pageshow', handleVisibilityOrPageShow);
       subscription.unsubscribe();
     };
   }, []);

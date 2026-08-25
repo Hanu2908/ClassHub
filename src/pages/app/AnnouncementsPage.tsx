@@ -163,6 +163,10 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
         setDeadlineDate(parsed.dueDate.slice(0, 10));
       }
       setBody(parsed.body || entry.caption);
+      // Consume the share item from the inbox as soon as it is populated in the composer
+      deleteShare(shareInboxId).catch(err => {
+        console.warn('[AnnouncementsPage] Error deleting consumed share:', err);
+      });
     }).catch(() => toast.error('Failed to restore shared files'));
   }, [shareInboxId, subjects]);
 

@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './components/AuthProvider';
 import PageTitleManager from './components/PageTitleManager';
 import { useAppStore, type BeforeInstallPromptEvent } from './store/appStore';
@@ -197,6 +199,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <PageTitleManager />
+      <SpeedInsights />
+      <Analytics />
       <AuthProvider>
         <LazyMotion features={domAnimation}>
           <Toaster

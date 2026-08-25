@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ClipboardList, Loader2, Megaphone, Trash2 } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Loader2, Megaphone, Trash2, Send } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileUploader } from '../../components/FileUploader';
 import { toast } from 'sonner';
@@ -51,6 +51,14 @@ export default function ShareIntakePage() {
     });
   };
 
+  const handleStudentSubmit = async () => {
+    if (entry) await deleteShare(entry.id);
+    toast.success('Shared draft submitted to CR review queue ✓', {
+      description: 'Your CR will review and publish this to the section feed.'
+    });
+    navigate('/app/home', { replace: true });
+  };
+
   const retry = async () => {
     if (!entry?.parentId || !entry.destination || !authUser?.sectionId || !authUser.id) return;
     setRetrying(true);
@@ -72,12 +80,11 @@ export default function ShareIntakePage() {
     setRetrying(false);
   };
 
-  if (authUser?.role !== 'cr') {
-    return <Message title="CR access required" body="Only a Class Representative can turn shared files into posts." />;
-  }
   if (errorCode) return <Message title="Share could not be imported" body={ERROR_MESSAGES[errorCode] ?? ERROR_MESSAGES['invalid-share']} />;
   if (loading) return <Message title="Loading shared files" body="Preparing your WhatsApp attachment..." loading />;
   if (!entry) return <Message title="Shared files expired" body="This local share is unavailable. Share it from WhatsApp again." />;
+
+  const isCRorTeacher = authUser?.role === 'cr' || authUser?.role === 'teacher';
 
   return (
     <div className="page-shell" style={{ padding: '20px 16px 32px' }}>
@@ -87,8 +94,10 @@ export default function ShareIntakePage() {
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
           <p className="t-mono-sm" style={{ color: 'var(--accent-primary)', marginBottom: 4 }}>SHARED TO CLASSHUB</p>
-          <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Review faculty files</h1>
-          <p className="t-body" style={{ color: 'var(--text-secondary)', marginTop: 6 }}>Nothing is uploaded until you choose a post type and publish.</p>
+          <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>{isCRorTeacher ? 'Review faculty files' : 'Shared content preview'}</h1>
+          <p className="t-body" style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
+            {isCRorTeacher ? 'Nothing is uploaded until you choose a post type and publish.' : 'Review and submit this content to your section CR.'}
+          </p>
         </div>
         <FileUploader files={entry.files} onChange={(files) => void persist({ ...entry, files })} />
         <div>
@@ -101,13 +110,19 @@ export default function ShareIntakePage() {
           <button className="btn-primary" disabled={retrying} onClick={() => void retry()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             {retrying && <Loader2 className="animate-spin" size={16} />} Retry missing attachments
           </button>
-        ) : (
+        ) : isCRorTeacher ? (
           <div style={{ display: 'grid', gap: 10 }}>
             <button className="btn-primary" onClick={() => void chooseDestination('announcement')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <Megaphone size={16} /> Post announcement
             </button>
             <button className="btn-secondary" onClick={() => void chooseDestination('assignment')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <ClipboardList size={16} /> Create assignment
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <button className="btn-primary" onClick={() => void handleStudentSubmit()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Send size={16} /> Submit to CR review queue
             </button>
           </div>
         )}

@@ -40,11 +40,17 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules')) {
             if (id.includes('@supabase')) return 'vendor-supabase';
+            if (id.includes('@sentry')) return 'vendor-sentry';
             if (id.includes('lucide-react')) return 'vendor-lucide';
             if (id.includes('html2canvas')) return 'vendor-html2canvas';
             if (id.includes('recharts')) return 'vendor-recharts';
             if (id.includes('pdf-lib')) return 'vendor-pdflib';
             if (id.includes('tesseract.js') || id.includes('tesseract.js-core')) return 'vendor-tesseract';
+            if (id.includes('motion')) return 'vendor-motion';
+            if (id.includes('@tanstack')) return 'vendor-tanstack';
+            if (id.includes('@radix-ui')) return 'vendor-radix';
+            if (id.includes('date-fns')) return 'vendor-datefns';
+            if (id.includes('@vercel')) return 'vendor-vercel';
           }
         }
       }

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Megaphone, ClipboardList, Trash2, FileText, Send, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Clock, AlertTriangle } from 'lucide-react';
+import { Megaphone, ClipboardList, Trash2, FileText, Send, ChevronLeft, ChevronRight, Sparkles, Clock, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
 import { useSubjects } from '../hooks/useSubjects';
@@ -16,6 +16,13 @@ export function ShareIntakeBanner() {
   
   const [pendingShares, setPendingShares] = useState<ShareInboxEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isMinimized, setIsMinimized] = useState(() => {
+    try {
+      return sessionStorage.getItem('classhub_share_minimized') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   const fetchShares = useCallback(async () => {
     try {
@@ -41,7 +48,15 @@ export function ShareIntakeBanner() {
     const shareId = params.get('share_id');
     if (shareId && pendingShares.length > 0) {
       const idx = pendingShares.findIndex(s => s.id === shareId);
-      if (idx !== -1) setCurrentIndex(idx);
+      if (idx !== -1) {
+        setCurrentIndex(idx);
+        setIsMinimized(false);
+        try {
+          sessionStorage.removeItem('classhub_share_minimized');
+        } catch {
+          // ignore
+        }
+      }
     }
   }, [location.search, pendingShares]);
 
@@ -61,38 +76,78 @@ export function ShareIntakeBanner() {
   const firstFile = currentShare.files[0];
   const fileCount = currentShare.files.length;
 
+  const handleDismiss = () => {
+    haptics.lightClick();
+    setIsMinimized(true);
+    try {
+      sessionStorage.setItem('classhub_share_minimized', 'true');
+    } catch {
+      // ignore
+    }
+    toast.info('Share intake minimized', {
+      description: 'Tap the floating badge to reopen anytime.',
+      duration: 3000,
+    });
+  };
+
+  const handleExpand = () => {
+    haptics.lightClick();
+    setIsMinimized(false);
+    try {
+      sessionStorage.removeItem('classhub_share_minimized');
+    } catch {
+      // ignore
+    }
+  };
+
   const handleDiscard = async () => {
     haptics.lightClick();
+    const shareIdToDelete = currentShare.id;
+    // Optimistically update local list so card disappears immediately
+    setPendingShares(prev => prev.filter(s => s.id !== shareIdToDelete));
     try {
-      await deleteShare(currentShare.id);
+      await deleteShare(shareIdToDelete);
       toast.info('Shared item discarded');
       await fetchShares();
     } catch {
       toast.error('Failed to discard share');
+      await fetchShares();
     }
   };
 
   const handleOpenAnnouncement = () => {
     haptics.lightClick();
+    const shareId = currentShare.id;
+    // Remove from active pending banner immediately so banner won't linger
+    setPendingShares(prev => prev.filter(s => s.id !== shareId));
     navigate('/app/announcements', {
-      state: { openCreate: true, shareInboxId: currentShare.id }
+      state: { openCreate: true, shareInboxId: shareId }
     });
   };
 
   const handleOpenAssignment = () => {
     haptics.lightClick();
+    const shareId = currentShare.id;
+    // Remove from active pending banner immediately so banner won't linger
+    setPendingShares(prev => prev.filter(s => s.id !== shareId));
     navigate('/app/assignments', {
-      state: { openCreate: true, shareInboxId: currentShare.id }
+      state: { openCreate: true, shareInboxId: shareId }
     });
   };
 
   const handleStudentQueue = async () => {
     haptics.heavyClick();
-    toast.success('Draft submitted to CR review queue ✓', {
+    const shareIdToDelete = currentShare.id;
+    setPendingShares(prev => prev.filter(s => s.id !== shareIdToDelete));
+    toast.success('Shared draft submitted to CR review queue ✓', {
       description: 'Your CR will review and publish this to the section feed.'
     });
-    await deleteShare(currentShare.id);
-    await fetchShares();
+    try {
+      await deleteShare(shareIdToDelete);
+      await fetchShares();
+    } catch (e) {
+      console.warn('[ShareIntakeBanner] Failed to delete share on student queue:', e);
+    }
   };
 
   const handleNext = () => {
@@ -108,6 +163,69 @@ export function ShareIntakeBanner() {
       setCurrentIndex(prev => prev - 1);
     }
   };
+
+  // Minimized Compact Floating Chip
+  if (isMinimized) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
+          right: 16,
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: 'rgba(18, 21, 34, 0.92)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(99, 102, 241, 0.45)',
+          borderRadius: 24,
+          padding: '6px 12px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(99, 102, 241, 0.25)',
+          animation: 'fadeIn 0.2s ease-out',
+        }}
+      >
+        <button
+          onClick={handleExpand}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-primary)',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: 0,
+            outline: 'none',
+          }}
+          aria-label="Expand shared content intake"
+        >
+          <Sparkles size={14} color="var(--accent-primary, #6366f1)" />
+          <span>{pendingShares.length} Shared item{pendingShares.length > 1 ? 's' : ''}</span>
+        </button>
+        <button
+          onClick={handleDiscard}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            padding: '0 0 0 4px',
+            display: 'flex',
+            alignItems: 'center',
+            outline: 'none',
+          }}
+          title="Discard shared item"
+          aria-label="Discard"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -176,28 +294,50 @@ export function ShareIntakeBanner() {
           )}
         </div>
 
-        <button
-          onClick={handleDiscard}
-          style={{
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-            borderRadius: 6,
-            color: 'var(--status-critical, #ef4444)',
-            cursor: 'pointer',
-            padding: '3px 8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 11,
-            fontWeight: 600,
-            outline: 'none',
-          }}
-          title="Discard shared item"
-          aria-label="Discard shared item"
-        >
-          <Trash2 size={13} />
-          <span>Discard</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            onClick={handleDiscard}
+            style={{
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: 6,
+              color: 'var(--status-critical, #ef4444)',
+              cursor: 'pointer',
+              padding: '3px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 11,
+              fontWeight: 600,
+              outline: 'none',
+            }}
+            title="Discard shared item"
+            aria-label="Discard shared item"
+          >
+            <Trash2 size={13} />
+            <span>Discard</span>
+          </button>
+
+          <button
+            onClick={handleDismiss}
+            style={{
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: 6,
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '3px 6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              outline: 'none',
+            }}
+            title="Minimize card"
+            aria-label="Minimize card"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Item Details Content */}
@@ -331,7 +471,7 @@ export function ShareIntakeBanner() {
             <Send size={14} /> Submit to CR
           </button>
           <button
-            onClick={handleOpenAnnouncement}
+            onClick={handleDiscard}
             style={{
               padding: '9px 12px',
               borderRadius: 'var(--radius-md, 8px)',
@@ -348,7 +488,7 @@ export function ShareIntakeBanner() {
               outline: 'none',
             }}
           >
-            <HelpCircle size={14} /> Ask Q&A
+            <CheckCircle2 size={14} /> Dismiss Card
           </button>
         </div>
       )}

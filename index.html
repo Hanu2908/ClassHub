@@ -64,10 +64,10 @@
             "where": {
               "and": [
                 { "href_matches": "/*" },
-                { "not": { "href_matches": ["/logout", "/auth/*", "/api/*"] } }
+                { "not": { "href_matches": ["/logout", "/auth/*", "/api/*", "/app/*", "/onboarding/*", "/share-intake*"] } }
               ]
             },
-            "eagerness": "moderate"
+            "eagerness": "conservative"
           }
         ]
       }

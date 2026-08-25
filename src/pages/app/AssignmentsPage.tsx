@@ -127,6 +127,10 @@ function CreateAssignmentSheet({ open, onClose, shareInboxId }: { open: boolean;
       if (parsed.subjectId) setSubjectId(parsed.subjectId);
       if (parsed.dueDate) setDueDate(parsed.dueDate.slice(0, 10));
       setDescription(parsed.body || entry.caption);
+      // Consume the share item from the inbox as soon as it is populated in the composer
+      deleteShare(shareInboxId).catch(err => {
+        console.warn('[AssignmentsPage] Error deleting consumed share:', err);
+      });
     }).catch(() => toast.error('Failed to restore shared files'));
   }, [open, shareInboxId, subjectsList]);
 

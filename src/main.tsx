@@ -3,24 +3,24 @@ import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { registerSW } from 'virtual:pwa-register'
-import { inject } from '@vercel/analytics'
-import { injectSpeedInsights } from '@vercel/speed-insights'
 import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
 import { reportAutomatedCrash } from './lib/crashTelemetry'
-import * as Sentry from '@sentry/react'
-
 if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration(),
-    ],
-    tracesSampleRate: 1.0,
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
+  import('@sentry/react').then((Sentry) => {
+    Sentry.init({
+      dsn: import.meta.env.VITE_SENTRY_DSN,
+      integrations: [
+        Sentry.browserTracingIntegration(),
+        Sentry.replayIntegration(),
+      ],
+      tracesSampleRate: 1.0,
+      replaysSessionSampleRate: 0.1,
+      replaysOnErrorSampleRate: 1.0,
+    });
+  }).catch((err) => {
+    console.warn('[Sentry] Failed to initialize telemetry:', err);
   });
 }
 
@@ -46,19 +46,6 @@ if (typeof window !== 'undefined') {
       error,
     });
   });
-}
-
-// Initialize Vercel edge telemetry
-if (typeof window !== 'undefined') {
-  const initTelemetry = () => {
-    inject();
-    injectSpeedInsights();
-  };
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(initTelemetry);
-  } else {
-    setTimeout(initTelemetry, 1500);
-  }
 }
 
 // Define a page load timestamp to guard against mid-session auto-reloads
