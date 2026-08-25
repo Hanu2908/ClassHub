@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Check, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen } from 'lucide-react';
+import { ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
@@ -12,9 +12,9 @@ import { isPushSupported, getPushPermission, hasActiveSubscription, subscribeToP
 import { FeedbackSheet } from '../../components/FeedbackSheet';
 import { signOutGlobal } from '../../components/AuthProvider';
 import { useUserTags, useDeleteTag, MAX_ACTIVE_TAGS } from '../../hooks/useUserTags';
-import { TagPill } from '../../components/TagPill';
 import { AddTagSheet } from '../../components/AddTagSheet';
 import { BottomSheet } from '../../components/BottomSheet';
+import { CopyButton } from '../../components/CopyButton';
 import { logEvent } from '../../lib/analytics';
 
 export default function ProfilePage() {
@@ -136,15 +136,6 @@ export default function ProfilePage() {
   const universityRoll = authUser?.universityRoll ?? hub?.universityRoll ?? '—';
 
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(hubCode);
-    setCopied(true);
-    toast.success('Hub code copied!');
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleDeleteAccount = async () => {
     if (deleteInput !== 'DELETE') return;
@@ -404,8 +395,9 @@ export default function ProfilePage() {
               <span className="badge badge-info">{authUser.branch}</span>
             )}
             {displayRole !== 'teacher' && (
-              <span className="t-mono" style={{ color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
+              <span className="t-mono" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
                 Roll {classRoll}
+                {classRoll !== '—' && <CopyButton text={classRoll} label="Copy class roll number" size={12} />}
               </span>
             )}
           </div>
@@ -483,15 +475,7 @@ export default function ProfilePage() {
                 label: 'Hub Code', 
                 value: hubCode, 
                 action: (
-                  <button 
-                    id="copy-hub-code" 
-                    onClick={handleCopy} 
-                    className="t-label" 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? 'var(--status-safe)' : 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    {copied ? <Check size={13} style={{ color: 'var(--status-safe)' }} /> : <Copy size={13} />}
-                    <span>{copied ? 'Copied!' : 'Copy'}</span>
-                  </button>
+                  <CopyButton text={hubCode} label="Copy hub code" showText={true} size={13} successMessage="Hub code copied!" />
                 ) 
               },
               { 
@@ -527,7 +511,11 @@ export default function ProfilePage() {
                 )
               },
               ...(role !== 'teacher' ? [
-                { label: 'University Roll', value: universityRoll },
+                { 
+                  label: 'University Roll', 
+                  value: universityRoll, 
+                  action: universityRoll !== '—' ? <CopyButton text={universityRoll} label="Copy university roll number" /> : undefined 
+                },
                 { 
                   label: 'Curriculum', 
                   value: 'Subjects', 
