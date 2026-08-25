@@ -1,0 +1,75 @@
+name: Good first issue task
+description: Create a well-scoped task suitable for new contributors
+title: '[GOOD FIRST ISSUE]: '
+labels: ['good first issue', 'help wanted', 'starter']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to outline tasks with clear acceptance criteria and implementation hints for newcomers.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Task summary
+      description: A concise explanation of the improvement or fix needed.
+      placeholder: Add keyboard navigation shortcuts for the PDF document viewer...
+    validations:
+      required: true
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Estimated scope / difficulty
+      options:
+        - Starter (Quick fix, documentation, or small component tweak - under 1 hour)
+        - Intermediate (New UI state, unit test suite, or utility function - 1 to 3 hours)
+        - Advanced starter (Multi-component refactor or composite flow)
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation and context
+      description: Why is this task needed and how does it help ClassHub users?
+      placeholder: When students view assignment PDFs on desktop, pressing left/right arrow keys should turn pages without clicking the UI buttons.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Relevant files and code pointers
+      description: List the file paths where changes should be made.
+      placeholder: |
+        - `src/pages/app/PDFViewerPage.tsx`
+        - `src/components/AttachmentCard.tsx`
+        - `tests/unit/components.test.tsx`
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: Clear checklist of what must be completed for this issue to be closed.
+      placeholder: |
+        - [ ] Left/right arrow keys navigate between pages in the PDF viewer
+        - [ ] Shortcuts are ignored when an input or modal is active
+        - [ ] Unit tests added verifying keyboard event handlers
+        - [ ] `npm test` and `npm run lint` pass with 0 errors
+    validations:
+      required: true
+  - type: textarea
+    id: hints
+    attributes:
+      label: Implementation guide and hints
+      description: Helpful hints, relevant library APIs, or similar code patterns in the repository.
+      placeholder: Look at how `usehooks-ts` or window keydown event listeners are used in `src/components/ImageZoomModal.tsx`.
+    validations:
+      required: false
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: Contributor guidelines
+      options:
+        - label: This task adheres to TypeScript strict mode with no `any` types.
+          required: true
+        - label: This task includes tests in `tests/unit/` where applicable.
+          required: true

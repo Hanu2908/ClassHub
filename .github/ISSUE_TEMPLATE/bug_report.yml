@@ -1,0 +1,78 @@
+name: Bug report
+description: File a structured report to help us fix a defect in ClassHub
+title: '[BUG]: '
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue. Please verify you are running the latest version of ClassHub before submitting.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: A clear description of what the defect is.
+      placeholder: When clicking the attendance simulator boost button, the delta shows NaN...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: How can maintainers reproduce this issue?
+      placeholder: |
+        1. Open Attendance page
+        2. Tap "What-if Simulator"
+        3. Enter 0 total classes
+        4. See NaN error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?
+      placeholder: The simulator should handle 0 total classes gracefully and display 0.00%.
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Affected workspace role
+      options:
+        - Student workspace
+        - Class Representative (CR) command center
+        - Faculty / Teacher workspace
+        - Counsellor console
+        - Developer console / General auth
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / Device environment
+      options:
+        - Android PWA (Installed)
+        - Android Browser (Chrome / Firefox / Brave)
+        - iOS Safari / WebKit
+        - Desktop Browser (Chrome / Edge / Firefox)
+        - macOS Safari
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Browser console logs or network errors
+      description: Paste any browser console errors or failed network requests.
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Self-check
+      options:
+        - label: I have verified this issue is not already reported in existing issues.
+          required: true
+        - label: I have confirmed this bug does not disclose private student ERP credentials.
+          required: true

@@ -1,218 +1,234 @@
-<div align="center">
+# ClassHub
 
-# 🎓 ClassHub
-
-**Your Academic Workspace**
+Academic management progressive web application for engineering college sections. Built with React 19, TypeScript, Supabase, and Tailwind CSS.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed-Vercel-black?logo=vercel)](https://classshub.vercel.app)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Backend-Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Backend: Supabase](https://img.shields.io/badge/Backend-Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PWA](https://img.shields.io/badge/PWA-Installable-8A2BE2)](https://web.dev/progressive-web-apps/)
-[![Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/himanshuhanu)
-
-</div>
 
 ---
 
-ClassHub is a progressive web app that replaces scattered WhatsApp groups and Google Forms with a single, secure academic workspace. Built for Indian engineering college sections, it gives Class Representatives a command center and students a unified dashboard for everything academic.
+## Overview
+
+ClassHub replaces informal chat groups and loose spreadsheets with a structured, multi-tenant academic portal. The system coordinates schedules, subject attendance, assignments, announcements, and polls for college sections under section-level access control.
+
+- **Live deployment**: [classshub.vercel.app](https://classshub.vercel.app)
+- **Access requirement**: Google Workspace account with `@skit.ac.in` domain.
 
 ---
 
-## 📸 Screenshots
+## Role-based workspaces
 
-<div align="center">
+The application provides dedicated views tailored to five primary roles.
 
-<!-- Add your screenshots to docs/screenshots/ and uncomment the lines below -->
-
-<!-- <img src="docs/screenshots/dashboard.png" alt="Student Dashboard" width="280" /> -->
-<!-- <img src="docs/screenshots/assignments.png" alt="Assignments" width="280" /> -->
-<!-- <img src="docs/screenshots/cr-command-center.png" alt="CR Command Center" width="280" /> -->
-
-*Screenshots coming soon *
-
-</div>
-
----
-
-## ✨ Features
-
-### 📊 Dashboard
-- **Today's Schedule** — live class timetable with room numbers and status tags &nbsp; 👤
-- **Quick Stats** — pending assignments, submissions, and alerts at a glance &nbsp; 👤
-- **Attendance Overview** — subject-wise attendance rings with weekly tracking &nbsp; 👤
-- **Campus Poll** — live poll results embedded right on the dashboard &nbsp; 👤
-
-### 📢 Announcements
-- **Channel Scoping** — filter by Active Feed, Exams, Schedule, and Campus &nbsp; 👤
-- **Priority & Deadlines** — urgent deadline highlights and critical alerts &nbsp; 👤 👑
-- **Acknowledgment Tracking** — track who's read each announcement with nudge support &nbsp; 👑
-- **Broadcast** — push announcements to the entire section instantly &nbsp; 👑
-
-### 📝 Assignments
-- **Assignment Sets** — group assignment instructions under specific subjects &nbsp; 👑
-- **Roll-Based Distribution** — auto-assign question sets based on roll number &nbsp; 👤
-- **Digital Submissions** — file uploads (docs, PDFs, code, images) with Drive links &nbsp; 👤
-- **Submission Health Monitor** — track submitted vs pending across all assignments &nbsp; 👑
-
-### 📊 Polls
-- **Anonymous Voting** — cryptographic hash validation prevents duplicate votes &nbsp; 👤
-- **CR-Visible Polls** — optional transparency mode where CR can see individual responses &nbsp; 👑
-- **Live Analytics** — real-time visual summaries of class preferences &nbsp; 👤 👑
-
-### 👑 CR Command Center
-- **Section Pulse** — student count, active tasks, and live polls overview &nbsp; 👑
-- **Quick Actions** — create announcements, assignments, polls, and timetables &nbsp; 👑
-- **Acknowledgment Progress** — visual progress bars with nudge-unacknowledged action &nbsp; 👑
-- **Submissions Hub** — centralized evaluation view across all assignments &nbsp; 👑
-
-### 🖼️ Media Optimization
-- **Dual-Tier WebP Delivery** — upload-time thumbnail generation reduces images up to 99.5% in size
-- **Hardware-Accelerated Fallback** — `createImageBitmap` canvas downscaling for legacy images
-- **Progressive Zoom Modal** — cached thumbnail → high-res crossfade with full zoom/pan
-
-### 📈 GPA Calculator & Analytics
-- **Target Tracking** — interactive GPA calculation with semester goal visualization &nbsp; 👤
-- **Relative Grading** — grade distribution analysis tools &nbsp; 👤
-
-> 👤 = Student &nbsp;&nbsp; 👑 = Class Representative (CR)
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technologies |
-|---|---|
-| **Frontend** | React 18, Vite, TypeScript (Strict), React Router v6 |
-| **Styling** | Tailwind CSS v3 — dark-mode glassmorphic design system |
-| **State** | Zustand (client state), TanStack Query v5 (server state) |
-| **Backend** | Supabase JS v2 — Realtime, Auth, Edge Functions |
-| **Database** | PostgreSQL 15 with Row-Level Security on all 12 tables |
-| **Auth** | Google OAuth restricted to `@skit.ac.in` domain |
-| **PWA** | Vite PWA Plugin with Service Worker caching & precaching |
-| **Deploy** | Vercel (frontend), Supabase Cloud (backend) |
-
----
-
-## 🏗️ Architecture
-
-```mermaid
-graph TD
-    subgraph Client["PWA Client · React 18 + Vite"]
-        UI["Tailwind UI Components"]
-        Store["Zustand Store"]
-        Query["TanStack Query Cache"]
-        SW["Service Worker"]
-        Upload["Upload Pipeline"]
-        Resize["imageResize.ts · WebP Thumbs"]
-    end
-
-    subgraph Backend["Supabase Cloud"]
-        Auth["Google OAuth · @skit.ac.in"]
-        Storage["Storage Buckets · original + .thumb.webp"]
-        DB[("PostgreSQL 15 · RLS on 12 tables")]
-        Edge["Edge Functions"]
-    end
-
-    UI --> Store
-    UI --> Query
-    UI --> Upload
-    Upload --> Resize
-    Resize -.->|"WebP Thumbnail"| Storage
-    Upload -->|"Original File"| Storage
-    Upload -->|"DB Insert"| DB
-    Query -->|"Realtime Subscriptions"| DB
-    Auth -->|"Domain-restricted"| DB
-    Edge -->|"Push Notifications"| Client
+```
+                  ┌──────────────────────────────┐
+                  │      Google OAuth Login      │
+                  │       (@skit.ac.in)          │
+                  └──────────────┬───────────────┘
+                                 │
+     ┌───────────────────────────┼───────────────────────────┐
+     ▼                           ▼                           ▼
+┌───────────────┐        ┌───────────────┐        ┌───────────────┐
+│ Student View  │        │   CR Command  │        │ Teacher View  │
+│               │        │    Center     │        │               │
+│ • Attendance  │        │ • Broadcasts  │        │ • Register    │
+│ • Predictions │        │ • Register    │        │ • Timetable   │
+│ • Assignments │        │ • Reports     │        │ • Notices     │
+│ • Polls & Q&A │        │ • Submissions │        │ • Batches     │
+└───────┬───────┘        └───────┬───────┘        └───────┬───────┘
+        │                        │                        │
+        └────────────────────────┼────────────────────────┘
+                                 │
+              ┌──────────────────┴──────────────────┐
+              ▼                                     ▼
+      ┌───────────────┐                     ┌───────────────┐
+      │  Counsellor   │                     │   Developer   │
+      │    Console    │                     │    Console    │
+      │ • Mentorship  │                     │ • Telemetry   │
+      │ • Remarks     │                     │ • Bug triage  │
+      │ • Alerts      │                     │ • DB health   │
+      └───────────────┘                     └───────────────┘
 ```
 
-> For the full architecture breakdown, see [docs/architecture.md](docs/architecture.md).
+### Student workspace
+- **Attendance calculations**: Subject-wise attendance percentages, safe bunks counter, classes needed for the 75% threshold, and exact integer target goals.
+- **Attendance prediction engine**: Recovery date projection linked to weekly timetable frequency and the academic calendar, accounting for holidays and breaks.
+- **What-if simulator**: Scenario modeling for boosting attendance, taking bunks, applying on-duty (OD) medical credits, or combining actions.
+- **Assignment sets**: Automatic roll-number lookup to view assigned question sets and page ranges directly in the embedded PDF viewer.
+- **Announcements and Q&A**: Filtered feed (Active, Exams, Schedule, Campus) with rich text formatting, threaded comments with edit and delete actions, emoji reactions, and 1-tap read receipts.
+- **Polls**: Salted anonymous voting and class decision tracking.
+- **Academic tools**: GPA calculator using university credits, relative grading distribution, exam schedule countdown, resource hub for notes and previous year question papers (PYQs), and a section directory with custom profile tags.
+
+### Class representative command center
+- **Multi-CR administration**: Two-tier model supporting 1 primary CR and up to 2 co-CRs per section with audited role transfer functions.
+- **Class attendance register**: Period-by-period class register with present, absent, on-duty, and makeup toggles.
+- **Multi-format report generation**: 1-tap export to WhatsApp-ready text summaries, in-app PDF document previews, and CSV downloads.
+- **Broadcast announcements**: Priority alerts with instant Web Push delivery to all section members.
+- **Assignment management**: Question set generator dividing document pages across roll number batches.
+- **Submission tracking**: Real-time status tracker with verification toggles, student nudging, and shareable WhatsApp pending student lists.
+- **Acknowledgment monitoring**: Live read-receipt audit to see which students have read urgent notices.
+- **Section directory**: Roster management with role assignments and invite code rotation.
+
+### Faculty workspace
+- **Digital attendance register**: Period-by-period class register with present, absent, and medical leave toggles.
+- **Multi-section timetable**: Schedule editor with batch assignments (Batch 1 and Batch 2) and room numbers.
+- **Course notices**: Direct announcements to enrolled student sections.
+
+### Counsellor workspace
+- **Student mentorship console**: Attendance overview and academic records for assigned student batches.
+- **Counsellor remarks**: Student feedback logging with automated in-app notifications.
+
+### Developer workspace
+- **System telemetry**: Sentry error tracking, client crash telemetry, feedback report triage, and database health metrics.
 
 ---
 
-## 🔗 Live Demo
+## Key technical subsystems
 
-> 🔐 **Live at [classshub.vercel.app](https://classshub.vercel.app)** — requires an `@skit.ac.in` Google Workspace account.
->
-> See screenshots above for a full preview of the app experience.
+### 1. Web Share Target intake and smart parser
+ClassHub registers a PWA Web Share Target handler (`/share-target`). When faculty or students share PDFs, photos, or message text from WhatsApp or other apps directly to ClassHub:
+- The Service Worker intercepts the POST request and stages incoming files and text into local IndexedDB (`share-inbox`).
+- A heuristic parser scans text for title, matching subject name, code, acronyms (such as DBMS, OS, CN, DSA, TOC), submission deadlines, and urgency level.
+- Users receive a floating intake card with auto-filled fields and 1-tap routing to Announcement or Assignment composers.
+
+### 2. Attendance intelligence and prediction engine
+- **Precision arithmetic**: Uses exact integer arithmetic `(target * total - 100 * attended) / (100 - target)` to avoid floating-point rounding errors in class targets.
+- **Timetable linkage**: Connects active schedule slots to subject attendance data to project the exact calendar date a student will cross 75%.
+- **Academic calendar integration**: Evaluates scheduled day frequencies against institutional holidays and semester breaks.
+- **Smart skip advisor**: Evaluates risk levels (safe, warning, critical) and calculates the projected percentage before a student skips a specific lecture.
+
+### 3. Multi-format export and in-app document pipeline
+- **WhatsApp report formatter**: Generates plain-text summaries with attendance counts, roll-sorted absent lists, and formatted pending assignment rosters.
+- **Canvas-rendered PDF preview**: Uses PDF.js canvas rendering and `pdf-lib` for in-app document generation and viewing without external readers.
+- **Client-side image compression**: Converts images to WebP format (max 1600px, quality 0.8) using `OffscreenCanvas` before upload, reducing 5MB to 10MB mobile photos to under 250KB.
+- **Batched metadata writes**: Successful file uploads write to the database in a single batch insert query.
+- **Long-term caching**: Storage assets include 1-year immutable cache headers.
+
+### 4. Offline queue and background sync
+- User actions performed while offline (such as voting on polls or acknowledging notices) queue into IndexedDB.
+- When network connectivity returns, the Service Worker background sync replays queued transactions against Supabase REST endpoints without duplicate submissions.
+
+### 5. Web Push notifications and lock-screen actions
+- Push notifications run through VAPID Web Push via Supabase Edge Functions.
+- Notifications include interactive action buttons. Students can tap "Acknowledge" directly from the system notification tray or lock screen to log their read receipt without opening the browser.
+- Subscription self-healing runs on `pushsubscriptionchange` to update invalid endpoints automatically.
+
+### 6. Salted anonymous polling
+- To preserve ballot privacy while preventing double voting, poll responses use a database function (`calculate_anonymous_token`).
+- The function combines the student ID, poll ID, and a section salt to generate a one-way voter token. The database stores the vote without recording the student ID in the response record.
 
 ---
 
-## 🚀 Local Development
+## Tech stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 19, Vite 8, TypeScript (Strict), React Router v7 |
+| **Styling & UI** | Tailwind CSS v3, Motion, Radix UI Primitives, Lucide Icons, Sonner |
+| **State management** | Zustand v5 (client state and offline store), TanStack Query v5 (server cache) |
+| **Backend** | Supabase (PostgreSQL 15, Auth, Storage, Edge Functions) |
+| **PWA & Media** | Vite PWA Plugin, Workbox, Web Share Target API, Web Push VAPID, PDF.js, pdf-lib |
+| **Analytics & Telemetry** | Vercel Speed Insights, Vercel Analytics, Sentry |
+| **Testing** | Vitest 4, React Testing Library, Happy DOM (210 unit and integration tests) |
+| **Deployment** | Vercel (frontend), Supabase Cloud (backend) |
+
+---
+
+## Database schema and security
+
+The database uses PostgreSQL 15 with Row-Level Security (RLS) enabled on all 25+ tables:
+
+```
+sections ──────────┬─── users ───────────────┬─── user_tags
+                   ├─── subjects             └─── cr_transfer_log
+                   ├─── timetable_slots
+                   ├─── attendance_records
+                   ├─── attendance_class_logs
+                   ├─── cr_attendance_records
+                   ├─── counsellor_remarks
+                   ├─── announcements ───────┬─── acknowledgments
+                   │                         ├─── announcement_comments
+                   │                         └─── announcement_reactions
+                   ├─── assignments ─────────┬─── assignment_sets
+                   │                         └─── submissions
+                   ├─── polls ───────────────┬─── poll_options
+                   │                         └─── votes
+                   ├─── exams
+                   ├─── attachments
+                   ├─── push_subscriptions
+                   └─── feedback_reports
+```
+
+### Security rules
+- **Tenant isolation**: Every table includes a `section_id` foreign key. Row-Level Security policies reject queries outside the authenticated user's assigned section.
+- **Domain restriction**: Auth triggers reject non-`@skit.ac.in` logins and revoke sessions immediately.
+- **Credential safety**: ClassHub never requests, stores, or scrapes third-party ERP passwords.
+- **Role enforcement**: Administrative endpoints verify `role = 'cr'`, `role = 'teacher'`, or `is_developer = true` through Postgres functions.
+
+---
+
+## Local development
 
 ### Prerequisites
-- Node.js v18+
-- npm v9+
+- Node.js 18 or higher
+- npm 9 or higher
 
-### Setup
+### Installation
 
+1. Clone the repository:
 ```bash
-# Clone the repository
 git clone https://github.com/Hanu2908/ClassHub.git
 cd ClassHub
+```
 
-# Install dependencies
+2. Install dependencies:
+```bash
 npm install
+```
 
-# Create environment file
+3. Configure environment variables:
+```bash
 cp .env.example .env
-# Edit .env with your Supabase project URL and anon key
+```
+Fill in your Supabase URL, anon key, and VAPID public key in `.env`.
 
-# Start development server
+4. Start the local Vite development server:
+```bash
 npm run dev
 ```
 
-### Available Commands
+### Available scripts
 
 ```bash
-npm run dev      # Start Vite HMR dev server
-npm run build    # TypeScript compile + production build
-npm run lint     # ESLint check
-npm test         # Run Vitest unit tests
+npm run dev        # Starts Vite local development server
+npm test           # Runs Vitest test suite
+npm run build      # Compiles TypeScript and builds production PWA bundle
+npm run lint       # Runs ESLint checks across source files
+npm run preview    # Previews the production build locally
 ```
 
-> See [docs/schema.sql](docs/schema.sql) for the database schema, [docs/decisions.md](docs/decisions.md) for architectural decisions, and [docs/architecture.md](docs/architecture.md) for the full system design.
+---
+
+## Testing
+
+ClassHub maintains test coverage across calculations, permission policies, parsing logic, and component behaviors:
+
+```bash
+npm test -- --run
+```
+
+All 210 tests across 24 test suites covering attendance models, recovery prediction formulas, GPA algorithms, RLS authorization checks, attachment validation, and offline stores must pass before deployment.
 
 ---
 
-## 🔒 Security
+## Contributing and license
 
-ClassHub enforces strict data isolation across every layer:
+Contributions are welcome. Please read our [Contributing guide](CONTRIBUTING.md), [Code of conduct](CODE_OF_CONDUCT.md), and [Security policy](SECURITY.md) before submitting issues or pull requests. See [Changelog](CHANGELOG.md) for version history.
 
-- **Row-Level Security (RLS)** — enforced on all tables; every query filters by `section_id` from the authenticated user's session
-- **Domain Authorization** — Google OAuth restricted to `@skit.ac.in` institutional emails only
-- **No Third-Party Credentials** — student ERP logins and private credentials are **never** requested, scraped, or stored
-- **Vote Integrity** — cryptographic hash validation on polls prevents duplicate and tampered votes
-
-> See [docs/rls-test-plan.md](docs/rls-test-plan.md) and [docs/security-remediation.md](docs/security-remediation.md) for security testing details.
-
----
-
-## 🤝 Contributing
-
-ClassHub is under active development by a small team at SKIT Jaipur. We're not accepting external contributions at this time, but feel free to [open an issue](https://github.com/Hanu2908/ClassHub/issues) for feature suggestions or bug reports.
-
----
-
-## 📄 License
+ClassHub is developed for the student community at SKIT Jaipur by [Himanshu Saini](https://github.com/Hanu2908) and project contributors.
 
 This project is licensed under the [MIT License](LICENSE).
-
----
-
-## ☕ Support
-
-If ClassHub is useful to you, consider buying us a coffee!
-
-<a href="https://ko-fi.com/himanshuhanu" target="_blank">
-  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko-fi" />
-</a>
-
----
-
-<div align="center">
-
-**Built by [Himanshu Saini](https://github.com/Hanu2908)** · SKIT Jaipur
-
-</div>

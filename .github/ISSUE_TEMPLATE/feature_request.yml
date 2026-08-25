@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest an enhancement or new functionality for ClassHub
+title: '[FEAT]: '
+labels: ['enhancement', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature. Please check that your proposal aligns with the ClassHub roadmap and does not involve out-of-scope items (e.g. ERP scraping, password storage, unrestricted community uploads).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What specific problem or friction does this solve?
+      placeholder: Students currently have to calculate assignment page ranges manually when multiple sets exist...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe what you want to happen and how it should look or work.
+      placeholder: Add an automated page range badge on the PDF viewer that jumps directly to the assigned set...
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Primary target role
+      options:
+        - Student
+        - Class Representative (CR)
+        - Faculty / Teacher
+        - Batch Counsellor
+        - Multi-role / General
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative solutions considered
+      description: Any other approaches or workarounds you thought about?
+    validations:
+      required: false
+  - type: checkboxes
+    id: out-of-scope-check
+    attributes:
+      label: Out-of-scope compliance check
+      options:
+        - label: This feature does not require scraping ERP systems or storing student passwords.
+          required: true
+        - label: This feature enforces section tenant isolation (section_id scoping).
+          required: true

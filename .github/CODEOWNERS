@@ -1,0 +1,10 @@
+# Global default code owners
+* @Hanu2908
+
+# Backend, migrations, and database policies
+/supabase/ @Hanu2908
+
+# Core documentation and security guidelines
+/docs/ @Hanu2908
+/SECURITY.md @Hanu2908
+/CONTRIBUTING.md @Hanu2908

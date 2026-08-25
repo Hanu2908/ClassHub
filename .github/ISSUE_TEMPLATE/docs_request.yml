@@ -1,0 +1,31 @@
+name: Documentation request or fix
+description: Report missing documentation, unclear setup steps, or API spec typos
+title: '[DOCS]: '
+labels: ['documentation', 'good first issue']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve ClassHub documentation.
+  - type: textarea
+    id: issue-docs
+    attributes:
+      label: Description of documentation issue
+      description: What documentation is missing, inaccurate, or needs improvement?
+      placeholder: The local environment setup steps in CONTRIBUTING.md need an extra note on configuring VAPID keys...
+    validations:
+      required: true
+  - type: input
+    id: file-path
+    attributes:
+      label: Target document or file path
+      placeholder: docs/backend.md, CONTRIBUTING.md, or README.md
+    validations:
+      required: false
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested improvement
+      description: How should the documentation be updated?
+    validations:
+      required: false
