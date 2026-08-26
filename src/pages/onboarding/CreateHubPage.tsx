@@ -87,17 +87,31 @@ export default function CreateHubPage() {
     if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
       setRole('cr');
-      if (authUser) {
-        setAuthUser({ 
-          ...authUser, 
-          role: 'cr', 
-          sectionId: 'demo-section', 
-          dayScholar, 
-          subBatch: batch,
-          phone: phone.trim(),
-          branch: branch
-        });
-      }
+      const baseAuth = authUser || {
+        id: 'demo-user-id',
+        name: 'Demo Contributor',
+        email: 'contributor@skit.ac.in',
+        avatarUrl: null,
+        role: 'student',
+        crRank: null,
+        sectionId: null,
+        sectionRoll: 'P-01',
+        universityRoll: '24ESKCS001',
+        dayScholar: true,
+        notificationsEnabled: false,
+        isDeveloper: true,
+        phone: '9876543210',
+        branch: 'CSE',
+      };
+      setAuthUser({ 
+        ...baseAuth, 
+        role: 'cr', 
+        sectionId: 'demo-section', 
+        dayScholar, 
+        subBatch: batch,
+        phone: phone.trim(),
+        branch: branch
+      });
       setHub({
         hubCode: inviteCode,
         section: sectionCode.toUpperCase(),

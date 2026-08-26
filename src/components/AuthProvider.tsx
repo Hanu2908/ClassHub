@@ -246,6 +246,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Dev demo bypass fast-path: if demo_mode is active in DEV, ensure demo authUser is initialized and skip remote getSession()
+      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
+        const store = useAppStore.getState();
+        if (!store.authUser) {
+          const demoSectionId = localStorage.getItem('demo_section_id') || null;
+          store.setAuthUser({
+            id: 'demo-user-id',
+            name: 'Demo Contributor',
+            email: 'contributor@skit.ac.in',
+            avatarUrl: null,
+            role: 'student',
+            crRank: null,
+            sectionId: demoSectionId,
+            sectionRoll: 'P-01',
+            universityRoll: '24ESKCS001',
+            dayScholar: true,
+            notificationsEnabled: false,
+            isDeveloper: true,
+            phone: '9876543210',
+            branch: 'CSE',
+          });
+        }
+        store.setAuthLoading(false);
+        return;
+      }
+
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (!mounted) return;

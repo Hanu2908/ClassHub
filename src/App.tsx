@@ -47,7 +47,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   
   // Allow through if active session exists, demo session, or offline with cached user
-  const isDemo = import.meta.env.DEV && authUser?.sectionId === 'demo-section';
+  const isDemo = import.meta.env.DEV && (localStorage.getItem('demo_mode') === 'true' || authUser?.sectionId === 'demo-section');
   const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
   const isAuthenticated = !!session || isDemo || isOfflineWithCache;
 
@@ -110,7 +110,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   
   // If user has active session, demo session, or offline with cached user, redirect to appropriate page
-  const isDemo = import.meta.env.DEV && authUser?.sectionId === 'demo-section';
+  const isDemo = import.meta.env.DEV && (localStorage.getItem('demo_mode') === 'true' || authUser?.sectionId === 'demo-section');
   const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
   const isAuthenticated = !!session || isDemo || isOfflineWithCache;
 
@@ -137,7 +137,7 @@ function ShareIntakeRoute() {
 
   if (isAuthLoading && !(session && authUser)) return <PageSkeleton />;
   const isOfflineWithCache = !navigator.onLine && !!authUser?.sectionId;
-  const isDemoBypass = import.meta.env.DEV && authUser?.sectionId === 'demo-section';
+  const isDemoBypass = import.meta.env.DEV && (localStorage.getItem('demo_mode') === 'true' || authUser?.sectionId === 'demo-section');
   if (!session && !isDemoBypass && !isOfflineWithCache) {
     if (inboxId) localStorage.setItem('classhub-pending-share-inbox-id', inboxId);
     return <Navigate to="/" replace />;

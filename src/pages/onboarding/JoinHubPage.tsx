@@ -190,16 +190,30 @@ export default function JoinHubPage() {
 
     if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
       localStorage.setItem('demo_section_id', 'demo-section');
+      const baseAuth = authUser || {
+        id: 'demo-user-id',
+        name: 'Demo Contributor',
+        email: 'contributor@skit.ac.in',
+        avatarUrl: null,
+        role: 'student',
+        crRank: null,
+        sectionId: null,
+        sectionRoll: 'P-01',
+        universityRoll: '24ESKCS001',
+        dayScholar: true,
+        notificationsEnabled: false,
+        isDeveloper: true,
+        phone: '9876543210',
+        branch: 'CSE',
+      };
       if (isTeacherFlow) {
         setRole('teacher');
-        if (authUser) {
-          setAuthUser({
-            ...authUser,
-            role: 'teacher',
-            sectionId: 'demo-section',
-            isCounsellorForBatch: '1'
-          });
-        }
+        setAuthUser({
+          ...baseAuth,
+          role: 'teacher',
+          sectionId: 'demo-section',
+          isCounsellorForBatch: '1'
+        });
         setHub({
           hubCode: hubCode,
           section: 'Demo Section',
@@ -212,9 +226,7 @@ export default function JoinHubPage() {
       } else {
         setRole('student');
         const parsedSectionName = hubCode.length >= 2 ? hubCode.slice(0, 1).toUpperCase() : 'Demo Section';
-        if (authUser) {
-          setAuthUser({ ...authUser, role: 'student', sectionId: 'demo-section', dayScholar, subBatch: batch });
-        }
+        setAuthUser({ ...baseAuth, role: 'student', sectionId: 'demo-section', dayScholar, subBatch: batch });
         setHub({
           hubCode: hubCode,
           section: parsedSectionName,

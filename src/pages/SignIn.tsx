@@ -3,6 +3,25 @@ import { Link } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
 import { signInWithGoogle } from '../components/AuthProvider';
 import { DotField } from '../components/ui/DotField';
+import { useAppStore, type AuthUser } from '../store/appStore';
+import { toast } from 'sonner';
+
+export const DEMO_AUTH_USER: AuthUser = {
+  id: 'demo-user-id',
+  name: 'Demo Contributor',
+  email: 'contributor@skit.ac.in',
+  avatarUrl: null,
+  role: 'student',
+  crRank: null,
+  sectionId: null,
+  sectionRoll: 'P-01',
+  universityRoll: '24ESKCS001',
+  dayScholar: true,
+  notificationsEnabled: false,
+  isDeveloper: true,
+  phone: '9876543210',
+  branch: 'CSE',
+};
 
 type StateMode = 'idle' | 'loading' | 'error' | 'success';
 
@@ -122,6 +141,9 @@ export default function SignIn() {
     if (clickCount.current >= 5) {
       clickCount.current = 0;
       localStorage.setItem('demo_mode', 'true');
+      useAppStore.getState().setAuthUser(DEMO_AUTH_USER);
+      useAppStore.getState().setAuthLoading(false);
+      toast.success('Demo mode activated (Developer Bypass)');
       window.location.href = '/onboarding/choice'; // Force reload to initialize demo session
     }
   };
