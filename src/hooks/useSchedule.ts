@@ -15,7 +15,29 @@ type SlotType = Database['public']['Enums']['slot_type'];
 type SubjectRelation = { code: string; name: string; semester?: number } | null;
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// ── Schedule Query ───────────────────────────────────────────────────────────
+const DEMO_SCHEDULE: ScheduleMap = {
+  Mon: [
+    { id: 'slot-1', day: 'Mon', subject: 'Engineering Physics', code: '2FY2-01', room: 'LT-101', teacher: 'Dr. Sharma', type: 'Lecture', startTime: '09:00', endTime: '09:55', subjectId: 'sub-phy' },
+    { id: 'slot-2', day: 'Mon', subject: 'Engineering Mathematics II', code: '2FY2-02', room: 'LT-101', teacher: 'Prof. Verma', type: 'Lecture', startTime: '10:00', endTime: '10:55', subjectId: 'sub-math' },
+    { id: 'slot-3', day: 'Mon', subject: 'Basic Electrical Lab', code: '2FY3-04', room: 'Lab 2', teacher: 'Dr. Gupta', type: 'Lab', startTime: '11:15', endTime: '13:00', subjectId: 'sub-bee' },
+  ],
+  Tue: [
+    { id: 'slot-4', day: 'Tue', subject: 'Engineering Chemistry', code: '2FY2-03', room: 'LT-102', teacher: 'Dr. Mishra', type: 'Lecture', startTime: '09:00', endTime: '09:55', subjectId: 'sub-chem' },
+    { id: 'slot-5', day: 'Tue', subject: 'Basic Mechanical Engineering', code: '2FY3-05', room: 'LT-102', teacher: 'Prof. Kumar', type: 'Lecture', startTime: '10:00', endTime: '10:55', subjectId: 'sub-mech' },
+  ],
+  Wed: [
+    { id: 'slot-6', day: 'Wed', subject: 'Engineering Physics', code: '2FY2-01', room: 'LT-101', teacher: 'Dr. Sharma', type: 'Lecture', startTime: '09:00', endTime: '09:55', subjectId: 'sub-phy' },
+    { id: 'slot-7', day: 'Wed', subject: 'Engineering Mathematics II', code: '2FY2-02', room: 'LT-101', teacher: 'Prof. Verma', type: 'Lecture', startTime: '10:00', endTime: '10:55', subjectId: 'sub-math' },
+  ],
+  Thu: [
+    { id: 'slot-8', day: 'Thu', subject: 'Basic Electrical Engineering', code: '2FY3-04', room: 'LT-103', teacher: 'Dr. Gupta', type: 'Lecture', startTime: '09:00', endTime: '09:55', subjectId: 'sub-bee' },
+    { id: 'slot-9', day: 'Thu', subject: 'Engineering Chemistry', code: '2FY2-03', room: 'LT-103', teacher: 'Dr. Mishra', type: 'Lecture', startTime: '10:00', endTime: '10:55', subjectId: 'sub-chem' },
+  ],
+  Fri: [
+    { id: 'slot-10', day: 'Fri', subject: 'Basic Mechanical Engineering', code: '2FY3-05', room: 'LT-101', teacher: 'Prof. Kumar', type: 'Lecture', startTime: '09:00', endTime: '09:55', subjectId: 'sub-mech' },
+    { id: 'slot-11', day: 'Fri', subject: 'Engineering Mathematics II', code: '2FY2-02', room: 'LT-101', teacher: 'Prof. Verma', type: 'Lecture', startTime: '10:00', endTime: '10:55', subjectId: 'sub-math' },
+  ],
+};
 
 export function useSchedule(opts?: { sectionId?: string; placeholder?: boolean }) {
   const auth = useAuthContext();
@@ -31,6 +53,7 @@ export function useSchedule(opts?: { sectionId?: string; placeholder?: boolean }
       ? () => useAppStore.getState().offlineCache?.schedule
       : undefined,
     queryFn: async () => {
+      if (isDemo) return DEMO_SCHEDULE;
       try {
         const { data, error } = await supabase
           .from('timetable_slots')

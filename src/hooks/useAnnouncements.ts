@@ -16,7 +16,34 @@ interface AttachmentRow {
   storage_path: string;
 }
 
-// ── Announcements Query ──────────────────────────────────────────────────────
+const DEMO_ANNOUNCEMENTS: (Announcement & { isAcknowledged: boolean })[] = [
+  {
+    id: 'demo-ann-1',
+    authorId: 'demo-cr-id',
+    title: 'Mid-Term Examinations Schedule Announced',
+    body: 'First mid-term tests will begin next Monday. Please review the updated timetable in the schedule tab.',
+    priority: 'critical',
+    deadline: new Date(Date.now() + 86400000 * 5).toISOString(),
+    postedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+    attachmentUrl: null,
+    isAcknowledged: false,
+    targetBatch: null,
+    attachments: [],
+  },
+  {
+    id: 'demo-ann-2',
+    authorId: 'demo-cr-id',
+    title: 'Engineering Mechanics Assignment 3 Due Friday',
+    body: 'Complete problems 1 through 10 from Chapter 4 and submit them to the CR before 4:00 PM.',
+    priority: 'general',
+    deadline: new Date(Date.now() + 86400000 * 2).toISOString(),
+    postedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+    attachmentUrl: null,
+    isAcknowledged: true,
+    targetBatch: null,
+    attachments: [],
+  },
+];
 
 export function useAnnouncements(opts?: { page?: number; limit?: number; sectionId?: string; placeholder?: boolean }) {
   const auth = useAuthContext();
@@ -35,6 +62,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number; section
       ? () => useAppStore.getState().offlineCache?.announcements
       : undefined,
     queryFn: async () => {
+      if (isDemo) return DEMO_ANNOUNCEMENTS;
       try {
         const from = page * limit;
         const to = (page + 1) * limit - 1;

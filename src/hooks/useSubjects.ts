@@ -15,7 +15,13 @@ export interface SubjectInfo {
 
 
 
-// ── Subjects Query ───────────────────────────────────────────────────────────
+const DEMO_SUBJECTS: SubjectInfo[] = [
+  { id: 'sub-phy', code: '2FY2-01', name: 'Engineering Physics', semester: 2, accent: '#8B5CF6', sectionId: 'demo-section' },
+  { id: 'sub-math', code: '2FY2-02', name: 'Engineering Mathematics II', semester: 2, accent: '#3B82F6', sectionId: 'demo-section' },
+  { id: 'sub-chem', code: '2FY2-03', name: 'Engineering Chemistry', semester: 2, accent: '#10B981', sectionId: 'demo-section' },
+  { id: 'sub-bee', code: '2FY3-04', name: 'Basic Electrical Engineering', semester: 2, accent: '#F59E0B', sectionId: 'demo-section' },
+  { id: 'sub-mech', code: '2FY3-05', name: 'Basic Mechanical Engineering', semester: 2, accent: '#EC4899', sectionId: 'demo-section' },
+];
 
 export function useSubjects(opts?: { sectionId?: string }) {
   const auth = useAuthContext();
@@ -28,6 +34,7 @@ export function useSubjects(opts?: { sectionId?: string }) {
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
+      if (isDemo) return DEMO_SUBJECTS;
       const { data, error } = await supabase
         .from('subjects')
         .select('id, code, name, semester, accent, section_id')

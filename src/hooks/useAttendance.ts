@@ -22,16 +22,30 @@ type AttendanceQueryResult = {
   dayOfWeekRates?: Record<string, number>;
 };
 
+const DEMO_ATTENDANCE: AttendanceQueryResult = {
+  subjects: [
+    { code: '2FY2-01', name: 'Engineering Physics', type: 'Lecture', present: 22, absent: 3, total: 25, percentage: 88, canSkip: 4, needToAttend: 0, status: 'safe' },
+    { code: '2FY2-02', name: 'Engineering Mathematics II', type: 'Lecture', present: 18, absent: 6, total: 24, percentage: 75, canSkip: 0, needToAttend: 0, status: 'warning' },
+    { code: '2FY2-03', name: 'Engineering Chemistry', type: 'Lecture', present: 19, absent: 4, total: 23, percentage: 82.6, canSkip: 2, needToAttend: 0, status: 'safe' },
+    { code: '2FY3-04', name: 'Basic Electrical Engineering', type: 'Lecture', present: 14, absent: 6, total: 20, percentage: 70, canSkip: 0, needToAttend: 4, status: 'critical' },
+    { code: '2FY3-05', name: 'Basic Mechanical Engineering', type: 'Lecture', present: 20, absent: 2, total: 22, percentage: 90.9, canSkip: 4, needToAttend: 0, status: 'safe' },
+  ],
+  overall: 81.3,
+  lastUpdated: new Date().toISOString(),
+};
+
 export function useAttendance(opts?: { placeholder?: boolean }) {
-  const { userId, isAuthenticated } = useAuthContext();
+  const { userId, sectionId, isAuthenticated } = useAuthContext();
+  const isDemo = userId === 'demo-user-id' || sectionId === 'demo-section';
   return useQuery<AttendanceQueryResult>({
     queryKey: ['attendance', userId],
-    enabled: !!userId && isAuthenticated,
+    enabled: !!userId && (isAuthenticated || isDemo),
     staleTime: 1000 * 60 * 5, // 5 minutes
     placeholderData: opts?.placeholder
       ? () => useAppStore.getState().offlineCache?.attendance
       : undefined,
     queryFn: async () => {
+      if (isDemo) return DEMO_ATTENDANCE;
       try {
         const { data, error } = await supabase
           .from('attendance_records')

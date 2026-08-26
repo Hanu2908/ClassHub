@@ -21,18 +21,36 @@ interface VoteRow {
   } | null;
 }
 
-// ── Polls Query ──────────────────────────────────────────────────────────────
+const DEMO_POLLS: Poll[] = [
+  {
+    id: 'demo-poll-1',
+    question: 'Preferred timing for Extra Physics Remedial Class?',
+    type: 'general',
+    isActive: true,
+    expiresAt: new Date(Date.now() + 86400000 * 2).toISOString(),
+    options: [
+      { id: 'opt-1', label: 'Saturday 10:00 AM - 11:30 AM', voteCount: 18 },
+      { id: 'opt-2', label: 'Saturday 02:00 PM - 03:30 PM', voteCount: 9 },
+      { id: 'opt-3', label: 'Sunday 11:00 AM - 12:30 PM', voteCount: 4 },
+    ],
+    userVotedOptionId: 'opt-1',
+    totalVotes: 31,
+    allowMultiple: false,
+  },
+];
 
 export function usePolls(opts?: { placeholder?: boolean }) {
   const { sectionId, userId, isAuthenticated } = useAuthContext();
+  const isDemo = sectionId === 'demo-section';
   const queryResult = useQuery<Poll[]>({
     queryKey: ['polls', sectionId, userId],
-    enabled: !!sectionId && isAuthenticated,
+    enabled: !!sectionId && (isAuthenticated || isDemo),
     staleTime: 1000 * 60, // 1 minute
     placeholderData: opts?.placeholder
       ? () => useAppStore.getState().offlineCache?.polls
       : undefined,
     queryFn: async () => {
+      if (isDemo) return DEMO_POLLS;
       try {
         const { data: polls, error } = await supabase
           .from('polls')

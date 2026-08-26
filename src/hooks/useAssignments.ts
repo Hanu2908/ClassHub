@@ -25,20 +25,45 @@ interface AttachmentRow {
   storage_path: string;
 }
 
+const DEMO_ASSIGNMENTS: Assignment[] = [
+  {
+    id: 'demo-asg-1',
+    title: 'Assignment 2: Vector Calculus & Green Theorem',
+    subject: 'Engineering Mathematics II',
+    subjectCode: '2FY2-02',
+    dueDate: new Date(Date.now() + 86400000 * 3).toISOString(),
+    description: 'Solve questions 1 through 5 from sheet 2.',
+    pdfUrl: null,
+    targetBatch: null,
+    sets: [
+      { id: 'set-a', label: 'Set A (Roll 1-30)', description: 'Odd numbered problems', pdfUrl: null, rollStart: 1, rollEnd: 30, pageNumbers: '1-4' },
+      { id: 'set-b', label: 'Set B (Roll 31-60)', description: 'Even numbered problems', pdfUrl: null, rollStart: 31, rollEnd: 60, pageNumbers: '5-8' },
+    ],
+    status: 'pending',
+    hasSets: true,
+    submittedLink: null,
+    crVerified: false,
+    createdAt: new Date().toISOString(),
+    attachments: [],
+  },
+];
+
 // ── Assignments Query ────────────────────────────────────────────────────────
 
 export function useAssignments(opts?: { page?: number; limit?: number; placeholder?: boolean }) {
   const { sectionId, userId, isAuthenticated } = useAuthContext();
+  const isDemo = sectionId === 'demo-section';
   const page = opts?.page ?? 0;
   const limit = opts?.limit ?? 100;
   return useQuery<Assignment[]>({
     queryKey: ['assignments', sectionId, userId, page, limit],
-    enabled: !!sectionId && isAuthenticated,
+    enabled: !!sectionId && (isAuthenticated || isDemo),
     staleTime: 1000 * 60, // 1 minute
     placeholderData: opts?.placeholder
       ? () => useAppStore.getState().offlineCache?.assignments
       : undefined,
     queryFn: async () => {
+      if (isDemo) return DEMO_ASSIGNMENTS;
       try {
         const from = page * limit;
         const to = (page + 1) * limit - 1;

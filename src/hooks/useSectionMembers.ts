@@ -105,15 +105,25 @@ export function useSection(opts?: { sectionId?: string }) {
   });
 }
 
+const DEMO_MEMBERS: SectionMember[] = [
+  { id: 'demo-user-id', name: 'Demo Contributor', email: 'contributor@skit.ac.in', classRoll: 'P-01', universityRoll: '24ESKCS001', role: 'student', crRank: null, avatarUrl: null, dayScholar: true, phone: '9876543210' },
+  { id: 'demo-cr-id', name: 'Aarav Sharma (CR)', email: 'aarav.sharma@skit.ac.in', classRoll: 'P-02', universityRoll: '24ESKCS002', role: 'cr', crRank: 'primary', avatarUrl: null, dayScholar: false, phone: '9876543211' },
+  { id: 'demo-stud-3', name: 'Bhavna Patel', email: 'bhavna.patel@skit.ac.in', classRoll: 'P-03', universityRoll: '24ESKCS003', role: 'student', crRank: null, avatarUrl: null, dayScholar: true, phone: null },
+  { id: 'demo-stud-4', name: 'Chirag Sen', email: 'chirag.sen@skit.ac.in', classRoll: 'P-04', universityRoll: '24ESKCS004', role: 'student', crRank: null, avatarUrl: null, dayScholar: false, phone: null },
+  { id: 'demo-stud-5', name: 'Divya Rathore', email: 'divya.rathore@skit.ac.in', classRoll: 'P-05', universityRoll: '24ESKCS005', role: 'student', crRank: null, avatarUrl: null, dayScholar: true, phone: null },
+];
+
 // ── Section Members Query ────────────────────────────────────────────────────
 
 export function useSectionMembers() {
   const { sectionId, isAuthenticated } = useAuthContext();
+  const isDemo = sectionId === 'demo-section';
   return useQuery<SectionMember[]>({
     queryKey: ['members', sectionId],
-    enabled: !!sectionId && isAuthenticated,
+    enabled: !!sectionId && (isAuthenticated || isDemo),
     staleTime: 1000 * 60 * 5, // 5 minutes
     queryFn: async () => {
+      if (isDemo) return DEMO_MEMBERS;
       const { data, error } = await supabase
         .from('users')
         .select('id, name, email, section_roll, university_roll, role, cr_rank, avatar_url, day_scholar, phone')
