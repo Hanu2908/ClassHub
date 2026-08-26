@@ -19,6 +19,7 @@ import {
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { useUserTagsBatch } from '../../hooks/useUserTags';
 import { TagPill, TagOverflow } from '../TagPill';
+import { MAX_COMMENT_LENGTH } from '../../lib/validation/comments.schema';
 
 interface AnnouncementCommentsDrawerProps {
   open: boolean;
@@ -168,7 +169,7 @@ export function AnnouncementCommentsDrawer({
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputVal.trim() || isSubmitting) return;
+    if (!inputVal.trim() || inputVal.length > MAX_COMMENT_LENGTH || isSubmitting) return;
 
     // Rate-limiting: Max 1 comment per 3 seconds
     const now = Date.now();
@@ -215,7 +216,7 @@ export function AnnouncementCommentsDrawer({
   };
 
   const handleSaveEdit = async (commentId: string) => {
-    if (!editInputVal.trim() || editInputVal.length > 500 || editComment.isPending) return;
+    if (!editInputVal.trim() || editInputVal.length > MAX_COMMENT_LENGTH || editComment.isPending) return;
 
     try {
       await editComment.mutateAsync({ commentId, content: editInputVal });
@@ -414,6 +415,7 @@ export function AnnouncementCommentsDrawer({
                               rows={2}
                               value={editInputVal}
                               onChange={(e) => setEditInputVal(e.target.value)}
+                              maxLength={MAX_COMMENT_LENGTH}
                               style={{
                                 width: '100%',
                                 background: 'var(--bg-base)',
@@ -435,11 +437,11 @@ export function AnnouncementCommentsDrawer({
                                 className="t-mono-sm"
                                 style={{
                                   fontSize: '12px',
-                                  color: editInputVal.length > 500 ? 'var(--status-critical)' : 'var(--text-muted)',
+                                  color: editInputVal.length > MAX_COMMENT_LENGTH ? 'var(--status-critical)' : 'var(--text-muted)',
                                   fontWeight: 600,
                                 }}
                               >
-                                {editInputVal.length}/500
+                                {editInputVal.length}/{MAX_COMMENT_LENGTH}
                               </span>
                               <div style={{ display: 'flex', gap: 8 }}>
                                 <button
@@ -459,20 +461,20 @@ export function AnnouncementCommentsDrawer({
                                 <button
                                   type="button"
                                   onClick={() => handleSaveEdit(comment.id)}
-                                  disabled={editComment.isPending || !editInputVal.trim() || editInputVal.length > 500}
+                                  disabled={editComment.isPending || !editInputVal.trim() || editInputVal.length > MAX_COMMENT_LENGTH}
                                   className="t-button"
                                   style={{
                                     padding: '4px 12px',
                                     fontSize: '12px',
                                     height: 'auto',
                                     lineHeight: 'normal',
-                                    background: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
-                                      ? 'rgba(255, 255, 255, 0.05)' 
+                                    background: editComment.isPending || !editInputVal.trim() || editInputVal.length > MAX_COMMENT_LENGTH
+                                      ? 'rgba(255, 255, 255, 0.05)'
                                       : 'var(--accent-primary)',
-                                    color: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 
-                                      ? 'var(--text-muted)' 
+                                    color: editComment.isPending || !editInputVal.trim() || editInputVal.length > MAX_COMMENT_LENGTH
+                                      ? 'var(--text-muted)'
                                       : '#000',
-                                    cursor: editComment.isPending || !editInputVal.trim() || editInputVal.length > 500 ? 'not-allowed' : 'pointer',
+                                    cursor: editComment.isPending || !editInputVal.trim() || editInputVal.length > MAX_COMMENT_LENGTH ? 'not-allowed' : 'pointer',
                                   }}
                                 >
                                   {editComment.isPending ? 'Saving...' : 'Save'}
@@ -717,6 +719,7 @@ export function AnnouncementCommentsDrawer({
               placeholder="Ask a question or provide an answer..."
               value={inputVal}
               onChange={handleTextareaChange}
+              maxLength={MAX_COMMENT_LENGTH}
               style={{
                 width: '100%',
                 background: 'var(--bg-base)',
@@ -743,11 +746,11 @@ export function AnnouncementCommentsDrawer({
                 bottom: 8,
                 right: 12,
                 fontSize: '12px',
-                color: inputVal.length > 500 ? 'var(--status-critical)' : 'var(--text-muted)',
+                color: inputVal.length > MAX_COMMENT_LENGTH ? 'var(--status-critical)' : 'var(--text-muted)',
                 fontWeight: 600,
               }}
             >
-              {inputVal.length}/500
+              {inputVal.length}/{MAX_COMMENT_LENGTH}
             </span>
           </div>
 
@@ -757,22 +760,22 @@ export function AnnouncementCommentsDrawer({
             </p>
             <motion.button
               type="submit"
-              disabled={isSubmitting || !inputVal.trim() || inputVal.length > 500}
-              whileTap={isSubmitting || !inputVal.trim() || inputVal.length > 500 ? undefined : { scale: 0.97 }}
+              disabled={isSubmitting || !inputVal.trim() || inputVal.length > MAX_COMMENT_LENGTH}
+              whileTap={isSubmitting || !inputVal.trim() || inputVal.length > MAX_COMMENT_LENGTH ? undefined : { scale: 0.97 }}
               className="t-button"
               style={{
                 padding: '6px 16px',
-                background: isSubmitting || !inputVal.trim() || inputVal.length > 500 
-                  ? 'rgba(255, 255, 255, 0.05)' 
+                background: isSubmitting || !inputVal.trim() || inputVal.length > MAX_COMMENT_LENGTH
+                  ? 'rgba(255, 255, 255, 0.05)'
                   : 'var(--accent-primary)',
-                color: isSubmitting || !inputVal.trim() || inputVal.length > 500 
-                  ? 'var(--text-muted)' 
+                color: isSubmitting || !inputVal.trim() || inputVal.length > MAX_COMMENT_LENGTH
+                  ? 'var(--text-muted)'
                   : '#000',
                 border: 'none',
                 borderRadius: 'var(--radius-sm)',
                 fontWeight: 600,
                 fontSize: '12px',
-                cursor: isSubmitting || !inputVal.trim() || inputVal.length > 500 ? 'not-allowed' : 'pointer',
+                cursor: isSubmitting || !inputVal.trim() || inputVal.length > MAX_COMMENT_LENGTH ? 'not-allowed' : 'pointer',
                 transition: 'all var(--transition-fast)',
                 display: 'flex',
                 alignItems: 'center',

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assignmentSchema } from "../../src/lib/validation/assignments.schema";
+import { commentContentSchema, MAX_COMMENT_LENGTH } from "../../src/lib/validation/comments.schema";
 import { joinHubSchema } from "../../src/lib/validation/onboarding.schema";
 import { pollSchema } from "../../src/lib/validation/polls.schema";
 import { timetableSlotSchema } from "../../src/lib/validation/timetable.schema";
@@ -21,6 +22,22 @@ describe("zod schemas", () => {
       ],
     });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty comment (0 characters)", () => {
+    expect(commentContentSchema.safeParse("").success).toBe(false);
+  });
+
+  it("accepts a comment at exactly the max length", () => {
+    const atLimit = "a".repeat(MAX_COMMENT_LENGTH);
+    const result = commentContentSchema.safeParse(atLimit);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.length).toBe(MAX_COMMENT_LENGTH);
+  });
+
+  it("rejects a comment one character over the max length", () => {
+    const overLimit = "a".repeat(MAX_COMMENT_LENGTH + 1);
+    expect(commentContentSchema.safeParse(overLimit).success).toBe(false);
   });
 
   it("validates polls and timetable slots", () => {
