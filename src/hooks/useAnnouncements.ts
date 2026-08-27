@@ -69,10 +69,11 @@ export function useAnnouncements(opts?: { page?: number; limit?: number; section
         const { data: anns, error: annErr } = await supabase
           .from('announcements')
           .select(`
-            id, author_id, title, message_content, priority, deadline_at, expires_at, created_at, target_batch,
+            id, author_id, title, message_content, priority, is_pinned, deadline_at, expires_at, created_at, target_batch,
             attachments (id, filename, file_size, file_type, storage_path)
           `)
           .eq('section_id', sectionId!)
+          .order('is_pinned', { ascending: false })
           .order('created_at', { ascending: false })
           .range(from, to);
         if (annErr) throw annErr;
@@ -101,6 +102,7 @@ export function useAnnouncements(opts?: { page?: number; limit?: number; section
           attachmentUrl: null,
           isAcknowledged: ackIds.includes(a.id),
           targetBatch: (a as any).target_batch ?? null,
+          isPinned: (a as any).is_pinned ?? false,
           attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
             id: att.id,
             filename: att.filename,

@@ -37,8 +37,8 @@ export interface SectionCR {
 
 export interface CRTransferEntry {
   id: string;
-  actorId: string;
-  targetId: string;
+  actorId: string | null;
+  targetId: string | null;
   action: string;
   note: string | null;
   createdAt: string;
@@ -78,7 +78,7 @@ export function useSection(opts?: { sectionId?: string }) {
       try {
         const { data, error } = await supabase
           .from('sections')
-          .select('id, name, college, invite_code, teacher_invite_code, created_by')
+          .select('id, name, college, invite_code, teacher_invite_code, created_by, is_enrollment_locked, batch1_end_roll')
           .eq('id', sectionId!)
           .single();
         
@@ -92,6 +92,8 @@ export function useSection(opts?: { sectionId?: string }) {
           inviteCode: data.invite_code,
           teacherInviteCode: data.teacher_invite_code,
           createdBy: data.created_by,
+          isEnrollmentLocked: (data as any).is_enrollment_locked ?? false,
+          batch1EndRoll: (data as any).batch1_end_roll ?? 30,
         };
         useAppStore.getState().setOfflineCache('section', sectionData);
         return sectionData;

@@ -70,7 +70,7 @@ export function useAssignments(opts?: { page?: number; limit?: number; placehold
         const assignmentsQuery = supabase
           .from('assignments')
           .select(`
-            id, title, subject_id, due_date, description, created_at, target_batch,
+            id, title, subject_id, due_date, description, created_at, target_batch, is_archived,
             subjects:subject_id (code, name),
             assignment_sets (id, set_label, description, pdf_url, roll_start, roll_end, page_numbers),
             attachments (id, filename, file_size, file_type, storage_path)
@@ -128,6 +128,7 @@ export function useAssignments(opts?: { page?: number; limit?: number; placehold
             crVerified: sub?.crVerified ?? false,
             createdAt: a.created_at,
             targetBatch: (a as any).target_batch ?? null,
+            isArchived: (a as any).is_archived ?? false,
             attachments: ((a.attachments as unknown as AttachmentRow[]) ?? []).map((att) => ({
               id: att.id,
               filename: att.filename,

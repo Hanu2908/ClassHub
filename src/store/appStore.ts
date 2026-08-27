@@ -98,6 +98,7 @@ export interface Assignment {
   createdAt: string;
   attachments?: Attachment[];
   targetBatch?: '1' | '2' | null;
+  isArchived?: boolean;
 }
 
 export interface Announcement {
@@ -112,6 +113,7 @@ export interface Announcement {
   attachmentUrl?: string | null;
   attachments?: Attachment[];
   targetBatch?: '1' | '2' | null;
+  isPinned?: boolean;
 }
 
 export interface PollOption {
@@ -273,6 +275,8 @@ export interface SectionInfo {
   inviteCode: string;
   teacherInviteCode?: string | null;
   createdBy: string | null;
+  isEnrollmentLocked?: boolean;
+  batch1EndRoll?: number;
 }
 
 export interface OfflineCache {
