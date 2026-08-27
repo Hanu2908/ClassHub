@@ -17,6 +17,7 @@ export interface SectionMember {
   avatarUrl: string | null;
   dayScholar: boolean | null;
   phone: string | null;
+  subBatch?: string | null;
 }
 
 export interface StudentAttendanceAggregate {
@@ -128,7 +129,7 @@ export function useSectionMembers() {
       if (isDemo) return DEMO_MEMBERS;
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, section_roll, university_roll, role, cr_rank, avatar_url, day_scholar, phone')
+        .select('id, name, email, section_roll, university_roll, role, cr_rank, avatar_url, day_scholar, phone, sub_batch')
         .eq('section_id', sectionId!)
         .order('section_roll')
         .limit(200); // safeguard: avoid extremely large member lists on the dashboard
@@ -144,6 +145,7 @@ export function useSectionMembers() {
         avatarUrl: u.avatar_url,
         dayScholar: u.day_scholar,
         phone: u.phone ?? null,
+        subBatch: (u as Record<string, unknown>).sub_batch as string | null ?? null,
       }));
     },
   });

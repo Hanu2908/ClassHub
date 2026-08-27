@@ -4,7 +4,7 @@ import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
   XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, BookOpen,
   CheckCircle2, ExternalLink, Copy, Share2, RefreshCw, Lock, Unlock, Eye, EyeOff, Loader2,
-  AlertTriangle, Trash2, UserCheck
+  AlertTriangle, Trash2, UserCheck, UserX, Pencil, SlidersHorizontal
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -12,7 +12,8 @@ import { CRAttendanceRegisterModal } from '../../components/CRAttendanceRegister
 import { useAppStore, isExpired } from '../../store/appStore';
 import { toast } from 'sonner';
 import { useAssignments, useAssignmentSubmissions, useCRToggleSubmission } from '../../hooks/useAssignments';
-import { useSectionMembers, useSection, useSectionAttendance, useSectionCRs, usePromoteToCoCR, useDemoteCoCR, useTransferPrimaryCR, useResignAsCR } from '../../hooks/useSectionMembers';
+import { useSectionMembers, useSection, useSectionAttendance, useSectionCRs, usePromoteToCoCR, useDemoteCoCR, useTransferPrimaryCR, useResignAsCR, type SectionMember } from '../../hooks/useSectionMembers';
+import { useRemoveSectionMember, useUpdateSectionMember, useToggleEnrollment, useRegenerateInviteCode, useUpdateBatchConfig } from '../../hooks/useSectionAdmin';
 import { useCreateAnnouncement } from '../../hooks/useAnnouncements';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
@@ -518,8 +519,8 @@ function SubmissionTracker() {
 function LocalAttendanceSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'var(--bg-elevated)' }}>
           <Skeleton circle width={32} height={32} style={{ flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <Skeleton width="50%" height={14} style={{ marginBottom: 4 }} />
@@ -529,6 +530,192 @@ function LocalAttendanceSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+// ── Member Edit & Removal Modals ─────────────────────────────────────────────
+function EditMemberModal({
+  member,
+  open,
+  onClose,
+}: {
+  member: SectionMember | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const updateMember = useUpdateSectionMember();
+  const [roll, setRoll] = useState('');
+  const [batch, setBatch] = useState<'1' | '2'>('1');
+
+  useEffect(() => {
+    if (member) {
+      setRoll(member.classRoll ?? '');
+      setBatch((member.subBatch as '1' | '2') || '1');
+    }
+  }, [member]);
+
+  if (!member) return null;
+
+  const handleSave = async () => {
+    if (!roll.trim()) {
+      toast.error('Class Roll Number is required');
+      return;
+    }
+    await updateMember.mutateAsync({
+      targetUserId: member.id,
+      sectionRoll: roll.trim(),
+      subBatch: batch,
+    });
+    onClose();
+  };
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Edit Student Details">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>
+        <div>
+          <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{member.name}</p>
+          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>{member.email}</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label className="t-label" style={{ color: 'var(--text-secondary)' }}>Section Roll Number</label>
+          <input
+            type="text"
+            value={roll}
+            onChange={e => setRoll(e.target.value)}
+            placeholder="e.g. P-17"
+            style={{
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              color: 'var(--text-primary)',
+              fontSize: 14,
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label className="t-label" style={{ color: 'var(--text-secondary)' }}>Assigned Sub-Batch</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => setBatch('1')}
+              style={{
+                padding: '10px',
+                borderRadius: 'var(--radius-md)',
+                background: batch === '1' ? 'rgba(96, 165, 250, 0.15)' : 'var(--bg-elevated)',
+                border: batch === '1' ? '1.5px solid #60A5FA' : '1px solid var(--border-default)',
+                color: batch === '1' ? '#60A5FA' : 'var(--text-secondary)',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Batch 1 (B1)
+            </button>
+            <button
+              type="button"
+              onClick={() => setBatch('2')}
+              style={{
+                padding: '10px',
+                borderRadius: 'var(--radius-md)',
+                background: batch === '2' ? 'rgba(167, 139, 250, 0.15)' : 'var(--bg-elevated)',
+                border: batch === '2' ? '1.5px solid #A78BFA' : '1px solid var(--border-default)',
+                color: batch === '2' ? '#A78BFA' : 'var(--text-secondary)',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Batch 2 (B2)
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+          <button className="btn-secondary" onClick={onClose} style={{ flex: 1, minHeight: 44 }}>
+            Cancel
+          </button>
+          <button
+            className="btn-primary"
+            onClick={handleSave}
+            disabled={updateMember.isPending}
+            style={{ flex: 1, minHeight: 44 }}
+          >
+            {updateMember.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+function RemoveMemberModal({
+  member,
+  open,
+  onClose,
+}: {
+  member: SectionMember | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const removeMember = useRemoveSectionMember();
+
+  if (!member) return null;
+
+  const handleConfirm = async () => {
+    await removeMember.mutateAsync(member.id);
+    onClose();
+  };
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Remove Member from Section?">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>
+        <div style={{
+          background: 'rgba(255, 68, 68, 0.05)',
+          border: '1.5px solid rgba(255, 68, 68, 0.2)',
+          borderRadius: 'var(--radius-md)',
+          padding: '12px 14px',
+          display: 'flex',
+          gap: 10,
+          alignItems: 'flex-start',
+        }}>
+          <AlertTriangle size={20} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <p className="t-subtitle" style={{ color: 'var(--status-critical)', marginBottom: 4 }}>
+              Detach {member.name}
+            </p>
+            <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              This will immediately detach <strong>{member.name}</strong> ({member.classRoll ?? member.email}) from this section hub. Their section roll, sub-batch assignment, and section tags will be reset.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+          <button className="btn-secondary" onClick={onClose} style={{ flex: 1, minHeight: 48 }}>
+            Cancel
+          </button>
+          <button
+            className="btn-primary"
+            onClick={handleConfirm}
+            disabled={removeMember.isPending}
+            style={{
+              flex: 1,
+              background: 'linear-gradient(180deg, #FF6B6B 0%, #E83E3C 100%)',
+              boxShadow: '0 4px 16px rgba(255,68,68,0.25)',
+              minHeight: 48,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            {removeMember.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserX size={16} />}
+            {removeMember.isPending ? 'Removing…' : 'Remove Student'}
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
   );
 }
 
@@ -543,7 +730,11 @@ function ClassAttendance() {
   // Stateful filtering and sorting
   const [filter, setFilter] = useState<'all' | 'below_75' | 'above_75'>('all');
   const [commuteFilter, setCommuteFilter] = useState<'all' | 'ds' | 'hostel'>('all');
+  const [batchFilter, setBatchFilter] = useState<'all' | '1' | '2'>('all');
   const [sortBy, setSortBy] = useState<'roll' | 'attendance_asc' | 'attendance_desc'>('roll');
+
+  const [editingMember, setEditingMember] = useState<SectionMember | null>(null);
+  const [removingMember, setRemovingMember] = useState<SectionMember | null>(null);
 
   const studentMembers = useMemo(() => members.filter(m => m.role !== 'teacher'), [members]);
 
@@ -575,6 +766,8 @@ function ClassAttendance() {
 
   const dsCount = membersWithAttendance.filter(m => m.dayScholar === true).length;
   const hostelCount = membersWithAttendance.filter(m => m.dayScholar === false).length;
+  const b1Count = membersWithAttendance.filter(m => m.subBatch === '1').length;
+  const b2Count = membersWithAttendance.filter(m => m.subBatch === '2').length;
 
   // Filter members
   const filteredMembers = membersWithAttendance.filter(m => {
@@ -592,7 +785,14 @@ function ClassAttendance() {
       matchesCommute = m.dayScholar === false;
     }
 
-    return matchesAttendance && matchesCommute;
+    let matchesBatch = true;
+    if (batchFilter === '1') {
+      matchesBatch = m.subBatch === '1';
+    } else if (batchFilter === '2') {
+      matchesBatch = m.subBatch === '2';
+    }
+
+    return matchesAttendance && matchesCommute && matchesBatch;
   });
 
   // Sort members
@@ -629,349 +829,465 @@ function ClassAttendance() {
   });
 
   return (
-    <div className="card" style={{ padding: 0 }}>
-      <div 
-        onClick={() => setExpanded(e => !e)}
-        onMouseEnter={() => setHeaderHovered(true)}
-        onMouseLeave={() => { setHeaderHovered(false); setHeaderActive(false); }}
-        onTouchStart={() => setHeaderActive(true)}
-        onTouchEnd={() => setHeaderActive(false)}
-        onMouseDown={() => setHeaderActive(true)}
-        onMouseUp={() => setHeaderActive(false)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          padding: '14px 16px',
-          borderRadius: 'var(--radius-lg)',
-          transition: 'background var(--transition-fast)',
-          userSelect: 'none',
-          WebkitTapHighlightColor: 'transparent',
-          background: headerActive 
-            ? 'rgba(255, 255, 255, 0.08)' 
-            : (headerHovered ? 'rgba(255, 255, 255, 0.04)' : 'transparent')
-        }}
-      >
-        <SectionHead icon={<Users size={16} color="var(--accent-primary)" />} title="Section Members" count={members.length} />
-        {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
-      </div>
-
-      {expanded ? (
-        <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)' }}>
-          {/* Executive Summary Strip */}
-          <div style={{
+    <>
+      <div className="card" style={{ padding: 0 }}>
+        <div 
+          onClick={() => setExpanded(e => !e)}
+          onMouseEnter={() => setHeaderHovered(true)}
+          onMouseLeave={() => { setHeaderHovered(false); setHeaderActive(false); }}
+          onTouchStart={() => setHeaderActive(true)}
+          onTouchEnd={() => setHeaderActive(false)}
+          onMouseDown={() => setHeaderActive(true)}
+          onMouseUp={() => setHeaderActive(false)}
+          style={{
             display: 'flex',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-md)',
-            padding: '10px 14px',
-            marginBottom: 14,
-            gap: 12
-          }}>
-            <div style={{ flex: 1 }}>
-              <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>Section Average</p>
-              <p className="t-subtitle" style={{ color: sectionAvg !== null ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 600 }}>
-                {sectionAvg !== null ? `${sectionAvg.toFixed(1)}%` : '—'}
-              </p>
-            </div>
-            <div style={{ width: 1, background: 'var(--border-default)' }} />
-            <div style={{ flex: 1 }}>
-              <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>At Debarment Risk</p>
-              <p className="t-subtitle" style={{ color: criticalCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)', fontWeight: 600 }}>
-                {criticalCount} {criticalCount === 1 ? 'student' : 'students'}
-              </p>
-            </div>
-          </div>
+            cursor: 'pointer',
+            padding: '14px 16px',
+            borderRadius: 'var(--radius-lg)',
+            transition: 'background var(--transition-fast)',
+            userSelect: 'none',
+            WebkitTapHighlightColor: 'transparent',
+            background: headerActive 
+              ? 'rgba(255, 255, 255, 0.08)' 
+              : (headerHovered ? 'rgba(255, 255, 255, 0.04)' : 'transparent')
+          }}
+        >
+          <SectionHead icon={<Users size={16} color="var(--accent-primary)" />} title="Section Members" count={members.length} />
+          {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+        </div>
 
-          {/* Interactive Controls & Filters */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            marginBottom: 12,
-          }}>
+        {expanded ? (
+          <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)' }}>
+            {/* Executive Summary Strip */}
             <div style={{
               display: 'flex',
-              alignItems: 'center',
               justifyContent: 'space-between',
-              gap: 10,
-              flexWrap: 'wrap'
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              padding: '10px 14px',
+              marginBottom: 14,
+              gap: 12
             }}>
-              {/* Filter Pills */}
-              <div className="carousel" style={{ display: 'flex', gap: 6, margin: 0, paddingBottom: 0 }}>
-                <button
-                  onClick={() => setFilter('all')}
+              <div style={{ flex: 1 }}>
+                <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>Section Average</p>
+                <p className="t-subtitle" style={{ color: sectionAvg !== null ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 600 }}>
+                  {sectionAvg !== null ? `${sectionAvg.toFixed(1)}%` : '—'}
+                </p>
+              </div>
+              <div style={{ width: 1, background: 'var(--border-default)' }} />
+              <div style={{ flex: 1 }}>
+                <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>At Debarment Risk</p>
+                <p className="t-subtitle" style={{ color: criticalCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)', fontWeight: 600 }}>
+                  {criticalCount} {criticalCount === 1 ? 'student' : 'students'}
+                </p>
+              </div>
+            </div>
+
+            {/* Interactive Controls & Filters */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              marginBottom: 12,
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                flexWrap: 'wrap'
+              }}>
+                {/* Filter Pills */}
+                <div className="carousel" style={{ display: 'flex', gap: 6, margin: 0, paddingBottom: 0 }}>
+                  <button
+                    onClick={() => setFilter('all')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-pill)',
+                      border: filter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                      background: filter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
+                      color: filter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    All ({members.length})
+                  </button>
+                  <button
+                    onClick={() => setFilter('below_75')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-pill)',
+                      border: filter === 'below_75' ? '1px solid var(--status-critical)' : '1px solid var(--border-default)',
+                      background: filter === 'below_75' ? 'rgba(248, 113, 113, 0.15)' : 'transparent',
+                      color: filter === 'below_75' ? 'var(--status-critical)' : 'var(--text-secondary)',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    Below 75% ({criticalCount})
+                  </button>
+                  <button
+                    onClick={() => setFilter('above_75')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-pill)',
+                      border: filter === 'above_75' ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
+                      background: filter === 'above_75' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
+                      color: filter === 'above_75' ? 'var(--status-safe)' : 'var(--text-secondary)',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    75%+ ({safeCount})
+                  </button>
+                </div>
+
+                {/* Sort Picker */}
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value as 'roll' | 'attendance_asc' | 'attendance_desc')}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: filter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                    background: filter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
-                    color: filter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    padding: '6px 10px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text-primary)',
                     fontSize: 12,
-                    fontWeight: 500,
+                    outline: 'none',
                     cursor: 'pointer',
                     transition: 'all var(--transition-fast)'
                   }}
                 >
-                  All ({members.length})
-                </button>
-                <button
-                  onClick={() => setFilter('below_75')}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: filter === 'below_75' ? '1px solid var(--status-critical)' : '1px solid var(--border-default)',
-                    background: filter === 'below_75' ? 'rgba(248, 113, 113, 0.15)' : 'transparent',
-                    color: filter === 'below_75' ? 'var(--status-critical)' : 'var(--text-secondary)',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                >
-                  Below 75% ({criticalCount})
-                </button>
-                <button
-                  onClick={() => setFilter('above_75')}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: filter === 'above_75' ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
-                    background: filter === 'above_75' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
-                    color: filter === 'above_75' ? 'var(--status-safe)' : 'var(--text-secondary)',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                >
-                  75%+ ({safeCount})
-                </button>
+                  <option value="roll">Sort: Roll No</option>
+                  <option value="attendance_asc">Sort: Low % First</option>
+                  <option value="attendance_desc">Sort: High % First</option>
+                </select>
               </div>
 
-              {/* Sort Picker */}
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value as 'roll' | 'attendance_asc' | 'attendance_desc')}
-                style={{
-                  padding: '6px 10px',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  fontSize: 12,
-                  outline: 'none',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                <option value="roll">Sort: Roll No</option>
-                <option value="attendance_asc">Sort: Low % First</option>
-                <option value="attendance_desc">Sort: High % First</option>
-              </select>
+              {/* Sub-Batch and Commuter Filter Pills */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setBatchFilter('all')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: batchFilter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                    background: batchFilter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
+                    color: batchFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  All Batches
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBatchFilter('1')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: batchFilter === '1' ? '1px solid #60A5FA' : '1px solid var(--border-default)',
+                    background: batchFilter === '1' ? 'rgba(96, 165, 250, 0.15)' : 'transparent',
+                    color: batchFilter === '1' ? '#60A5FA' : 'var(--text-secondary)',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Batch 1 ({b1Count})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBatchFilter('2')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: batchFilter === '2' ? '1px solid #A78BFA' : '1px solid var(--border-default)',
+                    background: batchFilter === '2' ? 'rgba(167, 139, 250, 0.15)' : 'transparent',
+                    color: batchFilter === '2' ? '#A78BFA' : 'var(--text-secondary)',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Batch 2 ({b2Count})
+                </button>
+
+                <div style={{ width: 1, height: 20, background: 'var(--border-default)', alignSelf: 'center', margin: '0 2px' }} />
+
+                <button
+                  type="button"
+                  onClick={() => setCommuteFilter('all')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: commuteFilter === 'all' ? '1px solid var(--border-active)' : '1px solid var(--border-default)',
+                    background: 'transparent',
+                    color: commuteFilter === 'all' ? 'var(--text-primary)' : 'var(--text-muted)',
+                    fontSize: 11,
+                    cursor: 'pointer',
+                  }}
+                >
+                  All Status
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCommuteFilter('ds')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: commuteFilter === 'ds' ? '1px solid #60A5FA' : '1px solid var(--border-default)',
+                    background: commuteFilter === 'ds' ? 'rgba(96, 165, 250, 0.15)' : 'transparent',
+                    color: commuteFilter === 'ds' ? '#60A5FA' : 'var(--text-secondary)',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  🚌 DS ({dsCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCommuteFilter('hostel')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: commuteFilter === 'hostel' ? '1px solid #a78bfa' : '1px solid var(--border-default)',
+                    background: commuteFilter === 'hostel' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                    color: commuteFilter === 'hostel' ? '#a78bfa' : 'var(--text-secondary)',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  🏠 Hostel ({hostelCount})
+                </button>
+              </div>
             </div>
 
-            {/* Commuter Filter Pills */}
-            <div style={{ display: 'flex', gap: 6, margin: 0, paddingBottom: 0 }}>
-              <button
-                type="button"
-                onClick={() => setCommuteFilter('all')}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: commuteFilter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                  background: commuteFilter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
-                  color: commuteFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                All Status
-              </button>
-              <button
-                type="button"
-                onClick={() => setCommuteFilter('ds')}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: commuteFilter === 'ds' ? '1px solid #60A5FA' : '1px solid var(--border-default)',
-                  background: commuteFilter === 'ds' ? 'rgba(96, 165, 250, 0.15)' : 'transparent',
-                  color: commuteFilter === 'ds' ? '#60A5FA' : 'var(--text-secondary)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                🚌 DS ({dsCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setCommuteFilter('hostel')}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: commuteFilter === 'hostel' ? '1px solid #8B5CF6' : '1px solid var(--border-default)',
-                  background: commuteFilter === 'hostel' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
-                  color: commuteFilter === 'hostel' ? '#8B5CF6' : 'var(--text-secondary)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
-                }}
-              >
-                🏠 Hostel ({hostelCount})
-              </button>
-            </div>
-          </div>
-
-          {/* Members List Container */}
-          {isAttendanceLoading ? (
-            <LocalAttendanceSkeleton />
-          ) : sortedMembers.length === 0 ? (
-            <p className="t-body" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-              {filter === 'below_75' ? 'No students below 75% attendance!' : 'No members found'}
-            </p>
-          ) : (
-            <div
-              ref={parentRef}
-              style={{
-                maxHeight: 280,
-                overflowY: 'auto',
-                position: 'relative',
-                width: '100%',
-              }}
-            >
+            {/* List */}
+            {isAttendanceLoading ? (
+              <LocalAttendanceSkeleton />
+            ) : sortedMembers.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
+                <p className="t-body" style={{ color: 'var(--text-secondary)' }}>No members match the selected filters.</p>
+              </div>
+            ) : (
               <div
+                ref={parentRef}
                 style={{
-                  height: `${virtualizer.getTotalSize()}px`,
-                  width: '100%',
+                  maxHeight: 320,
+                  overflowY: 'auto',
                   position: 'relative',
+                  width: '100%',
                 }}
               >
-                {virtualizer.getVirtualItems().map((virtualItem) => {
-                  const st = sortedMembers[virtualItem.index];
-                  if (!st) return null;
-                  const pct = st.overallPercentage;
+                <div
+                  style={{
+                    height: `${virtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  {virtualizer.getVirtualItems().map((virtualItem) => {
+                    const st = sortedMembers[virtualItem.index];
+                    if (!st) return null;
+                    const pct = st.overallPercentage;
+                    const isCR = st.role === 'cr';
 
-                  return (
-                    <div
-                      key={st.id}
-                      ref={virtualizer.measureElement}
-                      data-index={virtualItem.index}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        transform: `translateY(${virtualItem.start}px)`,
-                        paddingBottom: '8px',
-                      }}
-                    >
+                    return (
                       <div
+                        key={st.id}
+                        ref={virtualizer.measureElement}
+                        data-index={virtualItem.index}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                          padding: '10px 12px',
-                          borderRadius: 10,
-                          background: 'var(--bg-elevated)',
-                          border: '1px solid var(--border-default)',
-                          transition: 'all 0.2s',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
                           width: '100%',
+                          transform: `translateY(${virtualItem.start}px)`,
+                          paddingBottom: '8px',
                         }}
                       >
-                        <div style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          background: 'var(--bg-base)',
-                          border: '1px solid var(--border-default)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}>
-                          <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{st.name}</p>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 12px',
+                            borderRadius: 10,
+                            background: 'var(--bg-elevated)',
+                            border: '1px solid var(--border-default)',
+                            transition: 'all 0.2s',
+                            width: '100%',
+                          }}
+                        >
+                          <div style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            background: 'var(--bg-base)',
+                            border: '1px solid var(--border-default)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}>
+                            <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{st.name}</p>
+                              {st.subBatch ? (
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                  background: st.subBatch === '1' ? 'rgba(96, 165, 250, 0.15)' : 'rgba(167, 139, 250, 0.15)',
+                                  color: st.subBatch === '1' ? '#60A5FA' : '#A78BFA',
+                                  border: st.subBatch === '1' ? '1px solid rgba(96, 165, 250, 0.3)' : '1px solid rgba(167, 139, 250, 0.3)',
+                                }}>
+                                  B{st.subBatch}
+                                </span>
+                              ) : null}
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                padding: '1px 5px',
+                                borderRadius: 4,
+                                letterSpacing: '0.02em',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                background: st.dayScholar ? 'rgba(96, 165, 250, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                                color: st.dayScholar ? '#60A5FA' : '#a78bfa',
+                                border: st.dayScholar ? '1px solid rgba(96, 165, 250, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)',
+                                userSelect: 'none',
+                              }}>
+                                {st.dayScholar ? 'DS 🚌' : 'Hostel 🏠'}
+                              </span>
+                            </div>
+                            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>{st.universityRoll ?? st.email}</p>
+                          </div>
+
+                          {pct === null ? (
                             <span style={{
-                              fontSize: '12px',
+                              fontSize: 12,
                               fontWeight: 600,
-                              padding: '1.5px 5px',
-                              borderRadius: 4,
-                              letterSpacing: '0.02em',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 2,
-                              background: st.dayScholar ? 'rgba(96, 165, 250, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                              color: st.dayScholar ? '#60A5FA' : '#a78bfa',
-                              border: st.dayScholar ? '1px solid rgba(96, 165, 250, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)',
+                              padding: '4px 8px',
+                              borderRadius: 'var(--radius-pill)',
+                              color: 'var(--text-secondary)',
+                              background: 'var(--border-default)',
+                              border: '1px solid var(--border-default)',
                               userSelect: 'none',
                             }}>
-                              {st.dayScholar ? 'DS 🚌' : 'Hostel 🏠'}
+                              N/A
                             </span>
-                          </div>
-                          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>{st.universityRoll ?? st.email}</p>
-                        </div>
+                          ) : pct < 75 ? (
+                            <span style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              padding: '4px 8px',
+                              borderRadius: 'var(--radius-pill)',
+                              color: 'var(--status-critical)',
+                              background: 'var(--status-critical-bg)',
+                              border: '1px solid rgba(248, 113, 113, 0.15)',
+                              boxShadow: 'var(--shadow-glow-red)',
+                              userSelect: 'none',
+                            }}>
+                              {pct.toFixed(1)}%
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              padding: '4px 8px',
+                              borderRadius: 'var(--radius-pill)',
+                              color: 'var(--status-safe)',
+                              background: 'var(--status-safe-bg)',
+                              border: '1px solid rgba(52, 211, 153, 0.15)',
+                              userSelect: 'none',
+                            }}>
+                              {pct.toFixed(1)}%
+                            </span>
+                          )}
 
-                        {pct === null ? (
-                          <span style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            padding: '4px 8px',
-                            borderRadius: 'var(--radius-pill)',
-                            color: 'var(--text-secondary)',
-                            background: 'var(--border-default)',
-                            border: '1px solid var(--border-default)',
-                            userSelect: 'none',
-                          }}>
-                            N/A
-                          </span>
-                        ) : pct < 75 ? (
-                          <span style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            padding: '4px 8px',
-                            borderRadius: 'var(--radius-pill)',
-                            color: 'var(--status-critical)',
-                            background: 'var(--status-critical-bg)',
-                            border: '1px solid rgba(248, 113, 113, 0.15)',
-                            boxShadow: 'var(--shadow-glow-red)',
-                            userSelect: 'none',
-                          }}>
-                            {pct.toFixed(1)}%
-                          </span>
-                        ) : (
-                          <span style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            padding: '4px 8px',
-                            borderRadius: 'var(--radius-pill)',
-                            color: 'var(--status-safe)',
-                            background: 'var(--status-safe-bg)',
-                            border: '1px solid rgba(52, 211, 153, 0.15)',
-                            userSelect: 'none',
-                          }}>
-                            {pct.toFixed(1)}%
-                          </span>
-                        )}
+                          {/* Member actions for CR (non-CR students only) */}
+                          {!isCR ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
+                              <button
+                                type="button"
+                                onClick={() => setEditingMember(st)}
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.04)',
+                                  border: '1px solid var(--border-default)',
+                                  borderRadius: 'var(--radius-sm)',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-secondary)',
+                                  padding: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                                title="Edit Roll & Batch"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRemovingMember(st)}
+                                style={{
+                                  background: 'rgba(255, 68, 68, 0.06)',
+                                  border: '1px solid rgba(255, 68, 68, 0.2)',
+                                  borderRadius: 'var(--radius-sm)',
+                                  cursor: 'pointer',
+                                  color: 'var(--status-critical)',
+                                  padding: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                                title="Remove Student from Hub"
+                              >
+                                <UserX size={13} />
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      ) : null}
-    </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      <EditMemberModal
+        member={editingMember}
+        open={Boolean(editingMember)}
+        onClose={() => setEditingMember(null)}
+      />
+      <RemoveMemberModal
+        member={removingMember}
+        open={Boolean(removingMember)}
+        onClose={() => setRemovingMember(null)}
+      />
+    </>
   );
 }
 
@@ -1215,19 +1531,16 @@ function FlashPostSheet({ open, onClose }: { open: boolean; onClose: () => void 
   );
 }
 
-function randomAlpha(n: number) {
-  return Array.from({ length: n }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]).join('');
-}
-
-// ── Invite Code Card ──
+// ── Invite Code Card with Enrollment Lock Control ──
 function InviteCodeCard() {
   const { data: section } = useSection();
-  const queryClient = useQueryClient();
+  const toggleEnrollment = useToggleEnrollment();
+  const regenerateCode = useRegenerateInviteCode();
   const [obscured, setObscured] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [rotating, setRotating] = useState(false);
 
   const inviteCode = section?.inviteCode || '......';
+  const isLocked = section?.isEnrollmentLocked ?? false;
 
   const copyCode = () => {
     navigator.clipboard.writeText(inviteCode);
@@ -1250,39 +1563,13 @@ function InviteCodeCard() {
     }
   };
 
-  const rotateCode = async () => {
-    if (!section?.id) return;
-    setRotating(true);
+  const handleRotate = async () => {
     try {
-      const prefix = inviteCode.slice(0, 2) || 'P2';
-      const newCode = prefix + randomAlpha(4);
-
-      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
-        toast.success(`[Demo] Invite code rotated to ${newCode}!`);
-        const updated = section ? { ...section, inviteCode: newCode } : null;
-        if (updated) {
-          useAppStore.getState().setOfflineCache('section', updated);
-        }
-        queryClient.setQueryData(['section', section.id], updated);
-        setConfirmOpen(false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from('sections')
-        .update({ invite_code: newCode })
-        .eq('id', section.id);
-
-      if (error) throw error;
-
-      toast.success(`Invite code rotated to ${newCode}!`);
-      queryClient.invalidateQueries({ queryKey: ['section', section.id] });
+      await regenerateCode.mutateAsync('student');
       setConfirmOpen(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to rotate invite code';
       toast.error(message);
-    } finally {
-      setRotating(false);
     }
   };
 
@@ -1297,17 +1584,31 @@ function InviteCodeCard() {
         gap: 12,
         animation: 'fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 10,
-            background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <Lock size={16} color="var(--accent-primary)" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <Lock size={16} color="var(--accent-primary)" />
+            </div>
+            <p className="t-card-title" style={{ color: 'var(--text-primary)', margin: 0 }}>
+              Section Invite Code
+            </p>
           </div>
-          <p className="t-card-title" style={{ color: 'var(--text-primary)', flex: 1 }}>
-            Section Invite Code
-          </p>
+
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-pill)',
+            background: isLocked ? 'rgba(248, 113, 113, 0.15)' : 'rgba(52, 211, 153, 0.15)',
+            color: isLocked ? 'var(--status-critical)' : 'var(--status-safe)',
+            border: isLocked ? '1px solid rgba(248, 113, 113, 0.3)' : '1px solid rgba(52, 211, 153, 0.3)',
+          }}>
+            {isLocked ? '🔒 Enrollment Locked' : '🔓 Open to Join'}
+          </span>
         </div>
 
         <div style={{
@@ -1318,7 +1619,7 @@ function InviteCodeCard() {
           border: '1px solid var(--border-default)',
           borderRadius: 'var(--radius-md)',
           padding: '10px 14px',
-          marginTop: 4,
+          marginTop: 2,
         }}>
           <span className="t-feature" style={{
             letterSpacing: '0.12em',
@@ -1339,7 +1640,7 @@ function InviteCodeCard() {
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
           <button 
             className="btn-secondary" 
             onClick={copyCode} 
@@ -1367,6 +1668,50 @@ function InviteCodeCard() {
             }}
           >
             <RefreshCw size={14} /> Rotate
+          </button>
+        </div>
+
+        {/* Enrollment Lock Control Bar */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 12px',
+          borderRadius: 'var(--radius-md)',
+          background: isLocked ? 'rgba(248, 113, 113, 0.06)' : 'rgba(52, 211, 153, 0.06)',
+          border: isLocked ? '1px solid rgba(248, 113, 113, 0.2)' : '1px solid rgba(52, 211, 153, 0.2)',
+          marginTop: 4,
+          gap: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isLocked ? <Lock size={15} color="var(--status-critical)" /> : <Unlock size={15} color="var(--status-safe)" />}
+            <div>
+              <p className="t-body-medium" style={{ color: isLocked ? 'var(--status-critical)' : 'var(--status-safe)', margin: 0, fontSize: 13 }}>
+                {isLocked ? 'Enrollment Locked' : 'Enrollment Open'}
+              </p>
+              <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0, fontSize: 11 }}>
+                {isLocked ? 'New student onboarding is disabled' : 'Students can join with this code'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="t-button"
+            disabled={toggleEnrollment.isPending}
+            onClick={() => toggleEnrollment.mutate(!isLocked)}
+            style={{
+              padding: '6px 12px',
+              fontSize: 12,
+              borderRadius: 'var(--radius-sm)',
+              background: isLocked ? 'var(--status-safe)' : 'rgba(255, 68, 68, 0.12)',
+              color: isLocked ? '#0d0f14' : 'var(--status-critical)',
+              border: isLocked ? 'none' : '1px solid rgba(255, 68, 68, 0.25)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {toggleEnrollment.isPending ? 'Updating…' : (isLocked ? 'Unlock Signups' : 'Lock Signups')}
           </button>
         </div>
       </div>
@@ -1403,8 +1748,8 @@ function InviteCodeCard() {
               </button>
               <button 
                 className="btn-primary" 
-                onClick={rotateCode} 
-                disabled={rotating}
+                onClick={handleRotate} 
+                disabled={regenerateCode.isPending}
                 style={{ 
                   flex: 1, 
                   background: 'linear-gradient(180deg, #FF6B6B 0%, #E83E3C 100%)', 
@@ -1412,7 +1757,7 @@ function InviteCodeCard() {
                   minHeight: 48,
                 }}
               >
-                {rotating ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Rotate Code'}
+                {regenerateCode.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Rotate Code'}
               </button>
             </div>
           </div>
@@ -1424,10 +1769,9 @@ function InviteCodeCard() {
 // ── Teacher Invite Code Card ──
 function TeacherInviteCodeCard() {
   const { data: section } = useSection();
-  const queryClient = useQueryClient();
+  const regenerateCode = useRegenerateInviteCode();
   const [obscured, setObscured] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [rotating, setRotating] = useState(false);
 
   const teacherInviteCode = section?.teacherInviteCode || '......';
 
@@ -1452,39 +1796,13 @@ function TeacherInviteCodeCard() {
     }
   };
 
-  const rotateCode = async () => {
-    if (!section?.id) return;
-    setRotating(true);
+  const handleRotate = async () => {
     try {
-      const prefix = 'T-';
-      const newCode = prefix + randomAlpha(6);
-
-      if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
-        toast.success(`[Demo] Teacher invite code rotated to ${newCode}!`);
-        const updated = section ? { ...section, teacherInviteCode: newCode } : null;
-        if (updated) {
-          useAppStore.getState().setOfflineCache('section', updated);
-        }
-        queryClient.setQueryData(['section', section.id], updated);
-        setConfirmOpen(false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from('sections')
-        .update({ teacher_invite_code: newCode })
-        .eq('id', section.id);
-
-      if (error) throw error;
-
-      toast.success(`Teacher invite code rotated to ${newCode}!`);
-      queryClient.invalidateQueries({ queryKey: ['section', section.id] });
+      await regenerateCode.mutateAsync('teacher');
       setConfirmOpen(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to rotate teacher invite code';
       toast.error(msg);
-    } finally {
-      setRotating(false);
     }
   };
 
@@ -1605,8 +1923,8 @@ function TeacherInviteCodeCard() {
               </button>
               <button 
                 className="btn-primary" 
-                onClick={rotateCode} 
-                disabled={rotating}
+                onClick={handleRotate} 
+                disabled={regenerateCode.isPending}
                 style={{ 
                   flex: 1, 
                   background: 'linear-gradient(180deg, #FF6B6B 0%, #E83E3C 100%)', 
@@ -1614,12 +1932,160 @@ function TeacherInviteCodeCard() {
                   minHeight: 48,
                 }}
               >
-                {rotating ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Rotate Code'}
+                {regenerateCode.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Yes, Rotate Code'}
               </button>
             </div>
           </div>
       </BottomSheet>
     </>
+  );
+}
+
+// ── Batch Division Setup Card ──
+function BatchDivisionCard() {
+  const { data: section } = useSection();
+  const updateBatchConfig = useUpdateBatchConfig();
+  const currentEndRoll = section?.batch1EndRoll ?? 30;
+  const [cutoff, setCutoff] = useState<number>(currentEndRoll);
+  const [applyToExisting, setApplyToExisting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (section?.batch1EndRoll) {
+      setCutoff(section.batch1EndRoll);
+    }
+  }, [section?.batch1EndRoll]);
+
+  const handleSave = async () => {
+    if (cutoff < 1) {
+      toast.error('Cutoff roll must be at least 1');
+      return;
+    }
+    await updateBatchConfig.mutateAsync({
+      batch1EndRoll: cutoff,
+      applyToExisting,
+    });
+  };
+
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div
+        onClick={() => setExpanded(e => !e)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          padding: '14px 16px',
+          borderRadius: 'var(--radius-lg)',
+          userSelect: 'none',
+        }}
+      >
+        <SectionHead
+          icon={<SlidersHorizontal size={16} color="var(--accent-primary)" />}
+          title="Batch Division Setup"
+        />
+        {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+      </div>
+
+      {expanded ? (
+        <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>
+            Configure automatic sub-batch division for practical labs, tutorials, and attendance rosters.
+          </p>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 10,
+            background: 'var(--bg-elevated)',
+            padding: '12px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-default)',
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <p className="t-mono-sm" style={{ color: '#60A5FA', fontWeight: 600 }}>BATCH 1 (B1)</p>
+              <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 2 }}>
+                Roll 1 to {cutoff}
+              </p>
+            </div>
+            <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-default)' }}>
+              <p className="t-mono-sm" style={{ color: '#A78BFA', fontWeight: 600 }}>BATCH 2 (B2)</p>
+              <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 2 }}>
+                Roll {cutoff + 1} onwards
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+            <label className="t-label" style={{ color: 'var(--text-secondary)' }}>
+              Batch 1 Cutoff (End Roll Number)
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input
+                type="number"
+                min="1"
+                max="200"
+                value={cutoff}
+                onChange={e => setCutoff(parseInt(e.target.value, 10) || 1)}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[30, 32, 35, 40].map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setCutoff(val)}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: cutoff === val ? 'var(--accent-primary-glow)' : 'var(--bg-elevated)',
+                      border: cutoff === val ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                      color: cutoff === val ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {val}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 4 }}>
+            <input
+              type="checkbox"
+              checked={applyToExisting}
+              onChange={e => setApplyToExisting(e.target.checked)}
+              style={{ accentColor: 'var(--accent-primary)', width: 16, height: 16 }}
+            />
+            <span className="t-caption" style={{ color: 'var(--text-primary)' }}>
+              Re-assign all existing students to match this new cutoff
+            </span>
+          </label>
+
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={updateBatchConfig.isPending}
+            onClick={handleSave}
+            style={{ marginTop: 6, minHeight: 42 }}
+          >
+            {updateBatchConfig.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Batch Configuration'}
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -2285,6 +2751,7 @@ export default function CRCommandPage() {
       <main className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <InviteCodeCard />
         <TeacherInviteCodeCard />
+        <BatchDivisionCard />
         
         {/* Quick Actions */}
         <section>

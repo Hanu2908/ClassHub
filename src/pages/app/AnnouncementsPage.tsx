@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2, Filter as FilterIcon, Image, MoreVertical, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Check, CheckCircle2, AlertTriangle, Inbox, Trash2, Loader, Search, X, ArrowUpDown, Users, Award, Coffee, Calendar, Megaphone, LayoutList, CalendarDays, ChevronDown, ChevronUp, Clock, BarChart2, Filter as FilterIcon, Image, MoreVertical, Pencil, Pin, PinOff } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import Skeleton from 'react-loading-skeleton';
 import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useUpdateAnnouncement, useAcknowledge } from '../../hooks/useAnnouncements';
+import { useTogglePinAnnouncement } from '../../hooks/useSectionAdmin';
 import { useSubjects, type SubjectInfo } from '../../hooks/useSubjects';
 import { useSectionMembers, useSection } from '../../hooks/useSectionMembers';
 import { AnnouncementQAFooter, AnnouncementCommentsDrawer } from '../../components/AnnouncementQA';
@@ -780,6 +781,7 @@ export function AnnouncementCardComponent({
   searchQuery
 }: AnnouncementCardComponentProps) {
   const authUser = useAppStore(s => s.authUser);
+  const togglePin = useTogglePinAnnouncement();
   const [isExpanded, setIsExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [zoomModalData, setZoomModalData] = useState<{
@@ -844,6 +846,23 @@ export function AnnouncementCardComponent({
       {/* 1. Header Metadata Row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '12px' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          {ann.isPinned && (
+            <span className="badge" style={{
+              background: 'rgba(234, 179, 8, 0.15)',
+              color: '#eab308',
+              border: '1px solid rgba(234, 179, 8, 0.3)',
+              fontSize: '12px',
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-pill)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}>
+              <Pin size={11} />
+              Pinned
+            </span>
+          )}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -940,6 +959,31 @@ export function AnnouncementCardComponent({
                   sideOffset={5}
                   align="end"
                 >
+                  {role === 'cr' && (
+                    <DropdownMenu.Item
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await togglePin.mutateAsync({
+                          announcementId: ann.id,
+                          isPinned: !ann.isPinned,
+                        });
+                      }}
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--text-primary)',
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '8px 10px',
+                        cursor: 'pointer',
+                        outline: 'none',
+                      }}
+                    >
+                      {ann.isPinned ? <PinOff size={13} color="#eab308" /> : <Pin size={13} color="#eab308" />}
+                      <span>{ann.isPinned ? 'Unpin' : 'Pin to Top'}</span>
+                    </DropdownMenu.Item>
+                  )}
                   {onEdit && (
                     <DropdownMenu.Item
                       onClick={(e) => {
@@ -1896,6 +1940,10 @@ export default function AnnouncementsPage() {
 
       return matchesTab && matchesFilter && matchesSearch && matchesSubject && matchesAttachment && matchesUnacknowledged;
     }).sort((a, b) => {
+      // Pinned announcements always float to top
+      if (Boolean(a.isPinned) !== Boolean(b.isPinned)) {
+        return a.isPinned ? -1 : 1;
+      }
       if (sortBy === 'priority') {
         if (a.priority === 'critical' && b.priority !== 'critical') return -1;
         if (b.priority === 'critical' && a.priority !== 'critical') return 1;

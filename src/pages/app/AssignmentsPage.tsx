@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2, ChevronDown, Check, MoreVertical, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2, ChevronDown, Check, MoreVertical, Pencil, Archive, ArchiveRestore } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
@@ -9,6 +9,7 @@ import { useAppStore, isExpired } from '../../store/appStore';
 import type { AssignmentSet, Assignment } from '../../store/appStore';
 import { toast } from 'sonner';
 import { useAssignments, useCreateAssignment, useDeleteAssignment, useUpdateAssignment, useSubmitAssignment, useUnsubmitAssignment } from '../../hooks/useAssignments';
+import { useToggleArchiveAssignment } from '../../hooks/useSectionAdmin';
 import { haptics } from '../../lib/haptics';
 import { useSubjects, useEnsureSubjects } from '../../hooks/useSubjects';
 import { FileUploader } from '../../components/FileUploader';
@@ -21,7 +22,7 @@ import { parseSharedText } from '../../lib/utils/smartTextParser';
 import { generateGradient } from '../../lib/utils';
 import { logEvent } from '../../lib/analytics';
 
-type Filter = 'all' | 'pending' | 'submitted' | 'overdue';
+type Filter = 'all' | 'pending' | 'submitted' | 'overdue' | 'archived';
 
 
 
@@ -860,6 +861,7 @@ export default function AssignmentsPage() {
   const classRoll = authUser?.sectionRoll ?? '17';
   const { data: assignments = [], isLoading } = useAssignments({ limit: 100 });
   const deleteAssignmentMutation = useDeleteAssignment();
+  const toggleArchiveMutation = useToggleArchiveAssignment();
   const submitMutation = useSubmitAssignment();
   const unsubmitMutation = useUnsubmitAssignment();
 
@@ -965,8 +967,11 @@ export default function AssignmentsPage() {
     }
   };
 
-  // 2-day post-deadline expiry
-  const enriched = assignments.filter(a => !isExpired(a.dueDate)).map(a => {
+  // 2-day post-deadline expiry & archive filtering
+  const enriched = assignments.filter(a => {
+    if (a.isArchived) return true;
+    return !isExpired(a.dueDate);
+  }).map(a => {
     const isSubmitted = a.status === 'submitted';
     const diff = new Date(a.dueDate).getTime() - now;
     const isOverdue = diff < 0 && !isSubmitted;
@@ -976,7 +981,9 @@ export default function AssignmentsPage() {
   // Calculate subject counts based on current status filter
   const subjectCounts = enriched.reduce((acc, a) => {
     let passes = true;
-    if (filter === 'submitted') passes = a.isSubmitted;
+    if (filter === 'archived') passes = Boolean(a.isArchived);
+    else if (a.isArchived) passes = false;
+    else if (filter === 'submitted') passes = a.isSubmitted;
     else if (filter === 'overdue') passes = a.isOverdue;
     else if (filter === 'pending') passes = !a.isSubmitted && !a.isOverdue;
 
@@ -989,6 +996,8 @@ export default function AssignmentsPage() {
   const uniqueSubjects = Object.keys(subjectCounts).sort();
 
   const statusFiltered = enriched.filter(a => {
+    if (filter === 'archived') return Boolean(a.isArchived);
+    if (a.isArchived) return false;
     if (filter === 'all') return true;
     if (filter === 'submitted') return a.isSubmitted;
     if (filter === 'overdue') return a.isOverdue;
@@ -1057,7 +1066,7 @@ export default function AssignmentsPage() {
                 className="dropdown-content animate-slide-up"
                 style={{ zIndex: 10000, minWidth: '180px' }}
               >
-                {(['all', 'pending', 'submitted', 'overdue'] as Filter[]).map(f => {
+                {(['all', 'pending', 'submitted', 'overdue', 'archived'] as Filter[]).map(f => {
                   const isSelected = filter === f;
                   return (
                     <DropdownMenu.Item
@@ -1385,6 +1394,34 @@ export default function AssignmentsPage() {
                               <DropdownMenu.Item
                                 onClick={async (e) => {
                                   e.stopPropagation();
+                                  try {
+                                    await toggleArchiveMutation.mutateAsync({
+                                      assignmentId: a.id,
+                                      isArchived: !a.isArchived,
+                                    });
+                                    toast.success(a.isArchived ? 'Assignment restored' : 'Assignment archived');
+                                  } catch {
+                                    toast.error('Failed to update archive status');
+                                  }
+                                }}
+                                style={{
+                                  fontSize: '13px',
+                                  color: 'var(--text-primary)',
+                                  borderRadius: 6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8,
+                                  padding: '8px 10px',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                }}
+                              >
+                                {a.isArchived ? <ArchiveRestore size={13} color="var(--accent-primary)" /> : <Archive size={13} color="var(--text-secondary)" />}
+                                <span>{a.isArchived ? 'Restore' : 'Archive'}</span>
+                              </DropdownMenu.Item>
+                              <DropdownMenu.Item
+                                onClick={async (e) => {
+                                  e.stopPropagation();
                                   if (confirm('Are you sure you want to delete this assignment?')) {
                                     try {
                                       await deleteAssignmentMutation.mutateAsync(a.id);
@@ -1416,6 +1453,19 @@ export default function AssignmentsPage() {
                     </div>
                     <p className="t-caption" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{a.subjectCode}</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {a.isArchived && (
+                        <span className="badge" style={{
+                          background: 'rgba(148, 163, 184, 0.15)',
+                          color: '#94a3b8',
+                          border: '1px solid rgba(148, 163, 184, 0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}>
+                          <Archive size={11} />
+                          Archived
+                        </span>
+                      )}
                       <span className={`badge ${bdg}`}>{lbl}</span>
                       <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
                         Due • {new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
