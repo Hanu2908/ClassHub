@@ -25,6 +25,7 @@ import { logEvent } from '../../lib/analytics';
 import { UnitTestsTab } from './assignments/UnitTestsTab';
 import { CreateUnitTestModal } from './assignments/CreateUnitTestModal';
 import { useUnitTests } from '../../hooks/useUnitTests';
+import { extractRollNumber } from '../../lib/utils/rolls';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue' | 'archived';
 
@@ -45,7 +46,7 @@ function getSubjectAcronym(name: string) {
 
 function getUserSet(classRoll: string, sets: AssignmentSet[]) {
   if (!sets || sets.length === 0) return null;
-  const roll = parseInt(classRoll, 10);
+  const roll = extractRollNumber(classRoll);
   return sets.find(s => roll >= s.rollStart && roll <= s.rollEnd) ?? null;
 }
 
