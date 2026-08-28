@@ -306,6 +306,35 @@ export function useUpdateAssignment() {
       notifyClass?: boolean;
       targetBatch?: '1' | '2' | null;
     }) => {
+      const isDemo = sectionId === 'demo-section';
+      if (isDemo) {
+        // Optimistically update query cache in demo mode
+        qc.setQueriesData({ queryKey: ['assignments'] }, (old: Assignment[] | undefined) => {
+          if (!old) return old;
+          return old.map(a => {
+            if (a.id !== input.id) return a;
+            return {
+              ...a,
+              title: input.title.trim(),
+              description: input.description?.trim() ?? '',
+              dueDate: new Date(input.dueDate).toISOString(),
+              targetBatch: input.targetBatch ?? null,
+              hasSets: !!(input.sets && input.sets.length > 0),
+              sets: (input.sets ?? []).map(s => ({
+                id: s.id || `set-${Date.now()}-${Math.random()}`,
+                label: s.label,
+                description: s.description?.trim() || (s.pageNumbers ? `Complete Pages ${s.pageNumbers} of the attached assignment.` : 'Complete the assigned questions.'),
+                rollStart: s.rollStart,
+                rollEnd: s.rollEnd,
+                pageNumbers: s.pageNumbers ?? '',
+                pdfUrl: s.pdfUrl ?? null,
+              })),
+            };
+          });
+        });
+        return input.id;
+      }
+
       // 1. Enforce strict CR or Teacher authorization check
       if (role !== 'cr' && role !== 'teacher') {
         throw new Error('Unauthorized: Only Class Representatives and Teachers can update assignments');
@@ -320,7 +349,7 @@ export function useUpdateAssignment() {
           label: s.label,
           rollStart: s.rollStart,
           rollEnd: s.rollEnd,
-          description: s.description,
+          description: s.description?.trim() || (s.pageNumbers ? `Complete Pages ${s.pageNumbers} of the attached assignment.` : 'Complete the assigned questions.'),
           pdfUrl: s.pdfUrl ?? undefined,
         })) : undefined,
       });
@@ -338,68 +367,29 @@ export function useUpdateAssignment() {
         .eq('id', input.id);
       if (assignmentErr) throw assignmentErr;
 
-      // 4. Sync assignment sets
-      const { data: existingSets, error: getSetsErr } = await supabase
+      // 4. Atomically sync assignment sets (delete old sets, then insert new sets)
+      // This prevents composite unique constraint violations on (assignment_id, set_label)
+      const { error: delErr } = await supabase
         .from('assignment_sets')
-        .select('id')
+        .delete()
         .eq('assignment_id', input.id);
-      if (getSetsErr) throw getSetsErr;
-
-      const existingIds = (existingSets ?? []).map(s => s.id);
+      if (delErr) throw delErr;
 
       if (input.sets && input.sets.length > 0) {
-        const inputSetIds = input.sets.map(s => s.id).filter(Boolean) as string[];
-        const idsToDelete = existingIds.filter(id => !inputSetIds.includes(id));
-        if (idsToDelete.length > 0) {
-          const { error: delErr } = await supabase
-            .from('assignment_sets')
-            .delete()
-            .in('id', idsToDelete);
-          if (delErr) throw delErr;
-        }
-
-        const setsToUpdate = input.sets.filter(s => s.id).map(s => ({
-          id: s.id!,
+        const setsToInsert = input.sets.map(s => ({
           assignment_id: input.id,
           set_label: s.label,
-          description: s.description,
+          description: s.description?.trim() || (s.pageNumbers ? `Complete Pages ${s.pageNumbers} of the attached assignment.` : 'Complete the assigned questions.'),
           roll_start: s.rollStart,
           roll_end: s.rollEnd,
           pdf_url: s.pdfUrl ?? null,
           page_numbers: s.pageNumbers ?? null,
         }));
 
-        const setsToInsert = input.sets.filter(s => !s.id).map(s => ({
-          assignment_id: input.id,
-          set_label: s.label,
-          description: s.description,
-          roll_start: s.rollStart,
-          roll_end: s.rollEnd,
-          pdf_url: s.pdfUrl ?? null,
-          page_numbers: s.pageNumbers ?? null,
-        }));
-
-        if (setsToUpdate.length > 0) {
-          const { error: updateErr } = await supabase
-            .from('assignment_sets')
-            .upsert(setsToUpdate);
-          if (updateErr) throw updateErr;
-        }
-
-        if (setsToInsert.length > 0) {
-          const { error: insertErr } = await supabase
-            .from('assignment_sets')
-            .insert(setsToInsert);
-          if (insertErr) throw insertErr;
-        }
-      } else {
-        if (existingIds.length > 0) {
-          const { error: delErr } = await supabase
-            .from('assignment_sets')
-            .delete()
-            .eq('assignment_id', input.id);
-          if (delErr) throw delErr;
-        }
+        const { error: insertErr } = await supabase
+          .from('assignment_sets')
+          .insert(setsToInsert);
+        if (insertErr) throw insertErr;
       }
 
       // 5. Optional class push notifications

@@ -546,8 +546,19 @@ function EditAssignmentSheet({ open, onClose, assignment }: { open: boolean; onC
 
   // Step 1 fields
   const [title, setTitle] = useState(assignment.title);
-  const [subjectId, setSubjectId] = useState(assignment.subjectId || '');
+  const [subjectId, setSubjectId] = useState(() => {
+    if (assignment.subjectId) return assignment.subjectId;
+    const match = subjectsList.find(s => s.code === assignment.subjectCode || s.name === assignment.subject);
+    return match?.id || '';
+  });
   const [customSubjectName, setCustomSubjectName] = useState('');
+
+  useEffect(() => {
+    if (!subjectId && subjectsList.length > 0) {
+      const match = subjectsList.find(s => s.code === assignment.subjectCode || s.name === assignment.subject);
+      if (match) setSubjectId(match.id);
+    }
+  }, [subjectsList, assignment, subjectId]);
   const [dueDate, setDueDate] = useState(() => {
     const date = new Date(assignment.dueDate);
     const year = date.getFullYear();
