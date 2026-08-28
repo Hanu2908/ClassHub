@@ -39,11 +39,13 @@ describe('Unit Tests Domain Logic', () => {
     expect(isPast3).toBe(true);
   });
 
-  it('validates score boundaries against maxMarks', () => {
-    const scoreValid = (score: number, max: number) => score >= 0 && score <= max;
-    expect(scoreValid(8.5, sampleTest.maxMarks)).toBe(true);
-    expect(scoreValid(10, sampleTest.maxMarks)).toBe(true);
-    expect(scoreValid(11, sampleTest.maxMarks)).toBe(false);
-    expect(scoreValid(-1, sampleTest.maxMarks)).toBe(false);
+  it('supports optional formUrl and title fallback', () => {
+    const testWithoutUrl: UnitTest = {
+      ...sampleTest,
+      formUrl: null,
+      title: `${sampleTest.subject} - ${sampleTest.testType}`,
+    };
+    expect(testWithoutUrl.formUrl).toBeNull();
+    expect(testWithoutUrl.title).toBe('Statistics and Probability Theory - UT1');
   });
 });

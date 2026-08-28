@@ -1039,7 +1039,7 @@ export default function AssignmentsPage() {
   return (
     <div className="page-shell">
       <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border-default)', padding: '16px 0 10px' }}>
-        {/* Top App Title & CR Create Action */}
+        {/* Top App Title */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button id="assign-back-btn" onClick={() => navigate('/app/home')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }} aria-label="Back">
@@ -1050,25 +1050,6 @@ export default function AssignmentsPage() {
               <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Coursework</h1>
             </div>
           </div>
-
-          {role === 'cr' && (
-            <button
-              onClick={() => courseworkTab === 'assignments' ? setCreateOpen(true) : setCreateUnitTestOpen(true)}
-              className="btn-primary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 14px',
-                fontSize: '12px',
-                fontWeight: 600,
-                borderRadius: 'var(--radius-pill)',
-              }}
-            >
-              <Plus size={14} />
-              <span>{courseworkTab === 'assignments' ? 'New Assignment' : 'New Unit Test'}</span>
-            </button>
-          )}
         </div>
 
         {/* Coursework Hub Segmented Switch */}

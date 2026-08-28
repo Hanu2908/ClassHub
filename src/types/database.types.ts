@@ -20,7 +20,7 @@ export type Database = {
           created_by: string
           description: string | null
           due_date: string
-          form_url: string
+          form_url: string | null
           id: string
           max_marks: number
           section_id: string
@@ -33,20 +33,20 @@ export type Database = {
           created_by: string
           description?: string | null
           due_date: string
-          form_url: string
+          form_url?: string | null
           id?: string
           max_marks?: number
           section_id: string
           subject_id: string
           test_type: string
-          title: string
+          title?: string
         }
         Update: {
           created_at?: string
           created_by?: string
           description?: string | null
           due_date?: string
-          form_url?: string
+          form_url?: string | null
           id?: string
           max_marks?: number
           section_id?: string

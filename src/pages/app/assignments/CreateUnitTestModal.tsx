@@ -72,25 +72,26 @@ export function CreateUnitTestModal({ open, onClose }: CreateUnitTestModalProps)
       toast.error('Please select a subject');
       return;
     }
-    if (!title.trim()) {
-      toast.error('Please enter a test title or topic');
-      return;
-    }
-    if (!formUrl.trim() || !formUrl.startsWith('http')) {
-      toast.error('Please enter a valid Google Form or online URL');
-      return;
-    }
     if (!dueDate) {
       toast.error('Please select a due date and time');
       return;
     }
 
+    const trimmedUrl = formUrl.trim();
+    if (trimmedUrl && !trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+      toast.error('Please enter a valid URL starting with https://');
+      return;
+    }
+
+    const selectedSubj = subjectsList.find(s => s.id === subjectId);
+    const finalTitle = title.trim() || (selectedSubj ? `${selectedSubj.name} - ${testType}` : `Unit Test (${testType})`);
+
     try {
       await createUnitTestMutation.mutateAsync({
         subjectId,
         testType,
-        title: title.trim(),
-        formUrl: formUrl.trim(),
+        title: finalTitle,
+        formUrl: trimmedUrl || null,
         dueDate: new Date(dueDate).toISOString(),
         maxMarks: parseInt(maxMarks) || 10,
         description: description.trim() || undefined,
@@ -164,10 +165,10 @@ export function CreateUnitTestModal({ open, onClose }: CreateUnitTestModalProps)
 
         {/* Test Title / Topics */}
         <div>
-          <label style={labelStyle}>Test Title / Syllabus Covered <span style={{ color: 'var(--status-critical)' }}>*</span></label>
+          <label style={labelStyle}>Title / Topics (Optional)</label>
           <input
             style={inputStyle}
-            placeholder="e.g. Unit 1 & 2: Arrays, Trees & Probability"
+            placeholder="e.g. Unit 1: Arrays & Probability (default: Subject - UT)"
             value={title}
             onChange={e => setTitle(e.target.value)}
           />
@@ -175,11 +176,11 @@ export function CreateUnitTestModal({ open, onClose }: CreateUnitTestModalProps)
 
         {/* Google Form Link */}
         <div>
-          <label style={labelStyle}>Google Form / Online URL <span style={{ color: 'var(--status-critical)' }}>*</span></label>
+          <label style={labelStyle}>Google Form Link (Optional)</label>
           <div style={{ position: 'relative' }}>
             <input
               style={{ ...inputStyle, paddingLeft: 34 }}
-              placeholder="https://forms.google.com/..."
+              placeholder="https://forms.google.com/... (can be added later)"
               value={formUrl}
               onChange={e => setFormUrl(e.target.value)}
             />

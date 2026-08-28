@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react';
-import { useUnitTests, useDeleteUnitTest, useToggleUnitTestSubmission, type UnitTest } from '../../../hooks/useUnitTests';
+import { useUnitTests, useDeleteUnitTest, useUpdateUnitTest, useToggleUnitTestSubmission, type UnitTest } from '../../../hooks/useUnitTests';
 import { useAppStore } from '../../../store/appStore';
 import { generateGradient } from '../../../lib/utils';
 import {
   ExternalLink, CheckCircle2, Circle, MoreVertical,
-  Trash2, Users, Loader2, Sparkles
+  Trash2, Users, Loader2, Sparkles, Link2
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { UnitTestRosterModal } from './UnitTestRosterModal';
+import { BottomSheet } from '../../../components/BottomSheet';
 import { toast } from 'sonner';
 
 function getSubjectAcronym(name: string) {
@@ -59,13 +60,31 @@ export function UnitTestsTab({
 
   const { data: unitTests = [], isLoading } = useUnitTests();
   const deleteUnitTestMutation = useDeleteUnitTest();
+  const updateUnitTestMutation = useUpdateUnitTest();
   const toggleSubmissionMutation = useToggleUnitTestSubmission();
 
   const [rosterTest, setRosterTest] = useState<UnitTest | null>(null);
   const [scoringTestId, setScoringTestId] = useState<string | null>(null);
   const [marksInput, setMarksInput] = useState<string>('');
 
+  const [editingLinkTest, setEditingLinkTest] = useState<UnitTest | null>(null);
+  const [linkInput, setLinkInput] = useState<string>('');
+
   const now = Date.now();
+
+  const handleSaveLink = async () => {
+    if (!editingLinkTest) return;
+    const trimmed = linkInput.trim();
+    if (trimmed && !trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      toast.error('Please enter a valid URL starting with https://');
+      return;
+    }
+    await updateUnitTestMutation.mutateAsync({
+      id: editingLinkTest.id,
+      formUrl: trimmed || null,
+    });
+    setEditingLinkTest(null);
+  };
 
   const filteredTests = useMemo(() => {
     const list = unitTests.filter(t => {
@@ -229,6 +248,17 @@ export function UnitTestsTab({
                           style={{ zIndex: 10000, minWidth: 140 }}
                         >
                           <DropdownMenu.Item
+                            onClick={() => {
+                              setEditingLinkTest(t);
+                              setLinkInput(t.formUrl || '');
+                            }}
+                            className="dropdown-item"
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px' }}
+                          >
+                            <Link2 size={14} color="var(--accent-primary)" />
+                            <span>{t.formUrl ? 'Edit Test Link' : 'Add Test Link'}</span>
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Item
                             onClick={() => setRosterTest(t)}
                             className="dropdown-item"
                             style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px' }}
@@ -260,29 +290,74 @@ export function UnitTestsTab({
 
               {/* Action Rows: Open Google Form & Submit Status */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
-                <a
-                  href={t.formUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    padding: '10px 14px',
-                    background: 'var(--accent-primary)',
-                    color: '#fff',
-                    borderRadius: 'var(--radius-md)',
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    boxShadow: '0 2px 8px rgba(74, 158, 255, 0.25)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span>Open Google Form</span>
-                  <ExternalLink size={14} />
-                </a>
+                {t.formUrl ? (
+                  <a
+                    href={t.formUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: '10px 14px',
+                      background: 'var(--accent-primary)',
+                      color: '#0F0F11',
+                      borderRadius: 'var(--radius-md)',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      boxShadow: '0 2px 8px rgba(129, 140, 248, 0.25)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span>Open Google Form</span>
+                    <ExternalLink size={14} />
+                  </a>
+                ) : isCRorTeacher ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingLinkTest(t);
+                      setLinkInput('');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: '9px 14px',
+                      background: 'rgba(129, 140, 248, 0.12)',
+                      border: '1px dashed rgba(129, 140, 248, 0.4)',
+                      color: 'var(--accent-primary)',
+                      borderRadius: 'var(--radius-md)',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Link2 size={15} />
+                    <span>+ Add Google Form / Test Link</span>
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '8px 12px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--text-muted)',
+                      fontSize: '12.5px',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    Test link will be added by CR soon
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <button
@@ -436,6 +511,69 @@ export function UnitTestsTab({
         onClose={() => setRosterTest(null)}
         unitTest={rosterTest}
       />
+
+      {/* Edit / Add Google Form Link Sheet */}
+      <BottomSheet
+        open={!!editingLinkTest}
+        onClose={() => setEditingLinkTest(null)}
+        title={editingLinkTest?.formUrl ? 'Edit Test Link' : 'Add Test Link'}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Google Form or Online Test URL
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                style={{
+                  width: '100%',
+                  padding: '10px 12px 10px 34px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+                placeholder="https://forms.google.com/..."
+                value={linkInput}
+                onChange={e => setLinkInput(e.target.value)}
+                autoFocus
+              />
+              <Link2
+                size={15}
+                color="var(--text-muted)"
+                style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}
+              />
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '6px 0 0' }}>
+              Students in your section will be able to open this link to submit their test responses.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ flex: 1 }}
+              onClick={() => setEditingLinkTest(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              onClick={handleSaveLink}
+              disabled={updateUnitTestMutation.isPending}
+            >
+              {updateUnitTestMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : null}
+              <span>Save Link</span>
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

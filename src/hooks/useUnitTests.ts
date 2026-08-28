@@ -12,7 +12,7 @@ export interface UnitTest {
   createdBy: string;
   testType: 'UT1' | 'UT2';
   title: string;
-  formUrl: string;
+  formUrl?: string | null;
   dueDate: string;
   maxMarks: number;
   description?: string | null;
@@ -131,8 +131,8 @@ export function useUnitTests() {
           subjectCode: subj?.code || '',
           createdBy: t.created_by,
           testType: t.test_type,
-          title: t.title,
-          formUrl: t.form_url,
+          title: t.title || `${subj?.name || 'Subject'} - ${t.test_type}`,
+          formUrl: t.form_url || null,
           dueDate: t.due_date,
           maxMarks: t.max_marks ?? 10,
           description: t.description,
@@ -155,8 +155,8 @@ export function useCreateUnitTest() {
     mutationFn: async (payload: {
       subjectId: string;
       testType: 'UT1' | 'UT2';
-      title: string;
-      formUrl: string;
+      title?: string;
+      formUrl?: string | null;
       dueDate: string;
       maxMarks?: number;
       description?: string;
@@ -170,8 +170,8 @@ export function useCreateUnitTest() {
           subject_id: payload.subjectId,
           created_by: userId,
           test_type: payload.testType,
-          title: payload.title.trim(),
-          form_url: payload.formUrl.trim(),
+          title: payload.title?.trim() || '',
+          form_url: payload.formUrl ? payload.formUrl.trim() : null,
           due_date: payload.dueDate,
           max_marks: payload.maxMarks ?? 10,
           description: payload.description?.trim() || null,
@@ -202,7 +202,7 @@ export function useUpdateUnitTest() {
       subjectId?: string;
       testType?: 'UT1' | 'UT2';
       title?: string;
-      formUrl?: string;
+      formUrl?: string | null;
       dueDate?: string;
       maxMarks?: number;
       description?: string;
@@ -210,11 +210,11 @@ export function useUpdateUnitTest() {
       const updates: any = {};
       if (payload.subjectId) updates.subject_id = payload.subjectId;
       if (payload.testType) updates.test_type = payload.testType;
-      if (payload.title) updates.title = payload.title.trim();
-      if (payload.formUrl) updates.form_url = payload.formUrl.trim();
+      if (payload.title !== undefined) updates.title = payload.title.trim();
+      if (payload.formUrl !== undefined) updates.form_url = payload.formUrl ? payload.formUrl.trim() : null;
       if (payload.dueDate) updates.due_date = payload.dueDate;
       if (payload.maxMarks !== undefined) updates.max_marks = payload.maxMarks;
-      if (payload.description !== undefined) updates.description = payload.description.trim() || null;
+      if (payload.description !== undefined) updates.description = payload.description ? payload.description.trim() : null;
 
       const { data, error } = await supabase
         .from('unit_tests')
