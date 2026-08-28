@@ -31,6 +31,7 @@ import {
   simulateOD,
   simulateMix,
   getAttendanceTier,
+  getAttendanceFreshness,
 } from '../../lib/utils/attendance';
 import type { ParsedSubject, AttendanceInsights } from '../../lib/utils/attendance';
 import { NumberTicker } from '../../components/ui/NumberTicker';
@@ -220,7 +221,11 @@ export default function AttendancePage() {
   const { data: attendance, isLoading } = useAttendance();
   const subjects = useMemo(() => attendance?.subjects ?? [], [attendance?.subjects]);
   const overall = attendance?.overall ?? 0;
-  const [now] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(interval);
+  }, []);
   const [scheduleOverrides, setScheduleOverrides] = useState<Record<string, number>>({
     Mon: 5, Tue: 5, Wed: 5, Thu: 6, Fri: 5, Sat: 5
   });
@@ -613,21 +618,7 @@ export default function AttendancePage() {
   const lastUpdated = attendance?.lastUpdated;
   const syncFreshness = useMemo(() => {
     if (!lastUpdated) return null;
-    const diffMs = now - new Date(lastUpdated).getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const isStale = diffDays > 5;
-    let label = 'Synced just now';
-    if (diffHours >= 1 && diffHours < 24) label = `Synced ${diffHours}h ago`;
-    else if (diffDays >= 1 && diffDays <= 5) label = `Synced ${diffDays}d ago`;
-    else if (diffDays > 5) label = `⚠️ Stale (${diffDays}d ago)`;
-
-    return {
-      label,
-      bg: isStale ? 'rgba(248, 113, 113, 0.15)' : 'rgba(52, 211, 153, 0.15)',
-      color: isStale ? 'var(--status-critical)' : 'var(--status-safe)',
-      border: isStale ? '1px solid rgba(248, 113, 113, 0.3)' : '1px solid rgba(52, 211, 153, 0.3)',
-    };
+    return getAttendanceFreshness(lastUpdated, now);
   }, [lastUpdated, now]);
 
   if (isAuthLoading && !authUser) {

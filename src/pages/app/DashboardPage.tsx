@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { isPushSupported, getPushPermission } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
 import { generateGradient } from '../../lib/utils';
+import { getAttendanceFreshness } from '../../lib/utils/attendance';
 import { trackAppOpened } from '../../lib/analytics';
 import { NumberTicker } from '../../components/ui/NumberTicker';
 
@@ -158,7 +159,11 @@ export default function DashboardPage() {
   }, [assignments, announcements, polls]);
 
   const primaryDeadline = unifiedDeadlines[0] || null;
-  const [now] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Session storage for dismissed critical announcements
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>(() => {
@@ -308,16 +313,7 @@ export default function DashboardPage() {
 
   const lastUpdated = attendance?.lastUpdated;
   const freshness = useMemo(() => {
-    if (!lastUpdated) return { label: 'Not synced', isStale: true, days: 999 };
-    const diffMs = now - new Date(lastUpdated).getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    
-    if (diffHours < 1) return { label: 'Synced just now', isStale: false, days: 0 };
-    if (diffHours < 24) return { label: `Synced ${diffHours}h ago`, isStale: false, days: 0 };
-    if (diffDays <= 3) return { label: `Synced ${diffDays}d ago`, isStale: false, days: diffDays };
-    if (diffDays <= 6) return { label: `Synced ${diffDays}d ago`, isStale: false, days: diffDays };
-    return { label: `Stale (${diffDays}d ago)`, isStale: true, days: diffDays };
+    return getAttendanceFreshness(lastUpdated, now);
   }, [lastUpdated, now]);
 
   // Global clipboard check on window focus / resume
@@ -438,9 +434,9 @@ export default function DashboardPage() {
                       fontWeight: 600,
                       padding: '1px 6px',
                       borderRadius: 4,
-                      background: freshness.isStale ? 'rgba(248, 113, 113, 0.15)' : 'rgba(255, 255, 255, 0.06)',
-                      color: freshness.isStale ? 'var(--status-critical)' : 'var(--text-muted)',
-                      border: freshness.isStale ? '1px solid rgba(248, 113, 113, 0.3)' : '1px solid var(--border-default)',
+                      background: freshness.bg,
+                      color: freshness.color,
+                      border: freshness.border,
                     }}>
                       {freshness.label}
                     </span>
@@ -532,8 +528,6 @@ export default function DashboardPage() {
             ) : primaryDeadline ? (
               (() => {
                 const dueDate = new Date(primaryDeadline.dueDate).getTime();
-                /* eslint-disable-next-line react-hooks/purity */
-                const now = Date.now();
                 const diffMs = dueDate - now;
                 const diffHours = diffMs / (1000 * 60 * 60);
 

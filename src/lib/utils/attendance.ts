@@ -645,3 +645,60 @@ export function getOverallDayOfWeekRates(
 
   return rates;
 }
+
+export interface AttendanceFreshness {
+  label: string;
+  isStale: boolean;
+  days: number;
+  bg: string;
+  color: string;
+  border: string;
+}
+
+export function getAttendanceFreshness(lastUpdated: string | null | undefined, now: number = Date.now()): AttendanceFreshness {
+  if (!lastUpdated) {
+    return {
+      label: 'Not synced yet',
+      isStale: true,
+      days: 999,
+      bg: 'rgba(248, 113, 113, 0.15)',
+      color: 'var(--status-critical)',
+      border: '1px solid rgba(248, 113, 113, 0.3)',
+    };
+  }
+
+  const updatedTime = new Date(lastUpdated).getTime();
+  if (isNaN(updatedTime)) {
+    return {
+      label: 'Not synced yet',
+      isStale: true,
+      days: 999,
+      bg: 'rgba(248, 113, 113, 0.15)',
+      color: 'var(--status-critical)',
+      border: '1px solid rgba(248, 113, 113, 0.3)',
+    };
+  }
+
+  const diffMs = Math.max(0, now - updatedTime);
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const isStale = diffDays > 5;
+
+  let label = 'Synced just now';
+  if (diffHours >= 1 && diffHours < 24) {
+    label = `Synced ${diffHours}h ago`;
+  } else if (diffDays >= 1 && diffDays <= 5) {
+    label = `Synced ${diffDays}d ago`;
+  } else if (diffDays > 5) {
+    label = `⚠️ Stale (${diffDays}d ago)`;
+  }
+
+  return {
+    label,
+    isStale,
+    days: diffDays,
+    bg: isStale ? 'rgba(248, 113, 113, 0.15)' : 'rgba(52, 211, 153, 0.15)',
+    color: isStale ? 'var(--status-critical)' : 'var(--status-safe)',
+    border: isStale ? '1px solid rgba(248, 113, 113, 0.3)' : '1px solid rgba(52, 211, 153, 0.3)',
+  };
+}

@@ -127,13 +127,16 @@ export function useBulkUpsertAttendance() {
     onMutate: async (items) => {
       await qc.cancelQueries({ queryKey: ['attendance', userId] });
       const previousAttendance = qc.getQueryData(['attendance', userId]);
+      const nowIso = new Date().toISOString();
 
       qc.setQueryData(['attendance', userId], (old: any) => {
-        if (!old) return old;
+        const existingSubjects = old?.subjects ?? [];
+        const codeMap = new Map(items.map(item => [item.code, item]));
 
-        const updatedSubjects = old.subjects.map((sub: any) => {
-          const match = items.find(item => item.code === sub.code);
+        const updatedSubjects = existingSubjects.map((sub: any) => {
+          const match = codeMap.get(sub.code);
           if (!match) return sub;
+          codeMap.delete(sub.code);
 
           const present = (match.present ?? 0) + (match.od ?? 0) + (match.makeup ?? 0);
           const absent = match.absent ?? 0;
@@ -154,23 +157,52 @@ export function useBulkUpsertAttendance() {
           };
         });
 
+        codeMap.forEach((match, code) => {
+          if (!code) return;
+          const present = (match.present ?? 0) + (match.od ?? 0) + (match.makeup ?? 0);
+          const absent = match.absent ?? 0;
+          const total = (match.present ?? 0) + (match.od ?? 0) + absent;
+          const percentage = total > 0 ? (present / total) * 100 : 0;
+          const canSkip = total > 0 ? Math.floor((present - 0.75 * total) / 0.75) : 0;
+          const needToAttend = total > 0 ? Math.max(0, Math.ceil((0.75 * total - present) / 0.25)) : 0;
+
+          updatedSubjects.push({
+            code,
+            name: code,
+            type: 'Lecture',
+            present,
+            absent,
+            total,
+            percentage,
+            canSkip: Math.max(0, canSkip),
+            needToAttend,
+            semester: 1,
+          });
+        });
+
         const totalPresent = updatedSubjects.reduce((sum: number, s: any) => sum + s.present, 0);
         const totalHeld = updatedSubjects.reduce((sum: number, s: any) => sum + s.total, 0);
         const overall = totalHeld > 0 ? (totalPresent / totalHeld) * 100 : 0;
 
-        return {
+        const optimisticResult = {
           subjects: updatedSubjects,
           overall,
-          lastUpdated: new Date().toISOString()
+          lastUpdated: nowIso
         };
+        useAppStore.getState().setOfflineCache('attendance', optimisticResult);
+        return optimisticResult;
       });
 
       return { previousAttendance };
     },
     mutationFn: async (items: Array<{ code?: string; subjectId?: string; present: number; absent: number; od?: number; makeup?: number; insights?: Record<string, unknown> | null }>) => {
+      const isDemo = userId === 'demo-user-id' || sectionId === 'demo-section';
+      if (isDemo) return;
+
       if (!userId) throw new Error('Not authenticated');
       if (!sectionId) throw new Error('Missing section context');
 
+      const nowIso = new Date().toISOString();
       const rows: AttendanceUpsertRow[] = [];
       const itemsNeedingCode = items.filter(i => !i.subjectId && i.code).map(i => i as { code: string; present: number; absent: number; od?: number; makeup?: number; insights?: Record<string, unknown> | null });
 
@@ -183,13 +215,31 @@ export function useBulkUpsertAttendance() {
 
         itemsNeedingCode.forEach(i => {
           const sid = codeToId.get(i.code) ?? null;
-          if (sid) rows.push({ user_id: userId, subject_id: sid, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0, ...(i.insights != null ? { insights: i.insights as unknown as Json } : {}) });
+          if (sid) rows.push({
+            user_id: userId,
+            subject_id: sid,
+            present: i.present,
+            absent: i.absent,
+            od: i.od ?? 0,
+            makeup: i.makeup ?? 0,
+            updated_at: nowIso,
+            ...(i.insights != null ? { insights: i.insights as unknown as Json } : {})
+          });
         });
       }
 
       items.forEach(i => {
         if (!i.subjectId) return;
-        rows.push({ user_id: userId, subject_id: i.subjectId, present: i.present, absent: i.absent, od: i.od ?? 0, makeup: i.makeup ?? 0, ...(i.insights != null ? { insights: i.insights as unknown as Json } : {}) });
+        rows.push({
+          user_id: userId,
+          subject_id: i.subjectId,
+          present: i.present,
+          absent: i.absent,
+          od: i.od ?? 0,
+          makeup: i.makeup ?? 0,
+          updated_at: nowIso,
+          ...(i.insights != null ? { insights: i.insights as unknown as Json } : {})
+        });
       });
 
       if (rows.length === 0) throw new Error('No matching subjects found for import');
