@@ -24,6 +24,7 @@ export default defineConfig([
       'react-refresh/only-export-components': 'warn',
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/incompatible-library': 'off',
     },
   },
 ])

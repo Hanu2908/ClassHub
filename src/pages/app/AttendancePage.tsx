@@ -220,6 +220,7 @@ export default function AttendancePage() {
   const { data: attendance, isLoading } = useAttendance();
   const subjects = useMemo(() => attendance?.subjects ?? [], [attendance?.subjects]);
   const overall = attendance?.overall ?? 0;
+  const [now] = useState(() => Date.now());
   const [scheduleOverrides, setScheduleOverrides] = useState<Record<string, number>>({
     Mon: 5, Tue: 5, Wed: 5, Thu: 6, Fri: 5, Sat: 5
   });
@@ -609,6 +610,26 @@ export default function AttendancePage() {
     return list;
   }, [subjects, searchQuery, filterType, sortOrder]);
 
+  const lastUpdated = attendance?.lastUpdated;
+  const syncFreshness = useMemo(() => {
+    if (!lastUpdated) return null;
+    const diffMs = now - new Date(lastUpdated).getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const isStale = diffDays > 5;
+    let label = 'Synced just now';
+    if (diffHours >= 1 && diffHours < 24) label = `Synced ${diffHours}h ago`;
+    else if (diffDays >= 1 && diffDays <= 5) label = `Synced ${diffDays}d ago`;
+    else if (diffDays > 5) label = `⚠️ Stale (${diffDays}d ago)`;
+
+    return {
+      label,
+      bg: isStale ? 'rgba(248, 113, 113, 0.15)' : 'rgba(52, 211, 153, 0.15)',
+      color: isStale ? 'var(--status-critical)' : 'var(--status-safe)',
+      border: isStale ? '1px solid rgba(248, 113, 113, 0.3)' : '1px solid rgba(52, 211, 153, 0.3)',
+    };
+  }, [lastUpdated, now]);
+
   if (isAuthLoading && !authUser) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
@@ -648,18 +669,22 @@ export default function AttendancePage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              gap: 16,
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               padding: '12px 16px',
-              gap: 12,
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: 'var(--accent-primary-glow)',
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: 'rgba(74, 158, 255, 0.12)',
                   border: '1px solid rgba(74, 158, 255, 0.25)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
                 }}>
                   <RefreshCw size={16} color="var(--accent-primary)" />
                 </div>
@@ -668,34 +693,17 @@ export default function AttendancePage() {
                     <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13.5px' }}>
                       ERP Attendance Sync
                     </span>
-                    {attendance?.lastUpdated ? (
+                    {syncFreshness ? (
                       <span style={{
                         fontSize: '11px',
                         fontWeight: 600,
                         padding: '1px 6px',
                         borderRadius: 4,
-                        background: (() => {
-                          const diffDays = Math.floor((Date.now() - new Date(attendance.lastUpdated).getTime()) / (1000 * 60 * 60 * 24));
-                          return diffDays > 5 ? 'rgba(248, 113, 113, 0.15)' : 'rgba(52, 211, 153, 0.15)';
-                        })(),
-                        color: (() => {
-                          const diffDays = Math.floor((Date.now() - new Date(attendance.lastUpdated).getTime()) / (1000 * 60 * 60 * 24));
-                          return diffDays > 5 ? 'var(--status-critical)' : 'var(--status-safe)';
-                        })(),
-                        border: (() => {
-                          const diffDays = Math.floor((Date.now() - new Date(attendance.lastUpdated).getTime()) / (1000 * 60 * 60 * 24));
-                          return diffDays > 5 ? '1px solid rgba(248, 113, 113, 0.3)' : '1px solid rgba(52, 211, 153, 0.3)';
-                        })(),
+                        background: syncFreshness.bg,
+                        color: syncFreshness.color,
+                        border: syncFreshness.border,
                       }}>
-                        {(() => {
-                          const diffMs = Date.now() - new Date(attendance.lastUpdated).getTime();
-                          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                          if (diffHours < 1) return 'Synced just now';
-                          if (diffHours < 24) return `Synced ${diffHours}h ago`;
-                          if (diffDays <= 5) return `Synced ${diffDays}d ago`;
-                          return `⚠️ Stale (${diffDays}d ago)`;
-                        })()}
+                        {syncFreshness.label}
                       </span>
                     ) : (
                       <span style={{

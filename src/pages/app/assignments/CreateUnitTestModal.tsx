@@ -97,7 +97,7 @@ export function CreateUnitTestModal({ open, onClose }: CreateUnitTestModalProps)
         description: description.trim() || undefined,
       });
       handleClose();
-    } catch (err: any) {
+    } catch {
       // Error handled by mutation
     }
   };

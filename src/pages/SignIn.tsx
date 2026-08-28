@@ -6,7 +6,7 @@ import { DotField } from '../components/ui/DotField';
 import { useAppStore, type AuthUser } from '../store/appStore';
 import { toast } from 'sonner';
 
-export const DEMO_AUTH_USER: AuthUser = {
+const DEMO_AUTH_USER: AuthUser = {
   id: 'demo-user-id',
   name: 'Demo Contributor',
   email: 'contributor@skit.ac.in',

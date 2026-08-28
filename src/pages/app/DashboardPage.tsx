@@ -158,6 +158,7 @@ export default function DashboardPage() {
   }, [assignments, announcements, polls]);
 
   const primaryDeadline = unifiedDeadlines[0] || null;
+  const [now] = useState(() => Date.now());
 
   // Session storage for dismissed critical announcements
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>(() => {
@@ -182,11 +183,11 @@ export default function DashboardPage() {
     return announcements.filter(
       (a) => a.priority === 'critical' && 
              a.expiresAt && 
-             new Date(a.expiresAt) > new Date() && 
+             new Date(a.expiresAt).getTime() > now && 
              !a.isAcknowledged &&
              !dismissedSet.has(a.id)
     );
-  }, [announcements, dismissedAnnouncements]);
+  }, [announcements, dismissedAnnouncements, now]);
 
   const handleDismissAnnouncement = (id: string) => {
     const updated = [...dismissedAnnouncements, id];
@@ -218,8 +219,6 @@ export default function DashboardPage() {
   const { data: exams = [] } = useExams();
 
   const upcomingExams = useMemo(() => {
-    /* eslint-disable-next-line react-hooks/purity */
-    const now = Date.now();
     return exams
       .filter(e => {
         const [year, month, day] = e.examDate.split('-').map(Number);
@@ -243,7 +242,7 @@ export default function DashboardPage() {
 
         return aStart - bStart;
       });
-  }, [exams]);
+  }, [exams, now]);
 
   const closestExam = upcomingExams[0] || null;
 
@@ -266,13 +265,11 @@ export default function DashboardPage() {
   const targetDeadlinePercent = useMemo(() => {
     if (shouldShowExam || !primaryDeadline) return 0;
     const dueDate = new Date(primaryDeadline.dueDate).getTime();
-    /* eslint-disable-next-line react-hooks/purity */
-    const now = Date.now();
     const diffMs = dueDate - now;
     const diffHours = diffMs / (1000 * 60 * 60);
     const horizonHours = 14 * 24;
     return Math.min(100, Math.max(0, Math.sqrt(diffHours / horizonHours) * 100));
-  }, [shouldShowExam, primaryDeadline]);
+  }, [shouldShowExam, primaryDeadline, now]);
 
   const [animatedDeadlinePercent, setAnimatedDeadlinePercent] = useState(0);
   const animatedDeadlinePercentRef = useRef(0);
@@ -312,7 +309,7 @@ export default function DashboardPage() {
   const lastUpdated = attendance?.lastUpdated;
   const freshness = useMemo(() => {
     if (!lastUpdated) return { label: 'Not synced', isStale: true, days: 999 };
-    const diffMs = Date.now() - new Date(lastUpdated).getTime();
+    const diffMs = now - new Date(lastUpdated).getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     
@@ -321,7 +318,7 @@ export default function DashboardPage() {
     if (diffDays <= 3) return { label: `Synced ${diffDays}d ago`, isStale: false, days: diffDays };
     if (diffDays <= 6) return { label: `Synced ${diffDays}d ago`, isStale: false, days: diffDays };
     return { label: `Stale (${diffDays}d ago)`, isStale: true, days: diffDays };
-  }, [lastUpdated]);
+  }, [lastUpdated, now]);
 
   // Global clipboard check on window focus / resume
   useEffect(() => {

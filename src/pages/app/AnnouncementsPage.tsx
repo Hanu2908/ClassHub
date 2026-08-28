@@ -166,8 +166,6 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
             draft.selectedSubjectId ||
             draft.deadlineDate
           );
-          const isStateEmpty = !title && !body && !selectedSubjectId && !deadlineDate;
-
           if (draft.title) setTitle(draft.title);
           if (draft.body) setBody(draft.body);
           if (draft.selectedSubjectId) setSelectedSubjectId(draft.selectedSubjectId);
@@ -176,7 +174,7 @@ function CreateAnnouncementSheet({ open, onClose, shareInboxId }: { open: boolea
           if (draft.hasDeadline) setHasDeadline(draft.hasDeadline);
           if (draft.deadlineDate) setDeadlineDate(draft.deadlineDate);
 
-          if (hasDraftContent && isStateEmpty) {
+          if (hasDraftContent) {
             toast.success('Announcement draft restored ✓');
           }
         } catch (e) {

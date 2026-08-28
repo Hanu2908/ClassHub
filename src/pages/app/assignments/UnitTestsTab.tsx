@@ -18,11 +18,11 @@ function getSubjectAcronym(name: string) {
   return words.map(w => w[0]).join('').toUpperCase().slice(0, 4);
 }
 
-function getDeadlineBadge(dueDate: string, isSubmitted: boolean) {
+function getDeadlineBadge(dueDate: string, isSubmitted: boolean, now: number) {
   if (isSubmitted) {
     return { cls: 'badge-safe', label: 'Submitted ✓' };
   }
-  const diff = new Date(dueDate).getTime() - Date.now();
+  const diff = new Date(dueDate).getTime() - now;
   const hours = diff / (1000 * 60 * 60);
   const days = hours / 24;
 
@@ -70,7 +70,7 @@ export function UnitTestsTab({
   const [editingLinkTest, setEditingLinkTest] = useState<UnitTest | null>(null);
   const [linkInput, setLinkInput] = useState<string>('');
 
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
 
   const handleSaveLink = async () => {
     if (!editingLinkTest) return;
@@ -155,7 +155,7 @@ export function UnitTestsTab({
         </div>
       ) : (
         filteredTests.map(t => {
-          const badge = getDeadlineBadge(t.dueDate, t.isSubmitted);
+          const badge = getDeadlineBadge(t.dueDate, t.isSubmitted, now);
           const isScoring = scoringTestId === t.id;
 
           return (
