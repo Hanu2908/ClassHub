@@ -2,9 +2,9 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Bell, Send,
-  XCircle, ChevronDown, ChevronUp, BarChart2, Megaphone, BookOpen,
+  XCircle, ChevronDown, ChevronUp, ChevronRight, BarChart2, Megaphone, BookOpen,
   CheckCircle2, ExternalLink, Copy, Share2, RefreshCw, Lock, Unlock, Eye, EyeOff, Loader2,
-  AlertTriangle, Trash2, UserCheck, UserX, Pencil, SlidersHorizontal
+  AlertTriangle, Trash2, UserCheck, SlidersHorizontal
 } from 'lucide-react';
 import { NavBar } from '../../components/NavBar';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -12,8 +12,8 @@ import { CRAttendanceRegisterModal } from '../../components/CRAttendanceRegister
 import { useAppStore, isExpired } from '../../store/appStore';
 import { toast } from 'sonner';
 import { useAssignments, useAssignmentSubmissions, useCRToggleSubmission } from '../../hooks/useAssignments';
-import { useSectionMembers, useSection, useSectionAttendance, useSectionCRs, usePromoteToCoCR, useDemoteCoCR, useTransferPrimaryCR, useResignAsCR, type SectionMember } from '../../hooks/useSectionMembers';
-import { useRemoveSectionMember, useUpdateSectionMember, useToggleEnrollment, useRegenerateInviteCode, useUpdateBatchConfig } from '../../hooks/useSectionAdmin';
+import { useSectionMembers, useSection, useSectionAttendance, useSectionCRs, usePromoteToCoCR, useDemoteCoCR, useTransferPrimaryCR, useResignAsCR } from '../../hooks/useSectionMembers';
+import { useToggleEnrollment, useRegenerateInviteCode, useUpdateBatchConfig } from '../../hooks/useSectionAdmin';
 import { useCreateAnnouncement } from '../../hooks/useAnnouncements';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
@@ -516,229 +516,14 @@ function SubmissionTracker() {
   );
 }
 
-function LocalAttendanceSkeleton() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {[1, 2, 3, 4].map(i => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'var(--bg-elevated)' }}>
-          <Skeleton circle width={32} height={32} style={{ flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <Skeleton width="50%" height={14} style={{ marginBottom: 4 }} />
-            <Skeleton width="30%" height={10} />
-          </div>
-          <Skeleton width={50} height={24} borderRadius={12} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Member Edit & Removal Modals ─────────────────────────────────────────────
-function EditMemberModal({
-  member,
-  open,
-  onClose,
-}: {
-  member: SectionMember | null;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const updateMember = useUpdateSectionMember();
-  const [roll, setRoll] = useState('');
-  const [batch, setBatch] = useState<'1' | '2'>('1');
-
-  useEffect(() => {
-    if (member) {
-      setRoll(member.classRoll ?? '');
-      setBatch((member.subBatch as '1' | '2') || '1');
-    }
-  }, [member]);
-
-  if (!member) return null;
-
-  const handleSave = async () => {
-    if (!roll.trim()) {
-      toast.error('Class Roll Number is required');
-      return;
-    }
-    await updateMember.mutateAsync({
-      targetUserId: member.id,
-      sectionRoll: roll.trim(),
-      subBatch: batch,
-    });
-    onClose();
-  };
-
-  return (
-    <BottomSheet open={open} onClose={onClose} title="Edit Student Details">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>
-        <div>
-          <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{member.name}</p>
-          <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>{member.email}</p>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label className="t-label" style={{ color: 'var(--text-secondary)' }}>Section Roll Number</label>
-          <input
-            type="text"
-            value={roll}
-            onChange={e => setRoll(e.target.value)}
-            placeholder="e.g. P-17"
-            style={{
-              padding: '10px 12px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)',
-              color: 'var(--text-primary)',
-              fontSize: 14,
-              outline: 'none',
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label className="t-label" style={{ color: 'var(--text-secondary)' }}>Assigned Sub-Batch</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <button
-              type="button"
-              onClick={() => setBatch('1')}
-              style={{
-                padding: '10px',
-                borderRadius: 'var(--radius-md)',
-                background: batch === '1' ? 'rgba(96, 165, 250, 0.15)' : 'var(--bg-elevated)',
-                border: batch === '1' ? '1.5px solid #60A5FA' : '1px solid var(--border-default)',
-                color: batch === '1' ? '#60A5FA' : 'var(--text-secondary)',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Batch 1 (B1)
-            </button>
-            <button
-              type="button"
-              onClick={() => setBatch('2')}
-              style={{
-                padding: '10px',
-                borderRadius: 'var(--radius-md)',
-                background: batch === '2' ? 'rgba(167, 139, 250, 0.15)' : 'var(--bg-elevated)',
-                border: batch === '2' ? '1.5px solid #A78BFA' : '1px solid var(--border-default)',
-                color: batch === '2' ? '#A78BFA' : 'var(--text-secondary)',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Batch 2 (B2)
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-          <button className="btn-secondary" onClick={onClose} style={{ flex: 1, minHeight: 44 }}>
-            Cancel
-          </button>
-          <button
-            className="btn-primary"
-            onClick={handleSave}
-            disabled={updateMember.isPending}
-            style={{ flex: 1, minHeight: 44 }}
-          >
-            {updateMember.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
-          </button>
-        </div>
-      </div>
-    </BottomSheet>
-  );
-}
-
-function RemoveMemberModal({
-  member,
-  open,
-  onClose,
-}: {
-  member: SectionMember | null;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const removeMember = useRemoveSectionMember();
-
-  if (!member) return null;
-
-  const handleConfirm = async () => {
-    await removeMember.mutateAsync(member.id);
-    onClose();
-  };
-
-  return (
-    <BottomSheet open={open} onClose={onClose} title="Remove Member from Section?">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 20 }}>
-        <div style={{
-          background: 'rgba(255, 68, 68, 0.05)',
-          border: '1.5px solid rgba(255, 68, 68, 0.2)',
-          borderRadius: 'var(--radius-md)',
-          padding: '12px 14px',
-          display: 'flex',
-          gap: 10,
-          alignItems: 'flex-start',
-        }}>
-          <AlertTriangle size={20} color="var(--status-critical)" style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <p className="t-subtitle" style={{ color: 'var(--status-critical)', marginBottom: 4 }}>
-              Detach {member.name}
-            </p>
-            <p className="t-caption" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-              This will immediately detach <strong>{member.name}</strong> ({member.classRoll ?? member.email}) from this section hub. Their section roll, sub-batch assignment, and section tags will be reset.
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-          <button className="btn-secondary" onClick={onClose} style={{ flex: 1, minHeight: 48 }}>
-            Cancel
-          </button>
-          <button
-            className="btn-primary"
-            onClick={handleConfirm}
-            disabled={removeMember.isPending}
-            style={{
-              flex: 1,
-              background: 'linear-gradient(180deg, #FF6B6B 0%, #E83E3C 100%)',
-              boxShadow: '0 4px 16px rgba(255,68,68,0.25)',
-              minHeight: 48,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            {removeMember.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserX size={16} />}
-            {removeMember.isPending ? 'Removing…' : 'Remove Student'}
-          </button>
-        </div>
-      </div>
-    </BottomSheet>
-  );
-}
-
-// ── 2. Class Attendance Overview ──────────────────────────────────────────────
-function ClassAttendance() {
+// ── 2. Section Roster Widget ──────────────────────────────────────────────
+function SectionRosterCard({ onOpenAttendance }: { onOpenAttendance: () => void }) {
+  const navigate = useNavigate();
   const { data: members = [] } = useSectionMembers();
   const { data: attendanceMap = {}, isLoading: isAttendanceLoading } = useSectionAttendance();
-  const [expanded, setExpanded] = useState(false);
-  const [headerHovered, setHeaderHovered] = useState(false);
-  const [headerActive, setHeaderActive] = useState(false);
-
-  // Stateful filtering and sorting
-  const [filter, setFilter] = useState<'all' | 'below_75' | 'above_75'>('all');
-  const [commuteFilter, setCommuteFilter] = useState<'all' | 'ds' | 'hostel'>('all');
-  const [batchFilter, setBatchFilter] = useState<'all' | '1' | '2'>('all');
-  const [sortBy, setSortBy] = useState<'roll' | 'attendance_asc' | 'attendance_desc'>('roll');
-
-  const [editingMember, setEditingMember] = useState<SectionMember | null>(null);
-  const [removingMember, setRemovingMember] = useState<SectionMember | null>(null);
 
   const studentMembers = useMemo(() => members.filter(m => m.role !== 'teacher'), [members]);
 
-  // Map each member with their attendance aggregate
   const membersWithAttendance = useMemo(() => {
     return studentMembers.map(m => {
       const att = attendanceMap[m.id];
@@ -750,544 +535,177 @@ function ClassAttendance() {
     });
   }, [studentMembers, attendanceMap]);
 
-  // Calculate section aggregates
+  // Section Attendance Average
   const validPercent = membersWithAttendance.filter(m => m.overallPercentage !== null);
   const sectionAvg = validPercent.length > 0
     ? validPercent.reduce((sum, m) => sum + m.overallPercentage!, 0) / validPercent.length
     : null;
 
+  // Critical at-risk (< 75%)
   const criticalCount = membersWithAttendance.filter(
     m => m.overallPercentage !== null && m.overallPercentage < 75
   ).length;
 
-  const safeCount = membersWithAttendance.filter(
-    m => m.overallPercentage !== null && m.overallPercentage >= 75
-  ).length;
-
+  // Demographics
   const dsCount = membersWithAttendance.filter(m => m.dayScholar === true).length;
   const hostelCount = membersWithAttendance.filter(m => m.dayScholar === false).length;
   const b1Count = membersWithAttendance.filter(m => m.subBatch === '1').length;
   const b2Count = membersWithAttendance.filter(m => m.subBatch === '2').length;
-
-  // Filter members
-  const filteredMembers = membersWithAttendance.filter(m => {
-    let matchesAttendance = true;
-    if (filter === 'below_75') {
-      matchesAttendance = m.overallPercentage !== null && m.overallPercentage < 75;
-    } else if (filter === 'above_75') {
-      matchesAttendance = m.overallPercentage !== null && m.overallPercentage >= 75;
-    }
-
-    let matchesCommute = true;
-    if (commuteFilter === 'ds') {
-      matchesCommute = m.dayScholar === true;
-    } else if (commuteFilter === 'hostel') {
-      matchesCommute = m.dayScholar === false;
-    }
-
-    let matchesBatch = true;
-    if (batchFilter === '1') {
-      matchesBatch = m.subBatch === '1';
-    } else if (batchFilter === '2') {
-      matchesBatch = m.subBatch === '2';
-    }
-
-    return matchesAttendance && matchesCommute && matchesBatch;
-  });
-
-  // Sort members
-  const getRollNumber = (roll: string | null | undefined) => {
-    if (!roll) return 999;
-    const cleaned = roll.replace(/[^0-9]/g, '');
-    const num = parseInt(cleaned, 10);
-    return isNaN(num) ? 999 : num;
-  };
-
-  const sortedMembers = [...filteredMembers].sort((a, b) => {
-    if (sortBy === 'attendance_asc') {
-      if (a.overallPercentage === null) return 1;
-      if (b.overallPercentage === null) return -1;
-      return a.overallPercentage - b.overallPercentage;
-    }
-    if (sortBy === 'attendance_desc') {
-      if (a.overallPercentage === null) return 1;
-      if (b.overallPercentage === null) return -1;
-      return b.overallPercentage - a.overallPercentage;
-    }
-    // Default: Roll sort
-    const rollA = getRollNumber(a.classRoll);
-    const rollB = getRollNumber(b.classRoll);
-    return rollA - rollB;
-  });
-
-  const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: sortedMembers.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 54,
-    overscan: 5,
-  });
+  const unassignedCount = membersWithAttendance.filter(m => !m.subBatch).length;
+  const missingRollCount = membersWithAttendance.filter(m => !m.classRoll).length;
 
   return (
-    <>
-      <div className="card" style={{ padding: 0 }}>
-        <div 
-          onClick={() => setExpanded(e => !e)}
-          onMouseEnter={() => setHeaderHovered(true)}
-          onMouseLeave={() => { setHeaderHovered(false); setHeaderActive(false); }}
-          onTouchStart={() => setHeaderActive(true)}
-          onTouchEnd={() => setHeaderActive(false)}
-          onMouseDown={() => setHeaderActive(true)}
-          onMouseUp={() => setHeaderActive(false)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            padding: '14px 16px',
-            borderRadius: 'var(--radius-lg)',
-            transition: 'background var(--transition-fast)',
-            userSelect: 'none',
-            WebkitTapHighlightColor: 'transparent',
-            background: headerActive 
-              ? 'rgba(255, 255, 255, 0.08)' 
-              : (headerHovered ? 'rgba(255, 255, 255, 0.04)' : 'transparent')
-          }}
-        >
-          <SectionHead icon={<Users size={16} color="var(--accent-primary)" />} title="Section Members" count={members.length} />
-          {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+    <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 10,
+            background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Users size={16} color="var(--accent-primary)" />
+          </div>
+          <div>
+            <h3 className="t-card-title" style={{ color: 'var(--text-primary)', margin: 0, fontSize: '15px', fontWeight: 700 }}>
+              Section Roster
+            </h3>
+            <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>
+              {studentMembers.length} enrolled students
+            </p>
+          </div>
         </div>
 
-        {expanded ? (
-          <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)' }}>
-            {/* Executive Summary Strip */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
-              padding: '10px 14px',
-              marginBottom: 14,
-              gap: 12
-            }}>
-              <div style={{ flex: 1 }}>
-                <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>Section Average</p>
-                <p className="t-subtitle" style={{ color: sectionAvg !== null ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 600 }}>
-                  {sectionAvg !== null ? `${sectionAvg.toFixed(1)}%` : '—'}
-                </p>
-              </div>
-              <div style={{ width: 1, background: 'var(--border-default)' }} />
-              <div style={{ flex: 1 }}>
-                <p className="t-label" style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>At Debarment Risk</p>
-                <p className="t-subtitle" style={{ color: criticalCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)', fontWeight: 600 }}>
-                  {criticalCount} {criticalCount === 1 ? 'student' : 'students'}
-                </p>
-              </div>
-            </div>
-
-            {/* Interactive Controls & Filters */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-              marginBottom: 12,
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 10,
-                flexWrap: 'wrap'
-              }}>
-                {/* Filter Pills */}
-                <div className="carousel" style={{ display: 'flex', gap: 6, margin: 0, paddingBottom: 0 }}>
-                  <button
-                    onClick={() => setFilter('all')}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-pill)',
-                      border: filter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                      background: filter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
-                      color: filter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                  >
-                    All ({members.length})
-                  </button>
-                  <button
-                    onClick={() => setFilter('below_75')}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-pill)',
-                      border: filter === 'below_75' ? '1px solid var(--status-critical)' : '1px solid var(--border-default)',
-                      background: filter === 'below_75' ? 'rgba(248, 113, 113, 0.15)' : 'transparent',
-                      color: filter === 'below_75' ? 'var(--status-critical)' : 'var(--text-secondary)',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                  >
-                    Below 75% ({criticalCount})
-                  </button>
-                  <button
-                    onClick={() => setFilter('above_75')}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-pill)',
-                      border: filter === 'above_75' ? '1px solid var(--status-safe)' : '1px solid var(--border-default)',
-                      background: filter === 'above_75' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
-                      color: filter === 'above_75' ? 'var(--status-safe)' : 'var(--text-secondary)',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                  >
-                    75%+ ({safeCount})
-                  </button>
-                </div>
-
-                {/* Sort Picker */}
-                <select
-                  value={sortBy}
-                  onChange={e => setSortBy(e.target.value as 'roll' | 'attendance_asc' | 'attendance_desc')}
-                  style={{
-                    padding: '6px 10px',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: 'var(--radius-sm)',
-                    color: 'var(--text-primary)',
-                    fontSize: 12,
-                    outline: 'none',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                >
-                  <option value="roll">Sort: Roll No</option>
-                  <option value="attendance_asc">Sort: Low % First</option>
-                  <option value="attendance_desc">Sort: High % First</option>
-                </select>
-              </div>
-
-              {/* Sub-Batch and Commuter Filter Pills */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => setBatchFilter('all')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: batchFilter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                    background: batchFilter === 'all' ? 'var(--accent-primary-glow)' : 'transparent',
-                    color: batchFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  All Batches
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBatchFilter('1')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: batchFilter === '1' ? '1px solid #60A5FA' : '1px solid var(--border-default)',
-                    background: batchFilter === '1' ? 'rgba(96, 165, 250, 0.15)' : 'transparent',
-                    color: batchFilter === '1' ? '#60A5FA' : 'var(--text-secondary)',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Batch 1 ({b1Count})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBatchFilter('2')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: batchFilter === '2' ? '1px solid #A78BFA' : '1px solid var(--border-default)',
-                    background: batchFilter === '2' ? 'rgba(167, 139, 250, 0.15)' : 'transparent',
-                    color: batchFilter === '2' ? '#A78BFA' : 'var(--text-secondary)',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Batch 2 ({b2Count})
-                </button>
-
-                <div style={{ width: 1, height: 20, background: 'var(--border-default)', alignSelf: 'center', margin: '0 2px' }} />
-
-                <button
-                  type="button"
-                  onClick={() => setCommuteFilter('all')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: commuteFilter === 'all' ? '1px solid var(--border-active)' : '1px solid var(--border-default)',
-                    background: 'transparent',
-                    color: commuteFilter === 'all' ? 'var(--text-primary)' : 'var(--text-muted)',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                  }}
-                >
-                  All Status
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCommuteFilter('ds')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: commuteFilter === 'ds' ? '1px solid #60A5FA' : '1px solid var(--border-default)',
-                    background: commuteFilter === 'ds' ? 'rgba(96, 165, 250, 0.15)' : 'transparent',
-                    color: commuteFilter === 'ds' ? '#60A5FA' : 'var(--text-secondary)',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  🚌 DS ({dsCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCommuteFilter('hostel')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    border: commuteFilter === 'hostel' ? '1px solid #a78bfa' : '1px solid var(--border-default)',
-                    background: commuteFilter === 'hostel' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
-                    color: commuteFilter === 'hostel' ? '#a78bfa' : 'var(--text-secondary)',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  🏠 Hostel ({hostelCount})
-                </button>
-              </div>
-            </div>
-
-            {/* List */}
-            {isAttendanceLoading ? (
-              <LocalAttendanceSkeleton />
-            ) : sortedMembers.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
-                <p className="t-body" style={{ color: 'var(--text-secondary)' }}>No members match the selected filters.</p>
-              </div>
-            ) : (
-              <div
-                ref={parentRef}
-                style={{
-                  maxHeight: 320,
-                  overflowY: 'auto',
-                  position: 'relative',
-                  width: '100%',
-                }}
-              >
-                <div
-                  style={{
-                    height: `${virtualizer.getTotalSize()}px`,
-                    width: '100%',
-                    position: 'relative',
-                  }}
-                >
-                  {virtualizer.getVirtualItems().map((virtualItem) => {
-                    const st = sortedMembers[virtualItem.index];
-                    if (!st) return null;
-                    const pct = st.overallPercentage;
-                    const isCR = st.role === 'cr';
-
-                    return (
-                      <div
-                        key={st.id}
-                        ref={virtualizer.measureElement}
-                        data-index={virtualItem.index}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          transform: `translateY(${virtualItem.start}px)`,
-                          paddingBottom: '8px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            padding: '10px 12px',
-                            borderRadius: 10,
-                            background: 'var(--bg-elevated)',
-                            border: '1px solid var(--border-default)',
-                            transition: 'all 0.2s',
-                            width: '100%',
-                          }}
-                        >
-                          <div style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: '50%',
-                            background: 'var(--bg-base)',
-                            border: '1px solid var(--border-default)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}>
-                            <span className="t-badge" style={{ color: 'var(--text-muted)' }}>{st.classRoll ?? '—'}</span>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>{st.name}</p>
-                              {st.subBatch ? (
-                                <span style={{
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  padding: '1px 5px',
-                                  borderRadius: 4,
-                                  background: st.subBatch === '1' ? 'rgba(96, 165, 250, 0.15)' : 'rgba(167, 139, 250, 0.15)',
-                                  color: st.subBatch === '1' ? '#60A5FA' : '#A78BFA',
-                                  border: st.subBatch === '1' ? '1px solid rgba(96, 165, 250, 0.3)' : '1px solid rgba(167, 139, 250, 0.3)',
-                                }}>
-                                  B{st.subBatch}
-                                </span>
-                              ) : null}
-                              <span style={{
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                padding: '1px 5px',
-                                borderRadius: 4,
-                                letterSpacing: '0.02em',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 2,
-                                background: st.dayScholar ? 'rgba(96, 165, 250, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                                color: st.dayScholar ? '#60A5FA' : '#a78bfa',
-                                border: st.dayScholar ? '1px solid rgba(96, 165, 250, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)',
-                                userSelect: 'none',
-                              }}>
-                                {st.dayScholar ? 'DS 🚌' : 'Hostel 🏠'}
-                              </span>
-                            </div>
-                            <p className="t-mono-sm" style={{ color: 'var(--text-muted)', marginTop: 2 }}>{st.universityRoll ?? st.email}</p>
-                          </div>
-
-                          {pct === null ? (
-                            <span style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              padding: '4px 8px',
-                              borderRadius: 'var(--radius-pill)',
-                              color: 'var(--text-secondary)',
-                              background: 'var(--border-default)',
-                              border: '1px solid var(--border-default)',
-                              userSelect: 'none',
-                            }}>
-                              N/A
-                            </span>
-                          ) : pct < 75 ? (
-                            <span style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              padding: '4px 8px',
-                              borderRadius: 'var(--radius-pill)',
-                              color: 'var(--status-critical)',
-                              background: 'var(--status-critical-bg)',
-                              border: '1px solid rgba(248, 113, 113, 0.15)',
-                              boxShadow: 'var(--shadow-glow-red)',
-                              userSelect: 'none',
-                            }}>
-                              {pct.toFixed(1)}%
-                            </span>
-                          ) : (
-                            <span style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              padding: '4px 8px',
-                              borderRadius: 'var(--radius-pill)',
-                              color: 'var(--status-safe)',
-                              background: 'var(--status-safe-bg)',
-                              border: '1px solid rgba(52, 211, 153, 0.15)',
-                              userSelect: 'none',
-                            }}>
-                              {pct.toFixed(1)}%
-                            </span>
-                          )}
-
-                          {/* Member actions for CR (non-CR students only) */}
-                          {!isCR ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
-                              <button
-                                type="button"
-                                onClick={() => setEditingMember(st)}
-                                style={{
-                                  background: 'rgba(255, 255, 255, 0.04)',
-                                  border: '1px solid var(--border-default)',
-                                  borderRadius: 'var(--radius-sm)',
-                                  cursor: 'pointer',
-                                  color: 'var(--text-secondary)',
-                                  padding: '6px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                                title="Edit Roll & Batch"
-                              >
-                                <Pencil size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRemovingMember(st)}
-                                style={{
-                                  background: 'rgba(255, 68, 68, 0.06)',
-                                  border: '1px solid rgba(255, 68, 68, 0.2)',
-                                  borderRadius: 'var(--radius-sm)',
-                                  cursor: 'pointer',
-                                  color: 'var(--status-critical)',
-                                  padding: '6px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                                title="Remove Student from Hub"
-                              >
-                                <UserX size={13} />
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
+        <button
+          id="manage-roster-top-btn"
+          onClick={() => navigate('/app/members')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '6px 12px',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-pill)',
+            color: 'var(--accent-primary)',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all var(--transition-fast)'
+          }}
+        >
+          <span>Manage</span>
+          <ChevronRight size={13} />
+        </button>
       </div>
 
-      <EditMemberModal
-        member={editingMember}
-        open={Boolean(editingMember)}
-        onClose={() => setEditingMember(null)}
-      />
-      <RemoveMemberModal
-        member={removingMember}
-        open={Boolean(removingMember)}
-        onClose={() => setRemovingMember(null)}
-      />
-    </>
+      {/* Vitals Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 10,
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        padding: '12px 14px',
+      }}>
+        <div>
+          <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>Class Average</p>
+          <p className="t-title" style={{ color: 'var(--text-primary)', margin: '2px 0 0', fontWeight: 800 }}>
+            {isAttendanceLoading ? '…' : sectionAvg !== null ? `${sectionAvg.toFixed(1)}%` : '—'}
+          </p>
+        </div>
+        <div>
+          <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>Debarment Risk</p>
+          <p className="t-title" style={{ color: criticalCount > 0 ? 'var(--status-critical)' : 'var(--status-safe)', margin: '2px 0 0', fontWeight: 800 }}>
+            {isAttendanceLoading ? '…' : `${criticalCount} below 75%`}
+          </p>
+        </div>
+      </div>
+
+      {/* Demographics & Roster Health */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Practical Batches</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+            G1: {b1Count} • G2: {b2Count}{unassignedCount > 0 ? ` (${unassignedCount} unassigned)` : ''}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Transit Breakdown</span>
+          <span style={{ color: 'var(--text-primary)' }}>
+            🚌 {dsCount} Day Scholars • 🏠 {hostelCount} Hostel
+          </span>
+        </div>
+        {missingRollCount > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginTop: 4,
+            padding: '6px 10px',
+            background: 'rgba(251, 191, 36, 0.08)',
+            border: '1px solid rgba(251, 191, 36, 0.25)',
+            borderRadius: 'var(--radius-sm)',
+            color: '#FBBF24',
+            fontSize: '11.5px',
+          }}>
+            <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+            <span>{missingRollCount} {missingRollCount === 1 ? 'student is' : 'students are'} missing section roll number.</span>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Action Buttons */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 2 }}>
+        <button
+          id="roster-take-attendance-btn"
+          onClick={onOpenAttendance}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--accent-primary-glow)',
+            border: '1px solid rgba(74, 158, 255, 0.3)',
+            color: 'var(--accent-primary)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all var(--transition-fast)'
+          }}
+        >
+          <UserCheck size={15} />
+          <span>Take Attendance</span>
+        </button>
+        <button
+          id="roster-full-dir-btn"
+          onClick={() => navigate('/app/members')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            color: 'var(--text-primary)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all var(--transition-fast)'
+          }}
+        >
+          <Users size={15} />
+          <span>Open Roster</span>
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -2789,7 +2207,7 @@ export default function CRCommandPage() {
         </section>
 
         <SubmissionTracker />
-        <ClassAttendance />
+        <SectionRosterCard onOpenAttendance={() => setShowAttendanceSheet(true)} />
 
         <ManageCRs />
         <ManageTeachers />

@@ -633,20 +633,112 @@ export default function AttendancePage() {
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <UserCheck size={18} color="var(--accent-primary)" />
-            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Attendance</h1>
+            <h1 className="t-page-title" style={{ color: 'var(--text-primary)', margin: 0 }}>Attendance</h1>
           </div>
         </div>
-        <button className="t-label" id="update-erp-btn" onClick={() => setErpOpen(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.3)', borderRadius: 'var(--radius-pill)', color: 'var(--accent-primary)', cursor: 'pointer' }}>
-          <RefreshCw size={13} /> Update from ERP
-        </button>
       </header>
 
-      <main className="page-content" style={{ gap: 20 }}>
+      <main className="page-content" style={{ gap: 16 }}>
         {isLoading ? (
           <AttendanceSkeleton />
         ) : (
           <>
+            {/* Official ERP Sync & Freshness Hero Action Bar */}
+            <div className="card" style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              gap: 12,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'var(--accent-primary-glow)',
+                  border: '1px solid rgba(74, 158, 255, 0.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                }}>
+                  <RefreshCw size={16} color="var(--accent-primary)" />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13.5px' }}>
+                      ERP Attendance Sync
+                    </span>
+                    {attendance?.lastUpdated ? (
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        background: (() => {
+                          const diffDays = Math.floor((Date.now() - new Date(attendance.lastUpdated).getTime()) / (1000 * 60 * 60 * 24));
+                          return diffDays > 5 ? 'rgba(248, 113, 113, 0.15)' : 'rgba(52, 211, 153, 0.15)';
+                        })(),
+                        color: (() => {
+                          const diffDays = Math.floor((Date.now() - new Date(attendance.lastUpdated).getTime()) / (1000 * 60 * 60 * 24));
+                          return diffDays > 5 ? 'var(--status-critical)' : 'var(--status-safe)';
+                        })(),
+                        border: (() => {
+                          const diffDays = Math.floor((Date.now() - new Date(attendance.lastUpdated).getTime()) / (1000 * 60 * 60 * 24));
+                          return diffDays > 5 ? '1px solid rgba(248, 113, 113, 0.3)' : '1px solid rgba(52, 211, 153, 0.3)';
+                        })(),
+                      }}>
+                        {(() => {
+                          const diffMs = Date.now() - new Date(attendance.lastUpdated).getTime();
+                          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                          if (diffHours < 1) return 'Synced just now';
+                          if (diffHours < 24) return `Synced ${diffHours}h ago`;
+                          if (diffDays <= 5) return `Synced ${diffDays}d ago`;
+                          return `⚠️ Stale (${diffDays}d ago)`;
+                        })()}
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        background: 'rgba(248, 113, 113, 0.15)',
+                        color: 'var(--status-critical)',
+                        border: '1px solid rgba(248, 113, 113, 0.3)',
+                      }}>
+                        Not synced yet
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                id="update-erp-btn"
+                onClick={() => setErpOpen(true)}
+                className="t-button"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 14px',
+                  background: 'var(--accent-primary-glow)',
+                  border: '1px solid rgba(74,158,255,0.3)',
+                  borderRadius: 'var(--radius-pill)',
+                  color: 'var(--accent-primary)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '12.5px',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  transition: 'all var(--transition-fast)',
+                }}
+              >
+                <RefreshCw size={13} />
+                <span>Update from ERP</span>
+              </button>
+            </div>
             {/* Top Level Premium 4-Column Zenith Stats Grid */}
             <div className={`zenith-stats-grid ${tierStyleClass}`}>
               {/* CELL 1: STANDING */}

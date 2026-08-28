@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, AlertTriangle, ArrowUpDown, ClipboardList, Loader2, ChevronDown, Check, MoreVertical, Pencil, Archive, ArchiveRestore } from 'lucide-react';
+import { ArrowLeft, Plus, CheckCircle2, Wand2, Trash2, FileText, PartyPopper, ArrowUpDown, ClipboardList, Loader2, ChevronDown, Check, MoreVertical, Pencil, Archive, ArchiveRestore } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
@@ -21,6 +21,10 @@ import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../.
 import { parseSharedText } from '../../lib/utils/smartTextParser';
 import { generateGradient } from '../../lib/utils';
 import { logEvent } from '../../lib/analytics';
+
+import { UnitTestsTab } from './assignments/UnitTestsTab';
+import { CreateUnitTestModal } from './assignments/CreateUnitTestModal';
+import { useUnitTests } from '../../hooks/useUnitTests';
 
 type Filter = 'all' | 'pending' | 'submitted' | 'overdue' | 'archived';
 
@@ -860,17 +864,31 @@ export default function AssignmentsPage() {
   const authUser = useAppStore(s => s.authUser);
   const classRoll = authUser?.sectionRoll ?? '17';
   const { data: assignments = [], isLoading } = useAssignments({ limit: 100 });
+  const { data: unitTests = [] } = useUnitTests();
   const deleteAssignmentMutation = useDeleteAssignment();
   const toggleArchiveMutation = useToggleArchiveAssignment();
   const submitMutation = useSubmitAssignment();
   const unsubmitMutation = useUnsubmitAssignment();
 
-
+  const [courseworkTab, setCourseworkTab] = useState<'assignments' | 'unit_tests'>('assignments');
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'due' | 'created'>('due');
+
+  // Unit Tests Filter State
+  const [utFilter, setUtFilter] = useState<'active' | 'past' | 'all'>('active');
+  const [utSubject, setUtSubject] = useState<string>('all');
+  const [utSortBy, setUtSortBy] = useState<'due' | 'created'>('due');
+
+  const utUniqueSubjects = useMemo(() => {
+    const set = new Set<string>();
+    unitTests.forEach(t => set.add(t.subject));
+    return Array.from(set);
+  }, [unitTests]);
+
   const [openingSet, setOpeningSet] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(() => Boolean(location.state?.openCreate));
+  const [createUnitTestOpen, setCreateUnitTestOpen] = useState(false);
 
   useEffect(() => {
     if (location.state?.openCreate) {
@@ -1020,85 +1038,97 @@ export default function AssignmentsPage() {
 
   return (
     <div className="page-shell">
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border-default)', padding: '16px 0 12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '0 20px' }}>
-          <button id="assign-back-btn" onClick={() => navigate('/app/home')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }} aria-label="Back">
-            <ArrowLeft size={20} />
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ClipboardList size={18} color="var(--accent-primary)" />
-            <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Assignments</h1>
+      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(13,15,20,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border-default)', padding: '16px 0 10px' }}>
+        {/* Top App Title & CR Create Action */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button id="assign-back-btn" onClick={() => navigate('/app/home')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex', marginLeft: -4 }} aria-label="Back">
+              <ArrowLeft size={20} />
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ClipboardList size={18} color="var(--accent-primary)" />
+              <h1 className="t-page-title" style={{ color: 'var(--text-primary)' }}>Coursework</h1>
+            </div>
           </div>
+
+          {role === 'cr' && (
+            <button
+              onClick={() => courseworkTab === 'assignments' ? setCreateOpen(true) : setCreateUnitTestOpen(true)}
+              className="btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-pill)',
+              }}
+            >
+              <Plus size={14} />
+              <span>{courseworkTab === 'assignments' ? 'New Assignment' : 'New Unit Test'}</span>
+            </button>
+          )}
+        </div>
+
+        {/* Coursework Hub Segmented Switch */}
+        <div style={{ padding: '0 20px 10px', display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => setCourseworkTab('assignments')}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-pill)',
+              border: courseworkTab === 'assignments' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+              background: courseworkTab === 'assignments' ? 'var(--accent-primary-glow)' : 'rgba(255, 255, 255, 0.03)',
+              color: courseworkTab === 'assignments' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>Assignments</span>
+            <span style={{ fontSize: '11px', opacity: 0.7 }}>({assignments.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCourseworkTab('unit_tests')}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-pill)',
+              border: courseworkTab === 'unit_tests' ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
+              background: courseworkTab === 'unit_tests' ? 'var(--accent-primary-glow)' : 'rgba(255, 255, 255, 0.03)',
+              color: courseworkTab === 'unit_tests' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>Unit Tests</span>
+            <span style={{ fontSize: '11px', opacity: 0.7 }}>({unitTests.length})</span>
+          </button>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0', gap: 12 }}>
-          {/* Status Dropdown Filter */}
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button
-                className="filter-tab"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-pill)',
-                  padding: '0 14px',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  height: '38px',
-                  userSelect: 'none',
-                }}
-              >
-                <span style={{ textTransform: 'capitalize' }}>
-                  {filter === 'all' ? 'All' : filter}
-                </span>
-                <ChevronDown size={14} style={{ opacity: 0.6 }} />
-              </button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                align="start"
-                sideOffset={6}
-                className="dropdown-content animate-slide-up"
-                style={{ zIndex: 10000, minWidth: '180px' }}
-              >
-                {(['all', 'pending', 'submitted', 'overdue', 'archived'] as Filter[]).map(f => {
-                  const isSelected = filter === f;
-                  return (
-                    <DropdownMenu.Item
-                      key={f}
-                      onClick={() => handleFilterChange(f)}
-                      className="dropdown-item"
-                      style={{
-                        color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                        background: isSelected ? 'rgba(74, 158, 255, 0.08)' : undefined,
-                        fontWeight: isSelected ? 600 : 400,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 8,
-                        textTransform: 'capitalize',
-                      }}
-                    >
-                      <span>{f === 'all' ? 'All Assignments' : f}</span>
-                      {isSelected && <Check size={14} />}
-                    </DropdownMenu.Item>
-                  );
-                })}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
-
-          {/* Right Filters Container */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Subject Dropdown Selector */}
+        {/* Assignment Specific Filter Sub-bar */}
+        {courseworkTab === 'assignments' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0', gap: 12 }}>
+            {/* Status Dropdown Filter */}
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button
+                  className="filter-tab"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1112,54 +1142,259 @@ export default function AssignmentsPage() {
                     fontWeight: 500,
                     cursor: 'pointer',
                     height: '38px',
-                    maxWidth: '160px',
                     userSelect: 'none',
                   }}
                 >
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selectedSubject === 'all' ? 'All Subjects' : getSubjectAcronym(selectedSubject)}
+                  <span style={{ textTransform: 'capitalize' }}>
+                    {filter === 'all' ? 'All' : filter}
                   </span>
                   <ChevronDown size={14} style={{ opacity: 0.6 }} />
                 </button>
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content
-                  align="end"
+                  align="start"
                   sideOffset={6}
-                  className="dropdown-content animate-slide-up no-scrollbar"
-                  style={{ zIndex: 10000, minWidth: '220px', maxWidth: '300px', maxHeight: '300px', overflowY: 'auto' }}
+                  className="dropdown-content animate-slide-up"
+                  style={{ zIndex: 10000, minWidth: '180px' }}
                 >
-                  {/* All Subjects Item */}
-                  <DropdownMenu.Item
-                    onClick={() => setSelectedSubject('all')}
-                    className="dropdown-item"
-                    style={{
-                      color: selectedSubject === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                      background: selectedSubject === 'all' ? 'rgba(74, 158, 255, 0.08)' : undefined,
-                      fontWeight: selectedSubject === 'all' ? 600 : 400,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                    }}
-                  >
-                    <span>All Subjects</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '12px' }}>
-                        {statusFiltered.length}
-                      </span>
-                      {selectedSubject === 'all' && <Check size={14} />}
-                    </div>
-                  </DropdownMenu.Item>
-
-                  {/* List of Subjects */}
-                  {uniqueSubjects.map(subj => {
-                    const isSelected = selectedSubject === subj;
-                    const count = subjectCounts[subj];
+                  {(['all', 'pending', 'submitted', 'overdue', 'archived'] as Filter[]).map(f => {
+                    const isSelected = filter === f;
                     return (
                       <DropdownMenu.Item
-                        key={subj}
-                        onClick={() => setSelectedSubject(subj)}
+                        key={f}
+                        onClick={() => handleFilterChange(f)}
+                        className="dropdown-item"
+                        style={{
+                          color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          background: isSelected ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                          fontWeight: isSelected ? 600 : 400,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        <span>{f === 'all' ? 'All Assignments' : f}</span>
+                        {isSelected && <Check size={14} />}
+                      </DropdownMenu.Item>
+                    );
+                  })}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+
+            {/* Right Filters Container */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Subject Dropdown Selector */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '0 14px',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      height: '38px',
+                      maxWidth: '160px',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedSubject === 'all' ? 'All Subjects' : getSubjectAcronym(selectedSubject)}
+                    </span>
+                    <ChevronDown size={14} style={{ opacity: 0.6 }} />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    align="end"
+                    sideOffset={6}
+                    className="dropdown-content animate-slide-up no-scrollbar"
+                    style={{ zIndex: 10000, minWidth: '220px', maxWidth: '300px', maxHeight: '300px', overflowY: 'auto' }}
+                  >
+                    <DropdownMenu.Item
+                      onClick={() => setSelectedSubject('all')}
+                      className="dropdown-item"
+                      style={{
+                        color: selectedSubject === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        background: selectedSubject === 'all' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                        fontWeight: selectedSubject === 'all' ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
+                      <span>All Subjects</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '12px' }}>
+                          {statusFiltered.length}
+                        </span>
+                        {selectedSubject === 'all' && <Check size={14} />}
+                      </div>
+                    </DropdownMenu.Item>
+
+                    {uniqueSubjects.map(subj => {
+                      const isSelected = selectedSubject === subj;
+                      const count = subjectCounts[subj];
+                      return (
+                        <DropdownMenu.Item
+                          key={subj}
+                          onClick={() => setSelectedSubject(subj)}
+                          className="dropdown-item"
+                          style={{
+                            color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            background: isSelected ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                            fontWeight: isSelected ? 600 : 400,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 8,
+                          }}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                            {subj}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '12px' }}>
+                              {count}
+                            </span>
+                            {isSelected && <Check size={14} />}
+                          </div>
+                        </DropdownMenu.Item>
+                      );
+                    })}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+
+              {/* Sort Dropdown Selector */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '0 14px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-pill)',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      height: '38px',
+                      userSelect: 'none',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <ArrowUpDown size={14} color="var(--accent-primary)" />
+                    <span>Sort: {sortBy === 'due' ? 'Due' : 'Created'}</span>
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    align="end"
+                    sideOffset={6}
+                    className="dropdown-content animate-slide-up"
+                    style={{ zIndex: 10000, minWidth: '150px' }}
+                  >
+                    <DropdownMenu.Item
+                      onClick={() => setSortBy('due')}
+                      className="dropdown-item"
+                      style={{
+                        color: sortBy === 'due' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        background: sortBy === 'due' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                        fontWeight: sortBy === 'due' ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
+                      <span>Due Date</span>
+                      {sortBy === 'due' && <Check size={14} />}
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      onClick={() => setSortBy('created')}
+                      className="dropdown-item"
+                      style={{
+                        color: sortBy === 'created' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        background: sortBy === 'created' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                        fontWeight: sortBy === 'created' ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
+                      <span>Date Created</span>
+                      {sortBy === 'created' && <Check size={14} />}
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            </div>
+          </div>
+        )}
+
+        {/* Unit Tests Specific Filter Sub-bar in Header */}
+        {courseworkTab === 'unit_tests' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0', gap: 12 }}>
+            {/* Status Dropdown Filter */}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  className="filter-tab"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '0 14px',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    height: '38px',
+                    userSelect: 'none',
+                  }}
+                >
+                  <span style={{ textTransform: 'capitalize' }}>
+                    {utFilter === 'active' ? 'Active' : utFilter === 'past' ? 'Past & Submitted' : 'All'}
+                  </span>
+                  <ChevronDown size={14} style={{ opacity: 0.6 }} />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="start"
+                  sideOffset={6}
+                  className="dropdown-content animate-slide-up"
+                  style={{ zIndex: 10000, minWidth: '180px' }}
+                >
+                  {[
+                    { key: 'active', label: 'Active Tests' },
+                    { key: 'past', label: 'Past & Submitted' },
+                    { key: 'all', label: 'All Tests' },
+                  ].map(item => {
+                    const isSelected = utFilter === item.key;
+                    return (
+                      <DropdownMenu.Item
+                        key={item.key}
+                        onClick={() => setUtFilter(item.key as any)}
                         className="dropdown-item"
                         style={{
                           color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -1171,15 +1406,8 @@ export default function AssignmentsPage() {
                           gap: 8,
                         }}
                       >
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
-                          {subj}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                          <span className="t-mono-sm" style={{ opacity: 0.6, fontSize: '12px' }}>
-                            {count}
-                          </span>
-                          {isSelected && <Check size={14} />}
-                        </div>
+                        <span>{item.label}</span>
+                        {isSelected && <Check size={14} />}
                       </DropdownMenu.Item>
                     );
                   })}
@@ -1187,83 +1415,168 @@ export default function AssignmentsPage() {
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
 
-            {/* Sort Dropdown Selector */}
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger asChild>
-                <button
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '0 14px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: 'var(--radius-pill)',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    height: '38px',
-                    userSelect: 'none',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <ArrowUpDown size={14} color="var(--accent-primary)" />
-                  <span>Sort: {sortBy === 'due' ? 'Due' : 'Created'}</span>
-                </button>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                  align="end"
-                  sideOffset={6}
-                  className="dropdown-content animate-slide-up"
-                  style={{ zIndex: 10000, minWidth: '150px' }}
-                >
-                  <DropdownMenu.Item
-                    onClick={() => setSortBy('due')}
-                    className="dropdown-item"
+            {/* Right Filters Container */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Subject Dropdown Selector */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
                     style={{
-                      color: sortBy === 'due' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                      background: sortBy === 'due' ? 'rgba(74, 158, 255, 0.08)' : undefined,
-                      fontWeight: sortBy === 'due' ? 600 : 400,
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
                       gap: 8,
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '0 14px',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      height: '38px',
+                      maxWidth: '160px',
+                      userSelect: 'none',
                     }}
                   >
-                    <span>Due Date</span>
-                    {sortBy === 'due' && <Check size={14} />}
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item
-                    onClick={() => setSortBy('created')}
-                    className="dropdown-item"
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {utSubject === 'all' ? 'All Subjects' : getSubjectAcronym(utSubject)}
+                    </span>
+                    <ChevronDown size={14} style={{ opacity: 0.6 }} />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    align="end"
+                    sideOffset={6}
+                    className="dropdown-content animate-slide-up no-scrollbar"
+                    style={{ zIndex: 10000, minWidth: '220px', maxWidth: '300px', maxHeight: '300px', overflowY: 'auto' }}
+                  >
+                    <DropdownMenu.Item
+                      onClick={() => setUtSubject('all')}
+                      className="dropdown-item"
+                      style={{
+                        color: utSubject === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        background: utSubject === 'all' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                        fontWeight: utSubject === 'all' ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
+                      <span>All Subjects</span>
+                      {utSubject === 'all' && <Check size={14} />}
+                    </DropdownMenu.Item>
+
+                    {utUniqueSubjects.map((subj: string) => {
+                      const isSelected = utSubject === subj;
+                      return (
+                        <DropdownMenu.Item
+                          key={subj}
+                          onClick={() => setUtSubject(subj)}
+                          className="dropdown-item"
+                          style={{
+                            color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            background: isSelected ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                            fontWeight: isSelected ? 600 : 400,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 8,
+                          }}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                            {subj}
+                          </span>
+                          {isSelected && <Check size={14} />}
+                        </DropdownMenu.Item>
+                      );
+                    })}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+
+              {/* Sort Dropdown Selector */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
                     style={{
-                      color: sortBy === 'created' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                      background: sortBy === 'created' ? 'rgba(74, 158, 255, 0.08)' : undefined,
-                      fontWeight: sortBy === 'created' ? 600 : 400,
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 8,
+                      gap: 6,
+                      padding: '0 14px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-pill)',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      height: '38px',
+                      userSelect: 'none',
+                      whiteSpace: 'nowrap'
                     }}
                   >
-                    <span>Date Created</span>
-                    {sortBy === 'created' && <Check size={14} />}
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
+                    <ArrowUpDown size={14} color="var(--accent-primary)" />
+                    <span>Sort: {utSortBy === 'due' ? 'Due' : 'Created'}</span>
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    align="end"
+                    sideOffset={6}
+                    className="dropdown-content animate-slide-up"
+                    style={{ zIndex: 10000, minWidth: '150px' }}
+                  >
+                    <DropdownMenu.Item
+                      onClick={() => setUtSortBy('due')}
+                      className="dropdown-item"
+                      style={{
+                        color: utSortBy === 'due' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        background: utSortBy === 'due' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                        fontWeight: utSortBy === 'due' ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
+                      <span>Due Date</span>
+                      {utSortBy === 'due' && <Check size={14} />}
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      onClick={() => setUtSortBy('created')}
+                      className="dropdown-item"
+                      style={{
+                        color: utSortBy === 'created' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        background: utSortBy === 'created' ? 'rgba(74, 158, 255, 0.08)' : undefined,
+                        fontWeight: utSortBy === 'created' ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
+                      <span>Date Created</span>
+                      {utSortBy === 'created' && <Check size={14} />}
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       <main className="page-content">
-        {isLoading ? (
+        {courseworkTab === 'unit_tests' ? (
+          <UnitTestsTab filter={utFilter} selectedSubject={utSubject} sortBy={utSortBy} />
+        ) : isLoading ? (
           <AssignmentsSkeleton />
-        ) : sorted.length === 0
-          ? <EmptyState icon={<PartyPopper size={36} color="var(--text-muted)" />} title="All clear!" subtitle="No assignments in this category" />
-          : sorted.map(a => {
+        ) : sorted.length === 0 ? (
+          <EmptyState icon={<PartyPopper size={36} color="var(--text-muted)" />} title="All clear!" subtitle="No assignments in this category" />
+        ) : (
+          sorted.map(a => {
             const userSet = getUserSet(classRoll, a.sets ?? []);
             const isSubmitted = a.isSubmitted;
             
@@ -1299,204 +1612,221 @@ export default function AssignmentsPage() {
                 ref={isHighlighted ? highlightRef : null}
                 className="card"
                 style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
                   animation: 'fadeSlideUp 0.35s ease both',
                   outline: isHighlighted ? '2px solid var(--accent-primary)' : undefined,
                   outlineOffset: isHighlighted ? '2px' : undefined,
                   boxShadow: isHighlighted ? '0 0 0 4px rgba(74,158,255,0.15)' : undefined,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 12,
-                      background: generateGradient(a.subjectCode || a.subject),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)',
-                    }}
-                  >
-                    <span className="t-mono" style={{ color: '#fff', fontSize: 15, fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                      {getSubjectAcronym(a.subject)}
-                    </span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        {/* Subject is the primary heading */}
-                        <h2 className="t-card-title truncate" style={{ color: 'var(--text-primary)', marginBottom: 6 }} title={a.subject}>{a.subject}</h2>
-                        {/* Assignment title is secondary */}
-                        <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>{a.title}</p>
-                      </div>
-                      {role === 'cr' ? (
-                        <DropdownMenu.Root>
-                          <DropdownMenu.Trigger asChild>
-                            <button
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.04)',
-                                border: '1px solid var(--border-default)',
-                                borderRadius: 8,
-                                padding: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                                outline: 'none',
-                                color: 'var(--text-secondary)',
-                              }}
-                              aria-label="More actions"
-                              title="More actions"
-                            >
-                              <MoreVertical size={14} />
-                            </button>
-                          </DropdownMenu.Trigger>
-                          <DropdownMenu.Portal>
-                            <DropdownMenu.Content
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                minWidth: 150,
-                                backgroundColor: 'var(--bg-surface-elevated, #1e293b)',
-                                borderRadius: 8,
-                                padding: 4,
-                                boxShadow: '0px 10px 38px -10px rgba(22, 23, 24, 0.35), 0px 10px 20px -15px rgba(22, 23, 24, 0.2)',
-                                border: '1px solid var(--border-default, rgba(255, 255, 255, 0.1))',
-                                zIndex: 10000,
-                              }}
-                              sideOffset={5}
-                              align="end"
-                            >
-                              <DropdownMenu.Item
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedAssignment(a);
-                                  setEditOpen(true);
-                                }}
-                                style={{
-                                  fontSize: '13px',
-                                  color: 'var(--text-primary)',
-                                  borderRadius: 6,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 8,
-                                  padding: '8px 10px',
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                }}
-                              >
-                                <Pencil size={13} color="var(--accent-primary, #6366f1)" />
-                                <span>Edit</span>
-                              </DropdownMenu.Item>
-                              <DropdownMenu.Item
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await toggleArchiveMutation.mutateAsync({
-                                      assignmentId: a.id,
-                                      isArchived: !a.isArchived,
-                                    });
-                                    toast.success(a.isArchived ? 'Assignment restored' : 'Assignment archived');
-                                  } catch {
-                                    toast.error('Failed to update archive status');
-                                  }
-                                }}
-                                style={{
-                                  fontSize: '13px',
-                                  color: 'var(--text-primary)',
-                                  borderRadius: 6,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 8,
-                                  padding: '8px 10px',
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                }}
-                              >
-                                {a.isArchived ? <ArchiveRestore size={13} color="var(--accent-primary)" /> : <Archive size={13} color="var(--text-secondary)" />}
-                                <span>{a.isArchived ? 'Restore' : 'Archive'}</span>
-                              </DropdownMenu.Item>
-                              <DropdownMenu.Item
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (confirm('Are you sure you want to delete this assignment?')) {
-                                    try {
-                                      await deleteAssignmentMutation.mutateAsync(a.id);
-                                      toast.info('Assignment deleted');
-                                    } catch {
-                                      toast.error('Failed to delete');
-                                    }
-                                  }
-                                }}
-                                style={{
-                                  fontSize: '13px',
-                                  color: '#ef4444',
-                                  borderRadius: 6,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 8,
-                                  padding: '8px 10px',
-                                  cursor: 'pointer',
-                                  outline: 'none',
-                                }}
-                              >
-                                <Trash2 size={13} color="#ef4444" />
-                                <span>Delete</span>
-                              </DropdownMenu.Item>
-                            </DropdownMenu.Content>
-                          </DropdownMenu.Portal>
-                        </DropdownMenu.Root>
-                      ) : null}
-                    </div>
-                    <p className="t-caption" style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{a.subjectCode}</p>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      {a.isArchived && (
-                        <span className="badge" style={{
-                          background: 'rgba(148, 163, 184, 0.15)',
-                          color: '#94a3b8',
-                          border: '1px solid rgba(148, 163, 184, 0.3)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}>
-                          <Archive size={11} />
-                          Archived
-                        </span>
-                      )}
-                      <span className={`badge ${bdg}`}>{lbl}</span>
-                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)' }}>
-                        Due • {new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                {/* Decluttered Card Header: Subject, Title, Badges, CR Menu */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 10,
+                        background: generateGradient(a.subjectCode || a.subject),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.15)',
+                      }}
+                    >
+                      <span className="t-mono" style={{ color: '#fff', fontSize: 13, fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                        {getSubjectAcronym(a.subject)}
                       </span>
                     </div>
+                    <div style={{ minWidth: 0 }}>
+                      <h2 className="t-card-title truncate" style={{ color: 'var(--text-primary)', margin: 0, fontSize: '15px' }} title={a.subject}>
+                        {a.subject}
+                      </h2>
+                      <p className="t-body-medium truncate" style={{ color: 'var(--text-secondary)', margin: '2px 0 0 0', fontWeight: 500, fontSize: '13px' }}>
+                        {a.title}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    {a.isArchived && (
+                      <span className="badge" style={{
+                        background: 'rgba(148, 163, 184, 0.15)',
+                        color: '#94a3b8',
+                        border: '1px solid rgba(148, 163, 184, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: '11px',
+                      }}>
+                        <Archive size={11} />
+                        Archived
+                      </span>
+                    )}
+                    <span className={`badge ${bdg}`} style={{ fontSize: '11px' }}>{lbl}</span>
+                    <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                      Due • {new Date(a.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                    </span>
+
+                    {role === 'cr' ? (
+                      <DropdownMenu.Root>
+                        <DropdownMenu.Trigger asChild>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              border: '1px solid var(--border-default)',
+                              borderRadius: 8,
+                              padding: '5px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              outline: 'none',
+                              color: 'var(--text-secondary)',
+                            }}
+                            aria-label="More actions"
+                            title="More actions"
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.Content
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              minWidth: 150,
+                              backgroundColor: 'var(--bg-surface-elevated, #1e293b)',
+                              borderRadius: 8,
+                              padding: 4,
+                              boxShadow: '0px 10px 38px -10px rgba(22, 23, 24, 0.35), 0px 10px 20px -15px rgba(22, 23, 24, 0.2)',
+                              border: '1px solid var(--border-default, rgba(255, 255, 255, 0.1))',
+                              zIndex: 10000,
+                            }}
+                            sideOffset={5}
+                            align="end"
+                          >
+                            <DropdownMenu.Item
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedAssignment(a);
+                                setEditOpen(true);
+                              }}
+                              style={{
+                                fontSize: '13px',
+                                color: 'var(--text-primary)',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 10px',
+                                cursor: 'pointer',
+                                outline: 'none',
+                              }}
+                            >
+                              <Pencil size={13} color="var(--accent-primary, #6366f1)" />
+                              <span>Edit</span>
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await toggleArchiveMutation.mutateAsync({
+                                    assignmentId: a.id,
+                                    isArchived: !a.isArchived,
+                                  });
+                                  toast.success(a.isArchived ? 'Assignment restored' : 'Assignment archived');
+                                } catch {
+                                  toast.error('Failed to update archive status');
+                                }
+                              }}
+                              style={{
+                                fontSize: '13px',
+                                color: 'var(--text-primary)',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 10px',
+                                cursor: 'pointer',
+                                outline: 'none',
+                              }}
+                            >
+                              {a.isArchived ? <ArchiveRestore size={13} color="var(--accent-primary)" /> : <Archive size={13} color="var(--text-secondary)" />}
+                              <span>{a.isArchived ? 'Restore' : 'Archive'}</span>
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (confirm('Are you sure you want to delete this assignment?')) {
+                                  try {
+                                    await deleteAssignmentMutation.mutateAsync(a.id);
+                                    toast.info('Assignment deleted');
+                                  } catch {
+                                    toast.error('Failed to delete');
+                                  }
+                                }
+                              }}
+                              style={{
+                                fontSize: '13px',
+                                color: '#ef4444',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 10px',
+                                cursor: 'pointer',
+                                outline: 'none',
+                              }}
+                            >
+                              <Trash2 size={13} color="#ef4444" />
+                              <span>Delete</span>
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Root>
+                    ) : null}
                   </div>
                 </div>
 
                 {a.description ? (
-                  <p className="t-body" style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{a.description}</p>
+                  <p className="t-body" style={{ color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, fontSize: '13px' }}>{a.description}</p>
                 ) : null}
 
-                {/* ── Student set banner ── */}
+                {/* Helpful Student Set Guidance Card */}
                 {a.hasSets && userSet ? (
-                  <div style={{ borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,171,64,0.15)', background: 'rgba(255,171,64,0.03)', backdropFilter: 'blur(8px)', padding: '16px', marginBottom: 12 }}>
-                    <p className="t-badge" style={{ color: 'rgba(255,171,64,0.9)', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <AlertTriangle size={10} color="rgba(255,171,64,0.9)" /> YOUR ASSIGNMENT
-                    </p>
-                    <p className="t-card-title" style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>
-                      Complete the questions on{' '}
-                      <strong style={{ color: 'var(--text-primary)' }}>
-                        Pages {userSet.pageNumbers || '—'}
-                      </strong>{' '}
-                      of the attached PDF.
+                  <div style={{
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(74, 158, 255, 0.2)',
+                    background: 'linear-gradient(135deg, rgba(74, 158, 255, 0.08) 0%, rgba(74, 158, 255, 0.02) 100%)',
+                    padding: '12px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Your Assigned Set: {userSet.label}
+                      </span>
+                      <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                        Roll {userSet.rollStart}–{userSet.rollEnd}
+                      </span>
+                    </div>
+                    <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0, fontSize: '13.5px', fontWeight: 500, lineHeight: 1.45 }}>
+                      {userSet.description 
+                        ? userSet.description 
+                        : `Solve questions on Pages ${userSet.pageNumbers || '—'} of the attached assignment.`}
                     </p>
                   </div>
                 ) : null}
 
                 {/* Attachments list */}
                 {a.attachments && a.attachments.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {a.attachments.map(att => (
                       <AttachmentCard
                         key={att.id}
@@ -1522,11 +1852,11 @@ export default function AssignmentsPage() {
                       borderRadius: 'var(--radius-pill)',
                       color: 'var(--text-secondary)',
                       cursor: 'pointer',
-                      marginBottom: 12,
-                      minHeight: 38,
+                      minHeight: 36,
+                      width: 'fit-content',
                     }}
                   >
-                    <FileText size={11} />
+                    <FileText size={13} />
                     {openingSet === a.pdfUrl ? 'Opening...' : 'View PDF'}
                   </button>
                 ) : null}
@@ -1546,31 +1876,45 @@ export default function AssignmentsPage() {
                     }}
                   >
                     <CheckCircle2 size={15} color={a.crVerified ? 'var(--status-safe)' : 'var(--status-warning)'} />
-                    <p className="t-button" style={{ color: a.crVerified ? 'var(--status-safe)' : 'var(--status-warning)' }}>
+                    <p className="t-button" style={{ color: a.crVerified ? 'var(--status-safe)' : 'var(--status-warning)', margin: 0, fontSize: '13px' }}>
                       {a.crVerified ? 'Marked ✓' : 'Submitted (Pending from CR)'}
                     </p>
                   </div>
                 ) : (
-                  <button className="t-button active:scale-[0.98] transition-transform duration-150"
+                  <button
+                    className="t-button active:scale-[0.98] transition-transform duration-150"
                     id={`submit-btn-${a.id}`}
                     onClick={() => handleMarkSubmitted(a.id)}
                     disabled={submitMutation.isPending}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', background: 'var(--accent-primary-glow)', border: '1px solid rgba(74,158,255,0.4)', borderRadius: 'var(--radius-md)', cursor: submitMutation.isPending ? 'not-allowed' : 'pointer', color: 'var(--accent-primary)', width: '100%', opacity: submitMutation.isPending ? 0.6 : 1 }}
-                    onMouseEnter={e => { if (!submitMutation.isPending) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,158,255,0.18)'; }}
-                    onMouseLeave={e => { if (!submitMutation.isPending) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary-glow)'; }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: '10px 14px',
+                      background: 'var(--accent-primary-glow)',
+                      border: '1px solid rgba(74,158,255,0.4)',
+                      borderRadius: 'var(--radius-md)',
+                      cursor: submitMutation.isPending ? 'not-allowed' : 'pointer',
+                      color: 'var(--accent-primary)',
+                      width: '100%',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      opacity: submitMutation.isPending ? 0.6 : 1,
+                    }}
                   >
                     {submitMutation.isPending && submitMutation.variables?.assignmentId === a.id ? (
                       <Loader2 className="animate-spin" size={15} style={{ animation: 'spin 1s linear infinite' }} />
                     ) : (
                       <CheckCircle2 size={15} />
                     )}
-                    {submitMutation.isPending && submitMutation.variables?.assignmentId === a.id ? 'Submitting…' : 'Mark as Submitted'}
+                    <span>{submitMutation.isPending && submitMutation.variables?.assignmentId === a.id ? 'Submitting…' : 'Mark as Submitted'}</span>
                   </button>
                 )}
               </article>
             );
           })
-        }
+        )}
       </main>
 
       {/* Create assignment sheet (CR only) */}
@@ -1585,17 +1929,27 @@ export default function AssignmentsPage() {
         }} 
       />
 
+      {/* Create Unit Test sheet (CR only) */}
+      <CreateUnitTestModal
+        open={createUnitTestOpen}
+        onClose={() => setCreateUnitTestOpen(false)}
+      />
+
       {/* Edit assignment sheet (CR only) */}
       {editOpen && selectedAssignment && (
         <EditAssignmentSheet open={editOpen} onClose={() => { setEditOpen(false); setSelectedAssignment(null); }} assignment={selectedAssignment} />
       )}
 
       <CROnly>
-        <button id="add-assign-fab" className="fab" aria-label="Add assignment" onClick={() => setCreateOpen(true)}>
+        <button
+          id="add-assign-fab"
+          className="fab"
+          aria-label={courseworkTab === 'assignments' ? 'Add assignment' : 'Add unit test'}
+          onClick={() => courseworkTab === 'assignments' ? setCreateOpen(true) : setCreateUnitTestOpen(true)}
+        >
           <Plus size={22} />
         </button>
       </CROnly>
-
 
       <NavBar />
     </div>

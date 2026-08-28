@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Check, ChevronRight, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen } from 'lucide-react';
+import { Copy, Check, ChevronRight, ChevronDown, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
 import { useAppStore } from '../../store/appStore';
 import { toast } from 'sonner';
-import { useSection } from '../../hooks/useSectionMembers';
+import { useSection, useSectionMembers } from '../../hooks/useSectionMembers';
 import { supabase } from '../../lib/supabase';
 import { isPushSupported, getPushPermission, hasActiveSubscription, subscribeToPush, unsubscribeFromPush } from '../../lib/pushNotifications';
 import { FeedbackSheet } from '../../components/FeedbackSheet';
@@ -21,6 +21,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { authUser, role, hub, signOut, deferredPrompt, setDeferredPrompt, refreshProfile } = useAppStore();
   const { data: section } = useSection();
+  const { data: members = [] } = useSectionMembers();
 
   const subBatch = authUser?.subBatch;
   const sectionId = authUser?.sectionId;
@@ -44,6 +45,7 @@ export default function ProfilePage() {
   });
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDangerZone, setShowDangerZone] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -474,100 +476,168 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Hub info */}
+        {/* 1. ACADEMIC & HUB */}
         <div>
-          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>HUB INFO</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, padding: '0 4px' }}>
+            <p className="t-label" style={{ color: 'var(--text-muted)', margin: 0 }}>ACADEMIC & HUB</p>
+          </div>
           <div className="card" style={{ padding: 0 }}>
-            {[
-              { 
-                label: 'Hub Code', 
-                value: hubCode, 
-                action: (
-                  <button 
-                    id="copy-hub-code" 
-                    onClick={handleCopy} 
-                    className="t-label" 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? 'var(--status-safe)' : 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    {copied ? <Check size={13} style={{ color: 'var(--status-safe)' }} /> : <Copy size={13} />}
-                    <span>{copied ? 'Copied!' : 'Copy'}</span>
-                  </button>
-                ) 
-              },
-              { 
-                label: 'Section', 
-                value: sectionName,
-                action: (
-                  <button 
-                    id="view-members-btn" 
-                    onClick={() => navigate('/app/members')} 
-                    className="t-label" 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    <Users size={13} /> View
-                  </button>
-                )
-              },
-              { label: 'Institution', value: institution },
-              ...(authUser?.branch ? [
-                { label: 'Branch', value: authUser.branch }
-              ] : []),
-              { 
-                label: 'Phone Number', 
-                value: authUser?.phone ? `+91 ${authUser.phone}` : 'Not Provided',
-                action: (
-                  <button 
-                    id="change-phone-btn" 
-                    onClick={handleUpdatePhone} 
-                    className="t-label" 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    Change
-                  </button>
-                )
-              },
-              ...(role !== 'teacher' ? [
-                { label: 'University Roll', value: universityRoll },
-                { 
-                  label: 'Curriculum', 
-                  value: 'Subjects', 
-                  action: (
-                    <button 
-                      id="view-subjects-profile-btn" 
-                      onClick={() => navigate('/app/cr/subjects')} 
-                      className="t-label" 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      <BookOpen size={13} /> View
-                    </button>
-                  )
-                },
-                { 
-                  label: 'Status', 
-                  value: authUser?.dayScholar ? 'DS 🚌' : 'Hostel 🏠', 
-                  action: (
-                    <button 
-                      id="toggle-commute-status" 
-                      onClick={handleToggleCommuterStatus} 
-                      className="t-label" 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      Change
-                    </button>
-                  )
-                },
-                { 
-                  label: 'Batch', 
-                  value: subBatch ? `${sectionName}${subBatch}` : 'Not Selected', 
-                  action: (
+            {/* Hub Header Info & Code */}
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <h3 className="t-card-title" style={{ color: 'var(--text-primary)', fontSize: '16px', fontWeight: 700, margin: 0 }}>
+                      {sectionName || 'Class Hub'}
+                    </h3>
+                  </div>
+                  <p className="t-caption" style={{ color: 'var(--text-muted)', marginTop: 2 }}>
+                    {authUser?.branch ? `${authUser.branch} • ` : ''}{institution}
+                  </p>
+                </div>
+
+                {/* Hub Code with Copy */}
+                <button
+                  id="copy-hub-code"
+                  onClick={handleCopy}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 10px',
+                    background: copied ? 'var(--status-safe-bg)' : 'var(--bg-elevated)',
+                    border: copied ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    color: copied ? 'var(--status-safe)' : 'var(--text-primary)',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-mono)',
+                    transition: 'all var(--transition-fast)',
+                    flexShrink: 0
+                  }}
+                  title="Copy Hub Code"
+                >
+                  {copied ? <Check size={13} /> : <Copy size={13} color="var(--accent-primary)" />}
+                  <span>{hubCode}</span>
+                </button>
+              </div>
+
+              {/* Side-by-side action tiles (Directory & Curriculum) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button
+                  id="view-members-btn"
+                  onClick={() => navigate('/app/members')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 14px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(74, 158, 255, 0.4)'; e.currentTarget.style.background = 'rgba(74, 158, 255, 0.05)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <div style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--accent-primary-glow)',
+                      border: '1px solid rgba(74, 158, 255, 0.25)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--accent-primary)',
+                      flexShrink: 0
+                    }}>
+                      <Users size={16} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Directory
+                      </p>
+                      <p className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11px', margin: 0 }}>
+                        {members.length > 0 ? `${members.filter(m => m.role !== 'teacher').length} members` : 'Section roster'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                </button>
+
+                <button
+                  id="view-subjects-profile-btn"
+                  onClick={() => navigate('/app/cr/subjects')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 14px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(167, 139, 250, 0.4)'; e.currentTarget.style.background = 'rgba(167, 139, 250, 0.05)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <div style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(167, 139, 250, 0.15)',
+                      border: '1px solid rgba(167, 139, 250, 0.25)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#A78BFA',
+                      flexShrink: 0
+                    }}>
+                      <BookOpen size={16} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Curriculum
+                      </p>
+                      <p className="t-caption" style={{ color: 'var(--text-muted)', fontSize: '11px', margin: 0 }}>
+                        Subjects & labs
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                </button>
+              </div>
+            </div>
+
+            {/* Academic & Preference Rows */}
+            <div style={{ borderTop: '1px solid var(--border-default)' }}>
+              {role !== 'teacher' && (
+                <>
+                  {/* Batch Assignment */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 16px', borderBottom: '1px solid var(--border-default)',
+                  }}>
+                    <div>
+                      <p className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>Batch Assignment</p>
+                      <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>Practical lab subgroup</p>
+                    </div>
                     <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: 14, padding: 2, border: '1px solid var(--border-default)' }}>
                       <button 
                         id="batch-g1-btn" 
                         onClick={() => subBatch !== '1' && handleToggleBatch()}
                         style={{
-                          padding: '3px 10px',
+                          padding: '4px 12px',
                           borderRadius: 12,
-                          fontSize: '11px',
+                          fontSize: '12px',
                           fontWeight: 700,
                           border: 'none',
                           cursor: 'pointer',
@@ -582,9 +652,9 @@ export default function ProfilePage() {
                         id="batch-g2-btn" 
                         onClick={() => subBatch !== '2' && handleToggleBatch()}
                         style={{
-                          padding: '3px 10px',
+                          padding: '4px 12px',
                           borderRadius: 12,
-                          fontSize: '11px',
+                          fontSize: '12px',
                           fontWeight: 700,
                           border: 'none',
                           cursor: 'pointer',
@@ -596,21 +666,126 @@ export default function ProfilePage() {
                         G2
                       </button>
                     </div>
-                  )
-                }
-              ] : [])
-            ].map((row, i, arr) => (
-              <div key={row.label} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-default)' : 'none',
-              }}>
-                <span className="t-body" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span className="t-mono" style={{ color: 'var(--text-primary)' }}>{row.value}</span>
-                  {row.action}
+                  </div>
+
+                  {/* Commute Status */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 16px', borderBottom: '1px solid var(--border-default)',
+                  }}>
+                    <div>
+                      <p className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>Commute Status</p>
+                      <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>Transit mode filter</p>
+                    </div>
+                    <button 
+                      id="toggle-commute-status" 
+                      onClick={handleToggleCommuterStatus} 
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 12px',
+                        borderRadius: 'var(--radius-pill)',
+                        border: '1px solid var(--border-default)',
+                        background: authUser?.dayScholar ? 'rgba(96, 165, 250, 0.12)' : 'rgba(167, 139, 250, 0.12)',
+                        color: authUser?.dayScholar ? '#60A5FA' : '#A78BFA',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)'
+                      }}
+                    >
+                      <span>{authUser?.dayScholar ? '🚌 Day Scholar' : '🏠 Hosteller'}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>▾</span>
+                    </button>
+                  </div>
+
+                  {/* Registered Phone */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 16px', borderBottom: '1px solid var(--border-default)',
+                  }}>
+                    <div>
+                      <p className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>Registered Phone</p>
+                      <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>Contact number for section</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="t-mono" style={{ color: 'var(--text-primary)', fontSize: '13px' }}>
+                        {authUser?.phone ? `+91 ${authUser.phone}` : 'Not Provided'}
+                      </span>
+                      <button 
+                        id="change-phone-btn" 
+                        onClick={handleUpdatePhone} 
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: 'var(--radius-sm)',
+                          cursor: 'pointer',
+                          color: 'var(--accent-primary)',
+                          padding: '5px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title="Change Phone Number"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* University Roll */}
+              {role !== 'teacher' && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', borderBottom: counsellor ? '1px solid var(--border-default)' : 'none',
+                }}>
+                  <span className="t-body" style={{ color: 'var(--text-secondary)' }}>University Roll</span>
+                  <span className="t-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                    {universityRoll || '—'}
+                  </span>
                 </div>
-              </div>
-            ))}
+              )}
+
+              {/* Batch Counsellor Row */}
+              {counsellor && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px',
+                }}>
+                  <div>
+                    <p className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
+                      Batch Counsellor
+                    </p>
+                    <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>
+                      {counsellor.name} ({sectionName || ''}{subBatch})
+                    </p>
+                  </div>
+                  <a
+                    href={`mailto:${counsellor.email}?subject=ClassHub - Inquiry from student (${authUser?.name}, Roll ${classRoll})&body=Respected Professor,%0D%0A%0D%0A`}
+                    className="t-button"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'var(--accent-primary-glow)',
+                      border: '1px solid rgba(74, 158, 255, 0.25)',
+                      borderRadius: 'var(--radius-pill)',
+                      color: 'var(--accent-primary)',
+                      padding: '6px 12px',
+                      fontWeight: 600,
+                      fontSize: '11.5px',
+                      textDecoration: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Mail size={13} /> Contact
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -702,126 +877,191 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Counsellor Section */}
-        {counsellor && (
-          <div>
-            <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>BATCH COUNSELLOR</p>
-            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <div style={{ minWidth: 0 }}>
-                <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>{counsellor.name}</h3>
-                <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>Batch {sectionName || ''}{subBatch} Counsellor</p>
-              </div>
-              <a
-                href={`mailto:${counsellor.email}?subject=ClassHub - Inquiry from student (${authUser?.name}, Roll ${classRoll})&body=Respected Professor,%0D%0A%0D%0A`}
-                className="t-button"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: 'var(--accent-primary-glow)',
-                  border: '1px solid rgba(74, 158, 255, 0.25)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--accent-primary)',
-                  padding: '8px 14px',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  textDecoration: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                <Mail size={14} /> Contact
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* TOOLS */}
+        {/* 2. QUICK TOOLS */}
         <div>
           <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>TOOLS</p>
-          <div className="card" style={{ padding: 0 }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* 2-Column Interactive Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 10,
+            }}>
+              {/* Tool 1: CGPA Calculator */}
+              <button
+                id="cgpa-calc-btn"
+                onClick={() => navigate('/app/gpa')}
+                className="profile-tool-card"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 10,
+                    background: 'rgba(74, 158, 255, 0.12)',
+                    border: '1px solid rgba(74, 158, 255, 0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Calculator size={17} color="var(--accent-primary)" />
+                  </div>
+                  <ChevronRight size={14} color="var(--text-muted)" />
+                </div>
+                <div>
+                  <p className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, margin: '0 0 2px 0' }}>
+                    CGPA Calculator
+                  </p>
+                  <p className="t-caption" style={{ color: 'var(--text-muted)', fontSize: 11, margin: 0, lineHeight: 1.3 }}>
+                    Projections & SGPA goal
+                  </p>
+                </div>
+              </button>
+
+              {/* Tool 2: Exams Hub */}
+              <button
+                id="exams-hub-btn"
+                onClick={() => navigate('/app/exams')}
+                className="profile-tool-card"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 10,
+                    background: 'rgba(236, 72, 153, 0.12)',
+                    border: '1px solid rgba(236, 72, 153, 0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Calendar size={17} color="#ec4899" />
+                  </div>
+                  <ChevronRight size={14} color="var(--text-muted)" />
+                </div>
+                <div>
+                  <p className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, margin: '0 0 2px 0' }}>
+                    Exams Hub
+                  </p>
+                  <p className="t-caption" style={{ color: 'var(--text-muted)', fontSize: 11, margin: 0, lineHeight: 1.3 }}>
+                    Midterm dates & schedule
+                  </p>
+                </div>
+              </button>
+
+              {/* Tool 3: Resource Hub */}
+              <button
+                id="resource-hub-btn"
+                onClick={() => navigate('/app/resource-hub')}
+                className="profile-tool-card"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 10,
+                    background: 'rgba(52, 211, 153, 0.12)',
+                    border: '1px solid rgba(52, 211, 153, 0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <BookOpen size={17} color="var(--status-safe)" />
+                  </div>
+                  <ChevronRight size={14} color="var(--text-muted)" />
+                </div>
+                <div>
+                  <p className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, margin: '0 0 2px 0' }}>
+                    Resource Hub
+                  </p>
+                  <p className="t-caption" style={{ color: 'var(--text-muted)', fontSize: 11, margin: 0, lineHeight: 1.3 }}>
+                    Notes, PYQs & syllabus
+                  </p>
+                </div>
+              </button>
+
+              {/* Tool 4: SKIT Exam Portal */}
+              <button
+                id="skit-exam-portal-btn"
+                onClick={() => window.open('https://skitexam.com/', '_blank', 'noopener,noreferrer')}
+                className="profile-tool-card"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 10,
+                    background: 'rgba(167, 139, 250, 0.12)',
+                    border: '1px solid rgba(167, 139, 250, 0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <ExternalLink size={17} color="#A78BFA" />
+                  </div>
+                  <ChevronRight size={14} color="var(--text-muted)" />
+                </div>
+                <div>
+                  <p className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, margin: '0 0 2px 0' }}>
+                    SKIT Portal
+                  </p>
+                  <p className="t-caption" style={{ color: 'var(--text-muted)', fontSize: 11, margin: 0, lineHeight: 1.3 }}>
+                    Results & notices ↗
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {/* Developer Console (Highlighted row for developers) */}
             {authUser?.isDeveloper && (
               <button
                 id="dev-console-btn"
                 onClick={() => navigate('/app/dev-console')}
-                className="list-row"
-                style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }}
+                className="profile-dev-card"
               >
-                <AlertTriangle size={18} color="#C084FC" />
-                <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>Developer Console</span>
-                <ChevronRight size={16} color="var(--text-muted)" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: 8,
+                    background: 'rgba(192, 132, 252, 0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <AlertTriangle size={15} color="#C084FC" />
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <p className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, margin: 0 }}>
+                      Developer Console
+                    </p>
+                    <p className="t-caption" style={{ color: '#C084FC', fontSize: 11, margin: 0 }}>
+                      Debug state, triggers & sandbox tools
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={14} color="var(--text-muted)" />
               </button>
             )}
-            <button id="cgpa-calc-btn" className="list-row" style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }} onClick={() => navigate('/app/gpa')}>
-              <Calculator size={18} color="var(--accent-primary)" />
-              <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>CGPA Calculator</span>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-            <button
-              id="exams-hub-btn"
-              onClick={() => navigate('/app/exams')}
-              className="list-row"
-              style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }}
-            >
-              <Calendar size={18} color="#ec4899" />
-              <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>Exams Hub</span>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-            <button
-              id="skit-exam-portal-btn"
-              onClick={() => window.open('https://skitexam.com/', '_blank', 'noopener,noreferrer')}
-              className="list-row"
-              style={{ width: '100%', borderBottom: '1px solid var(--border-default)', borderRadius: 0 }}
-            >
-              <ExternalLink size={18} color="var(--accent-primary)" />
-              <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>SKIT Exam Portal</span>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
-            <button
-              id="resource-hub-btn"
-              onClick={() => navigate('/app/resource-hub')}
-              className="list-row"
-              style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 0 }}
-            >
-              <ExternalLink size={18} color="var(--status-safe)" />
-              <span className="t-body-medium" style={{ flex: 1, color: 'var(--text-primary)', textAlign: 'left' }}>Resource Hub</span>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </button>
           </div>
         </div>
 
-        {/* PWA Install */}
-        {deferredPrompt && (
-          <div>
-            <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>GET THE APP</p>
-            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(145deg, rgba(74,158,255,0.1) 0%, rgba(74,158,255,0.02) 100%)', border: '1px solid rgba(74,158,255,0.2)' }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Download size={20} color="#fff" />
-              </div>
-              <div style={{ flex: 1 }}>
-                <h3 className="t-card-title" style={{ color: 'var(--text-primary)', marginBottom: 2 }}>Level up your experience</h3>
-                <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>Install ClassHub for faster access and offline features.</p>
-              </div>
-              <button 
-                onClick={handleInstallApp} className="t-button" style={{ background: 'var(--text-primary)', color: 'var(--bg-base)', border: 'none', borderRadius: 'var(--radius-md)', padding: '8px 14px', cursor: 'pointer', flexShrink: 0 }}
-              >
-                Install
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Settings */}
+        {/* 3. PREFERENCES & ACCOUNT */}
         <div>
-          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>SETTINGS</p>
+          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>PREFERENCES & ACCOUNT</p>
+          
           <div className="card" style={{ padding: 0 }}>
+            {/* PWA Install Banner if Available */}
+            {deferredPrompt && (
+              <div className="pwa-settings-banner">
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Download size={18} color="#fff" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h4 className="t-body-medium" style={{ color: 'var(--text-primary)', fontWeight: 600, margin: 0, fontSize: 13 }}>Install ClassHub PWA</h4>
+                  <p className="t-caption" style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 11 }}>Fast access and offline launch</p>
+                </div>
+                <button 
+                  onClick={handleInstallApp}
+                  className="t-button"
+                  style={{ background: 'var(--text-primary)', color: 'var(--bg-base)', border: 'none', borderRadius: 'var(--radius-pill)', padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                >
+                  Install
+                </button>
+              </div>
+            )}
+
+            {/* Notifications Toggle */}
             <div
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: pushSupported && !pushBlocked ? 'pointer' : 'default', opacity: pushSupported ? 1 : 0.5 }}
+              className="settings-row"
+              style={{ cursor: pushSupported && !pushBlocked ? 'pointer' : 'default', opacity: pushSupported ? 1 : 0.5 }}
               onClick={handleToggleNotifications}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Bell size={16} color="var(--text-secondary)" />
                 <div>
-                  <span className="t-body" style={{ color: 'var(--text-primary)' }}>Notifications</span>
+                  <span className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Push Notifications</span>
                   {pushBlocked && (
                     <p className="t-mono-sm" style={{ color: 'var(--status-critical)', marginTop: 2 }}>Blocked in browser settings</p>
                   )}
@@ -851,128 +1091,143 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Feedback & Bug Trigger */}
+            {/* Feedback & Bug Report */}
             <div
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', borderTop: '1px solid var(--border-default)' }}
+              className="settings-row"
               onClick={() => setShowFeedbackSheet(true)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <MessageSquare size={16} color="var(--text-secondary)" />
-                <span className="t-body" style={{ color: 'var(--text-primary)' }}>Send Feedback / Report Bug</span>
+                <span className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Send Feedback / Report Bug</span>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </div>
-        </div>
-        </div>
 
-        {/* More */}
-        <div>
-          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>MORE</p>
-          <div className="card" style={{ padding: 0 }}>
             {/* Star on GitHub */}
             <div
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer' }}
+              className="settings-row"
               onClick={() => window.open('https://github.com/Hanu2908/ClassHub', '_blank', 'noopener,noreferrer')}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Star size={16} color="var(--text-primary)" />
-                <span className="t-body" style={{ color: 'var(--text-primary)' }}>Star on GitHub</span>
+                <Star size={16} color="var(--text-secondary)" />
+                <span className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Star on GitHub</span>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </div>
 
             {/* Ko-fi Support */}
             <div
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', borderTop: '1px solid var(--border-default)' }}
+              className="settings-row"
               onClick={() => window.open('https://ko-fi.com/himanshuhanu', '_blank', 'noopener,noreferrer')}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Heart size={16} color="#FF5E5B" />
-                <span className="t-body" style={{ color: 'var(--text-primary)' }}>Support on Ko-fi</span>
+                <span className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Support Developer</span>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </div>
-          </div>
-        </div>
 
-        {/* Account — Sign Out */}
-        <div>
-          <p className="t-label" style={{ color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>ACCOUNT</p>
-          <button
-            id="sign-out-btn"
-            className="list-row"
-            style={{ width: '100%' }}
-            onClick={() => signOutGlobal(navigate)}
-          >
-            <LogOut size={18} color="var(--status-critical)" />
-            <span className="t-body-medium" style={{ flex: 1, color: 'var(--status-critical)', textAlign: 'left' }}>Sign Out</span>
-          </button>
-        </div>
-
-        {/* Danger zone */}
-        <div>
-          <p className="t-label" style={{ color: 'var(--status-critical)', marginBottom: 8, paddingLeft: 4 }}>DANGER ZONE</p>
-          <div className="card" style={{ padding: 16, background: 'rgba(255, 68, 68, 0.04)', border: '1px solid rgba(255, 68, 68, 0.15)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {!showLeaveConfirm ? (
-              <button id="leave-hub-btn" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--status-warning)' }}
-                onClick={() => setShowLeaveConfirm(true)}>
-                <Trash2 size={15} /> Leave Hub
-              </button>
-            ) : (
-              <div style={{ background: 'var(--status-critical-bg)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 16 }}>
-                <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginBottom: 12 }}>
-                  Are you sure? You'll need a new hub code to rejoin.
-                </p>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button id="confirm-leave-btn" className="t-button"
-                    disabled={leaving}
-                    style={{ flex: 1, padding: '10px', background: 'var(--status-critical)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: leaving ? 'not-allowed' : 'pointer', opacity: leaving ? 0.7 : 1 }}
-                    onClick={handleLeaveHub}>{leaving ? 'Leaving…' : 'Leave'}</button>
-                  <button id="cancel-leave-btn" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowLeaveConfirm(false)} disabled={leaving}>Cancel</button>
-                </div>
+            {/* Sign Out */}
+            <button
+              id="sign-out-btn"
+              className="settings-row settings-row-danger"
+              onClick={() => signOutGlobal(navigate)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <LogOut size={16} color="var(--status-critical)" />
+                <span className="t-body" style={{ color: 'var(--status-critical)', fontWeight: 600 }}>Sign Out</span>
               </div>
-            )}
+              <ChevronRight size={16} color="var(--status-critical)" style={{ opacity: 0.6 }} />
+            </button>
 
-            {/* Delete Account — two-step confirmation */}
-            {!showDeleteConfirm ? (
-              <button id="delete-account-btn" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--status-critical)' }}
-                onClick={() => setShowDeleteConfirm(true)}>
-                <AlertTriangle size={15} /> Delete Account
-              </button>
-            ) : (
-              <div style={{ background: 'var(--status-critical-bg)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 16 }}>
-                <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
-                  This will permanently delete your account and all your data.
-                </p>
-                <p className="t-caption" style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>
-                  Type <strong style={{ color: 'var(--status-critical)' }}>DELETE</strong> to confirm.
-                </p>
-                <input
-                  id="delete-confirm-input"
-                  className="input"
-                  style={{ marginBottom: 12, textAlign: 'center', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}
-                  placeholder="Type DELETE"
-                  value={deleteInput}
-                  onChange={(e) => setDeleteInput(e.target.value.toUpperCase())}
-                  autoComplete="off"
+            {/* Collapsible Danger Zone Toggle */}
+            <div style={{ borderTop: '1px solid var(--border-default)' }}>
+              <button
+                type="button"
+                className="settings-danger-toggle"
+                onClick={() => setShowDangerZone(prev => !prev)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertTriangle size={15} color="var(--text-muted)" />
+                  <span className="t-caption" style={{ color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Danger Zone Options
+                  </span>
+                </div>
+                <ChevronDown
+                  size={15}
+                  color="var(--text-muted)"
+                  style={{
+                    transform: showDangerZone ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform var(--transition-fast)'
+                  }}
                 />
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    id="confirm-delete-btn"
-                    disabled={deleteInput !== 'DELETE' || deleting} className="t-button" style={{ flex: 1, padding: '10px',
-                      background: deleteInput === 'DELETE' ? 'var(--status-critical)' : 'var(--bg-elevated)',
-                      color: deleteInput === 'DELETE' ? '#fff' : 'var(--text-muted)',
-                      border: 'none', borderRadius: 'var(--radius-md)',
-                      cursor: deleteInput === 'DELETE' ? 'pointer' : 'not-allowed',
-                      opacity: deleting ? 0.6 : 1 }}
-                    onClick={handleDeleteAccount}
-                  >
-                    {deleting ? 'Deleting…' : 'Delete Forever'}
-                  </button>
-                  <button id="cancel-delete-btn" className="btn-secondary" style={{ flex: 1 }} onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }}>Cancel</button>
+              </button>
+
+              {showDangerZone && (
+                <div style={{ padding: 16, background: 'rgba(255, 68, 68, 0.05)', borderTop: '1px solid rgba(255, 68, 68, 0.15)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {!showLeaveConfirm ? (
+                    <button id="leave-hub-btn" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--status-warning)' }}
+                      onClick={() => setShowLeaveConfirm(true)}>
+                      <Trash2 size={15} /> Leave Hub
+                    </button>
+                  ) : (
+                    <div style={{ background: 'var(--status-critical-bg)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 16 }}>
+                      <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginBottom: 12 }}>
+                        Are you sure? You'll need a new hub code to rejoin.
+                      </p>
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <button id="confirm-leave-btn" className="t-button"
+                          disabled={leaving}
+                          style={{ flex: 1, padding: '10px', background: 'var(--status-critical)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: leaving ? 'not-allowed' : 'pointer', opacity: leaving ? 0.7 : 1 }}
+                          onClick={handleLeaveHub}>{leaving ? 'Leaving…' : 'Leave'}</button>
+                        <button id="cancel-leave-btn" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowLeaveConfirm(false)} disabled={leaving}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Delete Account — two-step confirmation */}
+                  {!showDeleteConfirm ? (
+                    <button id="delete-account-btn" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--status-critical)' }}
+                      onClick={() => setShowDeleteConfirm(true)}>
+                      <AlertTriangle size={15} /> Delete Account
+                    </button>
+                  ) : (
+                    <div style={{ background: 'var(--status-critical-bg)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 16 }}>
+                      <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
+                        This will permanently delete your account and all your data.
+                      </p>
+                      <p className="t-caption" style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>
+                        Type <strong style={{ color: 'var(--status-critical)' }}>DELETE</strong> to confirm.
+                      </p>
+                      <input
+                        id="delete-confirm-input"
+                        className="input"
+                        style={{ marginBottom: 12, textAlign: 'center', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}
+                        placeholder="Type DELETE"
+                        value={deleteInput}
+                        onChange={(e) => setDeleteInput(e.target.value.toUpperCase())}
+                        autoComplete="off"
+                      />
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                          id="confirm-delete-btn"
+                          disabled={deleteInput !== 'DELETE' || deleting} className="t-button" style={{ flex: 1, padding: '10px',
+                            background: deleteInput === 'DELETE' ? 'var(--status-critical)' : 'var(--bg-elevated)',
+                            color: deleteInput === 'DELETE' ? '#fff' : 'var(--text-muted)',
+                            border: 'none', borderRadius: 'var(--radius-md)',
+                            cursor: deleteInput === 'DELETE' ? 'pointer' : 'not-allowed',
+                            opacity: deleting ? 0.6 : 1 }}
+                          onClick={handleDeleteAccount}
+                        >
+                          {deleting ? 'Deleting…' : 'Delete Forever'}
+                        </button>
+                        <button id="cancel-delete-btn" className="btn-secondary" style={{ flex: 1 }} onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </main>

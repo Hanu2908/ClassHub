@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      unit_tests: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string
+          form_url: string
+          id: string
+          max_marks: number
+          section_id: string
+          subject_id: string
+          test_type: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date: string
+          form_url: string
+          id?: string
+          max_marks?: number
+          section_id: string
+          subject_id: string
+          test_type: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string
+          form_url?: string
+          id?: string
+          max_marks?: number
+          section_id?: string
+          subject_id?: string
+          test_type?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_tests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_tests_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_tests_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unit_test_submissions: {
+        Row: {
+          id: string
+          marks_obtained: number | null
+          status: string
+          submitted_at: string
+          unit_test_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          marks_obtained?: number | null
+          status?: string
+          submitted_at?: string
+          unit_test_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          marks_obtained?: number | null
+          status?: string
+          submitted_at?: string
+          unit_test_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_test_submissions_unit_test_id_fkey"
+            columns: ["unit_test_id"]
+            isOneToOne: false
+            referencedRelation: "unit_tests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_test_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       acknowledgments: {
         Row: {
           acknowledged_at: string

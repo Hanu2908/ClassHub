@@ -309,6 +309,53 @@ export default function DashboardPage() {
     };
   }, [targetDeadlinePercent]);
 
+  const lastUpdated = attendance?.lastUpdated;
+  const freshness = useMemo(() => {
+    if (!lastUpdated) return { label: 'Not synced', isStale: true, days: 999 };
+    const diffMs = Date.now() - new Date(lastUpdated).getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 1) return { label: 'Synced just now', isStale: false, days: 0 };
+    if (diffHours < 24) return { label: `Synced ${diffHours}h ago`, isStale: false, days: 0 };
+    if (diffDays <= 3) return { label: `Synced ${diffDays}d ago`, isStale: false, days: diffDays };
+    if (diffDays <= 6) return { label: `Synced ${diffDays}d ago`, isStale: false, days: diffDays };
+    return { label: `Stale (${diffDays}d ago)`, isStale: true, days: diffDays };
+  }, [lastUpdated]);
+
+  // Global clipboard check on window focus / resume
+  useEffect(() => {
+    let lastChecked = 0;
+    const handleFocus = async () => {
+      const now = Date.now();
+      if (now - lastChecked < 3000) return; // Debounce 3s
+      lastChecked = now;
+
+      try {
+        if (!navigator.clipboard?.readText) return;
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          const lower = text.toLowerCase();
+          const looksLikeErp = (lower.includes('subject') || lower.includes('attendance')) && (lower.includes('\t') || lower.includes('%') || lower.includes('lecture') || lower.includes('lab'));
+          if (looksLikeErp) {
+            toast('📋 ERP Attendance copied to clipboard', {
+              action: {
+                label: 'Sync Now',
+                onClick: () => navigate('/app/attendance?openERP=true'),
+              },
+              duration: 6000,
+            });
+          }
+        }
+      } catch {
+        // Silently ignore clipboard permissions errors
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [navigate]);
+
   let statusLabel: string;
   let tierClass: string;
   let statusColor: string;
@@ -385,8 +432,21 @@ export default function DashboardPage() {
               {/* Top Row: Info */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
                 <div>
-                  <div className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '12px', marginBottom: 2 }}>
-                    Attendance
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                    <span className="t-badge" style={{ color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '11.5px' }}>
+                      Attendance
+                    </span>
+                    <span style={{
+                      fontSize: '10.5px',
+                      fontWeight: 600,
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                      background: freshness.isStale ? 'rgba(248, 113, 113, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                      color: freshness.isStale ? 'var(--status-critical)' : 'var(--text-muted)',
+                      border: freshness.isStale ? '1px solid rgba(248, 113, 113, 0.3)' : '1px solid var(--border-default)',
+                    }}>
+                      {freshness.label}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                     <span className="t-mono" style={{ 

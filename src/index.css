@@ -399,6 +399,144 @@ body {
   transform: scale(0.99);
 }
 
+/* ── Profile Tool Interactive Cards ── */
+.profile-tool-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px;
+  gap: 10px;
+  cursor: pointer;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  text-align: left;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-tool-card:hover {
+  background: var(--bg-elevated);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.profile-tool-card:active {
+  transform: scale(0.97) translateY(0);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.profile-dev-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: rgba(192, 132, 252, 0.05);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-dev-card:hover {
+  background: rgba(192, 132, 252, 0.1);
+  border-color: rgba(192, 132, 252, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(192, 132, 252, 0.15);
+}
+
+.profile-dev-card:active {
+  transform: scale(0.98) translateY(0);
+  background: rgba(192, 132, 252, 0.15);
+}
+
+/* ── Grouped Settings Row (Inside Preferences & Account Card) ── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.settings-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-row:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-row-danger {
+  color: var(--status-critical);
+}
+
+.settings-row-danger:hover {
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.settings-row-danger:active {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.pwa-settings-banner {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(145deg, rgba(74, 158, 255, 0.12) 0%, rgba(74, 158, 255, 0.03) 100%);
+  border-bottom: 1px solid var(--border-default);
+  transition: background var(--transition-fast);
+}
+
+.pwa-settings-banner:hover {
+  background: linear-gradient(145deg, rgba(74, 158, 255, 0.18) 0%, rgba(74, 158, 255, 0.06) 100%);
+}
+
+.settings-danger-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: rgba(255, 68, 68, 0.03);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-danger-toggle:hover {
+  background: rgba(255, 68, 68, 0.08);
+}
+
+.settings-danger-toggle:active {
+  background: rgba(255, 68, 68, 0.12);
+}
+
 /* Decorative effects — disabled in V2 warm dark theme */
 .card-glare,
 .card-shimmer {
@@ -2529,19 +2667,53 @@ body {
 }
 
 .card-solid-push {
-  background: #111822 !important; /* Solid dark teal tint */
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.08) 0%, var(--bg-surface) 100%) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(74, 158, 255, 0.25) !important;
+  border: 1px solid rgba(129, 140, 248, 0.20) !important;
   border-radius: var(--radius-lg) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(74, 158, 255, 0.06) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 0 10px rgba(129, 140, 248, 0.03) !important;
   transition: background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
 }
 .card-solid-push:hover {
-  background: #13202E !important;
-  border-color: rgba(74, 158, 255, 0.45) !important;
-  box-shadow: 0 8px 24px rgba(74, 158, 255, 0.12), inset 0 0 14px rgba(74, 158, 255, 0.1) !important;
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.12) 0%, var(--bg-elevated) 100%) !important;
+  border-color: rgba(129, 140, 248, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(129, 140, 248, 0.10), inset 0 0 12px rgba(129, 140, 248, 0.05) !important;
+  transform: translateY(-1px);
+}
+
+.push-cta-btn {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast), background-color var(--transition-fast);
+}
+.push-cta-btn:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(129, 140, 248, 0.35);
+}
+.push-cta-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.dismiss-push-btn {
+  color: var(--text-muted);
+  transition: color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
+}
+.dismiss-push-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08) !important;
+  transform: scale(1.05);
+}
+.dismiss-push-btn:active {
+  transform: scale(0.95);
+}
+
+.coursework-row {
+  transition: background-color var(--transition-fast);
+}
+.coursework-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+.coursework-row:active {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* Pulsing Flame Breathing Glow */

@@ -169,14 +169,6 @@ export function CriticalCarousel({ items, onDismiss, onAcknowledge }: CriticalCa
           outline: 2px solid #ef4444 !important;
           outline-offset: 2px;
         }
-        .push-cta-btn:hover {
-          opacity: 0.95;
-          transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(74, 158, 255, 0.35);
-        }
-        .push-cta-btn:active {
-          transform: translateY(1px);
-        }
       `}</style>
 
       <div
@@ -366,7 +358,7 @@ export function PushPermissionCTA({ onDismiss }: PushPermissionCTAProps) {
       const ok = await subscribeToPush();
       if (ok) {
         setPermission('granted');
-        toast.success('Push notifications successfully enabled!');
+        toast.success('Push notifications enabled');
         onDismiss();
       } else {
         toast.error('Failed to enable push notifications');
@@ -380,89 +372,116 @@ export function PushPermissionCTA({ onDismiss }: PushPermissionCTAProps) {
     }
   };
 
+  const isDenied = permission === 'denied';
+
   return (
     <div 
       className="card-solid-push"
       style={{
-        margin: '12px 16px 4px',
-        padding: '16px 20px',
+        width: '100%',
+        padding: '14px 16px',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
+        boxSizing: 'border-box',
       }}>
-      <button
-        onClick={onDismiss}
-        style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: 'var(--text-muted)',
-          padding: 4,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'color 0.2s',
-        }}
-        title="Dismiss CTA"
-      >
-        <X size={15} />
-      </button>
+      {/* Top Row: Icon, Text & Dismiss */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
+          {/* Lavender Bell Icon Badge */}
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            background: 'rgba(129, 140, 248, 0.12)',
+            border: '1px solid rgba(129, 140, 248, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--accent-primary)',
+            flexShrink: 0,
+            marginTop: 1,
+          }}>
+            <Bell size={16} />
+          </div>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <div style={{
-          width: 38,
-          height: 38,
-          borderRadius: '50%',
-          background: 'rgba(74, 158, 255, 0.15)',
-          border: '1px solid rgba(74, 158, 255, 0.3)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--accent-primary)',
-          flexShrink: 0,
-          marginTop: 2,
-        }}>
-          <Bell size={18} style={{ animation: 'pulse-bell 2.5s infinite ease-in-out' }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{
+              color: 'var(--text-primary)',
+              fontSize: '14px',
+              fontWeight: 700,
+              letterSpacing: '-0.01em',
+              margin: '0 0 3px',
+              lineHeight: 1.25,
+            }}>
+              {isDenied ? 'Notifications blocked' : 'Turn on notifications'}
+            </h3>
+            <p style={{
+              color: 'var(--text-secondary)',
+              fontSize: '12.5px',
+              margin: 0,
+              lineHeight: 1.45,
+            }}>
+              {isDenied
+                ? 'Notifications are blocked in your browser. Tap the site settings or lock icon in your address bar to allow alerts.'
+                : 'Get instant alerts for CR announcements, assignment deadlines, and schedule changes.'}
+            </p>
+          </div>
         </div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 className="t-subtitle" style={{ color: 'var(--text-primary)', margin: '0 0 4px', letterSpacing: '-0.01em' }}>
-            Enable Push Notifications
-          </h3>
-          <p className="t-caption" style={{ color: 'var(--text-secondary)', margin: 0, lineHeight: '1.45' }}>
-            {permission === 'denied'
-              ? 'Real-time alerts are currently blocked. Please open your browser settings and allow notifications for ClassHub to get instant updates.'
-              : 'Never miss an assignment deadline or critical CR announcement. Receive direct, secure nudge notifications in real-time!'}
-          </p>
-        </div>
+        {/* Top-Right Dismiss Button */}
+        <button
+          onClick={onDismiss}
+          className="dismiss-push-btn"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            padding: 4,
+            width: 24,
+            height: 24,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            outline: 'none',
+            marginTop: -2,
+            marginRight: -4,
+          }}
+          title="Dismiss banner"
+          aria-label="Dismiss banner"
+        >
+          <X size={14} />
+        </button>
       </div>
 
-      {permission !== 'denied' && (
+      {/* Full-width Primary Action Button */}
+      {!isDenied && (
         <button
           onClick={handleEnablePush}
           disabled={isSubscribing}
-          className="t-subtitle push-cta-btn"
+          className="push-cta-btn"
           style={{
-            alignSelf: 'stretch',
+            width: '100%',
+            height: 38,
             background: 'var(--accent-primary)',
-            color: '#fff',
+            color: '#0F0F11',
             border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            padding: '10px 16px',
-            cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            borderRadius: 'var(--radius)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: isSubscribing ? 'not-allowed' : 'pointer',
+            opacity: isSubscribing ? 0.75 : 1,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            boxShadow: '0 4px 12px rgba(74, 158, 255, 0.25)'
+            outline: 'none',
           }}
         >
-          {isSubscribing ? 'Enabling...' : 'Turn on Notifications'}
+          {isSubscribing ? 'Enabling...' : 'Turn on notifications'}
         </button>
       )}
     </div>

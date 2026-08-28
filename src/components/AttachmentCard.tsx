@@ -501,13 +501,8 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
                 </div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1, textAlign: 'left' }}>
-                {isPdf && (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 6px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', fontSize: '10px', fontWeight: 700, width: 'fit-content' }}>
-                    PDF DOCUMENT
-                  </div>
-                )}
-                <span className="t-body-medium" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, fontSize: '13.5px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1, textAlign: 'left' }}>
+                <span className="t-body-medium" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, fontSize: '13px' }}>
                   {attachment.filename}
                 </span>
                 <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 500 }}>
