@@ -61,7 +61,14 @@ ClassHub is a multi-tenant academic progressive web application built for colleg
    ```
    Fill in your Supabase project URL, anonymous public key, and VAPID key in `.env`.
 
-5. Start the Vite development server:
+5. (Optional) Run local Supabase database stack:
+   ```bash
+   supabase start      # Starts local Postgres, Auth, Storage, and Studio
+   supabase db reset    # Applies all migrations and seeds deterministic Section P2 data from supabase/seed.sql
+   ```
+   For detailed database architecture and seeding documentation, refer to [docs/backend.md](docs/backend.md).
+
+6. Start the Vite development server:
    ```bash
    npm run dev
    ```

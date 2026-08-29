@@ -75,7 +75,6 @@ temp.txt
 # Internal AI docs (kept locally, not tracked)
 docs/agentgpt.md
 docs/context.md
-docs/backend.md
 docs/frontend.md
 docs/project-understanding.md
 docs/architecture_understanding.md
