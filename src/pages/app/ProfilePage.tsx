@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Check, ChevronRight, ChevronDown, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronDown, Bell, Trash2, Download, Calculator, AlertTriangle, LogOut, ExternalLink, MessageSquare, Calendar, Plus, Users, Mail, Loader2, Heart, Star, BookOpen, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { NavBar } from '../../components/NavBar';
@@ -15,6 +15,7 @@ import { useUserTags, useDeleteTag, MAX_ACTIVE_TAGS } from '../../hooks/useUserT
 import { TagPill } from '../../components/TagPill';
 import { AddTagSheet } from '../../components/AddTagSheet';
 import { BottomSheet } from '../../components/BottomSheet';
+import { CopyButton } from '../../components/CopyButton';
 import { logEvent } from '../../lib/analytics';
 
 export default function ProfilePage() {
@@ -138,15 +139,6 @@ export default function ProfilePage() {
   const universityRoll = authUser?.universityRoll ?? hub?.universityRoll ?? '—';
 
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(hubCode);
-    setCopied(true);
-    toast.success('Hub code copied!');
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleDeleteAccount = async () => {
     if (deleteInput !== 'DELETE') return;
@@ -406,8 +398,16 @@ export default function ProfilePage() {
               <span className="badge badge-info">{authUser.branch}</span>
             )}
             {displayRole !== 'teacher' && (
-              <span className="t-mono" style={{ color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)' }}>
-                Roll {classRoll}
+              <span className="t-mono" style={{ color: 'var(--text-secondary)', padding: '3px 10px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-pill)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span>Roll {classRoll}</span>
+                {classRoll && classRoll !== '—' && (
+                  <CopyButton
+                    text={classRoll}
+                    ariaLabel="Copy class roll number"
+                    successMessage="Class roll number copied!"
+                    iconSize={11}
+                  />
+                )}
               </span>
             )}
           </div>
@@ -497,30 +497,27 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Hub Code with Copy */}
-                <button
-                  id="copy-hub-code"
-                  onClick={handleCopy}
+                <CopyButton
+                  text={hubCode}
+                  label={hubCode}
+                  ariaLabel="Copy Hub Code"
+                  successMessage="Hub code copied!"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                     padding: '6px 10px',
-                    background: copied ? 'var(--status-safe-bg)' : 'var(--bg-elevated)',
-                    border: copied ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid var(--border-default)',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-md)',
-                    color: copied ? 'var(--status-safe)' : 'var(--text-primary)',
+                    color: 'var(--text-primary)',
                     cursor: 'pointer',
                     fontSize: '12px',
                     fontWeight: 600,
                     fontFamily: 'var(--font-mono)',
-                    transition: 'all var(--transition-fast)',
                     flexShrink: 0
                   }}
-                  title="Copy Hub Code"
-                >
-                  {copied ? <Check size={13} /> : <Copy size={13} color="var(--accent-primary)" />}
-                  <span>{hubCode}</span>
-                </button>
+                />
               </div>
 
               {/* Side-by-side action tiles (Directory & Curriculum) */}
@@ -743,9 +740,19 @@ export default function ProfilePage() {
                   padding: '14px 16px', borderBottom: counsellor ? '1px solid var(--border-default)' : 'none',
                 }}>
                   <span className="t-body" style={{ color: 'var(--text-secondary)' }}>University Roll</span>
-                  <span className="t-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                    {universityRoll || '—'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="t-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                      {universityRoll || '—'}
+                    </span>
+                    {universityRoll && universityRoll !== '—' && (
+                      <CopyButton
+                        text={universityRoll}
+                        ariaLabel="Copy university roll number"
+                        successMessage="University roll copied!"
+                        iconSize={12}
+                      />
+                    )}
+                  </div>
                 </div>
               )}
 

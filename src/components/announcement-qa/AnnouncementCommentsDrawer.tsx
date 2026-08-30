@@ -19,7 +19,7 @@ import {
 import { useSectionMembers } from '../../hooks/useSectionMembers';
 import { useUserTagsBatch } from '../../hooks/useUserTags';
 import { TagPill, TagOverflow } from '../TagPill';
-import { MAX_COMMENT_LENGTH } from '../../lib/validation/comments.schema';
+import { MAX_COMMENT_LENGTH, commentSchema } from '../../lib/validation/comments.schema';
 
 interface AnnouncementCommentsDrawerProps {
   open: boolean;
@@ -169,7 +169,13 @@ export function AnnouncementCommentsDrawer({
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputVal.trim() || inputVal.length > MAX_COMMENT_LENGTH || isSubmitting) return;
+    if (isSubmitting) return;
+
+    const validation = commentSchema.safeParse({ content: inputVal });
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message || 'Invalid comment');
+      return;
+    }
 
     // Rate-limiting: Max 1 comment per 3 seconds
     const now = Date.now();
@@ -180,7 +186,7 @@ export function AnnouncementCommentsDrawer({
 
     setIsSubmitting(true);
     try {
-      await addComment.mutateAsync(inputVal);
+      await addComment.mutateAsync(validation.data.content);
       setInputVal('');
       setLastSubmitTime(now);
       toast.success('Comment posted ✓');
@@ -216,10 +222,16 @@ export function AnnouncementCommentsDrawer({
   };
 
   const handleSaveEdit = async (commentId: string) => {
-    if (!editInputVal.trim() || editInputVal.length > MAX_COMMENT_LENGTH || editComment.isPending) return;
+    if (editComment.isPending) return;
+
+    const validation = commentSchema.safeParse({ content: editInputVal });
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message || 'Invalid comment');
+      return;
+    }
 
     try {
-      await editComment.mutateAsync({ commentId, content: editInputVal });
+      await editComment.mutateAsync({ commentId, content: validation.data.content });
       setEditingCommentId(null);
     } catch {
       // Error handled in hook

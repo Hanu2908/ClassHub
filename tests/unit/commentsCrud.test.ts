@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { commentSchema, MAX_COMMENT_LENGTH } from "../../src/lib/validation/comments.schema";
 
 // The validation logic matching AnnouncementCommentsDrawer's inline canEdit check
 export function evaluateCanEdit({
@@ -96,5 +97,47 @@ describe("Q&A Comment Editing Validation Logic", () => {
         nowTime
       })
     ).toBe(false);
+  });
+});
+
+describe("Q&A Comment Length Boundary Validation", () => {
+  it("exports MAX_COMMENT_LENGTH as 500", () => {
+    expect(MAX_COMMENT_LENGTH).toBe(500);
+  });
+
+  it("rejects 0 characters (empty string)", () => {
+    const result = commentSchema.safeParse({ content: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects whitespace-only string", () => {
+    const result = commentSchema.safeParse({ content: "   \n\t  " });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts exactly 1 character", () => {
+    const result = commentSchema.safeParse({ content: "A" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.content).toBe("A");
+    }
+  });
+
+  it("accepts exactly 500 characters (max boundary)", () => {
+    const fiveHundredChars = "x".repeat(500);
+    const result = commentSchema.safeParse({ content: fiveHundredChars });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.content.length).toBe(500);
+    }
+  });
+
+  it("rejects 501 characters (max + 1 boundary violation)", () => {
+    const fiveHundredAndOneChars = "x".repeat(501);
+    const result = commentSchema.safeParse({ content: fiveHundredAndOneChars });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toContain("500");
+    }
   });
 });

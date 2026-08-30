@@ -858,17 +858,44 @@ export default function PDFViewerPage() {
     jumpToPage(parseInt(pageInputValue, 10));
   };
 
-  const goToPrevPage = () => {
+  const goToPrevPage = useCallback(() => {
     if (activePageNum > 1) {
       jumpToPage(activePageNum - 1);
     }
-  };
+  }, [activePageNum, jumpToPage]);
 
-  const goToNextPage = () => {
+  const goToNextPage = useCallback(() => {
     if (activePageNum < numPages) {
       jumpToPage(activePageNum + 1);
     }
-  };
+  }, [activePageNum, numPages, jumpToPage]);
+
+  // Keyboard navigation shortcuts for desktop/laptop navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tagName = target?.tagName?.toUpperCase();
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || target?.isContentEditable) {
+        return;
+      }
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        goToNextPage();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        goToPrevPage();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        navigate(-1);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [goToNextPage, goToPrevPage, navigate]);
 
   const handleZoomIn = () => {
     setScale(prev => Math.min(prev + 0.2, 3.0));

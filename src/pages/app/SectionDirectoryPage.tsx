@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, X, Users, Mail, Copy, Search, Pencil, UserX, AlertTriangle, Loader2, SlidersHorizontal, ChevronDown, Check } from 'lucide-react';
+import { ArrowLeft, X, Users, Mail, Search, Pencil, UserX, AlertTriangle, Loader2, SlidersHorizontal, ChevronDown, Check } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import Skeleton from 'react-loading-skeleton';
@@ -13,6 +13,7 @@ import { useUserTagsBatch, useDeleteTag } from '../../hooks/useUserTags';
 import { useAppStore } from '../../store/appStore';
 import { TagPill, TagOverflow } from '../../components/TagPill';
 import { BottomSheet } from '../../components/BottomSheet';
+import { CopyButton } from '../../components/CopyButton';
 import { toast } from 'sonner';
 
 const MAX_VISIBLE_TAGS = 3;
@@ -581,6 +582,19 @@ export default function SectionDirectoryPage() {
                           {teacher.email}
                         </span>
                       </div>
+                      {teacher.phone && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                            +91 {teacher.phone}
+                          </span>
+                          <CopyButton
+                            text={teacher.phone}
+                            ariaLabel="Copy teacher phone number"
+                            successMessage="Phone number copied!"
+                            iconSize={11}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1030,8 +1044,14 @@ export default function SectionDirectoryPage() {
                         {/* Phone & Roll */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: tags.length > 0 ? 4 : 0 }}>
                           {member.universityRoll && (
-                            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-                              {member.universityRoll}
+                            <span className="t-mono-sm" style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              <span>{member.universityRoll}</span>
+                              <CopyButton
+                                text={member.universityRoll}
+                                ariaLabel={`Copy university roll for ${member.name}`}
+                                successMessage="Roll number copied!"
+                                iconSize={10}
+                              />
                             </span>
                           )}
                           {member.phone && (
@@ -1039,24 +1059,12 @@ export default function SectionDirectoryPage() {
                               <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                                 +91 {member.phone}
                               </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(member.phone!);
-                                  toast.success('Phone number copied!');
-                                }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: '2px',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  color: 'var(--text-muted)',
-                                }}
-                                title="Copy Phone Number"
-                              >
-                                <Copy size={11} />
-                              </button>
+                              <CopyButton
+                                text={member.phone}
+                                ariaLabel={`Copy phone number for ${member.name}`}
+                                successMessage="Phone number copied!"
+                                iconSize={11}
+                              />
                             </div>
                           )}
                         </div>
