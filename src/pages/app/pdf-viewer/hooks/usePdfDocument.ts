@@ -59,6 +59,10 @@ export function usePdfDocument({ rawUrl, storagePath, scriptLoaded }: UsePdfDocu
         const task = window.pdfjsLib.getDocument({
           url: docUrl,
           withCredentials: false,
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+          cMapPacked: true,
+          standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/',
+          enableXfa: true,
         });
         return await task.promise;
       };

@@ -40,16 +40,15 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
       if (!isInCacheBuffer) return;
 
       const canvas = canvasRef.current;
-      const context = canvas?.getContext('2d');
-      if (!context || !canvas) return;
+      if (!canvas) return;
 
       // Cancel any active draw jobs on this canvas first
       if (renderTaskRef.current) {
         renderTaskRef.current.cancel();
       }
 
-      // Cap DPI scaling at 2.0 to protect GPU texture buffer
-      const dpr = Math.min(2.0, window.devicePixelRatio || 1);
+      // High-DPI scaling: support crisp text on Retina/OLED screens (up to 3.0 DPR)
+      const dpr = Math.min(3.0, window.devicePixelRatio || 1);
       const safeRenderPageScale =
         isNaN(renderPageScale) || renderPageScale <= 0 ? 1.0 : renderPageScale;
       const viewport = page.getViewport({
@@ -57,8 +56,8 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
         rotation: rotation,
       });
 
-      // Enforce physical width ceiling to prevent mobile Safari out-of-memory crash
-      const MAX_PHYSICAL_CANVAS_WIDTH = 2048;
+      // Ceiling at 4096px physical width to prevent blur during pinch-to-zoom
+      const MAX_PHYSICAL_CANVAS_WIDTH = 4096;
       let finalViewport = viewport;
 
       if (viewport.width > MAX_PHYSICAL_CANVAS_WIDTH) {
@@ -66,17 +65,25 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
         finalViewport = page.getViewport({ scale: maxScale, rotation: rotation });
       }
 
-      // Double-buffered canvas drawing to eliminate rendering flicker
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = finalViewport.width;
-      tempCanvas.height = finalViewport.height;
-      const tempContext = tempCanvas.getContext('2d');
+      // Resize canvas element to match physical viewport dimensions exactly
+      canvas.width = Math.floor(finalViewport.width);
+      canvas.height = Math.floor(finalViewport.height);
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
 
-      if (!tempContext) return;
+      const context = canvas.getContext('2d', { alpha: false });
+      if (!context) return;
+
+      // Fill with solid white backdrop to enable optimal subpixel font rasterization
+      context.fillStyle = '#FFFFFF';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
 
       const renderContext = {
-        canvasContext: tempContext,
+        canvasContext: context,
         viewport: finalViewport,
+        intent: 'display',
       };
 
       const renderTask = page.render(renderContext);
@@ -86,13 +93,6 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
 
       if (!isInCacheBuffer || !canvasRef.current) return;
 
-      // Synchronously write back to DOM canvas in single paint step
-      canvas.width = finalViewport.width;
-      canvas.height = finalViewport.height;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-
-      context.drawImage(tempCanvas, 0, 0);
       onRenderSuccess();
     } catch (err: any) {
       if (err?.name !== 'RenderingCancelledException') {
@@ -144,6 +144,8 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
         transition: 'filter var(--transition-fast)',
         width: '100%',
         height: '100%',
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
       }}
     />
   );
