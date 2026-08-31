@@ -3,7 +3,8 @@ import { useEffect, useRef, useCallback, memo } from 'react';
 interface PDFTextLayerProps {
   pdf: any;
   pageNumber: number;
-  renderPageScale: number;
+  layoutWidth: number;
+  displayWidth: number;
   rotation: number;
   searchQuery: string;
   isRendered: boolean;
@@ -89,7 +90,7 @@ const applyHighlighting = (container: HTMLDivElement, query: string) => {
             span.className = 'highlight';
             span.textContent = part;
             parts.push(span);
-          } else {
+          } else if (part) {
             parts.push(document.createTextNode(part));
           }
         });
@@ -109,7 +110,8 @@ const applyHighlighting = (container: HTMLDivElement, query: string) => {
 export const PDFTextLayer = memo(function PDFTextLayer({
   pdf,
   pageNumber,
-  renderPageScale,
+  layoutWidth,
+  displayWidth,
   rotation,
   searchQuery,
   isRendered,
@@ -126,10 +128,9 @@ export const PDFTextLayer = memo(function PDFTextLayer({
       const textContent = await page.getTextContent();
       if (!isInCacheBuffer) return;
 
-      const safeRenderPageScale =
-        isNaN(renderPageScale) || renderPageScale <= 0 ? 1.0 : renderPageScale;
+      const exactScale = layoutWidth > 0 ? displayWidth / layoutWidth : 1.0;
       const cssViewport = page.getViewport({
-        scale: safeRenderPageScale,
+        scale: exactScale,
         rotation: rotation,
       });
 
@@ -149,7 +150,7 @@ export const PDFTextLayer = memo(function PDFTextLayer({
     } catch (err) {
       console.error(`[PDFViewer] Text layer redraw error on page ${pageNumber}:`, err);
     }
-  }, [pdf, pageNumber, renderPageScale, searchQuery, rotation, isRendered, isInCacheBuffer]);
+  }, [pdf, pageNumber, layoutWidth, displayWidth, searchQuery, rotation, isRendered, isInCacheBuffer]);
 
   useEffect(() => {
     if (isRendered && isInCacheBuffer) {
@@ -172,7 +173,7 @@ export const PDFTextLayer = memo(function PDFTextLayer({
         overflow: 'hidden',
         pointerEvents: 'auto',
         zIndex: 10,
-        ['--scale-factor' as any]: renderPageScale,
+        ['--scale-factor' as any]: layoutWidth > 0 ? displayWidth / layoutWidth : 1.0,
       }}
     />
   );

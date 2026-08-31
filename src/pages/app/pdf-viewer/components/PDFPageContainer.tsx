@@ -29,13 +29,15 @@ export const PDFPageContainer = memo(function PDFPageContainer({
   const safeScale = isNaN(scale) || scale <= 0 ? 1.0 : scale;
   const currentContainerWidth = containerWidth * safeScale;
   const pageScale = layoutWidth > 0 ? currentContainerWidth / layoutWidth : 1.0;
-  const height = layoutHeight * pageScale;
-  const width = currentContainerWidth;
+  const height = Math.round(layoutHeight * pageScale);
+  const width = Math.round(currentContainerWidth);
 
   // Debounced render dimensions
   const safeRenderScale = isNaN(renderScale) || renderScale <= 0 ? 1.0 : renderScale;
   const renderContainerWidth = containerWidth * safeRenderScale;
   const renderPageScale = layoutWidth > 0 ? renderContainerWidth / layoutWidth : 1.0;
+  const renderDisplayHeight = Math.round(layoutHeight * renderPageScale);
+  const renderDisplayWidth = Math.round(renderContainerWidth);
 
   const handleRenderSuccess = useCallback(() => {
     setIsRendered(true);
@@ -63,16 +65,14 @@ export const PDFPageContainer = memo(function PDFPageContainer({
         position: 'relative',
         background: 'var(--bg-elevated)',
         borderRadius: '8px',
-        boxShadow: 'var(--shadow-elevated)',
-        border: isInRange
-          ? '2px solid var(--status-warning)'
-          : '1px solid var(--border-default)',
-        boxSizing: 'border-box',
+        boxShadow: isInRange
+          ? '0 0 0 2px var(--status-warning), var(--shadow-elevated)'
+          : '0 0 0 1px var(--border-default), var(--shadow-elevated)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
-        transition: 'border var(--transition-fast)',
+        transition: 'box-shadow var(--transition-fast)',
       }}
     >
       {/* Assigned range indicator */}
@@ -104,7 +104,8 @@ export const PDFPageContainer = memo(function PDFPageContainer({
         pdf={pdf}
         pageNumber={pageLayout.pageNumber}
         layoutWidth={layoutWidth}
-        renderPageScale={renderPageScale}
+        displayWidth={renderDisplayWidth}
+        displayHeight={renderDisplayHeight}
         rotation={rotation}
         displayMode={displayMode}
         isInCacheBuffer={isInCacheBuffer}
@@ -117,7 +118,8 @@ export const PDFPageContainer = memo(function PDFPageContainer({
       <PDFTextLayer
         pdf={pdf}
         pageNumber={pageLayout.pageNumber}
-        renderPageScale={renderPageScale}
+        layoutWidth={layoutWidth}
+        displayWidth={width}
         rotation={rotation}
         searchQuery={searchQuery}
         isRendered={isRendered}

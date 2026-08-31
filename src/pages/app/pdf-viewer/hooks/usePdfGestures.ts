@@ -210,6 +210,7 @@ export function usePdfGestures({
 
     let startDist = 0;
     let startScale = 1.0;
+    let lastTapTime = 0;
 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
@@ -219,6 +220,15 @@ export function usePdfGestures({
           e.touches[0].clientY - e.touches[1].clientY
         );
         startScale = scaleRef.current;
+      } else if (e.touches.length === 1) {
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+          e.preventDefault();
+          setScale((current) => (current < 1.4 ? 2.0 : 1.0));
+          lastTapTime = 0;
+          return;
+        }
+        lastTapTime = now;
       }
     };
 

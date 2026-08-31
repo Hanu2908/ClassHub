@@ -5,7 +5,8 @@ interface PDFPageCanvasProps {
   pdf: any;
   pageNumber: number;
   layoutWidth: number;
-  renderPageScale: number;
+  displayWidth: number;
+  displayHeight: number;
   rotation: number;
   displayMode: PDFDisplayMode;
   isInCacheBuffer: boolean;
@@ -18,7 +19,8 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
   pdf,
   pageNumber,
   layoutWidth,
-  renderPageScale,
+  displayWidth,
+  displayHeight,
   rotation,
   displayMode,
   isInCacheBuffer,
@@ -42,47 +44,52 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // Cancel any active draw jobs on this canvas first
       if (renderTaskRef.current) {
         renderTaskRef.current.cancel();
       }
 
-      // High-DPI scaling: support crisp text on Retina/OLED screens (up to 3.0 DPR)
+      // High-DPI scaling: capture true device pixel ratio (capped at 3.0)
       const dpr = Math.min(3.0, window.devicePixelRatio || 1);
-      const safeRenderPageScale =
-        isNaN(renderPageScale) || renderPageScale <= 0 ? 1.0 : renderPageScale;
-      const viewport = page.getViewport({
-        scale: safeRenderPageScale * dpr,
-        rotation: rotation,
-      });
 
-      // Ceiling at 4096px physical width to prevent blur during pinch-to-zoom
+      // Compute exact integer backing store dimensions
+      const pixelWidth = Math.round(displayWidth * dpr);
+      const pixelHeight = Math.round(displayHeight * dpr);
+
+      // 4096px physical texture ceiling
       const MAX_PHYSICAL_CANVAS_WIDTH = 4096;
-      let finalViewport = viewport;
+      let finalPixelWidth = pixelWidth;
+      let finalPixelHeight = pixelHeight;
 
-      if (viewport.width > MAX_PHYSICAL_CANVAS_WIDTH) {
-        const maxScale = MAX_PHYSICAL_CANVAS_WIDTH / (layoutWidth || 595);
-        finalViewport = page.getViewport({ scale: maxScale, rotation: rotation });
+      if (pixelWidth > MAX_PHYSICAL_CANVAS_WIDTH) {
+        const ratio = MAX_PHYSICAL_CANVAS_WIDTH / pixelWidth;
+        finalPixelWidth = MAX_PHYSICAL_CANVAS_WIDTH;
+        finalPixelHeight = Math.round(pixelHeight * ratio);
       }
 
-      // Resize canvas element to match physical viewport dimensions exactly
-      canvas.width = Math.floor(finalViewport.width);
-      canvas.height = Math.floor(finalViewport.height);
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
+      canvas.width = finalPixelWidth;
+      canvas.height = finalPixelHeight;
+
+      // Lock CSS presentation dimensions to exact pixels (not 100%) to prevent subpixel blurring
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+
+      const exactScale = layoutWidth > 0 ? finalPixelWidth / layoutWidth : dpr;
+      const viewport = page.getViewport({
+        scale: exactScale,
+        rotation: rotation,
+      });
 
       const context = canvas.getContext('2d', { alpha: false });
       if (!context) return;
 
-      // Fill with solid white backdrop to enable optimal subpixel font rasterization
       context.fillStyle = '#FFFFFF';
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillRect(0, 0, finalPixelWidth, finalPixelHeight);
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = 'high';
 
       const renderContext = {
         canvasContext: context,
-        viewport: finalViewport,
+        viewport: viewport,
         intent: 'display',
       };
 
@@ -106,7 +113,8 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
     pdf,
     pageNumber,
     layoutWidth,
-    renderPageScale,
+    displayWidth,
+    displayHeight,
     rotation,
     isInCacheBuffer,
     isFastScrolling,
@@ -118,7 +126,6 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
     if (isInCacheBuffer && !isFastScrolling) {
       drawPage();
     } else if (!isInCacheBuffer) {
-      // Memory cleanup: reclaim GPU texture memory
       if (canvasRef.current) {
         canvasRef.current.width = 0;
         canvasRef.current.height = 0;
@@ -142,8 +149,8 @@ export const PDFPageCanvas = memo(function PDFPageCanvas({
         display: 'block',
         filter: canvasFilter,
         transition: 'filter var(--transition-fast)',
-        width: '100%',
-        height: '100%',
+        width: `${displayWidth}px`,
+        height: `${displayHeight}px`,
         transform: 'translateZ(0)',
         backfaceVisibility: 'hidden',
       }}
