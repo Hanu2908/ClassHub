@@ -20,7 +20,7 @@ import { logEvent } from '../../lib/analytics';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { authUser, role, hub, signOut, deferredPrompt, setDeferredPrompt, refreshProfile } = useAppStore();
+  const { authUser, role, hub, clearHubState, deferredPrompt, setDeferredPrompt, refreshProfile } = useAppStore();
   const { data: section } = useSection();
   const { data: members = [] } = useSectionMembers();
 
@@ -186,7 +186,7 @@ export default function ProfilePage() {
       // Refresh profile from DB so Zustand reflects the detached state (no section)
       await refreshProfile();
       // Clear hub cache and navigate to onboarding — Supabase session stays alive
-      signOut(); // reset local Zustand hub/offlineCache state only
+      clearHubState(); // reset local Zustand hub/offlineCache state only
       navigate('/onboarding/choice');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

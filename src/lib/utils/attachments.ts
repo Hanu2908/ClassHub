@@ -112,6 +112,8 @@ export function validateSharedFiles(
   return { ok: true, files };
 }
 
+import { supabase } from '../supabase';
+
 export interface CachedUrls {
   thumbUrl: string;    // Thumbnail URL (or original URL if no thumbnail exists)
   fullUrl: string;     // Original full-resolution URL
@@ -119,3 +121,74 @@ export interface CachedUrls {
   expiresAt: number;
 }
 export const signedUrlCache = new Map<string, CachedUrls>();
+
+export const DEFAULT_SIGNED_URL_TTL = 3600; // 1 Hour
+
+/**
+ * Pre-fetches signed URLs for a batch of storage paths in 1 single network roundtrip.
+ * Results are cached in the in-memory signedUrlCache.
+ */
+export async function prefetchSignedUrls(
+  storagePaths: string[],
+  ttl = DEFAULT_SIGNED_URL_TTL
+): Promise<void> {
+  const unexpired = storagePaths.filter((p) => {
+    const cached = signedUrlCache.get(p);
+    return !cached || cached.expiresAt <= Date.now();
+  });
+
+  if (unexpired.length === 0) return;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from('attachments')
+      .createSignedUrls(unexpired, ttl);
+
+    if (error || !data) return;
+
+    const expiresAt = Date.now() + (ttl - 100) * 1000;
+    data.forEach((item) => {
+      if (item.signedUrl && item.path) {
+        const existing = signedUrlCache.get(item.path);
+        signedUrlCache.set(item.path, {
+          thumbUrl: existing?.thumbUrl || item.signedUrl,
+          fullUrl: item.signedUrl,
+          hasThumb: existing?.hasThumb || false,
+          expiresAt,
+        });
+      }
+    });
+  } catch {
+    // Fail gracefully — on-demand loaders will fall back to individual signed URL fetching
+  }
+}
+
+/**
+ * Generates a signed URL with Content-Disposition download header
+ * and triggers a client download.
+ */
+export async function downloadAttachmentFile(
+  storagePath: string,
+  filename: string,
+  ttl = DEFAULT_SIGNED_URL_TTL
+): Promise<void> {
+  const { data, error } = await supabase.storage
+    .from('attachments')
+    .createSignedUrl(storagePath, ttl, {
+      download: filename,
+    });
+
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message || 'Failed to generate download URL');
+  }
+
+  const link = document.createElement('a');
+  link.href = data.signedUrl;
+  link.download = filename;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+

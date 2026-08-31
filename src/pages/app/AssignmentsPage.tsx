@@ -14,7 +14,6 @@ import { haptics } from '../../lib/haptics';
 import { useSubjects, useEnsureSubjects } from '../../hooks/useSubjects';
 import { FileUploader } from '../../components/FileUploader';
 import { AttachmentCard } from '../../components/AttachmentCard';
-import { supabase } from '../../lib/supabase';
 import { uploadAttachments } from '../../lib/utils/uploadAttachment';
 import Skeleton from 'react-loading-skeleton';
 import { deleteShare, getShare, retainFailedShareFiles, updateShare } from '../../lib/shareInbox';
@@ -898,7 +897,6 @@ export default function AssignmentsPage() {
     return Array.from(set);
   }, [unitTests]);
 
-  const [openingSet, setOpeningSet] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(() => Boolean(location.state?.openCreate));
   const [createUnitTestOpen, setCreateUnitTestOpen] = useState(false);
 
@@ -941,31 +939,16 @@ export default function AssignmentsPage() {
     if (authUser?.id && authUser?.sectionId) {
       logEvent('assignment_viewed', authUser.id, authUser.sectionId, { urlOrPath, title, pageRange });
     }
-    if (openingSet) return;
     
+    const firstPage = pageRange ? (pageRange.match(/\d+/)?.[0] || '1') : '1';
+
     if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
-      const firstPage = pageRange ? (pageRange.match(/\d+/)?.[0] || '1') : '1';
       navigate(`/app/pdf-viewer?url=${encodeURIComponent(urlOrPath)}&page=${firstPage}&range=${encodeURIComponent(pageRange || '')}&title=${encodeURIComponent(title)}`);
       return;
     }
     
-    setOpeningSet(urlOrPath);
-    try {
-      const { data, error } = await supabase.storage
-        .from('attachments')
-        .createSignedUrl(urlOrPath, 60);
-
-      if (error) throw error;
-      if (data?.signedUrl) {
-        const firstPage = pageRange ? (pageRange.match(/\d+/)?.[0] || '1') : '1';
-        navigate(`/app/pdf-viewer?url=${encodeURIComponent(data.signedUrl)}&page=${firstPage}&range=${encodeURIComponent(pageRange || '')}&title=${encodeURIComponent(title)}`);
-      }
-    } catch (err) {
-      console.error('[AssignmentsPage] Failed to open PDF:', err);
-      toast.error('Failed to open PDF viewer');
-    } finally {
-      setOpeningSet(null);
-    }
+    // Pass storage path directly to enable on-demand 3600s signed URL resolution and self-healing refresh
+    navigate(`/app/pdf-viewer?path=${encodeURIComponent(urlOrPath)}&page=${firstPage}&range=${encodeURIComponent(pageRange || '')}&title=${encodeURIComponent(title)}`);
   };
 
   const handleMarkSubmitted = async (id: string) => {
@@ -1850,7 +1833,7 @@ export default function AssignmentsPage() {
                     }}
                   >
                     <FileText size={13} />
-                    {openingSet === a.pdfUrl ? 'Opening...' : 'View PDF'}
+                    View PDF
                   </button>
                 ) : null}
 

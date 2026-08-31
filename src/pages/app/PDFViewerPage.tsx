@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { supabase } from '../../lib/supabase';
+import { downloadAttachmentFile } from '../../lib/utils/attachments';
 
 declare global {
   interface Window {
@@ -464,11 +466,13 @@ export default function PDFViewerPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const url = searchParams.get('url') || '';
+  const rawUrl = searchParams.get('url') || '';
+  const storagePath = searchParams.get('path') || '';
   const initialPage = parseInt(searchParams.get('page') || '1', 10);
   const range = searchParams.get('range') || '';
   const title = searchParams.get('title') || 'PDF Viewer';
 
+  const [activeUrl, setActiveUrl] = useState<string>(rawUrl);
   const [pdf, setPdf] = useState<any>(null);
   const [pageLayouts, setPageLayouts] = useState<PageLayout[]>([]);
   const [activePageNum, setActivePageNum] = useState<number>(initialPage);
@@ -482,6 +486,23 @@ export default function PDFViewerPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [scriptLoaded, setScriptLoaded] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchFreshSignedUrl = useCallback(async (path: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .createSignedUrl(path, 3600);
+      if (error || !data?.signedUrl) {
+        console.error('[PDFViewer] createSignedUrl failed:', error);
+        return null;
+      }
+      setActiveUrl(data.signedUrl);
+      return data.signedUrl;
+    } catch (err) {
+      console.error('[PDFViewer] Error resolving signed URL:', err);
+      return null;
+    }
+  }, []);
 
   // Advanced features states
   const [displayMode, setDisplayMode] = useState<'original' | 'dark' | 'sepia'>('original');
@@ -586,7 +607,7 @@ export default function PDFViewerPage() {
 
   // Load PDF and do pre-layout sizing pre-calculation
   useEffect(() => {
-    if (!scriptLoaded || !url) return;
+    if (!scriptLoaded || (!storagePath && !rawUrl)) return;
 
     let active = true;
 
@@ -594,13 +615,45 @@ export default function PDFViewerPage() {
       setLoading(true);
       setLoadError(null);
 
-      try {
+      let targetUrl = activeUrl || rawUrl;
+      if (!targetUrl && storagePath) {
+        const resolved = await fetchFreshSignedUrl(storagePath);
+        if (!active) return;
+        if (!resolved) {
+          setLoadError('Failed to generate document access link. Please try again.');
+          setLoading(false);
+          return;
+        }
+        targetUrl = resolved;
+      }
+
+      const tryLoadDocument = async (docUrl: string) => {
         const loadingTask = window.pdfjsLib.getDocument({
-          url,
+          url: docUrl,
           withCredentials: false
         });
+        return await loadingTask.promise;
+      };
 
-        const pdfDoc = await loadingTask.promise;
+      try {
+        let pdfDoc: any;
+        try {
+          pdfDoc = await tryLoadDocument(targetUrl);
+        } catch (initialErr: any) {
+          // If initial load fails (e.g. expired token) and storagePath is known, refresh and retry once
+          if (storagePath) {
+            const refreshedUrl = await fetchFreshSignedUrl(storagePath);
+            if (!active) return;
+            if (refreshedUrl) {
+              pdfDoc = await tryLoadDocument(refreshedUrl);
+            } else {
+              throw initialErr;
+            }
+          } else {
+            throw initialErr;
+          }
+        }
+
         if (!active) return;
 
         setPdf(pdfDoc);
@@ -644,7 +697,7 @@ export default function PDFViewerPage() {
     return () => {
       active = false;
     };
-  }, [scriptLoaded, url]);
+  }, [scriptLoaded, storagePath, rawUrl, fetchFreshSignedUrl]);
 
   // Proportional scroll adjustments during scale zooming
   const lastScaleRef = useRef(scale);
@@ -909,12 +962,24 @@ export default function PDFViewerPage() {
     setScale(1.0);
   };
 
-  const handleDownload = () => {
-    if (!url) return;
+  const handleDownload = async () => {
+    const downloadFilename = title.endsWith('.pdf') ? title : `${title}.pdf`;
+    if (storagePath) {
+      try {
+        await downloadAttachmentFile(storagePath, downloadFilename, 3600);
+        toast.success('Download started');
+        return;
+      } catch {
+        toast.error('Failed to download PDF');
+        return;
+      }
+    }
+    const currentUrl = activeUrl || rawUrl;
+    if (!currentUrl) return;
     try {
       const a = document.createElement('a');
-      a.href = url;
-      a.download = title.endsWith('.pdf') ? title : `${title}.pdf`;
+      a.href = currentUrl;
+      a.download = downloadFilename;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
@@ -927,18 +992,19 @@ export default function PDFViewerPage() {
   };
 
   const handleShare = async () => {
-    if (!url) return;
+    const currentUrl = activeUrl || rawUrl;
+    if (!currentUrl) return;
     const shareData = {
       title: title,
       text: `ClassHub PDF: ${title} (Page ${activePageNum})`,
-      url: url
+      url: currentUrl
     };
 
     try {
       if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(currentUrl);
         toast.success('Temporary view link copied to clipboard!');
       }
     } catch (err: any) {

@@ -314,7 +314,7 @@ export default function AnnouncementsScroll() {
           try {
             const { data } = await supabase.storage
               .from('attachments')
-              .createSignedUrl(att.storagePath, 60);
+              .createSignedUrl(att.storagePath, 3600);
             return { ...att, signedUrl: data?.signedUrl || null };
           } catch (e) {
             console.error('[Share] Failed to get signed URL for original:', att.filename, e);
@@ -417,7 +417,7 @@ export default function AnnouncementsScroll() {
                 // Try thumbnail first
                 const { data: thumbData } = await supabase.storage
                   .from('attachments')
-                  .createSignedUrl(thumbPath, 60);
+                  .createSignedUrl(thumbPath, 3600);
 
                 if (thumbData?.signedUrl) {
                   return { ...att, signedUrl: thumbData.signedUrl };
@@ -426,7 +426,7 @@ export default function AnnouncementsScroll() {
                 // Fallback to original
                 const { data: origData } = await supabase.storage
                   .from('attachments')
-                  .createSignedUrl(att.storagePath, 60);
+                  .createSignedUrl(att.storagePath, 3600);
 
                 return { ...att, signedUrl: origData?.signedUrl || null };
               } catch (e) {

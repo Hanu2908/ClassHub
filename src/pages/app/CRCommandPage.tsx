@@ -2121,7 +2121,7 @@ export default function CRCommandPage() {
     try {
       if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
         toast.success('[Demo] Section Hub deleted successfully!');
-        useAppStore.getState().signOut();
+        useAppStore.getState().clearHubState();
         navigate('/onboarding/choice', { replace: true });
         return;
       }
@@ -2130,8 +2130,8 @@ export default function CRCommandPage() {
       if (error) throw error;
 
       toast.success('Section Hub deleted successfully!');
-      // Purge all stale cached section data from Zustand (does NOT call supabase.auth.signOut)
-      useAppStore.getState().signOut();
+      // Purge all stale cached section data from Zustand while keeping auth session alive
+      useAppStore.getState().clearHubState();
       navigate('/onboarding/choice', { replace: true });
     } catch (err: unknown) {
       console.error('[Delete] Hub deletion failed:', err);

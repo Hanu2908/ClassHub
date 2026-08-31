@@ -27,7 +27,7 @@ export function subscribeToSection(sectionId: string, callbacks: RealtimeCallbac
     .channel(`section-realtime-${sectionId}`)
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'announcements' },
+      { event: '*', schema: 'public', table: 'announcements', filter: `section_id=eq.${sectionId}` },
       (payload) => {
         if (import.meta.env.DEV) console.log('[RealtimeBroker] announcements Postgres event:', payload);
         callbacks.onAnnouncement?.(payload);
@@ -35,7 +35,7 @@ export function subscribeToSection(sectionId: string, callbacks: RealtimeCallbac
     )
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'assignments' },
+      { event: '*', schema: 'public', table: 'assignments', filter: `section_id=eq.${sectionId}` },
       (payload) => {
         if (import.meta.env.DEV) console.log('[RealtimeBroker] assignments Postgres event:', payload);
         callbacks.onAssignment?.(payload);
@@ -43,7 +43,7 @@ export function subscribeToSection(sectionId: string, callbacks: RealtimeCallbac
     )
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'polls' },
+      { event: '*', schema: 'public', table: 'polls', filter: `section_id=eq.${sectionId}` },
       (payload) => {
         if (import.meta.env.DEV) console.log('[RealtimeBroker] polls Postgres event:', payload);
         callbacks.onPoll?.(payload);

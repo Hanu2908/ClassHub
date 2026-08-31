@@ -347,7 +347,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           store.setSession(session);
           saveSession(session.access_token, session.user.id);
         } else if (event === 'INITIAL_SESSION' && !session) {
-          store.setAuthLoading(false);
+          // Do nothing: getInitialSession handles initial resolution authoritatively
+          // to prevent race conditions during store hydration.
         }
       } catch (err) {
         console.error('[Auth] Error in onAuthStateChange callback for event:', event, err);

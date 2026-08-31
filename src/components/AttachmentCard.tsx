@@ -4,7 +4,7 @@ import { Download, FileText, FileImage, FileCode, File, Loader2, ImageOff } from
 import { supabase } from '../lib/supabase';
 import { AnimatePresence } from 'motion/react';
 import type { Attachment } from '../store/appStore';
-import { isPreviewableImage, signedUrlCache } from '../lib/utils/attachments';
+import { isPreviewableImage, signedUrlCache, downloadAttachmentFile } from '../lib/utils/attachments';
 import { getThumbPath, decodeAtReducedResolution } from '../lib/utils/imageResize';
 
 interface AttachmentCardProps {
@@ -243,23 +243,24 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
       return;
     }
 
+    const isPDF = attachment.fileType.toLowerCase().includes('pdf') || attachment.filename.toLowerCase().endsWith('.pdf');
+    if (isPDF) {
+      const firstPage = pageNumber ? (pageNumber.match(/\d+/)?.[0] || '1') : '1';
+      navigate(`/app/pdf-viewer?path=${encodeURIComponent(attachment.storagePath)}&page=${firstPage}&range=${encodeURIComponent(pageNumber || '')}&title=${encodeURIComponent(attachment.filename)}`);
+      return;
+    }
+
     if (downloading) return;
     setDownloading(true);
 
     try {
-      const { data, error } = await supabase.storage.from('attachments').createSignedUrl(attachment.storagePath, 60);
+      const { data, error } = await supabase.storage.from('attachments').createSignedUrl(attachment.storagePath, 3600);
       if (error) throw error;
       if (data?.signedUrl) {
-        const isPDF = attachment.fileType.toLowerCase().includes('pdf') || attachment.filename.toLowerCase().endsWith('.pdf');
-        if (isPDF) {
-          const firstPage = pageNumber ? (pageNumber.match(/\d+/)?.[0] || '1') : '1';
-          navigate(`/app/pdf-viewer?url=${encodeURIComponent(data.signedUrl)}&page=${firstPage}&range=${encodeURIComponent(pageNumber || '')}&title=${encodeURIComponent(attachment.filename)}`);
-        } else {
-          window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-        }
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (err) {
-      console.error('[AttachmentCard] Failed to download:', err);
+      console.error('[AttachmentCard] Failed to retrieve file:', err);
       alert('Failed to retrieve file.');
     } finally {
       setDownloading(false);
@@ -274,18 +275,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     setDownloading(true);
 
     try {
-      const { data, error } = await supabase.storage.from('attachments').createSignedUrl(attachment.storagePath, 60, {
-        download: attachment.filename
-      });
-      if (error) throw error;
-      if (data?.signedUrl) {
-        const link = document.createElement('a');
-        link.href = data.signedUrl;
-        link.download = attachment.filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      await downloadAttachmentFile(attachment.storagePath, attachment.filename, 3600);
     } catch (err) {
       console.error('[AttachmentCard] Failed to download file:', err);
       alert('Failed to download file.');

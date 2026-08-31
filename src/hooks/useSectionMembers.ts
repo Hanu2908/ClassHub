@@ -162,9 +162,20 @@ export function useSectionAttendance() {
     enabled: !!sectionId && isAuthenticated && isCR,
     staleTime: 1000 * 60 * 5, // 5 minutes cache
     queryFn: async () => {
+      const { data: sectionUsers, error: usersErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('section_id', sectionId!);
+
+      if (usersErr) throw usersErr;
+
+      const userIds = (sectionUsers ?? []).map((u) => u.id);
+      if (userIds.length === 0) return {};
+
       const { data, error } = await supabase
         .from('attendance_records')
-        .select('user_id, present, od, makeup, absent');
+        .select('user_id, present, od, makeup, absent')
+        .in('user_id', userIds);
       
       if (error) throw error;
 

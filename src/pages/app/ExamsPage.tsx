@@ -485,14 +485,12 @@ export default function ExamsPage() {
         return;
       }
       
-      const { data, error } = await supabase.storage
-        .from('attachments')
-        .createSignedUrl(path, 300);
-        
-      if (error) throw error;
-      if (!data?.signedUrl) throw new Error('Could not authorize access.');
-      
-      navigate(`/app/pdf-viewer?url=${encodeURIComponent(data.signedUrl)}&title=${encodeURIComponent(titleStr)}`);
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        navigate(`/app/pdf-viewer?url=${encodeURIComponent(path)}&title=${encodeURIComponent(titleStr)}`);
+        return;
+      }
+
+      navigate(`/app/pdf-viewer?path=${encodeURIComponent(path)}&title=${encodeURIComponent(titleStr)}`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to open PDF');
     }

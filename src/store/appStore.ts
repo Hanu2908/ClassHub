@@ -346,6 +346,7 @@ interface AppState {
   setOptimisticVote: (pollId: string, optionIds: string[]) => void;
   clearOptimisticVote: (pollId: string) => void;
 
+  clearHubState: () => void;
   signOut: () => void;
 }
 
@@ -480,6 +481,37 @@ export const useAppStore = create<AppState>()(
           delete next[pollId];
           return { optimisticVotes: next };
         }),
+
+      // ── Clear Hub State (keeps user logged in) ──
+      clearHubState: () =>
+        set((s) => ({
+          hub: null,
+          role: s.authUser?.role === 'teacher' ? 'teacher' : 'student',
+          authUser: s.authUser
+            ? {
+                ...s.authUser,
+                sectionId: null,
+                sectionName: null,
+                sectionRoll: null,
+                universityRoll: null,
+                counsellor: null,
+              }
+            : null,
+          user: s.user
+            ? {
+                ...s.user,
+                sectionId: null,
+                sectionRoll: null,
+                universityRoll: null,
+                counsellor: null,
+              }
+            : null,
+          selectedSectionId: '',
+          selectedSubjectId: '',
+          optimisticAcks: new Set<string>(),
+          optimisticVotes: {},
+          offlineCache: {},
+        })),
 
       // ── Sign out ──
       signOut: () =>
