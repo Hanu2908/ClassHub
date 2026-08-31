@@ -77,6 +77,13 @@ export default function PDFViewerPage() {
     loading,
   });
 
+  const handleJumpToPage = useCallback(
+    (pageNum: number) => {
+      jumpToPage(pageNum, numPages);
+    },
+    [jumpToPage, numPages]
+  );
+
   // In-document text search
   const {
     searchOpen,
@@ -91,7 +98,7 @@ export default function PDFViewerPage() {
   } = usePdfSearch({
     pdf,
     numPages,
-    onJumpToPage: (pageNum) => jumpToPage(pageNum, numPages),
+    onJumpToPage: handleJumpToPage,
   });
 
   // Paging controls
@@ -158,7 +165,7 @@ export default function PDFViewerPage() {
   }, [goToNextPage, goToPrevPage, navigate]);
 
   // Actions
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     const downloadFilename = title.endsWith('.pdf') ? title : `${title}.pdf`;
     if (storagePath) {
       try {
@@ -185,9 +192,9 @@ export default function PDFViewerPage() {
     } catch {
       toast.error('Failed to download PDF');
     }
-  };
+  }, [title, storagePath, activeUrl, rawUrl]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     const currentUrl = activeUrl || rawUrl;
     if (!currentUrl) return;
     const shareData = {
@@ -209,7 +216,7 @@ export default function PDFViewerPage() {
         toast.error('Could not share link');
       }
     }
-  };
+  }, [title, activePageNum, activeUrl, rawUrl]);
 
   // Helper range checker
   const isPageInRange = useCallback(

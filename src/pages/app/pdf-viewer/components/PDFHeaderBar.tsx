@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -12,7 +12,6 @@ import {
   ZoomOut,
   Check,
 } from 'lucide-react';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import type { PDFHeaderBarProps } from '../types';
 
 export const PDFHeaderBar: React.FC<PDFHeaderBarProps> = ({
@@ -28,6 +27,20 @@ export const PDFHeaderBar: React.FC<PDFHeaderBarProps> = ({
   onResetZoom,
   onBack,
 }) => {
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!optionsOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (optionsRef.current && !optionsRef.current.contains(e.target as Node)) {
+        setOptionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [optionsOpen]);
+
   const headerStyle: React.CSSProperties = {
     position: 'relative',
     zIndex: 50,
@@ -71,6 +84,25 @@ export const PDFHeaderBar: React.FC<PDFHeaderBarProps> = ({
     borderRadius: '50%',
     transition: 'all var(--transition-fast)',
   };
+
+  const menuItemStyle = (isActive: boolean): React.CSSProperties => ({
+    width: '100%',
+    padding: '8px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+    background: isActive ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
+    border: 'none',
+    borderLeft: isActive ? '3px solid var(--accent-primary)' : '3px solid transparent',
+    borderRadius: 'var(--radius-sm)',
+    color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
+    fontWeight: isActive ? 600 : 400,
+    fontSize: '13px',
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: 'background var(--transition-fast)',
+  });
 
   return (
     <header style={headerStyle}>
@@ -158,163 +190,168 @@ export const PDFHeaderBar: React.FC<PDFHeaderBarProps> = ({
           <Download size={18} />
         </button>
 
-        {/* More options dropdown */}
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button
-              style={btnStyle}
-              title="Options"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'none';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
-            >
-              <MoreVertical size={18} />
-            </button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              align="end"
-              alignOffset={12}
-              sideOffset={8}
+        {/* Options dropdown menu */}
+        <div ref={optionsRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setOptionsOpen((prev) => !prev)}
+            style={{
+              ...btnStyle,
+              background: optionsOpen ? 'rgba(255, 255, 255, 0.08)' : 'none',
+              color: optionsOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
+            }}
+            title="Options"
+            aria-expanded={optionsOpen}
+            aria-haspopup="true"
+          >
+            <MoreVertical size={18} />
+          </button>
+
+          {optionsOpen && (
+            <div
               className="dropdown-content animate-slide-up"
-              style={{ zIndex: 10000, minWidth: '180px' }}
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: 0,
+                zIndex: 10000,
+                minWidth: '190px',
+                background: 'rgba(18, 20, 29, 0.98)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: 'var(--shadow-elevated)',
+                padding: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+              }}
             >
-              <DropdownMenu.Item
-                onClick={() => onSelectDisplayMode('original')}
-                className="dropdown-item"
-                style={{
-                  color:
-                    displayMode === 'original' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  background:
-                    displayMode === 'original' ? 'rgba(74, 158, 255, 0.08)' : undefined,
-                  borderLeft:
-                    displayMode === 'original'
-                      ? '3px solid var(--accent-primary)'
-                      : '3px solid transparent',
-                  fontWeight: displayMode === 'original' ? 600 : 400,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  paddingLeft: '9px',
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectDisplayMode('original');
+                  setOptionsOpen(false);
+                }}
+                style={menuItemStyle(displayMode === 'original')}
+                onMouseEnter={(e) => {
+                  if (displayMode !== 'original') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  if (displayMode !== 'original') e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <span className="flex items-center gap-2">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Sun size={14} />
                   Original (Light)
                 </span>
                 {displayMode === 'original' && <Check size={14} />}
-              </DropdownMenu.Item>
+              </button>
 
-              <DropdownMenu.Item
-                onClick={() => onSelectDisplayMode('dark')}
-                className="dropdown-item"
-                style={{
-                  color:
-                    displayMode === 'dark' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  background:
-                    displayMode === 'dark' ? 'rgba(74, 158, 255, 0.08)' : undefined,
-                  borderLeft:
-                    displayMode === 'dark'
-                      ? '3px solid var(--accent-primary)'
-                      : '3px solid transparent',
-                  fontWeight: displayMode === 'dark' ? 600 : 400,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  paddingLeft: '9px',
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectDisplayMode('dark');
+                  setOptionsOpen(false);
+                }}
+                style={menuItemStyle(displayMode === 'dark')}
+                onMouseEnter={(e) => {
+                  if (displayMode !== 'dark') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  if (displayMode !== 'dark') e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <span className="flex items-center gap-2">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Moon size={14} />
                   Dark Mode
                 </span>
                 {displayMode === 'dark' && <Check size={14} />}
-              </DropdownMenu.Item>
+              </button>
 
-              <DropdownMenu.Item
-                onClick={() => onSelectDisplayMode('sepia')}
-                className="dropdown-item"
-                style={{
-                  color:
-                    displayMode === 'sepia' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  background:
-                    displayMode === 'sepia' ? 'rgba(74, 158, 255, 0.08)' : undefined,
-                  borderLeft:
-                    displayMode === 'sepia'
-                      ? '3px solid var(--accent-primary)'
-                      : '3px solid transparent',
-                  fontWeight: displayMode === 'sepia' ? 600 : 400,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  paddingLeft: '9px',
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectDisplayMode('sepia');
+                  setOptionsOpen(false);
+                }}
+                style={menuItemStyle(displayMode === 'sepia')}
+                onMouseEnter={(e) => {
+                  if (displayMode !== 'sepia') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  if (displayMode !== 'sepia') e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <span className="flex items-center gap-2">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Eye size={14} />
                   Sepia
                 </span>
                 {displayMode === 'sepia' && <Check size={14} />}
-              </DropdownMenu.Item>
+              </button>
 
               <div
                 style={{
                   height: '1px',
                   backgroundColor: 'var(--border-default)',
-                  margin: '6px 0',
+                  margin: '4px 0',
                 }}
               />
 
-              <DropdownMenu.Item
-                onClick={onRotateClockwise}
-                className="dropdown-item"
-                style={{
-                  color: 'var(--text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  borderLeft: '3px solid transparent',
-                  paddingLeft: '9px',
+              <button
+                type="button"
+                onClick={() => {
+                  onRotateClockwise();
+                  setOptionsOpen(false);
+                }}
+                style={menuItemStyle(false)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
                 }}
               >
-                <RotateCw size={14} />
-                <span>Rotate Clockwise</span>
-              </DropdownMenu.Item>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <RotateCw size={14} />
+                  Rotate Clockwise
+                </span>
+              </button>
 
               <div
                 style={{
                   height: '1px',
                   backgroundColor: 'var(--border-default)',
-                  margin: '6px 0',
+                  margin: '4px 0',
                 }}
               />
 
-              <DropdownMenu.Item
-                onClick={onResetZoom}
-                className="dropdown-item"
-                style={{
-                  color: 'var(--text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  borderLeft: '3px solid transparent',
-                  paddingLeft: '9px',
+              <button
+                type="button"
+                onClick={() => {
+                  onResetZoom();
+                  setOptionsOpen(false);
+                }}
+                style={menuItemStyle(false)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
                 }}
               >
-                <ZoomOut size={14} />
-                <span>Reset Zoom</span>
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ZoomOut size={14} />
+                  Reset Zoom
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
