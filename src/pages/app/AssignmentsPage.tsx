@@ -981,55 +981,65 @@ export default function AssignmentsPage() {
   };
 
   // 2-day post-deadline expiry & archive filtering
-  const enriched = assignments.filter(a => {
-    if (a.isArchived) return true;
-    return !isExpired(a.dueDate);
-  }).map(a => {
-    const isSubmitted = a.status === 'submitted';
-    const diff = new Date(a.dueDate).getTime() - now;
-    const isOverdue = diff < 0 && !isSubmitted;
-    return { ...a, isSubmitted, isOverdue };
-  });
+  const enriched = useMemo(() => {
+    return assignments.filter(a => {
+      if (a.isArchived) return true;
+      return !isExpired(a.dueDate);
+    }).map(a => {
+      const isSubmitted = a.status === 'submitted';
+      const diff = new Date(a.dueDate).getTime() - now;
+      const isOverdue = diff < 0 && !isSubmitted;
+      return { ...a, isSubmitted, isOverdue };
+    });
+  }, [assignments, now]);
 
   // Calculate subject counts based on current status filter
-  const subjectCounts = enriched.reduce((acc, a) => {
-    let passes = true;
-    if (filter === 'archived') passes = Boolean(a.isArchived);
-    else if (a.isArchived) passes = false;
-    else if (filter === 'submitted') passes = a.isSubmitted;
-    else if (filter === 'overdue') passes = a.isOverdue;
-    else if (filter === 'pending') passes = !a.isSubmitted && !a.isOverdue;
+  const subjectCounts = useMemo(() => {
+    return enriched.reduce((acc, a) => {
+      let passes = true;
+      if (filter === 'archived') passes = Boolean(a.isArchived);
+      else if (a.isArchived) passes = false;
+      else if (filter === 'submitted') passes = a.isSubmitted;
+      else if (filter === 'overdue') passes = a.isOverdue;
+      else if (filter === 'pending') passes = !a.isSubmitted && !a.isOverdue;
 
-    if (passes) {
-      acc[a.subject] = (acc[a.subject] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, number>);
+      if (passes) {
+        acc[a.subject] = (acc[a.subject] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  }, [enriched, filter]);
 
-  const uniqueSubjects = Object.keys(subjectCounts).sort();
+  const uniqueSubjects = useMemo(() => Object.keys(subjectCounts).sort(), [subjectCounts]);
 
-  const statusFiltered = enriched.filter(a => {
-    if (filter === 'archived') return Boolean(a.isArchived);
-    if (a.isArchived) return false;
-    if (filter === 'all') return true;
-    if (filter === 'submitted') return a.isSubmitted;
-    if (filter === 'overdue') return a.isOverdue;
-    if (filter === 'pending') return !a.isSubmitted && !a.isOverdue;
-    return true;
-  });
+  const statusFiltered = useMemo(() => {
+    return enriched.filter(a => {
+      if (filter === 'archived') return Boolean(a.isArchived);
+      if (a.isArchived) return false;
+      if (filter === 'all') return true;
+      if (filter === 'submitted') return a.isSubmitted;
+      if (filter === 'overdue') return a.isOverdue;
+      if (filter === 'pending') return !a.isSubmitted && !a.isOverdue;
+      return true;
+    });
+  }, [enriched, filter]);
 
-  const filtered = statusFiltered.filter(a => {
-    if (selectedSubject === 'all') return true;
-    return a.subject === selectedSubject;
-  });
+  const filtered = useMemo(() => {
+    return statusFiltered.filter(a => {
+      if (selectedSubject === 'all') return true;
+      return a.subject === selectedSubject;
+    });
+  }, [statusFiltered, selectedSubject]);
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'due') {
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    } else {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-  });
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'due') {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      } else {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+  }, [filtered, sortBy]);
 
   return (
     <div className="page-shell">

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { AnimatePresence } from 'motion/react';
 import type { Attachment } from '../store/appStore';
 import { isPreviewableImage, signedUrlCache, downloadAttachmentFile } from '../lib/utils/attachments';
-import { getThumbPath, decodeAtReducedResolution } from '../lib/utils/imageResize';
+import { decodeAtReducedResolution } from '../lib/utils/imageResize';
 
 interface AttachmentCardProps {
   attachment: Attachment;
@@ -44,6 +44,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
 
   // Option D: downscaled object URL for legacy images (no thumbnail)
   const downscaledUrlRef = useRef<string | null>(null);
+  const downscaledAttemptedRef = useRef<string | null>(null);
   const [cardDisplayUrl, setCardDisplayUrl] = useState<string | null>(null);
 
   // Intersection Observer elements
@@ -140,24 +141,9 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
 
       const fullUrl = fullData.signedUrl;
 
-      if (isImage) {
-        const thumbPath = getThumbPath(attachment.storagePath);
-        const { data: thumbData, error: thumbError } = await supabase.storage
-          .from('attachments')
-          .createSignedUrl(thumbPath, 3600);
-
-        if (cancelled) return;
-
-        const hasThumb = !thumbError && !!thumbData?.signedUrl;
-        const thumbUrl = hasThumb ? thumbData!.signedUrl : fullUrl;
-
-        signedUrlCache.set(attachment.storagePath, { thumbUrl, fullUrl, hasThumb, expiresAt });
-        setPreviewState({ thumbUrl, fullUrl, hasThumb, error: false, loading: false });
-        setCardDisplayUrl(thumbUrl);
-      } else {
-        signedUrlCache.set(attachment.storagePath, { thumbUrl: fullUrl, fullUrl, hasThumb: false, expiresAt });
-        setPreviewState({ thumbUrl: fullUrl, fullUrl, hasThumb: false, error: false, loading: false });
-      }
+      signedUrlCache.set(attachment.storagePath, { thumbUrl: fullUrl, fullUrl, hasThumb: false, expiresAt });
+      setPreviewState({ thumbUrl: fullUrl, fullUrl, hasThumb: false, error: false, loading: false });
+      setCardDisplayUrl(fullUrl);
     };
 
     fetchUrls().catch(() => {
@@ -169,7 +155,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     return () => {
       cancelled = true;
     };
-  }, [attachment.storagePath, isImage, isPdf, isPreviewable, isVisible]);
+  }, [attachment.storagePath, isPreviewable, isVisible]);
 
   // 3. Render PDF 1st-page thumbnail onto canvas (50ms execution delay to preserve 60fps scroll)
   useEffect(() => {
@@ -203,18 +189,21 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     };
   }, [attachment.storagePath, cachedThumbDataUrl, isPdf, previewState.fullUrl]);
 
-  // 3. Option D: decode-time downscale for legacy images (no thumbnail found)
+  // 4. Option D: decode-time downscale for legacy large images (> 500KB)
   useEffect(() => {
-    if (!isImageLoaded || previewState.hasThumb || !previewState.fullUrl) return;
-    // Only apply when card is showing the full-res original (no thumb available)
-    if (previewState.thumbUrl !== previewState.fullUrl) return;
+    if (!isImageLoaded || !previewState.fullUrl) return;
+    // Guard against infinite re-render loops: only run once per distinct URL
+    if (downscaledAttemptedRef.current === previewState.fullUrl) return;
+    downscaledAttemptedRef.current = previewState.fullUrl;
+
+    // Small compressed images don't need client-side canvas downscaling
+    if (attachment.fileSize && attachment.fileSize < 500 * 1024) return;
 
     let cancelled = false;
 
     decodeAtReducedResolution(previewState.fullUrl).then((downscaledUrl) => {
       if (cancelled) return;
-      // Only swap if we got a different (downscaled) URL
-      if (downscaledUrl !== previewState.fullUrl) {
+      if (downscaledUrl && downscaledUrl !== previewState.fullUrl) {
         downscaledUrlRef.current = downscaledUrl;
         setCardDisplayUrl(downscaledUrl);
       }
@@ -223,7 +212,7 @@ export const AttachmentCard = React.memo(function AttachmentCard({ attachment, p
     return () => {
       cancelled = true;
     };
-  }, [isImageLoaded, previewState.hasThumb, previewState.fullUrl, previewState.thumbUrl]);
+  }, [isImageLoaded, previewState.fullUrl, attachment.fileSize]);
 
   // Cleanup downscaled object URL on unmount
   useEffect(() => {
