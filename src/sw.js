@@ -1,5 +1,5 @@
 import { precacheAndRoute, cleanupOutdatedCaches, matchPrecache } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
+import { registerRoute, setCatchHandler } from 'workbox-routing';
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { pruneExpiredShares, stageShare } from './lib/shareInbox';
@@ -15,6 +15,15 @@ clientsClaim();
 
 // Precaches all build assets compiled by Vite
 precacheAndRoute(self.__WB_MANIFEST || []);
+
+// Fallback catch handler for all failed document navigations when offline
+setCatchHandler(async ({ request }) => {
+  if (request.destination === 'document' || request.mode === 'navigate') {
+    const cachedIndex = (await matchPrecache('/index.html')) || (await matchPrecache('index.html'));
+    if (cachedIndex) return cachedIndex;
+  }
+  return Response.error();
+});
 
 // ── Runtime Caching Rules ──
 
