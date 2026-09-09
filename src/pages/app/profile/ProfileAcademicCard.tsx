@@ -219,8 +219,8 @@ export function ProfileAcademicCard() {
                 padding: '14px 16px', borderBottom: '1px solid var(--border-default)',
               }}>
                 <div>
-                  <p className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>Lab Sub-Batch</p>
-                  <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>Practical slot division</p>
+                  <p className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>Lab Group</p>
+                  <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>Practical slot division (G1/G2)</p>
                 </div>
                 <div style={{
                   display: 'inline-flex',
@@ -365,8 +365,8 @@ export function ProfileAcademicCard() {
               padding: '14px 16px',
             }}>
               <div>
-                <p className="t-body" style={{ color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
-                  Batch Counsellor
+                <p className="t-body-medium" style={{ color: 'var(--text-primary)', margin: 0 }}>
+                  Group Counsellor
                 </p>
                 <p className="t-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>
                   {counsellor.name} ({sectionName || ''}{subBatch})

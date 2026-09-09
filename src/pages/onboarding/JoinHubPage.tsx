@@ -675,10 +675,10 @@ export default function JoinHubPage() {
                 </div>
               </div>
 
-              {/* Batch */}
+              {/* Group */}
               <div>
                 <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6, fontSize: 12 }}>
-                  Batch <span style={{ color: 'var(--status-critical)' }}>*</span>
+                  Group <span style={{ color: 'var(--status-critical)' }}>*</span>
                 </label>
                 <div style={{ display: 'flex', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: 3, gap: 2 }}>
                   <button type="button" onClick={() => setBatch('1')} style={{
@@ -686,14 +686,14 @@ export default function JoinHubPage() {
                     color: batch === '1' ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
                     cursor: 'pointer', fontSize: 12, fontWeight: 600
                   }}>
-                    B1
+                    G1
                   </button>
                   <button type="button" onClick={() => setBatch('2')} style={{
                     flex: 1, padding: '6px', background: batch === '2' ? 'var(--accent-primary)' : 'transparent',
                     color: batch === '2' ? '#fff' : 'var(--text-secondary)', border: 'none', borderRadius: 'var(--radius-sm)',
                     cursor: 'pointer', fontSize: 12, fontWeight: 600
                   }}>
-                    B2
+                    G2
                   </button>
                 </div>
               </div>

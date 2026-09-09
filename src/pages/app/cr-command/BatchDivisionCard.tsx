@@ -46,7 +46,7 @@ export function BatchDivisionCard() {
       >
         <SectionHead
           icon={<SlidersHorizontal size={16} color="var(--accent-primary)" />}
-          title="Batch Division Setup"
+          title="Group Division Setup"
         />
         {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
       </div>
@@ -54,7 +54,7 @@ export function BatchDivisionCard() {
       {expanded ? (
         <div style={{ padding: '16px', borderTop: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p className="t-caption" style={{ color: 'var(--text-secondary)' }}>
-            Configure automatic sub-batch division for practical labs, tutorials, and attendance rosters.
+            Configure automatic group division for practical labs, tutorials, and attendance rosters.
           </p>
 
           <div style={{
@@ -67,13 +67,13 @@ export function BatchDivisionCard() {
             border: '1px solid var(--border-default)',
           }}>
             <div style={{ textAlign: 'center' }}>
-              <p className="t-mono-sm" style={{ color: '#60A5FA', fontWeight: 600 }}>BATCH 1 (B1)</p>
+              <p className="t-mono-sm" style={{ color: '#60A5FA', fontWeight: 600 }}>GROUP 1 (G1)</p>
               <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 2 }}>
                 Roll 1 to {cutoff}
               </p>
             </div>
             <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-default)' }}>
-              <p className="t-mono-sm" style={{ color: '#A78BFA', fontWeight: 600 }}>BATCH 2 (B2)</p>
+              <p className="t-mono-sm" style={{ color: '#A78BFA', fontWeight: 600 }}>GROUP 2 (G2)</p>
               <p className="t-body-medium" style={{ color: 'var(--text-primary)', marginTop: 2 }}>
                 Roll {cutoff + 1} onwards
               </p>
@@ -82,7 +82,7 @@ export function BatchDivisionCard() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
             <label className="t-label" style={{ color: 'var(--text-secondary)' }}>
-              Batch 1 Cutoff (End Roll Number)
+              Group 1 Cutoff (End Roll Number)
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input

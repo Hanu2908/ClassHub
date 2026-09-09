@@ -33,6 +33,7 @@ export function useSubjects(opts?: { sectionId?: string }) {
     queryKey: ['subjects', sectionId],
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: (previousData) => previousData ?? [],
     queryFn: async () => {
       if (isDemo) return DEMO_SUBJECTS;
       const { data, error } = await supabase

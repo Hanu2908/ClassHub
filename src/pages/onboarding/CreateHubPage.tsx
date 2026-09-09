@@ -443,10 +443,10 @@ export default function CreateHubPage() {
           </div>
         </div>
 
-        {/* Batch Selection (Batch 1 vs. Batch 2) */}
+        {/* Group Selection (Group 1 vs. Group 2) */}
         <div>
           <label className="t-subtitle" style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 8, letterSpacing: '-0.01em' }}>
-            Batch <span style={{ color: 'var(--status-critical)' }}>*</span>
+            Group <span style={{ color: 'var(--status-critical)' }}>*</span>
           </label>
           <div style={{
             display: 'flex',
@@ -475,7 +475,7 @@ export default function CreateHubPage() {
                 transition: 'all 0.2s ease'
               }}
             >
-              Batch 1
+              Group 1 (G1)
             </button>
             <button
               type="button"
@@ -496,7 +496,7 @@ export default function CreateHubPage() {
                 transition: 'all 0.2s ease'
               }}
             >
-              Batch 2
+              Group 2 (G2)
             </button>
           </div>
         </div>

@@ -57,6 +57,7 @@ export function useSection(opts?: { sectionId?: string }) {
     queryKey: ['section', sectionId],
     enabled: !!sectionId && isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    placeholderData: (previousData) => previousData ?? useAppStore.getState().offlineCache?.section ?? null,
     queryFn: async () => {
       if (import.meta.env.DEV && localStorage.getItem('demo_mode') === 'true') {
         const cached = useAppStore.getState().offlineCache?.section;

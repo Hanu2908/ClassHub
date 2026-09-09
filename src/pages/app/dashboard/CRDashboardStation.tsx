@@ -1,9 +1,15 @@
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart2, MessageSquare, ClipboardList, AlertTriangle, BookOpen } from 'lucide-react';
 import { useAppStore } from '../../../store/appStore';
 import { useSection } from '../../../hooks/useSectionMembers';
 import { useQueryClient } from '@tanstack/react-query';
-import { prefetchAnnouncementsData } from './prefetchHelper';
+import { 
+  prefetchAnnouncementsData, 
+  prefetchCRCommandData, 
+  prefetchPollsData, 
+  prefetchAssignmentsData 
+} from './prefetchHelper';
 import DirectShareTip from '../../../components/DirectShareTip';
 import { useSubjects } from '../../../hooks/useSubjects';
 
@@ -12,7 +18,31 @@ export default function CRDashboardStation() {
   const authUser = useAppStore(s => s.authUser);
   const sectionId = authUser?.sectionId;
   const userId = authUser?.id;
-  const prefetchAnnouncements = () => prefetchAnnouncementsData(queryClient, sectionId, userId);
+
+  const prefetchCR = useCallback(() => {
+    prefetchCRCommandData(queryClient, sectionId, userId);
+  }, [queryClient, sectionId, userId]);
+
+  const prefetchAnnouncements = useCallback(() => {
+    prefetchAnnouncementsData(queryClient, sectionId, userId);
+  }, [queryClient, sectionId, userId]);
+
+  const prefetchPolls = useCallback(() => {
+    prefetchPollsData(queryClient, sectionId, userId);
+  }, [queryClient, sectionId, userId]);
+
+  const prefetchAssignments = useCallback(() => {
+    prefetchAssignmentsData(queryClient, sectionId, userId);
+  }, [queryClient, sectionId, userId]);
+
+  // Background idle warming: prefetch CR command center queries right after dashboard mounts
+  useEffect(() => {
+    if (!sectionId) return;
+    const timer = setTimeout(() => {
+      prefetchCR();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [sectionId, prefetchCR]);
 
   const navigate = useNavigate();
   const { data: section } = useSection();
@@ -97,6 +127,9 @@ export default function CRDashboardStation() {
           <button 
             className="btn-secondary" 
             onClick={() => navigate('/app/cr-command')}
+            onMouseEnter={prefetchCR}
+            onTouchStart={prefetchCR}
+            onFocus={prefetchCR}
             style={{ 
               padding: '6px 12px', 
               minHeight: 'fit-content', 
@@ -116,6 +149,9 @@ export default function CRDashboardStation() {
         <div className="cr-command-grid">
           <button 
             onClick={() => navigate('/app/polls', { state: { openCreate: true } })}
+            onMouseEnter={prefetchPolls}
+            onTouchStart={prefetchPolls}
+            onFocus={prefetchPolls}
             className="btn-tactile-cr glow-blue"
             aria-label="Create a new poll"
           >
@@ -127,6 +163,7 @@ export default function CRDashboardStation() {
             onClick={() => navigate('/app/announcements', { state: { openCreate: true } })}
             onMouseEnter={prefetchAnnouncements}
             onTouchStart={prefetchAnnouncements}
+            onFocus={prefetchAnnouncements}
             className="btn-tactile-cr glow-violet"
             aria-label="Post a new announcement"
           >
@@ -136,6 +173,9 @@ export default function CRDashboardStation() {
 
           <button 
             onClick={() => navigate('/app/assignments', { state: { openCreate: true } })}
+            onMouseEnter={prefetchAssignments}
+            onTouchStart={prefetchAssignments}
+            onFocus={prefetchAssignments}
             className="btn-tactile-cr glow-emerald"
             aria-label="Create a new assignment"
           >
@@ -145,6 +185,9 @@ export default function CRDashboardStation() {
 
           <button 
             onClick={() => navigate('/app/cr-command', { state: { openFlashPost: true } })}
+            onMouseEnter={prefetchCR}
+            onTouchStart={prefetchCR}
+            onFocus={prefetchCR}
             className="btn-tactile-cr glow-rose"
             aria-label="Send a flash post"
           >
