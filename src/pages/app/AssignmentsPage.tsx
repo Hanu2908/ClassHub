@@ -5,7 +5,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavBar } from '../../components/NavBar';
 import { CROnly, EmptyState } from '../../components/Shared';
 import { BottomSheet } from '../../components/BottomSheet';
-import { useAppStore, isExpired } from '../../store/appStore';
+import { useAppStore, isAssignmentExpired } from '../../store/appStore';
 import type { AssignmentSet, Assignment } from '../../store/appStore';
 import { toast } from 'sonner';
 import { useAssignments, useCreateAssignment, useDeleteAssignment, useUpdateAssignment, useSubmitAssignment, useUnsubmitAssignment } from '../../hooks/useAssignments';
@@ -887,7 +887,7 @@ export default function AssignmentsPage() {
   const [sortBy, setSortBy] = useState<'due' | 'created'>('due');
 
   // Unit Tests Filter State
-  const [utFilter, setUtFilter] = useState<'active' | 'past' | 'all'>('active');
+  const [utFilter, setUtFilter] = useState<'active' | 'past' | 'all'>('all');
   const [utSubject, setUtSubject] = useState<string>('all');
   const [utSortBy, setUtSortBy] = useState<'due' | 'created'>('due');
 
@@ -980,16 +980,14 @@ export default function AssignmentsPage() {
     }
   };
 
-  // 2-day post-deadline expiry & archive filtering
+  // 5-day post-deadline expiry & archive mapping
   const enriched = useMemo(() => {
-    return assignments.filter(a => {
-      if (a.isArchived) return true;
-      return !isExpired(a.dueDate);
-    }).map(a => {
+    return assignments.map(a => {
       const isSubmitted = a.status === 'submitted';
       const diff = new Date(a.dueDate).getTime() - now;
       const isOverdue = diff < 0 && !isSubmitted;
-      return { ...a, isSubmitted, isOverdue };
+      const isExpired = isAssignmentExpired(a.dueDate);
+      return { ...a, isSubmitted, isOverdue, isExpired };
     });
   }, [assignments, now]);
 
@@ -997,11 +995,11 @@ export default function AssignmentsPage() {
   const subjectCounts = useMemo(() => {
     return enriched.reduce((acc, a) => {
       let passes = true;
-      if (filter === 'archived') passes = Boolean(a.isArchived);
+      if (filter === 'archived') passes = Boolean(a.isArchived) || a.isExpired;
       else if (a.isArchived) passes = false;
       else if (filter === 'submitted') passes = a.isSubmitted;
-      else if (filter === 'overdue') passes = a.isOverdue;
-      else if (filter === 'pending') passes = !a.isSubmitted && !a.isOverdue;
+      else if (filter === 'overdue') passes = a.isOverdue && !a.isExpired;
+      else if (filter === 'pending') passes = !a.isSubmitted && !a.isOverdue && !a.isExpired;
 
       if (passes) {
         acc[a.subject] = (acc[a.subject] || 0) + 1;
@@ -1014,12 +1012,12 @@ export default function AssignmentsPage() {
 
   const statusFiltered = useMemo(() => {
     return enriched.filter(a => {
-      if (filter === 'archived') return Boolean(a.isArchived);
+      if (filter === 'archived') return Boolean(a.isArchived) || a.isExpired;
       if (a.isArchived) return false;
       if (filter === 'all') return true;
       if (filter === 'submitted') return a.isSubmitted;
-      if (filter === 'overdue') return a.isOverdue;
-      if (filter === 'pending') return !a.isSubmitted && !a.isOverdue;
+      if (filter === 'overdue') return a.isOverdue && !a.isExpired;
+      if (filter === 'pending') return !a.isSubmitted && !a.isOverdue && !a.isExpired;
       return true;
     });
   }, [enriched, filter]);
@@ -1132,7 +1130,7 @@ export default function AssignmentsPage() {
                   }}
                 >
                   <span style={{ textTransform: 'capitalize' }}>
-                    {filter === 'all' ? 'All' : filter}
+                    {filter === 'all' ? 'All' : filter === 'archived' ? 'Archived & Expired' : filter}
                   </span>
                   <ChevronDown size={14} style={{ opacity: 0.6 }} />
                 </button>
@@ -1162,7 +1160,7 @@ export default function AssignmentsPage() {
                           textTransform: 'capitalize',
                         }}
                       >
-                        <span>{f === 'all' ? 'All Assignments' : f}</span>
+                        <span>{f === 'all' ? 'All Assignments' : f === 'archived' ? 'Archived & Expired' : f}</span>
                         {isSelected && <Check size={14} />}
                       </DropdownMenu.Item>
                     );
@@ -1561,8 +1559,8 @@ export default function AssignmentsPage() {
           <AssignmentsSkeleton />
         ) : sorted.length === 0 ? (
           <EmptyState icon={<PartyPopper size={36} color="var(--text-muted)" />} title="All clear!" subtitle="No assignments in this category" />
-        ) : (
-          sorted.map(a => {
+        ) : (() => {
+          const renderCard = (a: (typeof sorted)[number]) => {
             const userSet = getUserSet(classRoll, a.sets ?? []);
             const isSubmitted = a.isSubmitted;
             
@@ -1580,6 +1578,9 @@ export default function AssignmentsPage() {
                 bdg = 'badge-warning';
                 lbl = 'Submitted';
               }
+            } else if (a.isExpired) {
+              bdg = 'badge-critical';
+              lbl = 'Expired';
             } else if (a.isOverdue) {
               bdg = 'badge-critical';
               lbl = 'Overdue';
@@ -1650,6 +1651,20 @@ export default function AssignmentsPage() {
                       }}>
                         <Archive size={11} />
                         Archived
+                      </span>
+                    )}
+                    {(a as any).isExpired && !a.isArchived && (
+                      <span className="badge" style={{
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        color: '#f87171',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: '11px',
+                      }}>
+                        <Archive size={11} />
+                        Expired
                       </span>
                     )}
                     <span className={`badge ${bdg}`} style={{ fontSize: '11px' }}>{lbl}</span>
@@ -1899,8 +1914,29 @@ export default function AssignmentsPage() {
                 )}
               </article>
             );
-          })
-        )}
+          };
+
+          if (filter === 'all' && sorted.some(a => (a as any).isExpired)) {
+            const active = sorted.filter(a => !(a as any).isExpired);
+            const expired = sorted.filter(a => (a as any).isExpired);
+            return (
+              <>
+                {active.map(renderCard)}
+                <div style={{ margin: '18px 0 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ height: 1, flex: 1, background: 'var(--border-default)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    <Archive size={13} color="var(--text-muted)" />
+                    <span>Past ({expired.length})</span>
+                  </div>
+                  <div style={{ height: 1, flex: 1, background: 'var(--border-default)' }} />
+                </div>
+                {expired.map(renderCard)}
+              </>
+            );
+          }
+
+          return sorted.map(renderCard);
+        })()}
       </main>
 
       {/* Create assignment sheet (CR only) */}

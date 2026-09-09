@@ -260,12 +260,17 @@ export function mapDbNotification(db: DbNotification): AppNotification {
   };
 }
 
-// ── Expiry helper — 2 days after deadline ────────────────────────────────────
+// ── Expiry helper — 2 days after deadline (polls/general), 5 days for assignments ────
 export const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+export const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
 
-export function isExpired(isoDeadline: string | null | undefined): boolean {
+export function isExpired(isoDeadline: string | null | undefined, expiryMs: number = TWO_DAYS_MS): boolean {
   if (!isoDeadline) return false;
-  return Date.now() > new Date(isoDeadline).getTime() + TWO_DAYS_MS;
+  return Date.now() > new Date(isoDeadline).getTime() + expiryMs;
+}
+
+export function isAssignmentExpired(isoDeadline: string | null | undefined): boolean {
+  return isExpired(isoDeadline, FIVE_DAYS_MS);
 }
 
 export interface SectionInfo {

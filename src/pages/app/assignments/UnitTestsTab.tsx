@@ -51,7 +51,7 @@ interface UnitTestsTabProps {
 }
 
 export function UnitTestsTab({
-  filter = 'active',
+  filter = 'all',
   selectedSubject = 'all',
   sortBy = 'due',
 }: UnitTestsTabProps) {
@@ -147,10 +147,14 @@ export function UnitTestsTab({
             <Sparkles size={20} color="var(--accent-primary)" />
           </div>
           <p className="t-card-title" style={{ color: 'var(--text-primary)', margin: 0 }}>
-            {filter === 'active' ? 'No active unit tests!' : 'No unit tests found'}
+            {filter === 'active' ? 'No active unit tests!' : filter === 'past' ? 'No past unit tests found' : 'No unit tests found'}
           </p>
           <p className="t-body" style={{ color: 'var(--text-muted)', margin: 0, fontSize: '13px' }}>
-            {filter === 'active' ? 'You are all caught up on pre-midterm tests.' : 'Submitted tests will appear here.'}
+            {filter === 'active'
+              ? 'You are all caught up on pre-midterm tests.'
+              : filter === 'past'
+              ? 'Submitted or past tests will appear here.'
+              : 'No unit tests posted for this section yet.'}
           </p>
         </div>
       ) : (
