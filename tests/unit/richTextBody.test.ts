@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { sanitizeUrl } from "../../src/lib/utils/url";
 
 // YouTube parsing regex used in RichTextBody.tsx
 const YOUTUBE_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
@@ -115,3 +116,37 @@ describe("Smart Task Auto-Detection Rules", () => {
     expect(isTaskListItem("Linear Algebra")).toBe(false);
   });
 });
+
+describe("URL Sanitization & XSS Prevention (sanitizeUrl)", () => {
+  it("permits standard https and http URLs", () => {
+    expect(sanitizeUrl("https://skit.ac.in/announcements")).toBe("https://skit.ac.in/announcements");
+    expect(sanitizeUrl("http://example.com")).toBe("http://example.com");
+  });
+
+  it("permits safe mailto and tel communication schemes", () => {
+    expect(sanitizeUrl("mailto:cr@skit.ac.in")).toBe("mailto:cr@skit.ac.in");
+    expect(sanitizeUrl("tel:+919876543210")).toBe("tel:+919876543210");
+  });
+
+  it("permits internal anchor jumps and relative paths", () => {
+    expect(sanitizeUrl("/app/assignments")).toBe("/app/assignments");
+    expect(sanitizeUrl("#section-details")).toBe("#section-details");
+  });
+
+  it("blocks dangerous javascript: execution payloads", () => {
+    expect(sanitizeUrl("javascript:alert(1)")).toBe("#blocked-insecure-protocol");
+    expect(sanitizeUrl("JAVASCRIPT:alert(document.cookie)")).toBe("#blocked-insecure-protocol");
+    expect(sanitizeUrl("   javascript:void(0)   ")).toBe("#blocked-insecure-protocol");
+  });
+
+  it("blocks data: and vbscript: URIs", () => {
+    expect(sanitizeUrl("data:text/html,<script>alert(1)</script>")).toBe("#blocked-insecure-protocol");
+    expect(sanitizeUrl("vbscript:msgbox(1)")).toBe("#blocked-insecure-protocol");
+  });
+
+  it("blocks URLs containing null bytes or control characters", () => {
+    expect(sanitizeUrl("java\0script:alert(1)")).toBe("#blocked-insecure-protocol");
+    expect(sanitizeUrl("https://example.com/\x08test")).toBe("#blocked-insecure-protocol");
+  });
+});
+

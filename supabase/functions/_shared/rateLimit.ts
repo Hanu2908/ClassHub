@@ -1,4 +1,5 @@
-// @ts-nocheck
+declare const Deno: any;
+
 /**
  * Checks if a user has exceeded their rate limit.
  * Uses Deno KV to track requests in rolling time windows.

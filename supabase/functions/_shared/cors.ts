@@ -1,4 +1,5 @@
-// @ts-nocheck
+declare const Deno: any;
+
 export function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
   const rawAllowed = Deno.env.get("ALLOWED_ORIGINS") ?? "";
@@ -8,8 +9,6 @@ export function getCorsHeaders(req: Request) {
     .split(",")
     .map(s => s.trim().replace(/^['"]|['"]$/g, "").trim().replace(/\/+$/, ""))
     .filter(Boolean);
-
-  console.log(`[CORS] Request Origin: "${origin}" | Configured ALLOWED_ORIGINS: "${rawAllowed}" | Parsed:`, allowed);
 
   const headers: Record<string, string> = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

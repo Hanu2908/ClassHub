@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Skeleton from 'react-loading-skeleton';
 import { HighlightText } from './HighlightText';
 import { haptics } from '../lib/haptics';
+import { sanitizeUrl } from '../lib/utils/url';
 
 // Regex to match YouTube URLs
 const YOUTUBE_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
@@ -400,7 +401,10 @@ export function SmartDocumentCard({ url }: SmartDocumentCardProps) {
       <div
         onClick={(e) => {
           e.stopPropagation();
-          window.open(url, '_blank', 'noopener,noreferrer');
+          const safe = sanitizeUrl(url);
+          if (safe && !safe.startsWith('#')) {
+            window.open(safe, '_blank', 'noopener,noreferrer');
+          }
         }}
         style={{
           display: 'flex',
@@ -765,7 +769,7 @@ function renderInlineMarkdown(text: string, search?: string): React.ReactNode {
   if (!text) return null;
 
   // Regex to split by Markdown links [label](url), inline code `code`, bold **text** or *text*, italic _text_, strikethrough ~~text~~, or raw URLs
-  const inlineRegex = /(\[(?:[^\]]+)\]\((?:https?:\/\/[^\s)]+)\)|`[^`]+`|\*\*(?:[^*]+)\*\*|\*(?:[^*]+)\*|_(?:[^_]+)_|~~(?:[^~]+)~~|~(?:[^~]+)~|https?:\/\/[^\s]+)/g;
+  const inlineRegex = /(\[(?:[^\]]+)\]\((?:[^\s)]+)\)|`[^`]+`|\*\*(?:[^*]+)\*\*|\*(?:[^*]+)\*|_(?:[^_]+)_|~~(?:[^~]+)~~|~(?:[^~]+)~|https?:\/\/[^\s]+)/g;
 
   const parts = text.split(inlineRegex);
 
@@ -775,23 +779,29 @@ function renderInlineMarkdown(text: string, search?: string): React.ReactNode {
         if (!part) return null;
 
         // 1. Markdown Links: [label](url)
-        const mdLinkMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+        const mdLinkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
         if (mdLinkMatch) {
           const label = mdLinkMatch[1];
-          const url = mdLinkMatch[2];
+          const rawUrl = mdLinkMatch[2].trim();
+          const safeUrl = sanitizeUrl(rawUrl);
+          const isBlocked = safeUrl.startsWith('#blocked');
           return (
             <a
               key={index}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={safeUrl}
+              target={isBlocked ? undefined : '_blank'}
+              rel={isBlocked ? undefined : 'noopener noreferrer'}
               style={{
-                color: 'var(--accent-primary, #6366f1)',
+                color: isBlocked ? 'var(--status-critical, #f87171)' : 'var(--accent-primary, #6366f1)',
                 textDecoration: 'underline',
                 fontWeight: 500,
                 wordBreak: 'break-word',
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isBlocked) e.preventDefault();
+              }}
+              title={isBlocked ? 'Blocked unsafe link protocol' : undefined}
             >
               {search ? <HighlightText text={label} search={search} /> : label}
             </a>
@@ -851,10 +861,11 @@ function renderInlineMarkdown(text: string, search?: string): React.ReactNode {
 
         // 6. Raw URLs: https://...
         if (part.startsWith('http://') || part.startsWith('https://')) {
+          const safeUrl = sanitizeUrl(part);
           return (
             <a
               key={index}
-              href={part}
+              href={safeUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
