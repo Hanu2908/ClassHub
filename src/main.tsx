@@ -11,6 +11,7 @@ if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
   import('@sentry/react').then((Sentry) => {
     Sentry.init({
       dsn: import.meta.env.VITE_SENTRY_DSN,
+      release: import.meta.env.VITE_APP_VERSION || 'classhub@1.0.0',
       integrations: [
         Sentry.browserTracingIntegration(),
         Sentry.replayIntegration(),
@@ -18,6 +19,19 @@ if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
       tracesSampleRate: 1.0,
       replaysSessionSampleRate: 0.1,
       replaysOnErrorSampleRate: 1.0,
+      beforeSend(event) {
+        // Redact student PII: scrub user identifiers, student email and phone numbers
+        if (event.user) {
+          delete event.user.email;
+          delete event.user.username;
+          delete event.user.ip_address;
+        }
+        if (event.request?.headers) {
+          delete event.request.headers['Authorization'];
+          delete event.request.headers['cookie'];
+        }
+        return event;
+      },
     });
   }).catch((err) => {
     console.warn('[Sentry] Failed to initialize telemetry:', err);

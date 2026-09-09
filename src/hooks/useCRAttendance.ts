@@ -120,6 +120,32 @@ export function useLogCRAttendanceMutation() {
         throw statusErr;
       }
     },
+    onMutate: async (input: LogCRAttendanceInput) => {
+      await qc.cancelQueries({ queryKey: ['teacher-sessions', input.sectionId, input.subjectId] });
+      const previousSessions = qc.getQueryData(['teacher-sessions', input.sectionId, input.subjectId]);
+      
+      qc.setQueryData(['teacher-sessions', input.sectionId, input.subjectId], (old: any) => {
+        const newSession = {
+          id: input.sessionId,
+          section_id: input.sectionId,
+          subject_id: input.subjectId,
+          teacher_id: authUser?.id,
+          date: input.date,
+          timetable_slot_id: input.timetableSlotId || null,
+          target_batch: input.targetBatch || null,
+          lecture_count: input.lectureCount,
+          created_at: new Date().toISOString(),
+        };
+        return Array.isArray(old) ? [newSession, ...old] : [newSession];
+      });
+
+      return { previousSessions };
+    },
+    onError: (_err, input, context) => {
+      if (context?.previousSessions) {
+        qc.setQueryData(['teacher-sessions', input.sectionId, input.subjectId], context.previousSessions);
+      }
+    },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['teacher-sessions', variables.sectionId, variables.subjectId] });
       qc.invalidateQueries({ queryKey: ['section-attendance'] });

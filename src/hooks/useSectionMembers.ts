@@ -162,49 +162,57 @@ export function useSectionAttendance() {
     enabled: !!sectionId && isAuthenticated && isCR,
     staleTime: 1000 * 60 * 5, // 5 minutes cache
     queryFn: async () => {
-      const { data: sectionUsers, error: usersErr } = await supabase
-        .from('users')
-        .select('id')
-        .eq('section_id', sectionId!);
+      const calculateAggregates = (records: Array<{ user_id: string; present: number; od: number; makeup: number; absent: number }>) => {
+        const aggregates: Record<string, StudentAttendanceAggregate> = {};
+        records.forEach(r => {
+          const total = r.present + r.od + r.absent;
+          const attended = r.present + r.od + r.makeup;
+          if (!aggregates[r.user_id]) {
+            aggregates[r.user_id] = {
+              userId: r.user_id,
+              totalPresent: 0,
+              totalHeld: 0,
+              overallPercentage: null
+            };
+          }
+          aggregates[r.user_id].totalPresent += attended;
+          aggregates[r.user_id].totalHeld += total;
+        });
 
-      if (usersErr) throw usersErr;
+        Object.values(aggregates).forEach(agg => {
+          if (agg.totalHeld > 0) {
+            agg.overallPercentage = (agg.totalPresent / agg.totalHeld) * 100;
+          }
+        });
+        return aggregates;
+      };
 
-      const userIds = (sectionUsers ?? []).map((u) => u.id);
-      if (userIds.length === 0) return {};
-
+      // Single round-trip query via inner join
       const { data, error } = await supabase
         .from('attendance_records')
-        .select('user_id, present, od, makeup, absent')
-        .in('user_id', userIds);
-      
-      if (error) throw error;
+        .select('user_id, present, od, makeup, absent, users!inner(section_id)')
+        .eq('users.section_id', sectionId!);
 
-      const aggregates: Record<string, StudentAttendanceAggregate> = {};
-      
-      (data ?? []).forEach(r => {
-        const total = r.present + r.od + r.absent;
-        const attended = r.present + r.od + r.makeup;
-        
-        if (!aggregates[r.user_id]) {
-          aggregates[r.user_id] = {
-            userId: r.user_id,
-            totalPresent: 0,
-            totalHeld: 0,
-            overallPercentage: null
-          };
-        }
-        
-        aggregates[r.user_id].totalPresent += attended;
-        aggregates[r.user_id].totalHeld += total;
-      });
+      if (error) {
+        // Fallback for safety
+        const { data: sectionUsers, error: usersErr } = await supabase
+          .from('users')
+          .select('id')
+          .eq('section_id', sectionId!);
 
-      Object.values(aggregates).forEach(agg => {
-        if (agg.totalHeld > 0) {
-          agg.overallPercentage = (agg.totalPresent / agg.totalHeld) * 100;
-        }
-      });
+        if (usersErr) throw usersErr;
+        const userIds = (sectionUsers ?? []).map((u) => u.id);
+        if (userIds.length === 0) return {};
 
-      return aggregates;
+        const { data: fbData, error: fbErr } = await supabase
+          .from('attendance_records')
+          .select('user_id, present, od, makeup, absent')
+          .in('user_id', userIds);
+        if (fbErr) throw fbErr;
+        return calculateAggregates(fbData ?? []);
+      }
+
+      return calculateAggregates(data ?? []);
     }
   });
 }

@@ -254,7 +254,7 @@ export function usePollsRealtime(sectionId: string | null) {
       .subscribe();
 
     return () => {
-      channel.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [sectionId, qc]);
 }

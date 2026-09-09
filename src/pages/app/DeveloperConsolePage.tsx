@@ -166,7 +166,7 @@ export default function DeveloperConsolePage() {
       });
 
     return () => {
-      channel.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [authUser]);
 
