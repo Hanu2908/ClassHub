@@ -89,6 +89,27 @@ jobs:
       - name: Compile production assets
         run: npm run build
 
+  db-tests:
+    name: Database Policy Tests
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_AUTH_GOOGLE_CLIENT_ID: "dummy-client-id"
+      SUPABASE_AUTH_GOOGLE_SECRET: "dummy-secret"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase (applies all migrations + seed)
+        run: supabase start
+
+      - name: Run pgTAP tests in supabase/tests
+        run: supabase test db
+
   security-audit:
     name: Security & Vulnerability Audit
     runs-on: ubuntu-latest

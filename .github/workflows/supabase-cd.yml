@@ -8,10 +8,25 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never kill a running `db push` halfway through a migration; queue instead.
+  cancel-in-progress: false
 
 jobs:
+  db-tests:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_AUTH_GOOGLE_CLIENT_ID: "dummy-client-id"
+      SUPABASE_AUTH_GOOGLE_SECRET: "dummy-secret"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start
+      - run: supabase test db
+
   deploy:
+    needs: db-tests
     runs-on: ubuntu-latest
     env:
       SUPABASE_AUTH_GOOGLE_CLIENT_ID: "dummy-client-id"
