@@ -177,10 +177,11 @@ select results_eq(
 -- ── known policy gaps ────────────────────────────────────────────────────────
 -- authenticated_update_comments WITH CHECK compares columns with themselves
 -- (id = id, announcement_id = announcement_id, content = content, ...), which
--- is always true, so it pins nothing.
+-- is always true, so it pins nothing. Moving a comment or reaction to another
+-- section is still blocked: an UPDATE with a WHERE clause must also pass the
+-- SELECT policy on the new row (no todo on those two).
 set local role authenticated;
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-000000000001';
-select todo('gap: comment UPDATE WITH CHECK does not pin announcement_id', 1);
 select throws_ok(
   $$update public.announcement_comments set announcement_id = 'cccccccc-0000-4000-8000-0000000000b1'
     where id = 'dddddddd-0000-4000-8000-000000000001'$$,
@@ -190,7 +191,6 @@ select throws_ok(
   $$update public.announcement_comments set created_at = now() + interval '1 year'
     where id = 'dddddddd-0000-4000-8000-000000000001'$$,
   '42501', null, 'author cannot move created_at forward');
-select todo('gap: reaction UPDATE WITH CHECK only pins user_id', 1);
 select throws_ok(
   $$update public.announcement_reactions set announcement_id = 'cccccccc-0000-4000-8000-0000000000b1'
     where id = 'eeeeeeee-0000-4000-8000-000000000001'$$,
