@@ -1,20 +1,13 @@
 RLS Integration Tests
 
-This directory contains templates and SQL for running Row-Level Security (RLS)
-integration tests against a disposable Postgres database (for example, a
-Supabase project created specifically for CI).
+Database policy tests live in `supabase/tests/*.test.sql` (pgTAP). CI runs them
+on every PR and before every production migration deploy:
 
-Run instructions (manual):
+    supabase start
+    supabase test db
 
-1. Create a test Supabase project and apply the migrations from `supabase/migrations`.
-2. Use a test account or set appropriate JWT claims to simulate different users.
-3. Execute SQL scripts in this directory with `psql` or use pgTAP for structured assertions.
+Add a test there for every new table or policy. A policy without a test is not
+done.
 
-Example (local, postgres):
-
-psql postgresql://user:pass@localhost:5432/testdb -f tests/integration/rls.test.sql
-
-Notes:
-
-- Do NOT run these tests against production or a database with real user data.
-- Consider using pgTAP for reliable, CI-friendly assertions.
+`attachments_rls.test.sql` in this folder predates that setup and has never run
+in CI. Move it into `supabase/tests/` once it passes locally.
