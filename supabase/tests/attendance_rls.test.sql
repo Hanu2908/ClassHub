@@ -2,11 +2,11 @@
 -- student_session_attendance): students own their aggregate rows, CRs run
 -- sessions in their own section, teachers only for subjects they teach.
 -- Latest policies: 20260606000000, 20260614160000, 20260614170000, 20260731173314.
--- TODO tests mark known policy gaps; they pass the suite until the policy is fixed.
+-- Gaps the first run found (once pgTAP todo tests) are fixed in 20261011140000.
 -- Run: supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(35);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 't_sa1@skit.ac.in'),
@@ -112,7 +112,6 @@ select throws_ok(
 select is_empty(
   $$update public.attendance_sessions set lecture_count = 2 where id = '99999999-0000-4000-8000-000000000002' returning id$$,
   'CR cannot edit another section''s session');
-select todo('bug: fn_sync_session_attendance runs as the caller, and CRs have no INSERT policy on attendance_records', 1);
 select lives_ok(
   $$insert into public.student_session_attendance (session_id, student_id, status)
     values ('99999999-0000-4000-8000-000000000003', 'aaaaaaaa-0000-4000-8000-000000000003', 'present')$$,
@@ -121,6 +120,10 @@ select throws_ok(
   $$insert into public.student_session_attendance (session_id, student_id, status)
     values ('99999999-0000-4000-8000-000000000002', 'aaaaaaaa-0000-4000-8000-000000000002', 'present')$$,
   '42501', null, 'CR cannot mark attendance in another section''s session');
+select throws_ok(
+  $$insert into public.student_session_attendance (session_id, student_id, status)
+    values ('99999999-0000-4000-8000-000000000003', 'aaaaaaaa-0000-4000-8000-000000000002', 'present')$$,
+  '42501', null, 'CR cannot mark a student of another section in own session');
 
 -- ── teacher linked to section A / subject A via section_teachers ─────────────
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-0000000000f1';
@@ -166,7 +169,7 @@ select is_empty(
 reset role;
 select is(
   (select present from public.attendance_records where id = 'ffffffff-0000-4000-8000-000000000002'),
-  3, 'classmate attendance is unchanged');
+  4, 'classmate attendance changed only through the CR register (+1 present)');
 select is(
   (select present from public.attendance_records where id = 'ffffffff-0000-4000-8000-000000000003'),
   4, 'section B attendance is unchanged');
@@ -174,20 +177,18 @@ select is(
   (select lecture_count from public.attendance_sessions where id = '99999999-0000-4000-8000-000000000002'),
   1, 'section B session is unchanged');
 
--- ── known policy gaps ────────────────────────────────────────────────────────
+-- ── cross-section checks (fixed in 20261011140000) ────────────────────────────
 set local role authenticated;
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-0000000000c2';
-select todo('gap: "Teachers and CRs read all section attendance logs" lets any CR read every section', 1);
 select is_empty(
   $$select id from public.student_session_attendance where session_id = '99999999-0000-4000-8000-000000000001'$$,
   'CR of section B cannot read section A session logs');
 
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-0000000000c1';
-select todo('gap: "CR manages section teachers" does not check that subject_id belongs to the section', 2);
 select throws_ok(
   $$insert into public.section_teachers (section_id, teacher_id, subject_id)
     values ('bbbbbbbb-0000-4000-8000-00000000000a', 'aaaaaaaa-0000-4000-8000-0000000000c1', 'eeeeeeee-0000-4000-8000-00000000000b')$$,
-  '42501', null, 'CR cannot link a subject from another section to their section');
+  '23503', null, 'CR cannot link a subject from another section to their section');
 select is_empty(
   $$select id from public.attendance_records where id = 'ffffffff-0000-4000-8000-000000000003'$$,
   'CR still cannot read another section''s attendance after that attempt');

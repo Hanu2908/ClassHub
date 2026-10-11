@@ -1,7 +1,7 @@
 -- counsellor_notes: a counsellor manages only the remarks they wrote, a student
 -- reads and replies to only their own notes and cannot rewrite the remark.
 -- Latest policies: 20260615000000 (plus trigger check_student_counsellor_notes_update).
--- TODO tests mark known policy gaps; they pass the suite until the policy is fixed.
+-- Gaps the first run found (once pgTAP todo tests) are fixed in 20261011140000.
 -- Run: supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -98,29 +98,24 @@ select is(
   (select note_text from public.counsellor_notes where id = 'dddddddd-0000-4000-8000-000000000001'),
   'remark for SA1', 'section A remark text is unchanged after the student''s attempt');
 
--- ── known policy gaps ────────────────────────────────────────────────────────
--- "Counsellors manage own remarks" only checks counsellor_id = auth.uid(): it
--- does not require a counsellor role, a section_teachers link, or the student
--- to be in a section the author teaches.
+-- ── cross-section checks (fixed in 20261011140000) ────────────────────────────
+-- Writing a remark requires a counsellor link (section_teachers) to the
+-- student's section, not just counsellor_id = auth.uid().
 set local role authenticated;
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-000000000001';
-select todo('gap: any user can insert a counsellor note for any student', 1);
 select throws_ok(
   $$insert into public.counsellor_notes (counsellor_id, student_id, note_text)
     values ('aaaaaaaa-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000002', 'fake remark')$$,
   '42501', null, 'student cannot write a counsellor note for a student of another section');
 
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-0000000000f1';
-select todo('gap: counsellor notes are not limited to sections the counsellor teaches', 1);
 select throws_ok(
   $$insert into public.counsellor_notes (counsellor_id, student_id, note_text)
     values ('aaaaaaaa-0000-4000-8000-0000000000f1', 'aaaaaaaa-0000-4000-8000-000000000002', 'x')$$,
   '42501', null, 'counsellor cannot write a note for a student in a section they do not teach');
 
--- The column-lock trigger only runs for role = 'student', so a CR who is the
--- subject of a note can rewrite the counsellor's text.
+-- The column lock applies to whoever is the note's student, CR or not.
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-0000000000c1';
-select todo('gap: check_student_counsellor_notes_update skips non-student roles', 1);
 select throws_ok(
   $$update public.counsellor_notes set note_text = 'rewritten by CR' where id = 'dddddddd-0000-4000-8000-0000000000c1'$$,
   'P0001', null, 'CR cannot rewrite a counsellor remark written about them');

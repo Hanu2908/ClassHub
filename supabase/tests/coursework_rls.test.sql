@@ -2,7 +2,7 @@
 -- section, CRs manage their own section, teachers manage only their own
 -- assignments in sections they teach (section_teachers).
 -- Latest policies: 20260606000000, 20260614160000, 20260828010000.
--- TODO tests mark known policy gaps; they pass the suite until the policy is fixed.
+-- Gaps the first run found (once pgTAP todo tests) are fixed in 20261011140000.
 -- Run: supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -163,17 +163,15 @@ select is(
   (select cr_verified or nudge_sent from public.submissions where id = 'dddddddd-0000-4000-8000-000000000002'),
   false, 'section B submission is untouched');
 
--- ── known policy gaps ────────────────────────────────────────────────────────
+-- ── cross-section checks (fixed in 20261011140000) ────────────────────────────
 set local role authenticated;
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-000000000001';
-select todo('gap: submissions UPDATE WITH CHECK only pins student_id, not the assignment section', 1);
 select throws_ok(
   $$update public.submissions set assignment_id = 'cccccccc-0000-4000-8000-000000000002'
     where id = 'dddddddd-0000-4000-8000-000000000003'$$,
   '42501', null, 'student cannot move own submission onto another section''s assignment');
 
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-0000000000c1';
-select todo('gap: CR placeholder INSERT does not check that student_id is in the CR''s section', 1);
 select throws_ok(
   $$insert into public.submissions (assignment_id, student_id)
     values ('cccccccc-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000002')$$,
