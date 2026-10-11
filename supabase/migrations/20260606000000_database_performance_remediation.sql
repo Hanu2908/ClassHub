@@ -206,6 +206,7 @@ WITH CHECK ( (SELECT auth.uid()) = user_id );
 -- ── public.announcement_comments ─────────────────────────────────────────────
 -- 1. Read Policy (only for authenticated role)
 DROP POLICY IF EXISTS "Enable read access to comments for section members" ON public.announcement_comments;
+DROP POLICY IF EXISTS "authenticated_read_comments" ON public.announcement_comments;
 CREATE POLICY "authenticated_read_comments"
 ON public.announcement_comments FOR SELECT TO authenticated
 USING (
@@ -219,6 +220,7 @@ USING (
 
 -- 2. Insert Policy (only for authenticated role)
 DROP POLICY IF EXISTS "Enable comment creation for self in same section" ON public.announcement_comments;
+DROP POLICY IF EXISTS "authenticated_insert_comments" ON public.announcement_comments;
 CREATE POLICY "authenticated_insert_comments"
 ON public.announcement_comments FOR INSERT TO authenticated
 WITH CHECK (
@@ -234,6 +236,7 @@ WITH CHECK (
 
 -- 3. Delete Policy (only for authenticated role)
 DROP POLICY IF EXISTS "Enable comment deletion for author or CR" ON public.announcement_comments;
+DROP POLICY IF EXISTS "authenticated_delete_comments" ON public.announcement_comments;
 CREATE POLICY "authenticated_delete_comments"
 ON public.announcement_comments FOR DELETE TO authenticated
 USING (
@@ -251,6 +254,7 @@ USING (
 DROP POLICY IF EXISTS "Enable CR to verify comments" ON public.announcement_comments;
 DROP POLICY IF EXISTS "Enable comment content update for author within 15 mins" ON public.announcement_comments;
 
+DROP POLICY IF EXISTS "authenticated_update_comments" ON public.announcement_comments;
 CREATE POLICY "authenticated_update_comments"
 ON public.announcement_comments FOR UPDATE TO authenticated
 USING (
