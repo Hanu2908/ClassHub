@@ -2,7 +2,7 @@
 -- engage only with their own section's announcements, as themselves; CRs
 -- verify and moderate their own section only.
 -- Latest policies: 20260523114500 (acks), 20260606000000 (comments, reactions).
--- TODO tests mark known policy gaps; they pass the suite until the policy is fixed.
+-- Gaps the first run found (once pgTAP todo tests) are fixed in 20261011140000.
 -- Run: supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -174,19 +174,15 @@ select results_eq(
   $$select count(*) from public.acknowledgments where id = 'dddddddd-0000-4000-8000-0000000000b1'$$,
   array[1::bigint], 'section B acknowledgment still exists');
 
--- ── known policy gaps ────────────────────────────────────────────────────────
--- authenticated_update_comments WITH CHECK compares columns with themselves
--- (id = id, announcement_id = announcement_id, content = content, ...), which
--- is always true, so it pins nothing. Moving a comment or reaction to another
--- section is still blocked: an UPDATE with a WHERE clause must also pass the
--- SELECT policy on the new row (no todo on those two).
+-- ── cross-section checks (fixed in 20261011140000) ────────────────────────────
+-- RLS cannot compare OLD and NEW, so immutable columns and author-only edits
+-- are enforced by the BEFORE UPDATE trigger handle_announcement_comment_update.
 set local role authenticated;
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-000000000001';
 select throws_ok(
   $$update public.announcement_comments set announcement_id = 'cccccccc-0000-4000-8000-0000000000b1'
     where id = 'dddddddd-0000-4000-8000-000000000001'$$,
   '42501', null, 'author cannot move own comment onto another section''s announcement');
-select todo('gap: comment UPDATE WITH CHECK does not pin created_at, so the 15 minute window can be extended', 1);
 select throws_ok(
   $$update public.announcement_comments set created_at = now() + interval '1 year'
     where id = 'dddddddd-0000-4000-8000-000000000001'$$,
@@ -197,7 +193,6 @@ select throws_ok(
   '42501', null, 'student cannot move own reaction onto another section''s announcement');
 
 set local request.jwt.claim.sub = 'aaaaaaaa-0000-4000-8000-0000000000c1';
-select todo('gap: comment UPDATE WITH CHECK (content = content) lets a CR rewrite student comments', 1);
 select throws_ok(
   $$update public.announcement_comments set content = 'rewritten by CR'
     where id = 'dddddddd-0000-4000-8000-000000000003'$$,
